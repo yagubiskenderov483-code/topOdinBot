@@ -266,6 +266,53 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u["username"] = user.username or ""
     save_db(db)
     context.user_data.clear()
+
+    # Проверяем deep link — /start deal_GD00001
+    args = context.args
+    if args and args[0].startswith("deal_"):
+        deal_id = args[0][5:].upper()  # убираем "deal_" -> "GD00001"
+        deals = db.get("deals", {})
+        if deal_id in deals:
+            d = deals[deal_id]
+            type_names = {
+                "nft": "🖼 НФТ",
+                "username": "👤 НФТ Юзернейм",
+                "stars": "⭐️ Звёзды",
+                "crypto": "💎 Крипта",
+                "giftbox": "🎁 НФТ Подарок",
+                "premium": "✈️ Telegram Premium",
+            }
+            extra = ""
+            dd = d.get("data", {})
+            if d.get("type") in ("nft", "giftbox"):
+                extra = f"\n<b>Ссылка НФТ:</b> {dd.get('nft_link', '—')}"
+            elif d.get("type") == "username":
+                extra = f"\n<b>Юзернейм товара:</b> {dd.get('trade_username', '—')}"
+            elif d.get("type") == "stars":
+                extra = f"\n<b>Количество звёзд:</b> {dd.get('stars_count', '—')}"
+            elif d.get("type") == "premium":
+                extra = f"\n<b>Срок Premium:</b> {dd.get('premium_period', '—')}"
+
+            status_map = {"pending": "⏳ Ожидает оплаты", "confirmed": "✅ Подтверждена"}
+            text = (
+                f"<b>📋 Информация о сделке\n\n"
+                f"Код (MEMO):</b> <code>{deal_id}</code>\n"
+                f"<b>Тип:</b> {type_names.get(d.get('type'), d.get('type'))}\n"
+                f"<b>Партнёр:</b> {d.get('partner', '—')}"
+                f"{extra}\n"
+                f"<b>Валюта:</b> {d.get('currency', '—')}\n"
+                f"<b>Сумма:</b> {d.get('amount', '—')}\n"
+                f"<b>Статус:</b> {status_map.get(d.get('status', ''), d.get('status', '—'))}\n"
+                f"<b>Создана:</b> {d.get('created', '—')[:16].replace('T', ' ')}"
+            )
+            await update.effective_message.reply_text(
+                text, parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]]))
+            return
+        else:
+            await update.effective_message.reply_text(
+                f"<b>Сделка {deal_id} не найдена.</b>", parse_mode="HTML")
+
     await send_main_menu(update, context)
 
 # ===================== CALLBACK ROUTER =====================
@@ -363,14 +410,14 @@ async def deal_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]]))
         return DEAL_STARS_PARTNER
 
-    if data == "deal_crypto":
+":
         context.user_data["deal_type"] = "crypto"
         await q.edit_message_text(
-            "<b>💎 Крипта (TON/$)\n\nШаг 1 из 2 — Выберите валюту:</b>",
+            "<b>💎 Крипта\n\nВыберите: TON или $ (USDT):</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("💎 TON", callback_data="crypto_ton"),
-                 InlineKeyboardButton("💵 USDT", callback_data="crypto_usdt")],
+                 InlineKeyboardButton("💵 $ (USDT)", callback_data="crypto_usdt")],
                 [InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]
             ]))
         return DEAL_CRYPTO_CURRENCY
@@ -528,7 +575,8 @@ async def deal_crypto_currency(update: Update, context: ContextTypes.DEFAULT_TYP
         return DEAL_TYPE
     cur_map = {"crypto_ton": "TON", "crypto_usdt": "USDT"}
     context.user_data["currency"] = cur_map.get(q.data, q.data)
-    await q.edit_message_text("<b>💎 Крипта\n\nШаг 2 из 2 — Введите сумму сделки:</b>", parse_mode="HTML")
+    cur = context.user_data.get("currency", "")
+    await q.edit_message_text(f"<b>💎 Крипта ({cur})\n\nВведите сумму сделки:</b>", parse_mode="HTML")
     return DEAL_CRYPTO_AMOUNT
 
 async def deal_crypto_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
