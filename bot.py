@@ -1,5 +1,4 @@
 import logging
-import re
 import json
 import os
 from datetime import datetime
@@ -10,32 +9,19 @@ from telegram.ext import (
 )
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# ===================== CONFIG =====================
 BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
-SUPPORT_USERNAME = "@GiftDealsSupport"
 CRYPTO_ADDRESS = "UQDUUFncBcWC4eH3wN_4G3N9Yaf6nBFlcumDP8daYAQHNSOc"
 CRYPTO_BOT_LINK = "https://t.me/send?start=IVtoVqCXSHV0"
-
 DB_FILE = "db.json"
 
-# ===================== DATABASE =====================
 def load_db():
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-    return {
-        "users": {},
-        "deals": {},
-        "banner": None,
-        "banner_photo": None,
-        "menu_description": None,
-        "deal_counter": 1
-    }
+    return {"users": {}, "deals": {}, "banner": None, "banner_photo": None, "menu_description": None, "deal_counter": 1}
 
 def save_db(db):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -45,140 +31,69 @@ def get_user(db, user_id):
     uid = str(user_id)
     if uid not in db["users"]:
         db["users"][uid] = {
-            "username": "",
-            "balance": 0,
-            "total_deals": 0,
-            "success_deals": 0,
-            "turnover": 0,
-            "reputation": 0,
-            "reviews": [],
-            "status": "",
-            "lang": "ru"
+            "username": "", "balance": 0, "total_deals": 0, "success_deals": 0,
+            "turnover": 0, "reputation": 0, "reviews": [], "status": "", "lang": "ru"
         }
     return db["users"][uid]
 
-# ===================== LANGUAGES =====================
 LANGS = {
-    "ru": "🇷🇺 Русский",
-    "en": "🇬🇧 English",
-    "kz": "🇰🇿 Казахский",
-    "az": "🇦🇿 Азербайджанский",
-    "uz": "🇺🇿 Узбекский",
-    "kg": "🇰🇬 Кыргызский",
-    "tj": "🇹🇯 Таджикский",
-    "by": "🇧🇾 Белорусский",
+    "ru": "RU Русский", "en": "EN English", "kz": "KZ Казахский",
+    "az": "AZ Азербайджанский", "uz": "UZ Узбекский", "kg": "KG Кыргызский",
+    "tj": "TJ Таджикский", "by": "BY Белорусский",
 }
 
-TRANSLATIONS = {
-    "ru": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": (
-            "Gift Deals — одна из самых безопасных площадок в Telegram для проведения сделок.\n\n"
-            "Мы гарантируем честность каждой транзакции: средства и товар передаются только после подтверждения обеих сторон. "
-            "Никаких рисков, никаких мошенников — только надёжные сделки под защитой нашей платформы.\n\n"
-            "Тысячи успешных сделок уже позади — и каждая из них прошла безопасно."
-        ),
-        "btn_deal": "✏️ Создать сделку",
-        "btn_support": "🆘 Поддержка",
-        "btn_balance": "➕ Пополнить баланс",
-        "btn_lang": "🔄 Сменить язык",
-        "btn_profile": "👤 Профиль",
-        "btn_top": "🏆 Топ продавцов",
-    },
-    "en": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": (
-            "Gift Deals is one of the safest platforms in Telegram for conducting deals.\n\n"
-            "We guarantee the honesty of every transaction: funds and goods are transferred only after confirmation from both parties. "
-            "No risks, no fraudsters — only reliable deals under the protection of our platform."
-        ),
-        "btn_deal": "✏️ Create Deal",
-        "btn_support": "🆘 Support",
-        "btn_balance": "➕ Top Up Balance",
-        "btn_lang": "🔄 Change Language",
-        "btn_profile": "👤 Profile",
-        "btn_top": "🏆 Top Sellers",
-    },
-    "kz": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": "Gift Deals — Telegram-дағы мәмілелер жүргізу үшін ең қауіпсіз алаңдардың бірі.",
-        "btn_deal": "✏️ Мәміле жасау",
-        "btn_support": "🆘 Қолдау",
-        "btn_balance": "➕ Балансты толтыру",
-        "btn_lang": "🔄 Тілді өзгерту",
-        "btn_profile": "👤 Профиль",
-        "btn_top": "🏆 Үздік сатушылар",
-    },
-    "az": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": "Gift Deals — Telegram-da əməliyyatlar aparmaq üçün ən təhlükəsiz platformalardan biridir.",
-        "btn_deal": "✏️ Müqavilə yarat",
-        "btn_support": "🆘 Dəstək",
-        "btn_balance": "➕ Balansı artır",
-        "btn_lang": "🔄 Dili dəyiş",
-        "btn_profile": "👤 Profil",
-        "btn_top": "🏆 Top satıcılar",
-    },
-    "uz": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": "Gift Deals — Telegram'da bitimlar o'tkazish uchun eng xavfsiz platformalardan biri.",
-        "btn_deal": "✏️ Bitim yaratish",
-        "btn_support": "🆘 Qo'llab-quvvatlash",
-        "btn_balance": "➕ Balansni to'ldirish",
-        "btn_lang": "🔄 Tilni o'zgartirish",
-        "btn_profile": "👤 Profil",
-        "btn_top": "🏆 Top sotuvchilar",
-    },
-    "kg": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": "Gift Deals — Telegram'дагы бүтүмдөр үчүн эң коопсуз аянтча.",
-        "btn_deal": "✏️ Бүтүм түзүү",
-        "btn_support": "🆘 Колдоо",
-        "btn_balance": "➕ Баланс толтуруу",
-        "btn_lang": "🔄 Тилди өзгөртүү",
-        "btn_profile": "👤 Профиль",
-        "btn_top": "🏆 Топ сатуучулар",
-    },
-    "tj": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": "Gift Deals — яке аз бехтарин майдончаҳо дар Telegram барои анҷом додани муомилот.",
-        "btn_deal": "✏️ Эҷоди муомила",
-        "btn_support": "🆘 Дастгирӣ",
-        "btn_balance": "➕ Пур кардани баланс",
-        "btn_lang": "🔄 Тағйири забон",
-        "btn_profile": "👤 Профил",
-        "btn_top": "🏆 Беҳтарин фурӯшандагон",
-    },
-    "by": {
-        "welcome_title": "💎 Gift Deals",
-        "welcome_text": "Gift Deals — адна з самых бяспечных пляцовак у Telegram для правядзення здзелак.",
-        "btn_deal": "✏️ Стварыць здзелку",
-        "btn_support": "🆘 Падтрымка",
-        "btn_balance": "➕ Папоўніць баланс",
-        "btn_lang": "🔄 Змяніць мову",
-        "btn_profile": "👤 Профіль",
-        "btn_top": "🏆 Топ прадаўцоў",
-    },
+WELCOME_TEXT = {
+    "ru": (
+        "Gift Deals — одна из самых безопасных площадок в Telegram для проведения сделок.\n\n"
+        "Мы гарантируем честность каждой транзакции: средства и товар передаются только после подтверждения обеих сторон. "
+        "Никаких рисков, никаких мошенников — только надёжные сделки под защитой нашей платформы.\n\n"
+        "Тысячи успешных сделок уже позади — и каждая из них прошла безопасно."
+    ),
+    "en": "Gift Deals is one of the safest platforms in Telegram. We guarantee honest transactions.",
+    "kz": "Gift Deals — Telegram-дағы мәмілелер жүргізу үшін ең қауіпсіз алаңдардың бірі.",
+    "az": "Gift Deals — Telegram-da ən təhlükəsiz platformalardan biridir.",
+    "uz": "Gift Deals — Telegram'da eng xavfsiz platformalardan biri.",
+    "kg": "Gift Deals — Telegram'дагы эң коопсуз аянтча.",
+    "tj": "Gift Deals — яке аз бехтарин майдончаҳо дар Telegram.",
+    "by": "Gift Deals — адна з самых бяспечных пляцовак у Telegram.",
 }
 
-def t(lang, key):
-    return TRANSLATIONS.get(lang, TRANSLATIONS["ru"]).get(key, TRANSLATIONS["ru"].get(key, key))
+BTN = {
+    "ru": {"deal": "Создать сделку", "support": "Поддержка", "balance": "Пополнить баланс",
+           "lang": "Сменить язык", "profile": "Профиль", "top": "Топ продавцов"},
+    "en": {"deal": "Create Deal", "support": "Support", "balance": "Top Up",
+           "lang": "Language", "profile": "Profile", "top": "Top Sellers"},
+    "kz": {"deal": "Мәміле жасау", "support": "Қолдау", "balance": "Балансты толтыру",
+           "lang": "Тілді өзгерту", "profile": "Профиль", "top": "Үздік сатушылар"},
+    "az": {"deal": "Müqavilə yarat", "support": "Dəstək", "balance": "Balansı artır",
+           "lang": "Dili dəyiş", "profile": "Profil", "top": "Top satıcılar"},
+    "uz": {"deal": "Bitim yaratish", "support": "Qollab-quvvatlash", "balance": "Balansni toldirish",
+           "lang": "Tilni ozgartirish", "profile": "Profil", "top": "Top sotuvchilar"},
+    "kg": {"deal": "Butum tuzuu", "support": "Koldoo", "balance": "Balans tolturuu",
+           "lang": "Tildi ozgoruu", "profile": "Profil", "top": "Top satuuchular"},
+    "tj": {"deal": "Ejodi muomila", "support": "Dastgiri", "balance": "Pur kardani balans",
+           "lang": "Taghyiri zabon", "profile": "Profil", "top": "Behtarin furushandagon"},
+    "by": {"deal": "Stvaryts zdzelku", "support": "Padtrymka", "balance": "Papounits balans",
+           "lang": "Zmyanits movu", "profile": "Profil", "top": "Top pradavcou"},
+}
 
-# ===================== CURRENCY KEYBOARD =====================
+def get_btn(lang, key):
+    return BTN.get(lang, BTN["ru"]).get(key, BTN["ru"][key])
+
 def currency_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💎 TON", callback_data="cur_ton"),
-         InlineKeyboardButton("💵 USDT", callback_data="cur_usdt")],
-        [InlineKeyboardButton("💴 RUB", callback_data="cur_rub"),
-         InlineKeyboardButton("⭐️ Stars", callback_data="cur_stars")],
-        [InlineKeyboardButton("🇰🇿 KZT (Тенге)", callback_data="cur_kzt"),
-         InlineKeyboardButton("🇦🇿 AZN (Манат)", callback_data="cur_azn")],
-        [InlineKeyboardButton("🇰🇬 KGS (Сом)", callback_data="cur_kgs"),
-         InlineKeyboardButton("🇺🇿 UZS (Сум)", callback_data="cur_uzs")],
-        [InlineKeyboardButton("🇹🇯 TJS (Сомони)", callback_data="cur_tjs"),
-         InlineKeyboardButton("🇧🇾 BYN (Рубль)", callback_data="cur_byn")],
-        [InlineKeyboardButton("🇺🇦 UAH (Гривна)", callback_data="cur_uah"),
-         InlineKeyboardButton("🇬🇪 GEL (Лари)", callback_data="cur_gel")],
+        [InlineKeyboardButton("TON", callback_data="cur_ton"),
+         InlineKeyboardButton("USDT", callback_data="cur_usdt")],
+        [InlineKeyboardButton("RUB", callback_data="cur_rub"),
+         InlineKeyboardButton("Stars", callback_data="cur_stars")],
+        [InlineKeyboardButton("KZT (Тенге)", callback_data="cur_kzt"),
+         InlineKeyboardButton("AZN (Манат)", callback_data="cur_azn")],
+        [InlineKeyboardButton("KGS (Сом)", callback_data="cur_kgs"),
+         InlineKeyboardButton("UZS (Сум)", callback_data="cur_uzs")],
+        [InlineKeyboardButton("TJS (Сомони)", callback_data="cur_tjs"),
+         InlineKeyboardButton("BYN (Рубль)", callback_data="cur_byn")],
+        [InlineKeyboardButton("UAH (Гривна)", callback_data="cur_uah"),
+         InlineKeyboardButton("GEL (Лари)", callback_data="cur_gel")],
     ])
 
 CURRENCY_MAP = {
@@ -187,7 +102,6 @@ CURRENCY_MAP = {
     "cur_tjs": "TJS", "cur_byn": "BYN", "cur_uah": "UAH", "cur_gel": "GEL",
 }
 
-# ===================== STATES =====================
 (
     DEAL_TYPE,
     DEAL_NFT_PARTNER, DEAL_NFT_LINK, DEAL_NFT_CURRENCY, DEAL_NFT_AMOUNT,
@@ -200,56 +114,41 @@ CURRENCY_MAP = {
     BANNER_SET, MENU_DESC_SET,
 ) = range(28)
 
-# ===================== HELPERS =====================
 def gen_deal_id(db):
     did = db.get("deal_counter", 1)
     db["deal_counter"] = did + 1
     save_db(db)
-    return f"GD{did:05d}"
+    return "GD{:05d}".format(did)
 
-def validate_nft_link(link: str) -> bool:
-    return link.startswith("https://")
+def back_kb():
+    return InlineKeyboardMarkup([[InlineKeyboardButton("Назад", callback_data="back_to_types")]])
 
 def main_menu_keyboard(lang="ru"):
+    b = BTN.get(lang, BTN["ru"])
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t(lang, "btn_deal"), callback_data="menu_deal")],
-        [
-            InlineKeyboardButton(t(lang, "btn_support"), url="https://t.me/GiftDealsSupport"),
-            InlineKeyboardButton(t(lang, "btn_balance"), callback_data="menu_balance"),
-        ],
-        [
-            InlineKeyboardButton(t(lang, "btn_lang"), callback_data="menu_lang"),
-            InlineKeyboardButton(t(lang, "btn_profile"), callback_data="menu_profile"),
-        ],
-        [InlineKeyboardButton(t(lang, "btn_top"), callback_data="menu_top")],
+        [InlineKeyboardButton("✏️ " + b["deal"], callback_data="menu_deal")],
+        [InlineKeyboardButton("🆘 " + b["support"], url="https://t.me/GiftDealsSupport"),
+         InlineKeyboardButton("➕ " + b["balance"], callback_data="menu_balance")],
+        [InlineKeyboardButton("🔄 " + b["lang"], callback_data="menu_lang"),
+         InlineKeyboardButton("👤 " + b["profile"], callback_data="menu_profile")],
+        [InlineKeyboardButton("🏆 " + b["top"], callback_data="menu_top")],
     ])
 
-async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, edit=False):
+async def send_main_menu(update, context, edit=False):
     db = load_db()
     uid = update.effective_user.id
     user = get_user(db, uid)
     lang = user.get("lang", "ru")
-
     banner = db.get("banner")
     banner_photo = db.get("banner_photo")
     menu_desc = db.get("menu_description")
-
-    title = f"<b>{t(lang, 'welcome_title')}</b>"
-    desc = f"<b>{menu_desc if menu_desc else t(lang, 'welcome_text')}</b>"
-    text = f"{title}\n\n{desc}"
+    body = menu_desc if menu_desc else WELCOME_TEXT.get(lang, WELCOME_TEXT["ru"])
+    text = "<b>💎 Gift Deals\n\n{}</b>".format(body)
     if banner:
-        text = f"{text}\n\n<b>{banner}</b>"
-
+        text = text + "\n\n<b>{}</b>".format(banner)
     kb = main_menu_keyboard(lang)
-
     if banner_photo:
-        if edit:
-            try:
-                await update.effective_message.reply_photo(photo=banner_photo, caption=text, parse_mode="HTML", reply_markup=kb)
-            except Exception:
-                await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
-        else:
-            await update.effective_message.reply_photo(photo=banner_photo, caption=text, parse_mode="HTML", reply_markup=kb)
+        await update.effective_message.reply_photo(photo=banner_photo, caption=text, parse_mode="HTML", reply_markup=kb)
     elif edit:
         try:
             await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
@@ -258,7 +157,6 @@ async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, edi
     else:
         await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
 
-# ===================== START =====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = load_db()
     user = update.effective_user
@@ -266,44 +164,47 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u["username"] = user.username or ""
     save_db(db)
     context.user_data.clear()
-
-    # Проверяем deep link — /start deal_GD00001
     args = context.args
     if args and args[0].startswith("deal_"):
-        deal_id = args[0][5:].upper()  # убираем "deal_" -> "GD00001"
+        deal_id = args[0][5:].upper()
         deals = db.get("deals", {})
         if deal_id in deals:
             d = deals[deal_id]
             type_names = {
-                "nft": "🖼 НФТ",
-                "username": "👤 НФТ Юзернейм",
-                "stars": "⭐️ Звёзды",
-                "crypto": "💎 Крипта",
-                "giftbox": "🎁 НФТ Подарок",
-                "premium": "✈️ Telegram Premium",
+                "nft": "NFT", "username": "НФТ Юзернейм",
+                "stars": "Звёзды", "crypto": "Крипта",
+                "giftbox": "НФТ Подарок", "premium": "Telegram Premium",
             }
-            extra = ""
             dd = d.get("data", {})
+            extra = ""
             if d.get("type") in ("nft", "giftbox"):
-                extra = f"\n<b>Ссылка НФТ:</b> {dd.get('nft_link', '—')}"
+                extra = "\n<b>Ссылка НФТ:</b> {}".format(dd.get("nft_link", "—"))
             elif d.get("type") == "username":
-                extra = f"\n<b>Юзернейм товара:</b> {dd.get('trade_username', '—')}"
+                extra = "\n<b>Юзернейм товара:</b> {}".format(dd.get("trade_username", "—"))
             elif d.get("type") == "stars":
-                extra = f"\n<b>Количество звёзд:</b> {dd.get('stars_count', '—')}"
+                extra = "\n<b>Количество звёзд:</b> {}".format(dd.get("stars_count", "—"))
             elif d.get("type") == "premium":
-                extra = f"\n<b>Срок Premium:</b> {dd.get('premium_period', '—')}"
-
+                extra = "\n<b>Срок Premium:</b> {}".format(dd.get("premium_period", "—"))
             status_map = {"pending": "⏳ Ожидает оплаты", "confirmed": "✅ Подтверждена"}
             text = (
-                f"<b>📋 Информация о сделке\n\n"
-                f"Код (MEMO):</b> <code>{deal_id}</code>\n"
-                f"<b>Тип:</b> {type_names.get(d.get('type'), d.get('type'))}\n"
-                f"<b>Партнёр:</b> {d.get('partner', '—')}"
-                f"{extra}\n"
-                f"<b>Валюта:</b> {d.get('currency', '—')}\n"
-                f"<b>Сумма:</b> {d.get('amount', '—')}\n"
-                f"<b>Статус:</b> {status_map.get(d.get('status', ''), d.get('status', '—'))}\n"
-                f"<b>Создана:</b> {d.get('created', '—')[:16].replace('T', ' ')}"
+                "<b>📋 Информация о сделке\n\n"
+                "Код (MEMO):</b> <code>{}</code>\n"
+                "<b>Тип:</b> {}\n"
+                "<b>Партнёр:</b> {}"
+                "{}\n"
+                "<b>Валюта:</b> {}\n"
+                "<b>Сумма:</b> {}\n"
+                "<b>Статус:</b> {}\n"
+                "<b>Создана:</b> {}"
+            ).format(
+                deal_id,
+                type_names.get(d.get("type"), d.get("type", "—")),
+                d.get("partner", "—"),
+                extra,
+                d.get("currency", "—"),
+                d.get("amount", "—"),
+                status_map.get(d.get("status", ""), d.get("status", "—")),
+                d.get("created", "—")[:16].replace("T", " ")
             )
             await update.effective_message.reply_text(
                 text, parse_mode="HTML",
@@ -311,50 +212,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         else:
             await update.effective_message.reply_text(
-                f"<b>Сделка {deal_id} не найдена.</b>", parse_mode="HTML")
-
+                "<b>Сделка {} не найдена.</b>".format(deal_id), parse_mode="HTML")
     await send_main_menu(update, context)
 
-# ===================== CALLBACK ROUTER =====================
 async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     data = q.data
-
     if data == "main_menu":
         context.user_data.clear()
         await send_main_menu(update, context, edit=True)
         return ConversationHandler.END
-
     if data == "menu_balance":
         await show_balance_menu(update, context)
-        return
-
-    if data == "menu_lang":
+    elif data == "menu_lang":
         await show_lang_menu(update, context)
-        return
-
-    if data == "menu_profile":
+    elif data == "menu_profile":
         await show_profile(update, context)
-        return
-
-    if data == "menu_top":
+    elif data == "menu_top":
         await show_top_sellers(update, context)
-        return
-
-    if data.startswith("lang_"):
+    elif data.startswith("lang_"):
         await set_language(update, context, data[5:])
-        return
-
-    if data.startswith("balance_"):
+    elif data.startswith("balance_"):
         await show_balance_info(update, context, data[8:])
-        return
-
-    if data == "withdraw":
+    elif data == "withdraw":
         await withdraw_handler(update, context)
-        return
 
-# ===================== DEAL FLOW =====================
 async def show_deal_types(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("🖼 НФТ", callback_data="deal_nft"),
@@ -365,94 +248,115 @@ async def show_deal_types(update: Update, context: ContextTypes.DEFAULT_TYPE):
          InlineKeyboardButton("✈️ Telegram Premium", callback_data="deal_premium")],
         [InlineKeyboardButton("◀️ Назад", callback_data="main_menu")],
     ])
-    text = "<b>✏️ Создать сделку\n\nВыберите тип товара:</b>"
     try:
-        await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
+        await update.callback_query.edit_message_text(
+            "<b>✏️ Создать сделку\n\nВыберите тип товара:</b>", parse_mode="HTML", reply_markup=kb)
     except Exception:
-        await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
+        await update.effective_message.reply_text(
+            "<b>✏️ Создать сделку\n\nВыберите тип товара:</b>", parse_mode="HTML", reply_markup=kb)
     return DEAL_TYPE
 
 async def deal_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     data = q.data
-
     if data == "main_menu":
         context.user_data.clear()
         await send_main_menu(update, context, edit=True)
         return ConversationHandler.END
-
     if data == "back_to_types":
         await show_deal_types(update, context)
         return DEAL_TYPE
-
     if data == "deal_nft":
         context.user_data["deal_type"] = "nft"
         await q.edit_message_text(
-            "<b>🖼 НФТ Сделка\n\nШаг 1 из 4 — Введите юзернейм партнёра:\n(пример: @username)</b>",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]]))
+            "<b>🖼 НФТ Сделка\n\n"
+            "1️⃣ Юзернейм партнёра\n"
+            "2️⃣ Ссылка на НФТ\n"
+            "3️⃣ Валюта\n"
+            "4️⃣ Сумма\n\n"
+            "— Шаг 1 из 4 —\n"
+            "Введите юзернейм партнёра:\n(пример: @username)</b>",
+            parse_mode="HTML", reply_markup=back_kb())
         return DEAL_NFT_PARTNER
-
     if data == "deal_username":
         context.user_data["deal_type"] = "username"
         await q.edit_message_text(
-            "<b>👤 НФТ Юзернейм\n\nШаг 1 из 4 — Введите юзернейм партнёра:\n(пример: @username)</b>",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]]))
+            "<b>👤 НФТ Юзернейм\n\n"
+            "1️⃣ Юзернейм партнёра\n"
+            "2️⃣ Юзернейм товара\n"
+            "3️⃣ Валюта\n"
+            "4️⃣ Сумма\n\n"
+            "— Шаг 1 из 4 —\n"
+            "Введите юзернейм партнёра:\n(пример: @username)</b>",
+            parse_mode="HTML", reply_markup=back_kb())
         return DEAL_USERNAME_PARTNER
-
     if data == "deal_stars":
         context.user_data["deal_type"] = "stars"
         await q.edit_message_text(
-            "<b>⭐️ Звёзды\n\nШаг 1 из 4 — Введите юзернейм партнёра:\n(пример: @username)</b>",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]]))
+            "<b>⭐️ Звёзды\n\n"
+            "1️⃣ Юзернейм партнёра\n"
+            "2️⃣ Количество звёзд\n"
+            "3️⃣ Валюта\n"
+            "4️⃣ Сумма\n\n"
+            "— Шаг 1 из 4 —\n"
+            "Введите юзернейм партнёра:\n(пример: @username)</b>",
+            parse_mode="HTML", reply_markup=back_kb())
         return DEAL_STARS_PARTNER
-
-":
+    if data == "deal_crypto":
         context.user_data["deal_type"] = "crypto"
         await q.edit_message_text(
-            "<b>💎 Крипта\n\nВыберите: TON или $ (USDT):</b>",
+            "<b>💎 Крипта\n\n"
+            "1️⃣ Выберите TON или $\n"
+            "2️⃣ Сумма\n\n"
+            "— Шаг 1 из 2 —\n"
+            "Выберите валюту:</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("💎 TON", callback_data="crypto_ton"),
                  InlineKeyboardButton("💵 $ (USDT)", callback_data="crypto_usdt")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]
+                [InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")],
             ]))
         return DEAL_CRYPTO_CURRENCY
-
     if data == "deal_giftbox":
         context.user_data["deal_type"] = "giftbox"
         await q.edit_message_text(
-            "<b>🎁 НФТ Подарок\n\nШаг 1 из 4 — Введите юзернейм партнёра:\n(пример: @username)</b>",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]]))
+            "<b>🎁 НФТ Подарок\n\n"
+            "1️⃣ Юзернейм партнёра\n"
+            "2️⃣ Ссылка на подарок\n"
+            "3️⃣ Валюта\n"
+            "4️⃣ Сумма\n\n"
+            "— Шаг 1 из 4 —\n"
+            "Введите юзернейм партнёра:\n(пример: @username)</b>",
+            parse_mode="HTML", reply_markup=back_kb())
         return DEAL_GIFTBOX_PARTNER
-
     if data == "deal_premium":
         context.user_data["deal_type"] = "premium"
         await q.edit_message_text(
-            "<b>✈️ Telegram Premium\n\nШаг 1 из 4 — Введите юзернейм партнёра:\n(пример: @username)</b>",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="back_to_types")]]))
+            "<b>✈️ Telegram Premium\n\n"
+            "1️⃣ Юзернейм партнёра\n"
+            "2️⃣ Срок подписки\n"
+            "3️⃣ Валюта\n"
+            "4️⃣ Сумма\n\n"
+            "— Шаг 1 из 4 —\n"
+            "Введите юзернейм партнёра:\n(пример: @username)</b>",
+            parse_mode="HTML", reply_markup=back_kb())
         return DEAL_PREMIUM_PARTNER
-
     return DEAL_TYPE
 
-# ===================== NFT =====================
+# NFT
 async def deal_nft_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         await update.callback_query.answer()
         await show_deal_types(update, context)
         return DEAL_TYPE
-    partner = update.message.text.strip()
-    if not partner.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @ . Попробуйте снова:</b>", parse_mode="HTML")
+    p = update.message.text.strip()
+    if not p.startswith("@"):
+        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_NFT_PARTNER
-    context.user_data["partner"] = partner
+    context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>🖼 НФТ Сделка\n\nШаг 2 из 4 — Введите ссылку на НФТ:\n(ссылка должна начинаться с https://)</b>",
+        "<b>🖼 НФТ — Шаг 2 из 4\n\nВведите ссылку на НФТ:\n(должна начинаться с https://)</b>",
         parse_mode="HTML")
     return DEAL_NFT_LINK
 
@@ -462,23 +366,20 @@ async def deal_nft_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_deal_types(update, context)
         return DEAL_TYPE
     link = update.message.text.strip()
-    if not validate_nft_link(link):
-        await update.message.reply_text(
-            "<b>Ссылка не валидна. Ссылка должна начинаться с https://\nПопробуйте снова:</b>",
-            parse_mode="HTML")
+    if not link.startswith("https://"):
+        await update.message.reply_text("<b>Ссылка должна начинаться с https://</b>", parse_mode="HTML")
         return DEAL_NFT_LINK
     context.user_data["nft_link"] = link
     await update.message.reply_text(
-        "<b>🖼 НФТ Сделка\n\nШаг 3 из 4 — Выберите валюту оплаты:</b>",
-        parse_mode="HTML",
-        reply_markup=currency_keyboard())
+        "<b>🖼 НФТ — Шаг 3 из 4\n\nВыберите валюту оплаты:</b>",
+        parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_NFT_CURRENCY
 
 async def deal_nft_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>🖼 НФТ Сделка\n\nШаг 4 из 4 — Введите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<b>🖼 НФТ — Шаг 4 из 4\n\nВведите сумму сделки:</b>", parse_mode="HTML")
     return DEAL_NFT_AMOUNT
 
 async def deal_nft_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -486,39 +387,38 @@ async def deal_nft_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await finalize_deal(update, context)
     return ConversationHandler.END
 
-# ===================== NFT USERNAME =====================
+# USERNAME
 async def deal_username_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         await update.callback_query.answer()
         await show_deal_types(update, context)
         return DEAL_TYPE
-    partner = update.message.text.strip()
-    if not partner.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @ . Попробуйте снова:</b>", parse_mode="HTML")
+    p = update.message.text.strip()
+    if not p.startswith("@"):
+        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_USERNAME_PARTNER
-    context.user_data["partner"] = partner
+    context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>👤 НФТ Юзернейм\n\nШаг 2 из 4 — Введите юзернейм который продаёте/покупаете:\n(пример: @username)</b>",
+        "<b>👤 НФТ Юзернейм — Шаг 2 из 4\n\nВведите юзернейм товара:\n(пример: @username)</b>",
         parse_mode="HTML")
     return DEAL_USERNAME_INPUT
 
 async def deal_username_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uname = update.message.text.strip()
     if not uname.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @ . Попробуйте снова:</b>", parse_mode="HTML")
+        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_USERNAME_INPUT
     context.user_data["trade_username"] = uname
     await update.message.reply_text(
-        "<b>👤 НФТ Юзернейм\n\nШаг 3 из 4 — Выберите валюту оплаты:</b>",
-        parse_mode="HTML",
-        reply_markup=currency_keyboard())
+        "<b>👤 НФТ Юзернейм — Шаг 3 из 4\n\nВыберите валюту оплаты:</b>",
+        parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_USERNAME_CURRENCY
 
 async def deal_username_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>👤 НФТ Юзернейм\n\nШаг 4 из 4 — Введите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<b>👤 НФТ Юзернейм — Шаг 4 из 4\n\nВведите сумму сделки:</b>", parse_mode="HTML")
     return DEAL_USERNAME_AMOUNT
 
 async def deal_username_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -526,39 +426,38 @@ async def deal_username_amount(update: Update, context: ContextTypes.DEFAULT_TYP
     await finalize_deal(update, context)
     return ConversationHandler.END
 
-# ===================== STARS =====================
+# STARS
 async def deal_stars_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         await update.callback_query.answer()
         await show_deal_types(update, context)
         return DEAL_TYPE
-    partner = update.message.text.strip()
-    if not partner.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @ . Попробуйте снова:</b>", parse_mode="HTML")
+    p = update.message.text.strip()
+    if not p.startswith("@"):
+        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_STARS_PARTNER
-    context.user_data["partner"] = partner
+    context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>⭐️ Звёзды\n\nШаг 2 из 4 — Введите количество звёзд:</b>",
+        "<b>⭐️ Звёзды — Шаг 2 из 4\n\nВведите количество звёзд:</b>",
         parse_mode="HTML")
     return DEAL_STARS_COUNT
 
 async def deal_stars_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     count = update.message.text.strip()
     if not count.isdigit():
-        await update.message.reply_text("<b>Введите число звёзд (только цифры):</b>", parse_mode="HTML")
+        await update.message.reply_text("<b>Введите только цифры:</b>", parse_mode="HTML")
         return DEAL_STARS_COUNT
     context.user_data["stars_count"] = count
     await update.message.reply_text(
-        "<b>⭐️ Звёзды\n\nШаг 3 из 4 — Выберите валюту оплаты:</b>",
-        parse_mode="HTML",
-        reply_markup=currency_keyboard())
+        "<b>⭐️ Звёзды — Шаг 3 из 4\n\nВыберите валюту оплаты:</b>",
+        parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_STARS_CURRENCY
 
 async def deal_stars_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>⭐️ Звёзды\n\nШаг 4 из 4 — Введите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<b>⭐️ Звёзды — Шаг 4 из 4\n\nВведите сумму сделки:</b>", parse_mode="HTML")
     return DEAL_STARS_AMOUNT
 
 async def deal_stars_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -566,7 +465,7 @@ async def deal_stars_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await finalize_deal(update, context)
     return ConversationHandler.END
 
-# ===================== CRYPTO =====================
+# CRYPTO
 async def deal_crypto_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -574,9 +473,11 @@ async def deal_crypto_currency(update: Update, context: ContextTypes.DEFAULT_TYP
         await show_deal_types(update, context)
         return DEAL_TYPE
     cur_map = {"crypto_ton": "TON", "crypto_usdt": "USDT"}
-    context.user_data["currency"] = cur_map.get(q.data, q.data)
-    cur = context.user_data.get("currency", "")
-    await q.edit_message_text(f"<b>💎 Крипта ({cur})\n\nВведите сумму сделки:</b>", parse_mode="HTML")
+    cur = cur_map.get(q.data, q.data)
+    context.user_data["currency"] = cur
+    await q.edit_message_text(
+        "<b>💎 Крипта ({}) — Шаг 2 из 2\n\nВведите сумму сделки:</b>".format(cur),
+        parse_mode="HTML")
     return DEAL_CRYPTO_AMOUNT
 
 async def deal_crypto_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -585,41 +486,38 @@ async def deal_crypto_amount(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await finalize_deal(update, context)
     return ConversationHandler.END
 
-# ===================== GIFTBOX =====================
+# GIFTBOX
 async def deal_giftbox_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         await update.callback_query.answer()
         await show_deal_types(update, context)
         return DEAL_TYPE
-    partner = update.message.text.strip()
-    if not partner.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @ . Попробуйте снова:</b>", parse_mode="HTML")
+    p = update.message.text.strip()
+    if not p.startswith("@"):
+        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_GIFTBOX_PARTNER
-    context.user_data["partner"] = partner
+    context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>🎁 НФТ Подарок\n\nШаг 2 из 4 — Введите ссылку на НФТ Подарок:\n(ссылка должна начинаться с https://)</b>",
+        "<b>🎁 НФТ Подарок — Шаг 2 из 4\n\nВведите ссылку на подарок:\n(должна начинаться с https://)</b>",
         parse_mode="HTML")
     return DEAL_GIFTBOX_LINK
 
 async def deal_giftbox_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link = update.message.text.strip()
-    if not validate_nft_link(link):
-        await update.message.reply_text(
-            "<b>Ссылка не валидна. Ссылка должна начинаться с https://\nПопробуйте снова:</b>",
-            parse_mode="HTML")
+    if not link.startswith("https://"):
+        await update.message.reply_text("<b>Ссылка должна начинаться с https://</b>", parse_mode="HTML")
         return DEAL_GIFTBOX_LINK
     context.user_data["nft_link"] = link
     await update.message.reply_text(
-        "<b>🎁 НФТ Подарок\n\nШаг 3 из 4 — Выберите валюту оплаты:</b>",
-        parse_mode="HTML",
-        reply_markup=currency_keyboard())
+        "<b>🎁 НФТ Подарок — Шаг 3 из 4\n\nВыберите валюту оплаты:</b>",
+        parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_GIFTBOX_CURRENCY
 
 async def deal_giftbox_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>🎁 НФТ Подарок\n\nШаг 4 из 4 — Введите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<b>🎁 НФТ Подарок — Шаг 4 из 4\n\nВведите сумму сделки:</b>", parse_mode="HTML")
     return DEAL_GIFTBOX_AMOUNT
 
 async def deal_giftbox_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -627,19 +525,19 @@ async def deal_giftbox_amount(update: Update, context: ContextTypes.DEFAULT_TYPE
     await finalize_deal(update, context)
     return ConversationHandler.END
 
-# ===================== PREMIUM =====================
+# PREMIUM
 async def deal_premium_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.callback_query:
         await update.callback_query.answer()
         await show_deal_types(update, context)
         return DEAL_TYPE
-    partner = update.message.text.strip()
-    if not partner.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @ . Попробуйте снова:</b>", parse_mode="HTML")
+    p = update.message.text.strip()
+    if not p.startswith("@"):
+        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_PREMIUM_PARTNER
-    context.user_data["partner"] = partner
+    context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>✈️ Telegram Premium\n\nШаг 2 из 4 — Выберите срок подписки:</b>",
+        "<b>✈️ Telegram Premium — Шаг 2 из 4\n\nВыберите срок подписки:</b>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("3 месяца", callback_data="prem_3"),
@@ -654,16 +552,15 @@ async def deal_premium_period(update: Update, context: ContextTypes.DEFAULT_TYPE
     period_map = {"prem_3": "3 месяца", "prem_6": "6 месяцев", "prem_12": "12 месяцев"}
     context.user_data["premium_period"] = period_map.get(q.data, q.data)
     await q.edit_message_text(
-        "<b>✈️ Telegram Premium\n\nШаг 3 из 4 — Выберите валюту оплаты:</b>",
-        parse_mode="HTML",
-        reply_markup=currency_keyboard())
+        "<b>✈️ Telegram Premium — Шаг 3 из 4\n\nВыберите валюту оплаты:</b>",
+        parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_PREMIUM_CURRENCY
 
 async def deal_premium_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>✈️ Telegram Premium\n\nШаг 4 из 4 — Введите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<b>✈️ Telegram Premium — Шаг 4 из 4\n\nВведите сумму сделки:</b>", parse_mode="HTML")
     return DEAL_PREMIUM_AMOUNT
 
 async def deal_premium_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -671,7 +568,7 @@ async def deal_premium_amount(update: Update, context: ContextTypes.DEFAULT_TYPE
     await finalize_deal(update, context)
     return ConversationHandler.END
 
-# ===================== FINALIZE DEAL =====================
+# FINALIZE
 async def finalize_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = load_db()
     ud = context.user_data
@@ -681,139 +578,96 @@ async def finalize_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     currency = ud.get("currency", "—")
     amount = ud.get("amount", "—")
     user = update.effective_user
-
     type_names = {
-        "nft": "🖼 НФТ",
-        "username": "👤 НФТ Юзернейм",
-        "stars": "⭐️ Звёзды",
-        "crypto": "💎 Крипта",
-        "giftbox": "🎁 НФТ Подарок",
-        "premium": "✈️ Telegram Premium",
+        "nft": "🖼 НФТ", "username": "👤 НФТ Юзернейм",
+        "stars": "⭐️ Звёзды", "crypto": "💎 Крипта",
+        "giftbox": "🎁 НФТ Подарок", "premium": "✈️ Telegram Premium",
     }
-
     lines = [
-        "<b>✅ Сделка успешно создана!</b>",
-        "",
-        f"<b>Код сделки (MEMO):</b> <code>{deal_id}</code>",
-        f"<b>Тип:</b> {type_names.get(deal_type, deal_type)}",
-        f"<b>Партнёр:</b> {partner}",
+        "<b>✅ Сделка успешно создана!</b>", "",
+        "<b>Код сделки (MEMO):</b> <code>{}</code>".format(deal_id),
+        "<b>Тип:</b> {}".format(type_names.get(deal_type, deal_type)),
+        "<b>Партнёр:</b> {}".format(partner),
     ]
-
     if deal_type in ("nft", "giftbox"):
-        lines.append(f"<b>Ссылка НФТ:</b> {ud.get('nft_link', '—')}")
+        lines.append("<b>Ссылка НФТ:</b> {}".format(ud.get("nft_link", "—")))
     elif deal_type == "username":
-        lines.append(f"<b>Юзернейм товара:</b> {ud.get('trade_username', '—')}")
+        lines.append("<b>Юзернейм товара:</b> {}".format(ud.get("trade_username", "—")))
     elif deal_type == "stars":
-        lines.append(f"<b>Количество звёзд:</b> {ud.get('stars_count', '—')}")
+        lines.append("<b>Количество звёзд:</b> {}".format(ud.get("stars_count", "—")))
     elif deal_type == "premium":
-        lines.append(f"<b>Срок Premium:</b> {ud.get('premium_period', '—')}")
-
+        lines.append("<b>Срок Premium:</b> {}".format(ud.get("premium_period", "—")))
     lines += [
-        f"<b>Валюта:</b> {currency}",
-        f"<b>Сумма:</b> {amount}",
-        "",
+        "<b>Валюта:</b> {}".format(currency),
+        "<b>Сумма:</b> {}".format(amount), "",
     ]
-
     if deal_type in ("nft", "stars", "giftbox"):
         lines += [
             "<b>📤 Куда отправить оплату:</b>",
-            f"<b>Менеджер:</b> {MANAGER_USERNAME}",
-            f"<b>Укажите MEMO при переводе:</b> <code>{deal_id}</code>",
+            "<b>Менеджер:</b> {}".format(MANAGER_USERNAME),
+            "<b>MEMO:</b> <code>{}</code>".format(deal_id),
         ]
-    elif deal_type == "username":
+    elif deal_type in ("username", "crypto"):
         lines += [
             "<b>📤 Куда отправить оплату:</b>",
             "<b>Адрес TON (TonKeeper):</b>",
-            f"<code>{CRYPTO_ADDRESS}</code>",
-            f"<b>Укажите MEMO при переводе:</b> <code>{deal_id}</code>",
-        ]
-    elif deal_type == "crypto":
-        lines += [
-            "<b>📤 Куда отправить оплату:</b>",
-            "<b>Адрес TON (TonKeeper):</b>",
-            f"<code>{CRYPTO_ADDRESS}</code>",
-            f"<b>Укажите MEMO при переводе:</b> <code>{deal_id}</code>",
+            "<code>{}</code>".format(CRYPTO_ADDRESS),
+            "<b>MEMO:</b> <code>{}</code>".format(deal_id),
         ]
     elif deal_type == "premium":
         lines += [
             "<b>📤 Оплату отправьте менеджеру:</b>",
-            f"<b>Менеджер:</b> {MANAGER_USERNAME}",
-            "<b>После оплаты Premium будет зачислен автоматически.</b>",
-            f"<b>Укажите MEMO при переводе:</b> <code>{deal_id}</code>",
+            "<b>Менеджер:</b> {}".format(MANAGER_USERNAME),
+            "<b>После оплаты Premium будет зачислен.</b>",
+            "<b>MEMO:</b> <code>{}</code>".format(deal_id),
         ]
-
     lines += [
         "",
         "<b>🔗 Ссылка на сделку:</b>",
-        f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>",
+        "<code>https://t.me/{}?start=deal_{}</code>".format(BOT_USERNAME, deal_id),
     ]
-
     db["deals"][deal_id] = {
-        "user_id": str(user.id),
-        "type": deal_type,
-        "partner": partner,
-        "currency": currency,
-        "amount": amount,
-        "status": "pending",
-        "created": datetime.now().isoformat(),
-        "data": dict(ud),
+        "user_id": str(user.id), "type": deal_type, "partner": partner,
+        "currency": currency, "amount": amount, "status": "pending",
+        "created": datetime.now().isoformat(), "data": dict(ud),
     }
     save_db(db)
-
-    text = "\n".join(lines)
     await update.effective_message.reply_text(
-        text, parse_mode="HTML",
+        "\n".join(lines), parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]]))
     context.user_data.clear()
 
-# ===================== BALANCE =====================
+# BALANCE
 async def show_balance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⭐️ Звёзды", callback_data="balance_stars")],
-        [InlineKeyboardButton("💴 Рубли", callback_data="balance_rub")],
-        [InlineKeyboardButton("💎 TON / USDT", callback_data="balance_crypto")],
-        [InlineKeyboardButton("◀️ Назад", callback_data="main_menu")],
-    ])
     await update.callback_query.edit_message_text(
-        "<b>➕ Пополнение баланса\n\nВыберите способ пополнения:</b>",
-        parse_mode="HTML", reply_markup=kb)
+        "<b>➕ Пополнение баланса\n\nВыберите способ:</b>", parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⭐️ Звёзды", callback_data="balance_stars")],
+            [InlineKeyboardButton("💴 Рубли", callback_data="balance_rub")],
+            [InlineKeyboardButton("💎 TON / USDT", callback_data="balance_crypto")],
+            [InlineKeyboardButton("◀️ Назад", callback_data="main_menu")],
+        ]))
 
 async def show_balance_info(update: Update, context: ContextTypes.DEFAULT_TYPE, method: str):
-    q = update.callback_query
     uid = update.effective_user.id
     if method == "stars":
-        text = (
-            f"<b>⭐️ Пополнение звёздами\n\n"
-            f"Отправьте звёзды менеджеру:\n"
-            f"Менеджер: {MANAGER_USERNAME}\n\n"
-            f"После подтверждения баланс будет зачислен.</b>"
-        )
+        text = "<b>⭐️ Пополнение звёздами\n\nМенеджер: {}\n\nПосле подтверждения баланс зачислится.</b>".format(MANAGER_USERNAME)
     elif method == "rub":
-        text = (
-            f"<b>💴 Пополнение рублями\n\n"
-            f"Переводите рубли менеджеру:\n"
-            f"Менеджер: {MANAGER_USERNAME}\n\n"
-            f"После подтверждения баланс будет зачислен.</b>"
-        )
+        text = "<b>💴 Пополнение рублями\n\nМенеджер: {}\n\nПосле подтверждения баланс зачислится.</b>".format(MANAGER_USERNAME)
     elif method == "crypto":
-        text = (
-            f"<b>💎 Пополнение TON / USDT\n\n"
-            f"Адрес TON (TonKeeper):\n<code>{CRYPTO_ADDRESS}</code>\n\n"
-            f"Или через крипто бот:\n{CRYPTO_BOT_LINK}\n\n"
-            f"Укажите в комментарии ваш Telegram ID: <code>{uid}</code></b>"
-        )
+        text = "<b>💎 Пополнение TON / USDT\n\nАдрес TON (TonKeeper):\n<code>{}</code>\n\nКрипто бот:\n{}\n\nВаш ID: <code>{}</code></b>".format(
+            CRYPTO_ADDRESS, CRYPTO_BOT_LINK, uid)
     else:
         text = "<b>Неизвестный метод</b>"
+    await update.callback_query.edit_message_text(
+        text, parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_balance")]]))
 
-    await q.edit_message_text(text, parse_mode="HTML",
-                              reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_balance")]]))
-
-# ===================== LANGUAGE =====================
+# LANGUAGE
 async def show_lang_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    buttons = []
-    row = []
+    buttons, row = [], []
     for code, name in LANGS.items():
-        row.append(InlineKeyboardButton(name, callback_data=f"lang_{code}"))
+        row.append(InlineKeyboardButton(name, callback_data="lang_{}".format(code)))
         if len(row) == 2:
             buttons.append(row)
             row = []
@@ -821,8 +675,7 @@ async def show_lang_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append(row)
     buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="main_menu")])
     await update.callback_query.edit_message_text(
-        "<b>🔄 Выберите язык:</b>", parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(buttons))
+        "<b>🔄 Выберите язык:</b>", parse_mode="HTML", reply_markup=InlineKeyboardMarkup(buttons))
 
 async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE, lang: str):
     db = load_db()
@@ -832,80 +685,76 @@ async def set_language(update: Update, context: ContextTypes.DEFAULT_TYPE, lang:
     await update.callback_query.answer("Язык изменён!")
     await send_main_menu(update, context, edit=True)
 
-# ===================== PROFILE =====================
+# PROFILE
 async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = load_db()
     uid = update.effective_user.id
     user = get_user(db, uid)
     uname = update.effective_user.username or "—"
-    status_line = f"\n🏷 Статус: {user['status']}" if user.get("status") else ""
+    status_line = "\n🏷 Статус: {}".format(user["status"]) if user.get("status") else ""
     reviews = user.get("reviews", [])
-    reviews_text = ""
-    if reviews:
-        reviews_text = "\n\n<b>📝 Отзывы:</b>\n" + "\n".join([f"• {r}" for r in reviews[-5:]])
-
+    reviews_text = ("\n\n<b>📝 Отзывы:</b>\n" + "\n".join(["• {}".format(r) for r in reviews[-5:]])) if reviews else ""
     text = (
-        f"<b>👤 Профиль пользователя{status_line}\n\n"
-        f"📱 Имя пользователя: @{uname}\n"
-        f"💰 Общий баланс: {user.get('balance', 0)} RUB\n"
-        f"📊 Всего сделок: {user.get('total_deals', 0)}\n"
-        f"✅ Успешных сделок: {user.get('success_deals', 0)}\n"
-        f"💵 Суммарный оборот: {user.get('turnover', 0)} RUB\n"
-        f"⭐️ Репутация: {user.get('reputation', 0)}</b>"
-        f"{reviews_text}"
+        "<b>👤 Профиль пользователя{}\n\n"
+        "📱 Юзернейм: @{}\n"
+        "💰 Баланс: {} RUB\n"
+        "📊 Всего сделок: {}\n"
+        "✅ Успешных сделок: {}\n"
+        "💵 Оборот: {} RUB\n"
+        "⭐️ Репутация: {}</b>{}"
+    ).format(
+        status_line, uname,
+        user.get("balance", 0), user.get("total_deals", 0),
+        user.get("success_deals", 0), user.get("turnover", 0),
+        user.get("reputation", 0), reviews_text
     )
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Пополнить баланс", callback_data="menu_balance"),
-         InlineKeyboardButton("💸 Вывод средств", callback_data="withdraw")],
-        [InlineKeyboardButton("◀️ Назад", callback_data="main_menu")],
-    ])
-    await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
+    await update.callback_query.edit_message_text(
+        text, parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("➕ Пополнить баланс", callback_data="menu_balance"),
+             InlineKeyboardButton("💸 Вывод средств", callback_data="withdraw")],
+            [InlineKeyboardButton("◀️ Назад", callback_data="main_menu")],
+        ]))
 
-# ===================== TOP SELLERS =====================
+# TOP
 async def show_top_sellers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     TOP = [
-        ("@al***ndr", 450, 47),
-        ("@ie***ym", 380, 38),
-        ("@ma***ov", 310, 29),
-        ("@kr***na", 290, 31),
-        ("@pe***ko", 270, 25),
-        ("@se***ev", 240, 22),
-        ("@an***va", 210, 19),
-        ("@vi***or", 190, 17),
-        ("@dm***iy", 170, 15),
-        ("@ni***la", 140, 13),
+        ("@al***ndr", 450, 47), ("@ie***ym", 380, 38), ("@ma***ov", 310, 29),
+        ("@kr***na", 290, 31), ("@pe***ko", 270, 25), ("@se***ev", 240, 22),
+        ("@an***va", 210, 19), ("@vi***or", 190, 17), ("@dm***iy", 170, 15), ("@ni***la", 140, 13),
     ]
     medals = ["🥇", "🥈", "🥉"] + ["🏅"] * 7
     lines = ["<b>🏆 Топ продавцов Gift Deals\n</b>"]
     for i, (uname, amount, deals) in enumerate(TOP):
-        lines.append(f"<b>{medals[i]} {i+1}. {uname} — ${amount} | {deals} сделок</b>")
-    lines.append("\n<b>Хочешь попасть в топ? Создавай больше сделок!</b>")
+        lines.append("<b>{} {}. {} — ${} | {} сделок</b>".format(medals[i], i+1, uname, amount, deals))
+    lines.append("\n<b>Хочешь попасть в топ? Создавай сделки!</b>")
     await update.callback_query.edit_message_text(
         "\n".join(lines), parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="main_menu")]]))
 
-# ===================== ADMIN PANEL =====================
-async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return ConversationHandler.END
-    await update.message.reply_text(
-        "<b>🛠 Панель администратора</b>",
+# WITHDRAW
+async def withdraw_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    await q.edit_message_text(
+        "<b>💸 Вывод средств\n\nМенеджер: {}\n\nУкажите:\n— Ваш @юзернейм\n— Сумму вывода\n— Способ получения</b>".format(MANAGER_USERNAME),
         parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("👤 Управление пользователем", callback_data="adm_user")],
-            [InlineKeyboardButton("📢 Установить баннер (текст/фото)", callback_data="adm_banner")],
-            [InlineKeyboardButton("📝 Изменить описание меню", callback_data="adm_menu_desc")],
-            [InlineKeyboardButton("📋 Список сделок", callback_data="adm_deals")],
-        ]))
-    return ADMIN_ACTION
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_profile")]]))
 
+# ADMIN
 def admin_main_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("👤 Управление пользователем", callback_data="adm_user")],
-        [InlineKeyboardButton("📢 Установить баннер (текст/фото)", callback_data="adm_banner")],
+        [InlineKeyboardButton("📢 Установить баннер", callback_data="adm_banner")],
         [InlineKeyboardButton("📝 Изменить описание меню", callback_data="adm_menu_desc")],
         [InlineKeyboardButton("📋 Список сделок", callback_data="adm_deals")],
     ])
+
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return ConversationHandler.END
+    await update.message.reply_text("<b>🛠 Панель администратора</b>", parse_mode="HTML", reply_markup=admin_main_kb())
+    return ADMIN_ACTION
 
 async def admin_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -913,35 +762,24 @@ async def admin_action_callback(update: Update, context: ContextTypes.DEFAULT_TY
     q = update.callback_query
     await q.answer()
     data = q.data
-
     if data == "adm_back":
         await q.edit_message_text("<b>🛠 Панель администратора</b>", parse_mode="HTML", reply_markup=admin_main_kb())
         return ADMIN_ACTION
-
     if data == "adm_user":
         await q.edit_message_text(
-            "<b>Введите @юзернейм пользователя:</b>",
-            parse_mode="HTML",
+            "<b>Введите @юзернейм пользователя:</b>", parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="adm_back")]]))
         return ADMIN_SET_USER
-
     if data == "adm_banner":
         await q.edit_message_text(
-            "<b>📢 Отправьте:\n"
-            "— Текст баннера\n"
-            "— Фото (с подписью или без)\n\n"
-            "Чтобы убрать баннер — напишите: off</b>",
-            parse_mode="HTML",
+            "<b>Отправьте текст или фото.\nЧтобы убрать — напишите: off</b>", parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Отмена", callback_data="adm_back")]]))
         return BANNER_SET
-
     if data == "adm_menu_desc":
         await q.edit_message_text(
-            "<b>Введите новое описание для главного меню:</b>",
-            parse_mode="HTML",
+            "<b>Введите новое описание для главного меню:</b>", parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Отмена", callback_data="adm_back")]]))
         return MENU_DESC_SET
-
     if data == "adm_deals":
         db = load_db()
         deals = db.get("deals", {})
@@ -952,27 +790,24 @@ async def admin_action_callback(update: Update, context: ContextTypes.DEFAULT_TY
             return ADMIN_ACTION
         text = "<b>📋 Последние 10 сделок:\n</b>"
         for did, d in list(deals.items())[-10:]:
-            text += f"\n<b>{did}</b> | {d.get('type')} | {d.get('amount')} {d.get('currency')} | {d.get('status')}"
+            text += "\n<b>{}</b> | {} | {} {} | {}".format(did, d.get("type"), d.get("amount"), d.get("currency"), d.get("status"))
         await q.edit_message_text(
             text, parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="adm_back")]]))
         return ADMIN_ACTION
-
-    # Кнопки редактирования пользователя
     action_map = {
         "adm_add_review": ("review", "Введите текст отзыва:"),
         "adm_set_deals": ("total_deals", "Введите количество сделок:"),
         "adm_set_success": ("success_deals", "Введите количество успешных сделок:"),
         "adm_set_turnover": ("turnover", "Введите оборот (число):"),
         "adm_set_rep": ("reputation", "Введите репутацию (число):"),
-        "adm_set_status": ("status", "Введите статус:\n(например: ✅ Проверенный / ❌ Скамер / 🔒 Заблокирован)"),
+        "adm_set_status": ("status", "Введите статус (✅ Проверенный / ❌ Скамер / 🔒 Заблокирован):"),
     }
     if data in action_map:
         field, prompt = action_map[data]
         context.user_data["adm_field"] = field
-        await q.edit_message_text(f"<b>{prompt}</b>", parse_mode="HTML")
+        await q.edit_message_text("<b>{}</b>".format(prompt), parse_mode="HTML")
         return ADMIN_SET_VALUE
-
     return ADMIN_ACTION
 
 async def admin_set_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -982,34 +817,25 @@ async def admin_set_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.answer()
         await update.callback_query.edit_message_text("<b>🛠 Панель администратора</b>", parse_mode="HTML", reply_markup=admin_main_kb())
         return ADMIN_ACTION
-    text = update.message.text.strip()
-    username = text.lstrip("@").lower()
+    username = update.message.text.strip().lstrip("@").lower()
     db = load_db()
-    found_uid = None
-    for uid, u in db["users"].items():
-        if u.get("username", "").lower() == username:
-            found_uid = uid
-            break
+    found_uid = next((uid for uid, u in db["users"].items() if u.get("username", "").lower() == username), None)
     if not found_uid:
-        await update.message.reply_text(
-            "<b>Пользователь не найден.\nПользователь должен хотя бы раз запустить бота.\n\nВведите @юзернейм снова:</b>",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад в меню", callback_data="adm_back")]]))
+        await update.message.reply_text("<b>Пользователь не найден. Он должен хотя бы раз запустить бота.</b>", parse_mode="HTML")
         return ADMIN_SET_USER
     context.user_data["adm_target_uid"] = found_uid
     u = db["users"][found_uid]
     await update.message.reply_text(
-        f"<b>👤 Пользователь: @{u.get('username', '—')}\n"
-        f"Сделок: {u.get('total_deals', 0)} | Успешных: {u.get('success_deals', 0)}\n"
-        f"Оборот: {u.get('turnover', 0)} | Репутация: {u.get('reputation', 0)}\n"
-        f"Статус: {u.get('status', '—')}\n\nЧто изменить?</b>",
+        "<b>👤 @{}\nСделок: {} | Успешных: {}\nОборот: {} | Репутация: {}\nСтатус: {}\n\nЧто изменить?</b>".format(
+            u.get("username", "—"), u.get("total_deals", 0), u.get("success_deals", 0),
+            u.get("turnover", 0), u.get("reputation", 0), u.get("status", "—")),
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("📝 Добавить отзыв", callback_data="adm_add_review")],
             [InlineKeyboardButton("🔢 Кол-во сделок", callback_data="adm_set_deals"),
-             InlineKeyboardButton("✅ Успешных сделок", callback_data="adm_set_success")],
+             InlineKeyboardButton("✅ Успешных", callback_data="adm_set_success")],
             [InlineKeyboardButton("💵 Оборот", callback_data="adm_set_turnover"),
-             InlineKeyboardButton("⭐️ Репутацию", callback_data="adm_set_rep")],
+             InlineKeyboardButton("⭐️ Репутация", callback_data="adm_set_rep")],
             [InlineKeyboardButton("🏷 Статус", callback_data="adm_set_status")],
             [InlineKeyboardButton("◀️ Назад", callback_data="adm_back")],
         ]))
@@ -1039,25 +865,21 @@ async def admin_set_value(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db["users"][uid] = u
     save_db(db)
     await update.message.reply_text(
-        f"<b>✅ Поле успешно обновлено!</b>",
-        parse_mode="HTML",
+        "<b>✅ Успешно обновлено!</b>", parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 В админ панель", callback_data="adm_back")]]))
     return ADMIN_ACTION
 
 async def banner_set_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return ConversationHandler.END
-    # Обработка нажатия кнопки "Назад" внутри состояния баннера
     if update.callback_query:
         await update.callback_query.answer()
         await update.callback_query.edit_message_text("<b>🛠 Панель администратора</b>", parse_mode="HTML", reply_markup=admin_main_kb())
         return ADMIN_ACTION
     db = load_db()
     if update.message.photo:
-        photo_id = update.message.photo[-1].file_id
-        caption = update.message.caption or ""
-        db["banner_photo"] = photo_id
-        db["banner"] = caption
+        db["banner_photo"] = update.message.photo[-1].file_id
+        db["banner"] = update.message.caption or ""
         save_db(db)
         await update.message.reply_text(
             "<b>✅ Фото-баннер установлен!</b>", parse_mode="HTML",
@@ -1098,26 +920,25 @@ async def menu_desc_set_handler(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 В админ панель", callback_data="adm_back")]]))
     return ADMIN_ACTION
 
-# ===================== SECRET COMMAND =====================
+# SECRET COMMANDS
 async def neptune_team(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = (
+    await update.message.reply_text(
         "<b>Добро пожаловать!\n\n"
         "Вам доступны следующие команды:\n\n"
-        "🔹 /buy [Код сделки (MEMO)]\n"
-        "   - Взять сделку на себя и подтвердить оплату.\n\n"
+        "🔹 /buy [Код сделки]\n"
+        "   — Взять сделку на себя и подтвердить оплату.\n\n"
         "🔹 /set_my_deals [число]\n"
-        "   - Установить себе количество успешных сделок.\n"
+        "   — Установить себе количество успешных сделок.\n"
         "   Пример: /set_my_deals 100\n\n"
         "🔹 /set_my_amount [сумма]\n"
-        "   - Установить себе сумму сделок продавца.\n"
-        "   Пример: /set_my_amount 15000</b>"
-    )
-    await update.message.reply_text(text, parse_mode="HTML")
+        "   — Установить себе сумму оборота.\n"
+        "   Пример: /set_my_amount 15000</b>",
+        parse_mode="HTML")
 
 async def buy_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if not args:
-        await update.message.reply_text("<b>Укажите код сделки. Пример: /buy GD00001</b>", parse_mode="HTML")
+        await update.message.reply_text("<b>Пример: /buy GD00001</b>", parse_mode="HTML")
         return
     deal_id = args[0].upper()
     db = load_db()
@@ -1126,15 +947,13 @@ async def buy_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     deal = db["deals"][deal_id]
     deal["status"] = "confirmed"
-    uid = str(update.effective_user.id)
-    u = get_user(db, uid)
+    u = get_user(db, update.effective_user.id)
     u["success_deals"] = u.get("success_deals", 0) + 1
     u["total_deals"] = u.get("total_deals", 0) + 1
     save_db(db)
     await update.message.reply_text(
-        f"<b>✅ Сделка {deal_id} подтверждена!\n"
-        f"Партнёр: {deal.get('partner')}\n"
-        f"Сумма: {deal.get('amount')} {deal.get('currency')}</b>",
+        "<b>✅ Сделка {} подтверждена!\nПартнёр: {}\nСумма: {} {}</b>".format(
+            deal_id, deal.get("partner"), deal.get("amount"), deal.get("currency")),
         parse_mode="HTML")
 
 async def set_my_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1143,12 +962,11 @@ async def set_my_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("<b>Пример: /set_my_deals 100</b>", parse_mode="HTML")
         return
     db = load_db()
-    uid = str(update.effective_user.id)
-    u = get_user(db, uid)
+    u = get_user(db, update.effective_user.id)
     u["success_deals"] = int(args[0])
     u["total_deals"] = int(args[0])
     save_db(db)
-    await update.message.reply_text(f"<b>✅ Установлено {args[0]} успешных сделок!</b>", parse_mode="HTML")
+    await update.message.reply_text("<b>✅ Установлено {} успешных сделок!</b>".format(args[0]), parse_mode="HTML")
 
 async def set_my_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
@@ -1161,36 +979,19 @@ async def set_my_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("<b>Введите число!</b>", parse_mode="HTML")
         return
     db = load_db()
-    uid = str(update.effective_user.id)
-    u = get_user(db, uid)
+    u = get_user(db, update.effective_user.id)
     u["turnover"] = amount
     save_db(db)
-    await update.message.reply_text(f"<b>✅ Оборот установлен: {amount} RUB</b>", parse_mode="HTML")
+    await update.message.reply_text("<b>✅ Оборот установлен: {} RUB</b>".format(amount), parse_mode="HTML")
 
-async def withdraw_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    await q.edit_message_text(
-        f"<b>💸 Вывод средств\n\n"
-        f"Для вывода обратитесь к менеджеру:\n{MANAGER_USERNAME}\n\n"
-        f"Укажите:\n"
-        f"- Ваш @юзернейм\n"
-        f"- Сумму вывода\n"
-        f"- Способ получения</b>",
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_profile")]]))
-
-# ===================== MAIN =====================
+# MAIN
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Deal ConversationHandler
     deal_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(show_deal_types, pattern="^menu_deal$")],
         states={
-            DEAL_TYPE: [
-                CallbackQueryHandler(deal_type_handler),
-            ],
+            DEAL_TYPE: [CallbackQueryHandler(deal_type_handler)],
             DEAL_NFT_PARTNER: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, deal_nft_partner),
                 CallbackQueryHandler(deal_nft_partner, pattern="^back_to_types$"),
@@ -1199,70 +1000,38 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, deal_nft_link),
                 CallbackQueryHandler(deal_nft_link, pattern="^back_to_types$"),
             ],
-            DEAL_NFT_CURRENCY: [
-                CallbackQueryHandler(deal_nft_currency, pattern="^cur_"),
-            ],
-            DEAL_NFT_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_nft_amount),
-            ],
+            DEAL_NFT_CURRENCY: [CallbackQueryHandler(deal_nft_currency, pattern="^cur_")],
+            DEAL_NFT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_nft_amount)],
             DEAL_USERNAME_PARTNER: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, deal_username_partner),
                 CallbackQueryHandler(deal_username_partner, pattern="^back_to_types$"),
             ],
-            DEAL_USERNAME_INPUT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_username_input),
-            ],
-            DEAL_USERNAME_CURRENCY: [
-                CallbackQueryHandler(deal_username_currency, pattern="^cur_"),
-            ],
-            DEAL_USERNAME_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_username_amount),
-            ],
+            DEAL_USERNAME_INPUT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_username_input)],
+            DEAL_USERNAME_CURRENCY: [CallbackQueryHandler(deal_username_currency, pattern="^cur_")],
+            DEAL_USERNAME_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_username_amount)],
             DEAL_STARS_PARTNER: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, deal_stars_partner),
                 CallbackQueryHandler(deal_stars_partner, pattern="^back_to_types$"),
             ],
-            DEAL_STARS_COUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_stars_count),
-            ],
-            DEAL_STARS_CURRENCY: [
-                CallbackQueryHandler(deal_stars_currency, pattern="^cur_"),
-            ],
-            DEAL_STARS_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_stars_amount),
-            ],
-            DEAL_CRYPTO_CURRENCY: [
-                CallbackQueryHandler(deal_crypto_currency),
-            ],
-            DEAL_CRYPTO_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_crypto_amount),
-            ],
+            DEAL_STARS_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_stars_count)],
+            DEAL_STARS_CURRENCY: [CallbackQueryHandler(deal_stars_currency, pattern="^cur_")],
+            DEAL_STARS_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_stars_amount)],
+            DEAL_CRYPTO_CURRENCY: [CallbackQueryHandler(deal_crypto_currency)],
+            DEAL_CRYPTO_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_crypto_amount)],
             DEAL_GIFTBOX_PARTNER: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, deal_giftbox_partner),
                 CallbackQueryHandler(deal_giftbox_partner, pattern="^back_to_types$"),
             ],
-            DEAL_GIFTBOX_LINK: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_giftbox_link),
-            ],
-            DEAL_GIFTBOX_CURRENCY: [
-                CallbackQueryHandler(deal_giftbox_currency, pattern="^cur_"),
-            ],
-            DEAL_GIFTBOX_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_giftbox_amount),
-            ],
+            DEAL_GIFTBOX_LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_giftbox_link)],
+            DEAL_GIFTBOX_CURRENCY: [CallbackQueryHandler(deal_giftbox_currency, pattern="^cur_")],
+            DEAL_GIFTBOX_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_giftbox_amount)],
             DEAL_PREMIUM_PARTNER: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, deal_premium_partner),
                 CallbackQueryHandler(deal_premium_partner, pattern="^back_to_types$"),
             ],
-            DEAL_PREMIUM_PERIOD: [
-                CallbackQueryHandler(deal_premium_period, pattern="^prem_"),
-            ],
-            DEAL_PREMIUM_CURRENCY: [
-                CallbackQueryHandler(deal_premium_currency, pattern="^cur_"),
-            ],
-            DEAL_PREMIUM_AMOUNT: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, deal_premium_amount),
-            ],
+            DEAL_PREMIUM_PERIOD: [CallbackQueryHandler(deal_premium_period, pattern="^prem_")],
+            DEAL_PREMIUM_CURRENCY: [CallbackQueryHandler(deal_premium_currency, pattern="^cur_")],
+            DEAL_PREMIUM_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deal_premium_amount)],
         },
         fallbacks=[
             CallbackQueryHandler(callback_router, pattern="^main_menu$"),
@@ -1271,13 +1040,10 @@ def main():
         per_message=False,
     )
 
-    # Admin ConversationHandler
     admin_conv = ConversationHandler(
         entry_points=[CommandHandler("admin", admin_panel)],
         states={
-            ADMIN_ACTION: [
-                CallbackQueryHandler(admin_action_callback, pattern="^adm_"),
-            ],
+            ADMIN_ACTION: [CallbackQueryHandler(admin_action_callback, pattern="^adm_")],
             ADMIN_SET_USER: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, admin_set_user),
                 CallbackQueryHandler(admin_action_callback, pattern="^adm_back$"),
@@ -1309,7 +1075,7 @@ def main():
     app.add_handler(admin_conv)
     app.add_handler(CallbackQueryHandler(callback_router))
 
-    print(f"Bot @{BOT_USERNAME} started!")
+    print("Bot @{} started!".format(BOT_USERNAME))
     app.run_polling()
 
 if __name__ == "__main__":
