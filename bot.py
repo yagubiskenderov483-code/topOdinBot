@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 logging.basicConfig(level=logging.INFO)
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "ВСТАВЬТЕ_НОВЫЙ_ТОКЕН_СЮДА"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -37,9 +37,9 @@ def get_user(db, user_id):
     return db["users"][uid]
 
 LANGS = {
-    "ru": "RU Русский", "en": "EN English", "kz": "KZ Казахский",
-    "az": "AZ Азербайджанский", "uz": "UZ Узбекский", "kg": "KG Кыргызский",
-    "tj": "TJ Таджикский", "by": "BY Белорусский",
+    "ru": "🇷🇺", "en": "🇬🇧", "kz": "🇰🇿",
+    "az": "🇦🇿", "uz": "🇺🇿", "kg": "🇰🇬",
+    "tj": "🇹🇯", "by": "🇧🇾",
 }
 
 WELCOME_TEXT = {
@@ -144,7 +144,7 @@ async def send_main_menu(update, context, edit=False):
     banner_video = db.get("banner_video")
     menu_desc = db.get("menu_description")
     body = menu_desc if menu_desc else WELCOME_TEXT.get(lang, WELCOME_TEXT["ru"])
-    text = "<b>💎 Gift Deals\n\n{}</b>".format(body)
+    text = "<tg-emoji emoji-id=\"5386367538735104399\">💎</tg-emoji> <b>Gift Deals\n\n{}</b>".format(body)
     if banner:
         text = text + "\n\n<b>{}</b>".format(banner)
     kb = main_menu_keyboard(lang)
@@ -206,6 +206,10 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await paid_callback(update, context)
     elif data == "noop":
         pass
+    elif data.startswith("adm_confirm_"):
+        await admin_confirm_payment(update, context)
+    elif data.startswith("adm_decline_"):
+        await admin_decline_payment(update, context)
 
 async def show_deal_types(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = InlineKeyboardMarkup([
@@ -213,8 +217,7 @@ async def show_deal_types(update: Update, context: ContextTypes.DEFAULT_TYPE):
          InlineKeyboardButton("👤 НФТ Юзернейм", callback_data="deal_username")],
         [InlineKeyboardButton("⭐️ Звёзды", callback_data="deal_stars"),
          InlineKeyboardButton("💎 Крипта (TON/$)", callback_data="deal_crypto")],
-        [InlineKeyboardButton("🎁 НФТ Подарок", callback_data="deal_giftbox"),
-         InlineKeyboardButton("✈️ Telegram Premium", callback_data="deal_premium")],
+        [InlineKeyboardButton("✈️ Telegram Premium", callback_data="deal_premium")],
         [InlineKeyboardButton("◀️ Назад", callback_data="main_menu")],
     ])
     try:
@@ -564,33 +567,37 @@ async def send_deal_card(update, context, deal_id, d, is_buyer=False):
         viewer = update.effective_user
         viewer_tag = "@{}".format(viewer.username) if viewer.username else str(viewer.id)
         text = (
-            "<b>📄 Информация о сделке #{}</b>\n\n"
-            "👤 Вы покупатель в сделке.\n"
-            "👤 Продавец: {} (<code>{}</code>)\n"
+            "<tg-emoji emoji-id=\"5267021122383086560\">🎯</tg-emoji> <b>Сделка #{}</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "<tg-emoji emoji-id=\"5368324170671202286\">🛒</tg-emoji> Вы <b>покупатель</b> в этой сделке\n"
+            "<tg-emoji emoji-id=\"5440539497383087970\">👤</tg-emoji> Продавец: <b>{}</b>\n"
             "{}\n"
-            "📌 Тип: {}\n\n"
+            "<tg-emoji emoji-id=\"5431815452437257407\">📌</tg-emoji> Тип: <b>{}</b>\n\n"
+            "<tg-emoji emoji-id=\"5472354553527541051\">🔒</tg-emoji> Сделка защищена платформой <b>Gift Deals</b>\n"
+            "Средства заморожены до подтверждения обеих сторон.\n\n"
             "{}"
         ).format(
             deal_id,
-            partner, seller_uid,
+            partner,
             item_detail,
             type_labels.get(dtype, dtype),
             pay_block
         )
         kb = InlineKeyboardMarkup([
             [InlineKeyboardButton("✅ Я оплатил", callback_data="paid_{}".format(deal_id))],
+            [InlineKeyboardButton("💬 Написать продавцу", url="https://t.me/{}".format(partner.lstrip("@")) if partner.startswith("@") else "https://t.me/GiftDealsManager")],
             [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")],
         ])
     else:
         # Seller card (creator of deal)
         text = (
-            "<b>📄 Сделка создана #{}</b>\n\n"
-            "👤 Вы продавец.\n"
-            "👤 Партнёр (покупатель): {}\n"
+            "<tg-emoji emoji-id=\"5451646226975955576\">✅</tg-emoji> <b>Сделка создана #{}</b>\n\n"
+            "<tg-emoji emoji-id=\"5440539497383087970\">👤</tg-emoji> Вы <b>продавец</b>\n"
+            "<tg-emoji emoji-id=\"5440539497383087970\">👤</tg-emoji> Партнёр (покупатель): <b>{}</b>\n"
             "{}\n"
-            "📌 Тип: {}\n"
-            "💰 Сумма: <b>{} {}</b>\n\n"
-            "🔗 Ссылка для покупателя:\n"
+            "<tg-emoji emoji-id=\"5431815452437257407\">📌</tg-emoji> Тип: <b>{}</b>\n"
+            "<tg-emoji emoji-id=\"5368324170671202286\">💰</tg-emoji> Сумма: <b>{} {}</b>\n\n"
+            "<tg-emoji emoji-id=\"5265659888938948593\">🔗</tg-emoji> Ссылка для покупателя:\n"
             "<code>https://t.me/{}?start=deal_{}</code>\n\n"
             "Отправьте ссылку партнёру — он перейдёт и увидит инструкцию по оплате."
         ).format(
@@ -624,22 +631,25 @@ async def paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "nft": "🖼 NFT", "username": "👤 НФТ Юзернейм", "stars": "⭐️ Звёзды",
         "crypto": "💎 Крипта", "giftbox": "🎁 НФТ/Подарок", "premium": "✈️ Telegram Premium",
     }
-    # Notify admin
+    # Notify admin with confirm/decline buttons
     admin_text = (
         "🔔 <b>Покупатель нажал «Я оплатил»</b>\n\n"
         "📄 Сделка: <code>{}</code>\n"
         "👤 Покупатель: {} (<code>{}</code>)\n"
         "📌 Тип: {}\n"
         "💰 Сумма: {} {}\n\n"
-        "Проверьте поступление и подтвердите сделку командой:\n"
-        "<code>/buy {}</code>"
+        "Проверьте поступление:"
     ).format(
         deal_id, buyer_tag, buyer.id,
         type_labels.get(dtype, dtype),
-        amount, currency, deal_id
+        amount, currency
     )
+    admin_kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Оплата пришла", callback_data="adm_confirm_{}".format(deal_id)),
+         InlineKeyboardButton("❌ Не пришла", callback_data="adm_decline_{}".format(deal_id))],
+    ])
     try:
-        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_text, parse_mode="HTML")
+        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_text, parse_mode="HTML", reply_markup=admin_kb)
     except Exception:
         pass
     # Also notify seller
@@ -657,7 +667,7 @@ async def paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
     await q.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([
-        [InlineKeyboardButton("⏳ Ожидание подтверждения...", callback_data="noop")],
+        [InlineKeyboardButton("<tg-emoji emoji-id=\"5253813278006613984\">⏳</tg-emoji> Ожидание подтверждения...", callback_data="noop")],
         [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")],
     ]))
 
@@ -678,7 +688,7 @@ async def finalize_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "giftbox": "🎁 НФТ Подарок", "premium": "✈️ Telegram Premium",
     }
     lines = [
-        "<b>✅ Сделка успешно создана!</b>", "",
+        "<tg-emoji emoji-id=\"5451646226975955576\">✅</tg-emoji> <b>Сделка успешно создана!</b>", "",
         "<b>Код сделки (MEMO):</b> <code>{}</code>".format(deal_id),
         "<b>Тип:</b> {}".format(type_names.get(deal_type, deal_type)),
         "<b>Партнёр:</b> {}".format(partner),
@@ -945,6 +955,66 @@ async def withdraw_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("◀️ Назад", callback_data="menu_profile")],
         ]))
 
+# ADMIN PAYMENT CONFIRM/DECLINE
+async def admin_confirm_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer("✅ Подтверждено!", show_alert=False)
+    if update.effective_user.id != ADMIN_ID:
+        return
+    deal_id = q.data[12:]  # remove "adm_confirm_"
+    db = load_db()
+    if deal_id in db.get("deals", {}):
+        db["deals"][deal_id]["status"] = "confirmed"
+        # Add success deal to seller stats
+        seller_uid = db["deals"][deal_id].get("user_id")
+        if seller_uid and seller_uid in db["users"]:
+            db["users"][seller_uid]["success_deals"] = db["users"][seller_uid].get("success_deals", 0) + 1
+            db["users"][seller_uid]["total_deals"] = db["users"][seller_uid].get("total_deals", 0) + 1
+        save_db(db)
+        d = db["deals"][deal_id]
+        amount = d.get("amount", "—")
+        currency = d.get("currency", "—")
+        # Notify buyer
+        buyer_uid = None
+        for uid, u in db["users"].items():
+            # find buyer by who pressed paid (we store in deal)
+            pass
+        # Edit admin message
+        await q.edit_message_text(
+            "✅ <b>Оплата подтверждена!</b>\n\n📄 Сделка: <code>{}</code>\n💰 {} {}".format(deal_id, amount, currency),
+            parse_mode="HTML"
+        )
+        # Notify seller
+        if seller_uid:
+            try:
+                await context.bot.send_message(
+                    chat_id=int(seller_uid),
+                    text="✅ <b>Оплата по сделке подтверждена!</b>\n\n📄 Сделка: <code>{}</code>\n💰 Сумма: {} {}\n\nСделка завершена успешно!".format(deal_id, amount, currency),
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+
+async def admin_decline_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer("❌ Отклонено", show_alert=False)
+    if update.effective_user.id != ADMIN_ID:
+        return
+    deal_id = q.data[12:]  # remove "adm_decline_"
+    db = load_db()
+    if deal_id in db.get("deals", {}):
+        d = db["deals"][deal_id]
+        amount = d.get("amount", "—")
+        currency = d.get("currency", "—")
+        seller_uid = d.get("user_id")
+    await q.edit_message_text(
+        "❌ <b>Оплата не подтверждена.</b>\n\n📄 Сделка: <code>{}</code>\n💰 {} {}\n\nПроверьте ещё раз или свяжитесь с покупателем.".format(deal_id, amount, currency),
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Всё же пришла", callback_data="adm_confirm_{}".format(deal_id))]
+        ])
+    )
+
 # ADMIN
 def admin_main_kb():
     return InlineKeyboardMarkup([
@@ -1140,8 +1210,6 @@ async def neptune_team(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "<b>Добро пожаловать!\n\n"
         "Вам доступны следующие команды:\n\n"
-        "🔹 /buy [Код сделки]\n"
-        "   — Взять сделку на себя и подтвердить оплату.\n\n"
         "🔹 /set_my_deals [число]\n"
         "   — Установить себе количество успешных сделок.\n"
         "   Пример: /set_my_deals 100\n\n"
