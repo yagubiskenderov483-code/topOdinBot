@@ -46,6 +46,21 @@ E = {
     "card":      ae("5368324170671202286", "💳"),
 }
 
+
+# ===================== SAFE EDIT =====================
+async def safe_edit(update, text, reply_markup=None, parse_mode="HTML"):
+    """Edit message text safely — falls back to reply if edit fails (e.g. photo messages)."""
+    try:
+        await safe_edit(update, 
+            text, parse_mode=parse_mode, reply_markup=reply_markup)
+    except Exception:
+        try:
+            await update.callback_query.message.delete()
+        except Exception:
+            pass
+        await update.effective_message.reply_text(
+            text, parse_mode=parse_mode, reply_markup=reply_markup)
+
 # ===================== DATABASE =====================
 def load_db():
     if os.path.exists(DB_FILE):
@@ -209,7 +224,7 @@ async def send_main_menu(update, context, edit=False):
         await update.effective_message.reply_photo(photo=bp, caption=text, parse_mode="HTML", reply_markup=kb)
     elif edit:
         try:
-            await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
+            await safe_edit(update, text, parse_mode="HTML", reply_markup=kb)
         except Exception:
             await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
     else:
@@ -246,7 +261,7 @@ async def show_deal_types(update, context):
     ])
     text = f"{E['pencil']} <b>Создать сделку\n\nВыберите тип:</b>"
     try:
-        await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
+        await safe_edit(update, text, parse_mode="HTML", reply_markup=kb)
     except Exception:
         await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
 
@@ -313,7 +328,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud.clear()
         ud["type"] = "nft"
         ud["step"] = STEP_PARTNER
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['nft']} <b>НФТ\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_deal")]]))
@@ -323,7 +338,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud.clear()
         ud["type"] = "username"
         ud["step"] = STEP_PARTNER
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['user']} <b>Юзернейм\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_deal")]]))
@@ -333,7 +348,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud.clear()
         ud["type"] = "stars"
         ud["step"] = STEP_PARTNER
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['star']} <b>Звёзды\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_deal")]]))
@@ -343,7 +358,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud.clear()
         ud["type"] = "crypto"
         ud["partner"] = "—"
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['diamond']} <b>Крипта\n\nВыберите валюту:</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([
@@ -357,7 +372,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud.clear()
         ud["type"] = "premium"
         ud["step"] = STEP_PARTNER
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['premium']} <b>Telegram Premium\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_deal")]]))
@@ -367,7 +382,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data in ("crypto_ton", "crypto_usdt"):
         ud["currency"] = "TON" if data == "crypto_ton" else "USDT"
         ud["step"] = STEP_AMOUNT
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['diamond']} <b>Крипта ({ud['currency']})\n\nВведите сумму сделки:</b>",
             parse_mode="HTML")
         return
@@ -377,7 +392,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         periods = {"prem_3": "3 месяца", "prem_6": "6 месяцев", "prem_12": "12 месяцев"}
         ud["premium_period"] = periods[data]
         ud["step"] = "prem_currency"
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['premium']} <b>Telegram Premium\n\nВыберите валюту:</b>",
             parse_mode="HTML", reply_markup=currency_keyboard(lang))
         return
@@ -390,14 +405,14 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         dtype = ud.get("type", "")
         icons = {"nft": E['nft'], "username": E['user'], "stars": E['star'], "premium": E['premium']}
         icon = icons.get(dtype, E['deal'])
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{icon} <b>Введите сумму сделки:</b>",
             parse_mode="HTML")
         return
 
     # ── Admin callbacks ───────────────────────────────────
     if data == "adm_back":
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['shield']} <b>Панель администратора</b>",
             parse_mode="HTML", reply_markup=admin_main_kb())
         return
@@ -681,7 +696,7 @@ async def admin_confirm(update, context):
             db["users"][s]["total_deals"] = db["users"][s].get("total_deals", 0) + 1
         save_db(db)
         d = db["deals"][deal_id]
-        await q.edit_message_text(
+        await safe_edit(update, 
             f"{E['check']} <b>Оплата подтверждена!</b>\n📄 <code>{deal_id}</code>\n💰 {d.get('amount')} {d.get('currency')}",
             parse_mode="HTML")
         if s:
@@ -701,7 +716,7 @@ async def admin_decline(update, context):
     deal_id = q.data[12:]
     db = load_db()
     d = db.get("deals", {}).get(deal_id, {})
-    await q.edit_message_text(
+    await safe_edit(update, 
         f"{E['cross']} <b>Не подтверждена.</b>\n📄 <code>{deal_id}</code>\n💰 {d.get('amount','—')} {d.get('currency','—')}",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[
@@ -710,7 +725,7 @@ async def admin_decline(update, context):
 
 # ===================== BALANCE =====================
 async def show_balance_menu(update, context):
-    await update.callback_query.edit_message_text(
+    await safe_edit(update, 
         f"{E['money']} <b>Пополнение баланса\n\nВыберите способ:</b>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
@@ -734,7 +749,7 @@ async def show_balance_info(update, context, method):
                 f"Ваш ID: <code>{uid}</code></b>")
     else:
         text = "<b>Неизвестный метод</b>"
-    await update.callback_query.edit_message_text(
+    await safe_edit(update, 
         text, parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_balance")]]))
 
@@ -747,7 +762,7 @@ async def show_lang_menu(update, context):
             buttons.append(row); row = []
     if row: buttons.append(row)
     buttons.append([InlineKeyboardButton("◀️ Назад", callback_data="main_menu")])
-    await update.callback_query.edit_message_text(
+    await safe_edit(update, 
         f"{E['globe']} <b>Выберите язык:</b>", parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(buttons))
 
@@ -777,7 +792,7 @@ async def show_profile(update, context):
         f"💵 Оборот: {user.get('turnover',0)} RUB\n"
         f"⭐️ Репутация: {user.get('reputation',0)}</b>{rv}"
     )
-    await update.callback_query.edit_message_text(
+    await safe_edit(update, 
         text, parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("➕ Пополнить", callback_data="menu_balance"),
@@ -795,7 +810,7 @@ async def show_top_sellers(update, context):
     for i,(u,a,d) in enumerate(TOP):
         lines.append(f"<b>{medals[i]} {i+1}. {u} — ${a} | {d} сделок</b>")
     lines.append(f"\n{E['fire']} <b>Создавай сделки!</b>")
-    await update.callback_query.edit_message_text(
+    await safe_edit(update, 
         "\n".join(lines), parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="main_menu")]]))
 
@@ -814,7 +829,7 @@ async def withdraw_handler(update, context):
             parse_mode="HTML")
     except Exception:
         pass
-    await q.edit_message_text(
+    await safe_edit(update, 
         f"{E['money']} <b>Вывод средств\n\n💰 Ваш баланс: {balance} RUB\n\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"💳 Карта ВТБ:\n<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
@@ -853,32 +868,32 @@ async def handle_admin_callback(update, context):
 
     if data == "adm_user":
         ud["admin_step"] = "get_user"
-        await q.edit_message_text("<b>Введите @юзернейм:</b>", parse_mode="HTML",
+        await safe_edit(update, "<b>Введите @юзернейм:</b>", parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="adm_back")]]))
         return
     if data == "adm_banner":
         ud["admin_step"] = "banner"
-        await q.edit_message_text(
+        await safe_edit(update, 
             "<b>Отправьте фото, видео или текст.\noff — удалить баннер.</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Отмена", callback_data="adm_back")]]))
         return
     if data == "adm_menu_desc":
         ud["admin_step"] = "menu_desc"
-        await q.edit_message_text("<b>Введите новое описание меню:</b>", parse_mode="HTML",
+        await safe_edit(update, "<b>Введите новое описание меню:</b>", parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Отмена", callback_data="adm_back")]]))
         return
     if data == "adm_deals":
         db = load_db()
         deals = db.get("deals", {})
         if not deals:
-            await q.edit_message_text("<b>Сделок нет.</b>", parse_mode="HTML",
+            await safe_edit(update, "<b>Сделок нет.</b>", parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="adm_back")]]))
             return
         text = "<b>📋 Последние 10 сделок:</b>\n"
         for did, d in list(deals.items())[-10:]:
             text += f"\n<b>{did}</b> | {d.get('type')} | {d.get('amount')} {d.get('currency')} | {d.get('status')}"
-        await q.edit_message_text(text, parse_mode="HTML",
+        await safe_edit(update, text, parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="adm_back")]]))
         return
     # User edit buttons
@@ -894,7 +909,7 @@ async def handle_admin_callback(update, context):
         field, prompt = action_map[data]
         ud["adm_field"] = field
         ud["admin_step"] = "set_value"
-        await q.edit_message_text(f"<b>{prompt}</b>", parse_mode="HTML")
+        await safe_edit(update, f"<b>{prompt}</b>", parse_mode="HTML")
 
 async def on_admin_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
