@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ===================== CONFIG =====================
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "ВСТАВЬТЕ_ТОКЕН_СЮДА"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -1037,10 +1037,17 @@ def main():
     app.add_handler(CallbackQueryHandler(on_callback))
 
     # Message handler — admin first, then deals
-    app.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
-        lambda u, c: on_admin_message(u, c) if u.effective_user.id == ADMIN_ID and c.user_data.get("admin_mode") and c.user_data.get("admin_step") else on_message(u, c)
-    ))
+    async def message_router(update, context):
+        uid = update.effective_user.id
+        ud = context.user_data
+        if uid == ADMIN_ID and ud.get("admin_mode") and ud.get("admin_step"):
+            await on_admin_message(update, context)
+        elif uid == ADMIN_ID and ud.get("admin_mode") and (update.message.photo or update.message.video):
+            await on_admin_message(update, context)
+        else:
+            await on_message(update, context)
+
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_router))
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO, on_admin_message))
 
     print(f"Bot @{BOT_USERNAME} started!")
