@@ -11,7 +11,7 @@ from telegram.ext import (
 logging.basicConfig(level=logging.INFO)
 
 # ===================== CONFIG =====================
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "ВСТАВЬТЕ_ТОКЕН_СЮДА"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -1186,7 +1186,11 @@ def main():
     app.add_handler(CommandHandler("set_my_amount", set_my_amount))
     app.add_handler(deal_conv)
     app.add_handler(admin_conv)
-    app.add_handler(CallbackQueryHandler(callback_router))
+    # Only catch non-deal callbacks globally
+    app.add_handler(CallbackQueryHandler(callback_router, pattern=(
+        "^(main_menu|menu_balance|menu_lang|menu_profile|menu_top|withdraw|noop"
+        "|lang_|balance_|paid_|adm_confirm_|adm_decline_).*$"
+    )))
 
     print(f"Bot @{BOT_USERNAME} started!")
     app.run_polling()
