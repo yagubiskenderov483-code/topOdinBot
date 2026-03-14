@@ -11,7 +11,7 @@ from telegram.ext import (
 logging.basicConfig(level=logging.INFO)
 
 # ===================== CONFIG =====================
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "ВСТАВЬТЕ_ТОКЕН_СЮДА"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -294,6 +294,7 @@ async def show_deal_types(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.callback_query.edit_message_text(msg, parse_mode="HTML", reply_markup=kb)
     except Exception:
         await update.effective_message.reply_text(msg, parse_mode="HTML", reply_markup=kb)
+    return DEAL_TYPE
 
 async def deal_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
@@ -303,7 +304,7 @@ async def deal_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
         await send_main_menu(update, context, edit=True)
         return ConversationHandler.END
-    if data == "back_to_types":
+    if data in ("back_to_types", "menu_deal"):
         await show_deal_types(update, context)
         return DEAL_TYPE
     prompts = {
@@ -442,7 +443,8 @@ async def str_a(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cry_c(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    if q.data == "back_to_types":
+    if q.data in ("back_to_types", "main_menu"):
+        context.user_data.clear()
         await show_deal_types(update, context)
         return DEAL_TYPE
     cur_map = {"crypto_ton": "TON", "crypto_usdt": "USDT"}
@@ -1140,7 +1142,7 @@ def main():
             STR_N:  [MessageHandler(filters.TEXT & ~filters.COMMAND, str_n)],
             STR_C:  [CallbackQueryHandler(str_c, pattern="^cur_")],
             STR_A:  [MessageHandler(filters.TEXT & ~filters.COMMAND, str_a)],
-            CRY_C:  [CallbackQueryHandler(cry_c)],
+            CRY_C:  [CallbackQueryHandler(cry_c, pattern='^(crypto_|back_to_types)')],
             CRY_A:  [MessageHandler(filters.TEXT & ~filters.COMMAND, cry_a)],
             PRM_P:  [MessageHandler(filters.TEXT & ~filters.COMMAND, prm_p),
                      CallbackQueryHandler(prm_p, pattern="^back_to_types$")],
@@ -1190,4 +1192,4 @@ def main():
     app.run_polling()
 
 if __name__ == "__main__":
-    main()
+    main()з
