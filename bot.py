@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 logging.basicConfig(level=logging.INFO)
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "ВСТАВЬТЕ_НОВЫЙ_ТОКЕН_СЮДА"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -173,57 +173,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         deals = db.get("deals", {})
         if deal_id in deals:
             d = deals[deal_id]
-            type_names = {
-                "nft": "NFT", "username": "НФТ Юзернейм",
-                "stars": "Звёзды", "crypto": "Крипта",
-                "giftbox": "НФТ Подарок", "premium": "Telegram Premium",
-            }
-            dd = d.get("data", {})
-            extra = ""
-            if d.get("type") in ("nft", "giftbox"):
-                extra = "\n<b>Ссылка НФТ:</b> {}".format(dd.get("nft_link", "—"))
-            elif d.get("type") == "username":
-                extra = "\n<b>Юзернейм товара:</b> {}".format(dd.get("trade_username", "—"))
-            elif d.get("type") == "stars":
-                extra = "\n<b>Количество звёзд:</b> {}".format(dd.get("stars_count", "—"))
-            elif d.get("type") == "premium":
-                extra = "\n<b>Срок Premium:</b> {}".format(dd.get("premium_period", "—"))
-            status_map = {"pending": "⏳ Ожидает оплаты", "confirmed": "✅ Подтверждена"}
-            dtype = d.get("type", "")
-            currency = d.get("currency", "—")
-            # Build payment instruction based on deal type and currency
-            if dtype in ("nft", "stars", "giftbox", "premium"):
-                pay_info = "<b>📤 Куда отправить оплату:</b>\n<b>Менеджер:</b> @GiftDealsManager\n<b>Укажите MEMO:</b> <code>{}</code>".format(deal_id)
-            else:  # username, crypto
-                pay_info = ("<b>📤 Куда отправить оплату:</b>\n"
-                    "<b>Адрес TON (TonKeeper):</b>\n"
-                    "<code>{}</code>\n"
-                    "<b>В комментарии/MEMO укажите:</b> <code>{}</code>").format(CRYPTO_ADDRESS, deal_id)
-            text = (
-                "<b>📋 Сделка найдена!\n\n"
-                "Код (MEMO):</b> <code>{}</code>\n"
-                "<b>Тип:</b> {}\n"
-                "<b>Партнёр:</b> {}"
-                "{}\n"
-                "<b>Валюта:</b> {}\n"
-                "<b>Сумма:</b> {}\n"
-                "<b>Статус:</b> {}\n"
-                "<b>Создана:</b> {}\n\n"
-                "{}"
-            ).format(
-                deal_id,
-                type_names.get(d.get("type"), d.get("type", "—")),
-                d.get("partner", "—"),
-                extra,
-                d.get("currency", "—"),
-                d.get("amount", "—"),
-                status_map.get(d.get("status", ""), d.get("status", "—")),
-                d.get("created", "—")[:16].replace("T", " "),
-                pay_info
-            )
-            await update.effective_message.reply_text(
-                text, parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]]))
+            await send_deal_card(update, context, deal_id, d, is_buyer=True)
             return
         else:
             await update.effective_message.reply_text(
@@ -252,6 +202,10 @@ async def callback_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_balance_info(update, context, data[8:])
     elif data == "withdraw":
         await withdraw_handler(update, context)
+    elif data.startswith("paid_"):
+        await paid_callback(update, context)
+    elif data == "noop":
+        pass
 
 async def show_deal_types(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = InlineKeyboardMarkup([
@@ -549,6 +503,165 @@ async def deal_premium_amount(update: Update, context: ContextTypes.DEFAULT_TYPE
     await finalize_deal(update, context)
     return ConversationHandler.END
 
+# DEAL CARD
+async def send_deal_card(update, context, deal_id, d, is_buyer=False):
+    """Send full deal card to buyer or seller with payment instructions."""
+    dtype = d.get("type", "")
+    currency = d.get("currency", "—")
+    amount = d.get("amount", "—")
+    partner = d.get("partner", "—")
+    dd = d.get("data", {})
+    seller_uid = d.get("user_id", "")
+
+    type_labels = {
+        "nft": "🖼 NFT",
+        "username": "👤 НФТ Юзернейм",
+        "stars": "⭐️ Звёзды",
+        "crypto": "💎 Крипта",
+        "giftbox": "🎁 НФТ/Подарок",
+        "premium": "✈️ Telegram Premium",
+    }
+
+    # What is being sold
+    item_detail = ""
+    if dtype in ("nft", "giftbox"):
+        item_detail = "\n<b>📎 Ссылка:</b> {}".format(dd.get("nft_link", "—"))
+    elif dtype == "username":
+        item_detail = "\n<b>📎 Юзернейм:</b> {}".format(dd.get("trade_username", "—"))
+    elif dtype == "stars":
+        item_detail = "\n<b>📎 Количество звёзд:</b> {}".format(dd.get("stars_count", "—"))
+    elif dtype == "premium":
+        item_detail = "\n<b>📎 Срок:</b> {}".format(dd.get("premium_period", "—"))
+
+    # Payment block — depends on deal type
+    if dtype in ("nft", "stars", "giftbox", "premium"):
+        nft_note = ""
+        if dtype in ("nft", "giftbox"):
+            nft_note = "\n🎁 NFT нужно отправить менеджеру: @GiftDealsManager"
+        pay_block = (
+            "{}\n\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💰 Сумма к оплате: <b>{} {}</b>\n\n"
+            "💳 Оплата на карту:\n"
+            "<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
+            "💎 Или на TON кошелёк:\n"
+            "<code>{}</code>\n\n"
+            "✅ После перевода нажмите «✅ Я оплатил»"
+        ).format(nft_note, amount, currency, CRYPTO_ADDRESS)
+    else:  # username, crypto — direct TON
+        pay_block = (
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💰 Сумма к оплате: <b>{} {}</b>\n\n"
+            "💎 Отправьте на TON кошелёк:\n"
+            "<code>{}</code>\n\n"
+            "💳 Или на карту ВТБ:\n"
+            "<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
+            "<b>В комментарии укажите MEMO:</b> <code>{}</code>\n\n"
+            "✅ После перевода нажмите «✅ Я оплатил»"
+        ).format(amount, currency, CRYPTO_ADDRESS, deal_id)
+
+    if is_buyer:
+        viewer = update.effective_user
+        viewer_tag = "@{}".format(viewer.username) if viewer.username else str(viewer.id)
+        text = (
+            "<b>📄 Информация о сделке #{}</b>\n\n"
+            "👤 Вы покупатель в сделке.\n"
+            "👤 Продавец: {} (<code>{}</code>)\n"
+            "{}\n"
+            "📌 Тип: {}\n\n"
+            "{}"
+        ).format(
+            deal_id,
+            partner, seller_uid,
+            item_detail,
+            type_labels.get(dtype, dtype),
+            pay_block
+        )
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Я оплатил", callback_data="paid_{}".format(deal_id))],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")],
+        ])
+    else:
+        # Seller card (creator of deal)
+        text = (
+            "<b>📄 Сделка создана #{}</b>\n\n"
+            "👤 Вы продавец.\n"
+            "👤 Партнёр (покупатель): {}\n"
+            "{}\n"
+            "📌 Тип: {}\n"
+            "💰 Сумма: <b>{} {}</b>\n\n"
+            "🔗 Ссылка для покупателя:\n"
+            "<code>https://t.me/{}?start=deal_{}</code>\n\n"
+            "Отправьте ссылку партнёру — он перейдёт и увидит инструкцию по оплате."
+        ).format(
+            deal_id,
+            partner,
+            item_detail,
+            type_labels.get(dtype, dtype),
+            amount, currency,
+            "GiftDealsRoBot", deal_id
+        )
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")],
+        ])
+
+    await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
+
+
+async def paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Buyer pressed 'I paid' button."""
+    q = update.callback_query
+    await q.answer("Уведомление отправлено!", show_alert=False)
+    deal_id = q.data[5:]  # remove "paid_"
+    buyer = update.effective_user
+    buyer_tag = "@{}".format(buyer.username) if buyer.username else str(buyer.id)
+    db = load_db()
+    d = db.get("deals", {}).get(deal_id, {})
+    amount = d.get("amount", "—")
+    currency = d.get("currency", "—")
+    dtype = d.get("type", "")
+    type_labels = {
+        "nft": "🖼 NFT", "username": "👤 НФТ Юзернейм", "stars": "⭐️ Звёзды",
+        "crypto": "💎 Крипта", "giftbox": "🎁 НФТ/Подарок", "premium": "✈️ Telegram Premium",
+    }
+    # Notify admin
+    admin_text = (
+        "🔔 <b>Покупатель нажал «Я оплатил»</b>\n\n"
+        "📄 Сделка: <code>{}</code>\n"
+        "👤 Покупатель: {} (<code>{}</code>)\n"
+        "📌 Тип: {}\n"
+        "💰 Сумма: {} {}\n\n"
+        "Проверьте поступление и подтвердите сделку командой:\n"
+        "<code>/buy {}</code>"
+    ).format(
+        deal_id, buyer_tag, buyer.id,
+        type_labels.get(dtype, dtype),
+        amount, currency, deal_id
+    )
+    try:
+        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_text, parse_mode="HTML")
+    except Exception:
+        pass
+    # Also notify seller
+    seller_uid = d.get("user_id")
+    if seller_uid and seller_uid != str(buyer.id):
+        seller_text = (
+            "🔔 <b>Покупатель сообщил об оплате!</b>\n\n"
+            "📄 Сделка: <code>{}</code>\n"
+            "👤 Покупатель: {}\n"
+            "💰 Сумма: {} {}\n\n"
+            "Ожидайте подтверждения от модератора."
+        ).format(deal_id, buyer_tag, amount, currency)
+        try:
+            await context.bot.send_message(chat_id=int(seller_uid), text=seller_text, parse_mode="HTML")
+        except Exception:
+            pass
+    await q.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([
+        [InlineKeyboardButton("⏳ Ожидание подтверждения...", callback_data="noop")],
+        [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")],
+    ]))
+
+
 # FINALIZE
 async def finalize_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     db = load_db()
@@ -613,10 +726,9 @@ async def finalize_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "created": datetime.now().isoformat(), "data": dict(ud),
     }
     save_db(db)
-    await update.effective_message.reply_text(
-        "\n".join(lines), parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]]))
-    # Notify partner if they are in db
+    # Send seller card (creator sees their deal card)
+    await send_deal_card(update, context, deal_id, db["deals"][deal_id], is_buyer=False)
+    # Notify partner (buyer) if they already have the bot
     partner_username = partner.lstrip("@").lower() if partner and partner != "—" else None
     if partner_username:
         partner_uid = None
@@ -625,42 +737,69 @@ async def finalize_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 partner_uid = uid
                 break
         if partner_uid:
-            type_names2 = {
-                "nft": "🖼 НФТ", "username": "👤 НФТ Юзернейм", "stars": "⭐️ Звёзды",
-                "crypto": "💎 Крипта", "giftbox": "🎁 НФТ Подарок", "premium": "✈️ Telegram Premium",
+            class FakeUpdate:
+                effective_user = user
+                effective_message = type("M", (), {"reply_text": None})()
+            # Send buyer card via bot directly
+            type_labels = {
+                "nft": "🖼 NFT", "username": "👤 НФТ Юзернейм", "stars": "⭐️ Звёзды",
+                "crypto": "💎 Крипта", "giftbox": "🎁 НФТ/Подарок", "premium": "✈️ Telegram Premium",
             }
-            if deal_type in ("nft", "stars", "giftbox", "premium"):
-                pay_info_partner = (
-                    "<b>📤 Куда отправить оплату:</b>\n"
-                    "<b>Менеджер:</b> {}\n"
-                    "<b>Укажите MEMO:</b> <code>{}</code>"
-                ).format(MANAGER_USERNAME, deal_id)
+            dtype = deal_type
+            dd = ud
+            item_detail = ""
+            if dtype in ("nft", "giftbox"):
+                item_detail = "\n<b>📎 Ссылка:</b> {}".format(dd.get("nft_link", "—"))
+            elif dtype == "username":
+                item_detail = "\n<b>📎 Юзернейм:</b> {}".format(dd.get("trade_username", "—"))
+            elif dtype == "stars":
+                item_detail = "\n<b>📎 Звёзды:</b> {}".format(dd.get("stars_count", "—"))
+            elif dtype == "premium":
+                item_detail = "\n<b>📎 Срок:</b> {}".format(dd.get("premium_period", "—"))
+            if dtype in ("nft", "stars", "giftbox", "premium"):
+                nft_note = "\n🎁 NFT нужно отправить менеджеру: @GiftDealsManager" if dtype in ("nft", "giftbox") else ""
+                pay_block = (
+                    "{}\n\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n"
+                    "💰 Сумма к оплате: <b>{} {}</b>\n\n"
+                    "💳 Оплата на карту:\n"
+                    "<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
+                    "💎 Или на TON кошелёк:\n"
+                    "<code>{}</code>\n\n"
+                    "✅ После перевода нажмите «✅ Я оплатил»"
+                ).format(nft_note, amount, currency, CRYPTO_ADDRESS)
             else:
-                pay_info_partner = (
-                    "<b>📤 Куда отправить оплату:</b>\n"
-                    "<b>Адрес TON (TonKeeper):</b>\n"
-                    "<code>{}</code>\n"
-                    "<b>В комментарии/MEMO укажите:</b> <code>{}</code>"
-                ).format(CRYPTO_ADDRESS, deal_id)
+                pay_block = (
+                    "━━━━━━━━━━━━━━━━━━━━\n"
+                    "💰 Сумма к оплате: <b>{} {}</b>\n\n"
+                    "💎 Отправьте на TON кошелёк:\n"
+                    "<code>{}</code>\n\n"
+                    "💳 Или на карту ВТБ:\n"
+                    "<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
+                    "<b>В комментарии укажите MEMO:</b> <code>{}</code>\n\n"
+                    "✅ После перевода нажмите «✅ Я оплатил»"
+                ).format(amount, currency, CRYPTO_ADDRESS, deal_id)
             notify_text = (
-                "<b>🔔 Вас добавили в сделку!</b>\n\n"
-                "<b>Код (MEMO):</b> <code>{}</code>\n"
-                "<b>Тип:</b> {}\n"
-                "<b>Инициатор:</b> @{}\n"
-                "<b>Валюта:</b> {}\n"
-                "<b>Сумма:</b> {}\n\n"
+                "<b>📄 Вас добавили в сделку #{}</b>\n\n"
+                "👤 Вы покупатель в сделке.\n"
+                "👤 Продавец: @{}\n"
+                "{}\n"
+                "📌 Тип: {}\n\n"
                 "{}"
             ).format(
                 deal_id,
-                type_names2.get(deal_type, deal_type),
                 user.username or str(user.id),
-                currency, amount,
-                pay_info_partner
+                item_detail,
+                type_labels.get(dtype, dtype),
+                pay_block
             )
             try:
                 await context.bot.send_message(
                     chat_id=int(partner_uid), text=notify_text, parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]]))
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("✅ Я оплатил", callback_data="paid_{}".format(deal_id))],
+                        [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")],
+                    ]))
             except Exception:
                 pass
     context.user_data.clear()
@@ -771,10 +910,40 @@ async def show_top_sellers(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def withdraw_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
+    db = load_db()
+    uid = update.effective_user.id
+    user = get_user(db, uid)
+    balance = user.get("balance", 0)
+    uname = update.effective_user.username or str(uid)
+    text = (
+        "<b>💸 Вывод средств\n\n"
+        "💰 Ваш баланс: {} RUB\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Введите сумму вывода и нажмите кнопку — мы сразу переведём.\n\n"
+        "💳 Карта ВТБ:\n"
+        "<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
+        "💎 TON кошелёк:\n"
+        "<code>{}</code>\n\n"
+        "Укажите кошелёк/карту куда перевести."
+        "</b>"
+    ).format(balance, CRYPTO_ADDRESS)
+    # Notify admin
+    admin_text = (
+        "💸 <b>Запрос на вывод</b>\n\n"
+        "👤 Пользователь: @{}  (<code>{}</code>)\n"
+        "💰 Баланс: {} RUB\n\n"
+        "Проверь и переведи вручную."
+    ).format(uname, uid, balance)
+    try:
+        await context.bot.send_message(chat_id=ADMIN_ID, text=admin_text, parse_mode="HTML")
+    except Exception:
+        pass
     await q.edit_message_text(
-        "<b>💸 Вывод средств\n\nМенеджер: {}\n\nУкажите:\n— Ваш @юзернейм\n— Сумму вывода\n— Способ получения</b>".format(MANAGER_USERNAME),
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_profile")]]))
+        text, parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("💬 Написать менеджеру", url="https://t.me/GiftDealsManager")],
+            [InlineKeyboardButton("◀️ Назад", callback_data="menu_profile")],
+        ]))
 
 # ADMIN
 def admin_main_kb():
