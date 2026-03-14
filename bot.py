@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 logging.basicConfig(level=logging.INFO)
-BOT_TOKEN = "ВСТАВЬТЕ_НОВЫЙ_ТОКЕН_СЮДА"
+BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
