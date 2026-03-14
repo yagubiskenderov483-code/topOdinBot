@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 logging.basicConfig(level=logging.INFO)
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "ВСТАВЬТЕ_НОВЫЙ_ТОКЕН_СЮДА"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -37,9 +37,18 @@ def get_user(db, user_id):
     return db["users"][uid]
 
 LANGS = {
-    "ru": "🇷🇺", "en": "🇬🇧", "kz": "🇰🇿",
-    "az": "🇦🇿", "uz": "🇺🇿", "kg": "🇰🇬",
-    "tj": "🇹🇯", "by": "🇧🇾",
+    "ru": "🇷🇺 Россия",
+    "en": "🇬🇧 English",
+    "kz": "🇰🇿 Казахстан",
+    "az": "🇦🇿 Азербайджан",
+    "uz": "🇺🇿 Узбекистан",
+    "kg": "🇰🇬 Кыргызстан",
+    "tj": "🇹🇯 Таджикистан",
+    "by": "🇧🇾 Беларусь",
+    "am": "🇦🇲 Армения",
+    "ge": "🇬🇪 Грузия",
+    "ua": "🇺🇦 Украина",
+    "md": "🇲🇩 Молдова",
 }
 
 WELCOME_TEXT = {
@@ -56,6 +65,10 @@ WELCOME_TEXT = {
     "kg": "Gift Deals — Telegram'дагы эң коопсуз аянтча.",
     "tj": "Gift Deals — яке аз бехтарин майдончаҳо дар Telegram.",
     "by": "Gift Deals — адна з самых бяспечных пляцовак у Telegram.",
+    "am": "Gift Deals — ամենաապահով հարթակներից մեկը Telegram-ում։",
+    "ge": "Gift Deals — Telegram-ის ერთ-ერთი ყველაზე უსაფრთხო პლატფორმა.",
+    "ua": "Gift Deals — одна з найбезпечніших платформ у Telegram.",
+    "md": "Gift Deals — una dintre cele mai sigure platforme din Telegram.",
 }
 
 BTN = {
@@ -75,6 +88,14 @@ BTN = {
            "lang": "Taghyiri zabon", "profile": "Profil", "top": "Behtarin furushandagon"},
     "by": {"deal": "Stvaryts zdzelku", "support": "Padtrymka", "balance": "Papounits balans",
            "lang": "Zmyanits movu", "profile": "Profil", "top": "Top pradavcou"},
+    "am": {"deal": "Գործարք ստեղծել", "support": "Աջակցություն", "balance": "Լրացնել հաշիվ",
+           "lang": "Լեզու", "profile": "Պրոֆիլ", "top": "Լավագույն վաճառողներ"},
+    "ge": {"deal": "გარიგების შექმნა", "support": "მხარდაჭერა", "balance": "ბალანსის შევსება",
+           "lang": "ენა", "profile": "პროფილი", "top": "საუკეთესო გამყიდველები"},
+    "ua": {"deal": "Створити угоду", "support": "Підтримка", "balance": "Поповнити баланс",
+           "lang": "Змінити мову", "profile": "Профіль", "top": "Топ продавців"},
+    "md": {"deal": "Creare tranzacție", "support": "Suport", "balance": "Completare sold",
+           "lang": "Schimba limba", "profile": "Profil", "top": "Top vânzători"},
 }
 
 def get_btn(lang, key):
@@ -82,18 +103,18 @@ def get_btn(lang, key):
 
 def currency_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("TON", callback_data="cur_ton"),
-         InlineKeyboardButton("USDT", callback_data="cur_usdt")],
-        [InlineKeyboardButton("RUB", callback_data="cur_rub"),
-         InlineKeyboardButton("Stars", callback_data="cur_stars")],
-        [InlineKeyboardButton("KZT (Тенге)", callback_data="cur_kzt"),
-         InlineKeyboardButton("AZN (Манат)", callback_data="cur_azn")],
-        [InlineKeyboardButton("KGS (Сом)", callback_data="cur_kgs"),
-         InlineKeyboardButton("UZS (Сум)", callback_data="cur_uzs")],
-        [InlineKeyboardButton("TJS (Сомони)", callback_data="cur_tjs"),
-         InlineKeyboardButton("BYN (Рубль)", callback_data="cur_byn")],
-        [InlineKeyboardButton("UAH (Гривна)", callback_data="cur_uah"),
-         InlineKeyboardButton("GEL (Лари)", callback_data="cur_gel")],
+        [InlineKeyboardButton("💎 TON", callback_data="cur_ton"),
+         InlineKeyboardButton("💵 USDT", callback_data="cur_usdt")],
+        [InlineKeyboardButton("🇷🇺 Рубли", callback_data="cur_rub"),
+         InlineKeyboardButton("⭐️ Stars", callback_data="cur_stars")],
+        [InlineKeyboardButton("🇰🇿 Тенге", callback_data="cur_kzt"),
+         InlineKeyboardButton("🇦🇿 Манаты", callback_data="cur_azn")],
+        [InlineKeyboardButton("🇰🇬 Сомы", callback_data="cur_kgs"),
+         InlineKeyboardButton("🇺🇿 Сумы", callback_data="cur_uzs")],
+        [InlineKeyboardButton("🇹🇯 Сомони", callback_data="cur_tjs"),
+         InlineKeyboardButton("🇧🇾 Рубли BY", callback_data="cur_byn")],
+        [InlineKeyboardButton("🇺🇦 Гривны", callback_data="cur_uah"),
+         InlineKeyboardButton("🇬🇪 Лари", callback_data="cur_gel")],
     ])
 
 CURRENCY_MAP = {
@@ -222,10 +243,10 @@ async def show_deal_types(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ])
     try:
         await update.callback_query.edit_message_text(
-            "<b>✏️ Создать сделку\n\nВыберите тип товара:</b>", parse_mode="HTML", reply_markup=kb)
+            "<tg-emoji emoji-id=\"5431815452437257407\">✏️</tg-emoji> <b>Создать сделку\n\nВыберите тип:</b>", parse_mode="HTML", reply_markup=kb)
     except Exception:
         await update.effective_message.reply_text(
-            "<b>✏️ Создать сделку\n\nВыберите тип товара:</b>", parse_mode="HTML", reply_markup=kb)
+            "<tg-emoji emoji-id=\"5431815452437257407\">✏️</tg-emoji> <b>Создать сделку\n\nВыберите тип:</b>", parse_mode="HTML", reply_markup=kb)
     return DEAL_TYPE
 
 async def deal_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -242,25 +263,25 @@ async def deal_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "deal_nft":
         context.user_data["deal_type"] = "nft"
         await q.edit_message_text(
-            "<b>🖼 НФТ\n\nВведите юзернейм партнёра:\n(пример: @username)</b>",
+            "<tg-emoji emoji-id=\"5409081890498491521\">🖼</tg-emoji> <b>НФТ\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML", reply_markup=back_kb())
         return DEAL_NFT_PARTNER
     if data == "deal_username":
         context.user_data["deal_type"] = "username"
         await q.edit_message_text(
-            "<b>👤 НФТ Юзернейм\n\nВведите юзернейм партнёра:\n(пример: @username)</b>",
+            "<tg-emoji emoji-id=\"5440539497383087970\">👤</tg-emoji> <b>НФТ Юзернейм\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML", reply_markup=back_kb())
         return DEAL_USERNAME_PARTNER
     if data == "deal_stars":
         context.user_data["deal_type"] = "stars"
         await q.edit_message_text(
-            "<b>⭐️ Звёзды\n\nВведите юзернейм партнёра:\n(пример: @username)</b>",
+            "<tg-emoji emoji-id=\"5368324170671202286\">⭐️</tg-emoji> <b>Звёзды\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML", reply_markup=back_kb())
         return DEAL_STARS_PARTNER
     if data == "deal_crypto":
         context.user_data["deal_type"] = "crypto"
         await q.edit_message_text(
-            "<b>💎 Крипта\n\nВыберите: TON или $?</b>",
+            "<tg-emoji emoji-id=\"5447644880824181073\">💎</tg-emoji> <b>Крипта\n\nВыберите валюту:</b>",
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("💎 TON", callback_data="crypto_ton"),
@@ -271,13 +292,13 @@ async def deal_type_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "deal_giftbox":
         context.user_data["deal_type"] = "giftbox"
         await q.edit_message_text(
-            "<b>🎁 НФТ Подарок\n\nВведите юзернейм партнёра:\n(пример: @username)</b>",
+            "<tg-emoji emoji-id=\"5373026167722876724\">🎁</tg-emoji> <b>НФТ Подарок\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML", reply_markup=back_kb())
         return DEAL_GIFTBOX_PARTNER
     if data == "deal_premium":
         context.user_data["deal_type"] = "premium"
         await q.edit_message_text(
-            "<b>✈️ Telegram Premium\n\nВведите юзернейм партнёра:\n(пример: @username)</b>",
+            "<tg-emoji emoji-id=\"5383165799791730254\">✈️</tg-emoji> <b>Telegram Premium\n\nВведите @юзернейм партнёра:</b>",
             parse_mode="HTML", reply_markup=back_kb())
         return DEAL_PREMIUM_PARTNER
     return DEAL_TYPE
@@ -290,11 +311,11 @@ async def deal_nft_partner(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return DEAL_TYPE
     p = update.message.text.strip()
     if not p.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_NFT_PARTNER
     context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>🖼 НФТ\n\nВведите ссылку на НФТ:\n(должна начинаться с https://)</b>",
+        "<tg-emoji emoji-id=\"5409081890498491521\">🖼</tg-emoji> <b>НФТ\n\nВставьте ссылку:\n(https://...)</b>",
         parse_mode="HTML")
     return DEAL_NFT_LINK
 
@@ -305,11 +326,11 @@ async def deal_nft_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return DEAL_TYPE
     link = update.message.text.strip()
     if not link.startswith("https://"):
-        await update.message.reply_text("<b>Ссылка должна начинаться с https://</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Ссылка должна начинаться с https://</b>", parse_mode="HTML")
         return DEAL_NFT_LINK
     context.user_data["nft_link"] = link
     await update.message.reply_text(
-        "<b>🖼 НФТ\n\nВыберите валюту оплаты:</b>",
+        "<tg-emoji emoji-id=\"5409081890498491521\">🖼</tg-emoji> <b>НФТ\n\nВыберите валюту:</b>",
         parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_NFT_CURRENCY
 
@@ -317,7 +338,7 @@ async def deal_nft_currency(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>🖼 НФТ\n\nВведите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<tg-emoji emoji-id=\"5409081890498491521\">🖼</tg-emoji> <b>НФТ\n\nВведите сумму:</b>", parse_mode="HTML")
     return DEAL_NFT_AMOUNT
 
 async def deal_nft_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -333,22 +354,22 @@ async def deal_username_partner(update: Update, context: ContextTypes.DEFAULT_TY
         return DEAL_TYPE
     p = update.message.text.strip()
     if not p.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_USERNAME_PARTNER
     context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>👤 НФТ Юзернейм\n\nВведите юзернейм товара:\n(пример: @username)</b>",
+        "<tg-emoji emoji-id=\"5440539497383087970\">👤</tg-emoji> <b>НФТ Юзернейм\n\nВведите @юзернейм товара:</b>",
         parse_mode="HTML")
     return DEAL_USERNAME_INPUT
 
 async def deal_username_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uname = update.message.text.strip()
     if not uname.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_USERNAME_INPUT
     context.user_data["trade_username"] = uname
     await update.message.reply_text(
-        "<b>👤 НФТ Юзернейм\n\nВыберите валюту оплаты:</b>",
+        "<tg-emoji emoji-id=\"5440539497383087970\">👤</tg-emoji> <b>НФТ Юзернейм\n\nВыберите валюту:</b>",
         parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_USERNAME_CURRENCY
 
@@ -356,7 +377,7 @@ async def deal_username_currency(update: Update, context: ContextTypes.DEFAULT_T
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>👤 НФТ Юзернейм\n\nВведите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<tg-emoji emoji-id=\"5440539497383087970\">👤</tg-emoji> <b>НФТ Юзернейм\n\nВведите сумму:</b>", parse_mode="HTML")
     return DEAL_USERNAME_AMOUNT
 
 async def deal_username_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -372,22 +393,22 @@ async def deal_stars_partner(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return DEAL_TYPE
     p = update.message.text.strip()
     if not p.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_STARS_PARTNER
     context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>⭐️ Звёзды\n\nВведите количество звёзд:</b>",
+        "<tg-emoji emoji-id=\"5368324170671202286\">⭐️</tg-emoji> <b>Звёзды\n\nСколько звёзд?</b>",
         parse_mode="HTML")
     return DEAL_STARS_COUNT
 
 async def deal_stars_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     count = update.message.text.strip()
     if not count.isdigit():
-        await update.message.reply_text("<b>Введите только цифры:</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Введите только цифры:</b>", parse_mode="HTML")
         return DEAL_STARS_COUNT
     context.user_data["stars_count"] = count
     await update.message.reply_text(
-        "<b>⭐️ Звёзды\n\nВыберите валюту оплаты:</b>",
+        "<tg-emoji emoji-id=\"5368324170671202286\">⭐️</tg-emoji> <b>Звёзды\n\nВыберите валюту:</b>",
         parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_STARS_CURRENCY
 
@@ -395,7 +416,7 @@ async def deal_stars_currency(update: Update, context: ContextTypes.DEFAULT_TYPE
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>⭐️ Звёзды\n\nВведите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<tg-emoji emoji-id=\"5368324170671202286\">⭐️</tg-emoji> <b>Звёзды\n\nВведите сумму:</b>", parse_mode="HTML")
     return DEAL_STARS_AMOUNT
 
 async def deal_stars_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -432,7 +453,7 @@ async def deal_giftbox_partner(update: Update, context: ContextTypes.DEFAULT_TYP
         return DEAL_TYPE
     p = update.message.text.strip()
     if not p.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_GIFTBOX_PARTNER
     context.user_data["partner"] = p
     await update.message.reply_text(
@@ -443,7 +464,7 @@ async def deal_giftbox_partner(update: Update, context: ContextTypes.DEFAULT_TYP
 async def deal_giftbox_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link = update.message.text.strip()
     if not link.startswith("https://"):
-        await update.message.reply_text("<b>Ссылка должна начинаться с https://</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Ссылка должна начинаться с https://</b>", parse_mode="HTML")
         return DEAL_GIFTBOX_LINK
     context.user_data["nft_link"] = link
     await update.message.reply_text(
@@ -471,11 +492,11 @@ async def deal_premium_partner(update: Update, context: ContextTypes.DEFAULT_TYP
         return DEAL_TYPE
     p = update.message.text.strip()
     if not p.startswith("@"):
-        await update.message.reply_text("<b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
+        await update.message.reply_text("<tg-emoji emoji-id='5447354187759300341'>❌</tg-emoji> <b>Юзернейм должен начинаться с @</b>", parse_mode="HTML")
         return DEAL_PREMIUM_PARTNER
     context.user_data["partner"] = p
     await update.message.reply_text(
-        "<b>✈️ Telegram Premium\n\nВыберите срок подписки:</b>",
+        "<tg-emoji emoji-id=\"5383165799791730254\">✈️</tg-emoji> <b>Telegram Premium\n\nВыберите срок:</b>",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("3 месяца", callback_data="prem_3"),
@@ -490,7 +511,7 @@ async def deal_premium_period(update: Update, context: ContextTypes.DEFAULT_TYPE
     period_map = {"prem_3": "3 месяца", "prem_6": "6 месяцев", "prem_12": "12 месяцев"}
     context.user_data["premium_period"] = period_map.get(q.data, q.data)
     await q.edit_message_text(
-        "<b>✈️ Telegram Premium\n\nВыберите валюту оплаты:</b>",
+        "<tg-emoji emoji-id=\"5383165799791730254\">✈️</tg-emoji> <b>Telegram Premium\n\nВыберите валюту:</b>",
         parse_mode="HTML", reply_markup=currency_keyboard())
     return DEAL_PREMIUM_CURRENCY
 
@@ -498,7 +519,7 @@ async def deal_premium_currency(update: Update, context: ContextTypes.DEFAULT_TY
     q = update.callback_query
     await q.answer()
     context.user_data["currency"] = CURRENCY_MAP.get(q.data, q.data)
-    await q.edit_message_text("<b>✈️ Telegram Premium\n\nВведите сумму сделки:</b>", parse_mode="HTML")
+    await q.edit_message_text("<tg-emoji emoji-id=\"5383165799791730254\">✈️</tg-emoji> <b>Telegram Premium\n\nВведите сумму:</b>", parse_mode="HTML")
     return DEAL_PREMIUM_AMOUNT
 
 async def deal_premium_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1320,6 +1341,7 @@ def main():
             CallbackQueryHandler(callback_router, pattern="^main_menu$"),
             CommandHandler("start", start),
         ],
+        allow_reentry=True,
         per_message=False,
     )
 
