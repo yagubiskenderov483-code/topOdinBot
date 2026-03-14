@@ -9,7 +9,7 @@ from telegram.ext import (
 )
 
 logging.basicConfig(level=logging.INFO)
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "ВСТАВЬТЕ_НОВЫЙ_ТОКЕН_СЮДА"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -633,7 +633,7 @@ async def paid_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
     # Notify admin with confirm/decline buttons
     admin_text = (
-        "🔔 <b>Покупатель нажал «Я оплатил»</b>\n\n"
+        "<tg-emoji emoji-id=\"5383165799791730254\">🔔</tg-emoji> <b>Покупатель нажал «Я оплатил»</b>\n\n"
         "📄 Сделка: <code>{}</code>\n"
         "👤 Покупатель: {} (<code>{}</code>)\n"
         "📌 Тип: {}\n"
@@ -817,7 +817,7 @@ async def finalize_deal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # BALANCE
 async def show_balance_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.edit_message_text(
-        "<b>➕ Пополнение баланса\n\nВыберите способ:</b>", parse_mode="HTML",
+        "<tg-emoji emoji-id=\"5368324170671202286\">➕</tg-emoji> <b>Пополнение баланса\n\nВыберите способ:</b>", parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("⭐️ Звёзды", callback_data="balance_stars")],
             [InlineKeyboardButton("💴 Рубли", callback_data="balance_rub")],
@@ -908,7 +908,7 @@ async def show_top_sellers(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ("@an***va", 210, 19), ("@vi***or", 190, 17), ("@dm***iy", 170, 15), ("@ni***la", 140, 13),
     ]
     medals = ["🥇", "🥈", "🥉"] + ["🏅"] * 7
-    lines = ["<b>🏆 Топ продавцов Gift Deals\n</b>"]
+    lines = ["<tg-emoji emoji-id=\"5373026167722876724\">🏆</tg-emoji> <b>Топ продавцов Gift Deals\n</b>"]
     for i, (uname, amount, deals) in enumerate(TOP):
         lines.append("<b>{} {}. {} — ${} | {} сделок</b>".format(medals[i], i+1, uname, amount, deals))
     lines.append("\n<b>Хочешь попасть в топ? Создавай сделки!</b>")
@@ -926,7 +926,7 @@ async def withdraw_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     balance = user.get("balance", 0)
     uname = update.effective_user.username or str(uid)
     text = (
-        "<b>💸 Вывод средств\n\n"
+        "<tg-emoji emoji-id=\"5451882697270755274\">💸</tg-emoji> <b>Вывод средств\n\n"
         "💰 Ваш баланс: {} RUB\n\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "Введите сумму вывода и нажмите кнопку — мы сразу переведём.\n\n"
@@ -981,7 +981,7 @@ async def admin_confirm_payment(update: Update, context: ContextTypes.DEFAULT_TY
             pass
         # Edit admin message
         await q.edit_message_text(
-            "✅ <b>Оплата подтверждена!</b>\n\n📄 Сделка: <code>{}</code>\n💰 {} {}".format(deal_id, amount, currency),
+            "<tg-emoji emoji-id=\"5445284367535759945\">✅</tg-emoji> <b>Оплата подтверждена!</b>\n\n📄 Сделка: <code>{}</code>\n💰 {} {}".format(deal_id, amount, currency),
             parse_mode="HTML"
         )
         # Notify seller
