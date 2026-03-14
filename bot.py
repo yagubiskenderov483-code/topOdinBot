@@ -72,8 +72,11 @@ def get_user(db, user_id):
     return db["users"][uid]
 
 def get_lang(update):
-    db = load_db()
-    return get_user(db, update.effective_user.id).get("lang", "ru")
+    try:
+        db = load_db()
+        return get_user(db, update.effective_user.id).get("lang", "ru")
+    except Exception:
+        return "ru"
 
 def gen_deal_id(db):
     did = db.get("deal_counter", 1)
@@ -250,10 +253,18 @@ async def show_deal_types(update, context):
 # ===================== ALL CALLBACKS =====================
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
-    await q.answer()
     data = q.data
+    logger.info(f"CALLBACK: {data} from {update.effective_user.id}")
+    try:
+        await q.answer()
+    except Exception:
+        pass
     ud = context.user_data
     lang = get_lang(update)
+    try:
+        pass
+    except Exception:
+        pass
 
     # ── Main navigation ──────────────────────────────────
     if data == "main_menu":
