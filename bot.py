@@ -218,12 +218,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Deal types menu ──────────────────────────────────────────────────────────
 def deal_types_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🖼 НФТ",             callback_data="dt_nft"),
-         InlineKeyboardButton("👤 Юзернейм",         callback_data="dt_usr")],
-        [InlineKeyboardButton("⭐️ Звёзды",          callback_data="dt_str"),
-         InlineKeyboardButton("💎 Крипта",           callback_data="dt_cry")],
-        [InlineKeyboardButton("✈️ Telegram Premium", callback_data="dt_prm")],
-        [InlineKeyboardButton("◀️ Назад",            callback_data="main_menu")],
+        [InlineKeyboardButton("🖼 НФТ",              callback_data="dt_nft"),
+         InlineKeyboardButton("👤 НФТ Юзернейм",     callback_data="dt_usr")],
+        [InlineKeyboardButton("⭐ Звёзды",           callback_data="dt_str"),
+         InlineKeyboardButton("💎 Крипта",            callback_data="dt_cry")],
+        [InlineKeyboardButton("✈ Telegram Premium",  callback_data="dt_prm")],
+        [InlineKeyboardButton("🏠 Главное меню",      callback_data="main_menu")],
     ])
 
 async def show_deal_types(update, context):
