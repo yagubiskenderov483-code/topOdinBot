@@ -2,7 +2,7 @@ import logging
 import json
 import os
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButton, MenuButtonCommands, BotCommand
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ContextTypes
@@ -174,37 +174,15 @@ async def edit_or_send(update, text, kb=None):
 # ── Main menu ────────────────────────────────────────────────────────────────
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
-    return ReplyKeyboardMarkup([
-        [b["deal"],    b["profile"]],
-        [b["balance"], "📋 Мои сделки"],
-        [b["lang"],    b["top"]],
-        [b["support"]],
-    ], resize_keyboard=True)
-
-# Map reply keyboard text -> callback action
-REPLY_MAP = {
-    "deal":    "menu_deal",
-    "profile": "menu_profile",
-    "balance": "menu_balance",
-    "сделки":  "menu_profile",
-    "lang":    "menu_lang",
-    "top":     "menu_top",
-    "support": "support_link",
-}
-
-def get_reply_action(text, lang):
-    """Match reply keyboard button text to action."""
-    b = BTN.get(lang, BTN["ru"])
-    mapping = {
-        b["deal"]:    "menu_deal",
-        b["profile"]: "menu_profile",
-        b["balance"]: "menu_balance",
-        "📋 Мои сделки": "menu_profile",
-        b["lang"]:    "menu_lang",
-        b["top"]:     "menu_top",
-        b["support"]: "support",
-    }
-    return mapping.get(text)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(b["deal"],    callback_data="menu_deal"),
+         InlineKeyboardButton(b["profile"], callback_data="menu_profile")],
+        [InlineKeyboardButton(b["balance"], callback_data="menu_balance"),
+         InlineKeyboardButton("📋 Мои сделки", callback_data="menu_profile")],
+        [InlineKeyboardButton(b["lang"],    callback_data="menu_lang"),
+         InlineKeyboardButton(b["top"],     callback_data="menu_top")],
+        [InlineKeyboardButton(b["support"], url="https://t.me/GiftDealsSupport")],
+    ])
 
 async def show_main(update, context, edit=False):
     db = load_db()
@@ -218,14 +196,15 @@ async def show_main(update, context, edit=False):
     kb = main_kb(lang)
     bv = db.get("banner_video")
     bp = db.get("banner_photo")
-    # Delete previous bot message if editing
-    if edit and update.callback_query:
-        try: await update.callback_query.message.delete()
-        except: pass
     if bv:
         await update.effective_message.reply_video(video=bv, caption=text, parse_mode="HTML", reply_markup=kb)
     elif bp:
         await update.effective_message.reply_photo(photo=bp, caption=text, parse_mode="HTML", reply_markup=kb)
+    elif edit:
+        try:
+            await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
+        except Exception:
+            await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
     else:
         await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
 
@@ -285,11 +264,22 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud.clear()
         try: await q.message.delete()
         except: pass
-        await show_main(update, context)
+        await show_main(update, context, edit=False)
         return
     if d == "menu_deal":
         ud.clear()
-        await show_deal_types(update, context)
+        try: await q.message.delete()
+        except: pass
+        await update.effective_message.reply_text(
+            f"✏️ <b>Создать сделку\n\nВыберите тип:</b>",
+            parse_mode="HTML", reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🖼 НФТ",               callback_data="dt_nft"),
+                 InlineKeyboardButton("👤 НФТ Юзернейм",      callback_data="dt_usr")],
+                [InlineKeyboardButton("⭐️ Звёзды",            callback_data="dt_str"),
+                 InlineKeyboardButton("💎 Крипта (TON/$)",     callback_data="dt_cry")],
+                [InlineKeyboardButton("✈️ Telegram Premium",   callback_data="dt_prm")],
+                [InlineKeyboardButton("◀️ Назад",              callback_data="main_menu")],
+            ]))
         return
     if d == "menu_balance":  await show_balance(update, context); return
     if d == "menu_lang":     await show_lang(update, context); return
@@ -452,34 +442,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if uid == ADMIN_ID and ud.get("adm_step"):
         await handle_adm_msg(update, context)
         return
-
-    # Reply keyboard buttons
-    action = get_reply_action(text, lang)
-    if action:
-        # Delete previous messages for clean UX
-        try: await update.message.delete()
-        except: pass
-        if action == "menu_deal":
-            ud.clear()
-            await show_deal_types_msg(update, context)
-            return
-        elif action == "menu_profile":
-            await show_profile_msg(update, context)
-            return
-        elif action == "menu_balance":
-            await show_balance_msg(update, context)
-            return
-        elif action == "menu_lang":
-            await show_lang_msg(update, context)
-            return
-        elif action == "menu_top":
-            await show_top_msg(update, context)
-            return
-        elif action == "support":
-            await update.message.reply_text(
-                f"🆘 <b>Поддержка</b>\n\nНапишите нам: @GiftDealsSupport",
-                parse_mode="HTML")
-            return
 
     # Deal flow
     dtype = ud.get("type")
@@ -1018,6 +980,13 @@ async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
+    # Set bot menu button with /start command
+    async def post_init(application):
+        await application.bot.set_my_commands([
+            BotCommand("start", "🏠 Главное меню"),
+        ])
+    app.post_init = post_init
+
     app.add_handler(CommandHandler("start",        cmd_start))
     app.add_handler(CommandHandler("admin",        cmd_admin))
     app.add_handler(CommandHandler("neptunteam",   cmd_neptune))
