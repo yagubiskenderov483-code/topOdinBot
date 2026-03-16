@@ -20,24 +20,24 @@ DB_FILE = "db.json"
 
 def ae(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
 E = {
-    "diamond":   ae("5447644880824181073","💎"),
-    "check":     ae("5445284367535759945","✅"),
-    "cross":     ae("5447354187759300341","❌"),
-    "fire":      ae("5422998492250386138","🔥"),
-    "star":      ae("5368324170671202286","⭐"),
-    "lock":      ae("5472354553527541051","🔒"),
-    "bell":      ae("5383165799791730254","🔔"),
-    "gift":      ae("5373026167722876724","🎁"),
-    "trophy":    ae("5373165539476767939","🏆"),
-    "shield":    ae("5472354553527541051","🛡"),
-    "money":     ae("5451882697270755274","💰"),
-    "pencil":    ae("5431815452437257407","✏️"),
-    "globe":     ae("5440539497383087970","🌍"),
-    "nft":       ae("5409081890498491521","🖼"),
-    "user":      ae("5440539497383087970","👤"),
-    "premium":   ae("5383165799791730254","✈️"),
-    "deal":      ae("5267021122383086560","🤝"),
-    "card":      ae("5368324170671202286","💳"),
+    "diamond":  "💎",
+    "check":    "✅",
+    "cross":    "❌",
+    "fire":     "🔥",
+    "star":     "⭐️",
+    "lock":     "🔒",
+    "bell":     "🔔",
+    "gift":     "🎁",
+    "trophy":   "🏆",
+    "shield":   "🛡",
+    "money":    "💰",
+    "pencil":   "✏️",
+    "globe":    "🌍",
+    "nft":      "🖼",
+    "user":     "👤",
+    "premium":  "✈️",
+    "deal":     "🤝",
+    "card":     "💳",
 }
 
 # ── DB ──────────────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ async def show_main(update, context, edit=False):
     lang = u.get("lang","ru")
     desc = db.get("menu_description") or WELCOME.get(lang, WELCOME["ru"])
     banner = db.get("banner") or ""
-    text = f"{E['diamond']} <b>Gift Deals\n\n{desc}</b>"
+    text = f"💎 <b>Gift Deals\n\n{desc}</b>"
     if banner: text += f"\n\n<b>{banner}</b>"
     kb = main_kb(lang)
     bv = db.get("banner_video")
@@ -207,20 +207,27 @@ async def show_main(update, context, edit=False):
 
 # ── /start ───────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    db = load_db()
-    u = get_user(db, update.effective_user.id)
-    u["username"] = update.effective_user.username or ""
-    save_db(db)
-    context.user_data.clear()
-    args = context.args
-    if args and args[0].startswith("deal_"):
-        deal_id = args[0][5:].upper()
-        d = db.get("deals",{}).get(deal_id)
-        if d:
-            await send_deal_card(update, context, deal_id, d, buyer=True)
-            return
-        await update.effective_message.reply_text(f"<b>Сделка {deal_id} не найдена.</b>", parse_mode="HTML")
-    await show_main(update, context)
+    try:
+        db = load_db()
+        u = get_user(db, update.effective_user.id)
+        u["username"] = update.effective_user.username or ""
+        save_db(db)
+        context.user_data.clear()
+        args = context.args
+        if args and args[0].startswith("deal_"):
+            deal_id = args[0][5:].upper()
+            d = db.get("deals",{}).get(deal_id)
+            if d:
+                await send_deal_card(update, context, deal_id, d, buyer=True)
+                return
+            await update.effective_message.reply_text(f"<b>Сделка {deal_id} не найдена.</b>", parse_mode="HTML")
+        await show_main(update, context)
+    except Exception as e:
+        logger.error(f"START ERROR: {e}", exc_info=True)
+        try:
+            await update.effective_message.reply_text(f"Ошибка: {e}")
+        except Exception:
+            pass
 
 # ── Deal types menu ──────────────────────────────────────────────────────────
 def deal_types_kb():
