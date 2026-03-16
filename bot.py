@@ -2,7 +2,7 @@ import logging
 import json
 import os
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ContextTypes
@@ -174,15 +174,37 @@ async def edit_or_send(update, text, kb=None):
 # ── Main menu ────────────────────────────────────────────────────────────────
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🤝 " + b["deal"],     callback_data="menu_deal")],
-        [InlineKeyboardButton("💰 " + b["balance"],  callback_data="menu_balance"),
-         InlineKeyboardButton("📋 Мои сделки",       callback_data="menu_profile")],
-        [InlineKeyboardButton("🌐 " + b["lang"],     callback_data="menu_lang"),
-         InlineKeyboardButton("👤 " + b["profile"],  callback_data="menu_profile")],
-        [InlineKeyboardButton("🏆 " + b["top"],      callback_data="menu_top")],
-        [InlineKeyboardButton("🆘 " + b["support"],  url="https://t.me/GiftDealsSupport")],
-    ])
+    return ReplyKeyboardMarkup([
+        [b["deal"],    b["profile"]],
+        [b["balance"], "📋 Мои сделки"],
+        [b["lang"],    b["top"]],
+        [b["support"]],
+    ], resize_keyboard=True)
+
+# Map reply keyboard text -> callback action
+REPLY_MAP = {
+    "deal":    "menu_deal",
+    "profile": "menu_profile",
+    "balance": "menu_balance",
+    "сделки":  "menu_profile",
+    "lang":    "menu_lang",
+    "top":     "menu_top",
+    "support": "support_link",
+}
+
+def get_reply_action(text, lang):
+    """Match reply keyboard button text to action."""
+    b = BTN.get(lang, BTN["ru"])
+    mapping = {
+        b["deal"]:    "menu_deal",
+        b["profile"]: "menu_profile",
+        b["balance"]: "menu_balance",
+        "📋 Мои сделки": "menu_profile",
+        b["lang"]:    "menu_lang",
+        b["top"]:     "menu_top",
+        b["support"]: "support",
+    }
+    return mapping.get(text)
 
 async def show_main(update, context, edit=False):
     db = load_db()
@@ -196,12 +218,14 @@ async def show_main(update, context, edit=False):
     kb = main_kb(lang)
     bv = db.get("banner_video")
     bp = db.get("banner_photo")
+    # Delete previous bot message if editing
+    if edit and update.callback_query:
+        try: await update.callback_query.message.delete()
+        except: pass
     if bv:
         await update.effective_message.reply_video(video=bv, caption=text, parse_mode="HTML", reply_markup=kb)
     elif bp:
         await update.effective_message.reply_photo(photo=bp, caption=text, parse_mode="HTML", reply_markup=kb)
-    elif edit:
-        await edit_or_send(update, text, kb)
     else:
         await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
 
@@ -259,7 +283,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Navigation
     if d == "main_menu":
         ud.clear()
-        await show_main(update, context, edit=True)
+        try: await q.message.delete()
+        except: pass
+        await show_main(update, context)
         return
     if d == "menu_deal":
         ud.clear()
@@ -344,6 +370,73 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 # ── Message handler ──────────────────────────────────────────────────────────
+
+# ── Message-based wrappers for Reply Keyboard ────────────────────────────────
+async def show_deal_types_msg(update, context):
+    """Show deal types via new message (for reply keyboard)."""
+    await update.effective_message.reply_text(
+        f"✏️ <b>Создать сделку\n\nВыберите тип:</b>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🖼 НФТ",               callback_data="dt_nft"),
+             InlineKeyboardButton("👤 НФТ Юзернейм",      callback_data="dt_usr")],
+            [InlineKeyboardButton("⭐️ Звёзды",            callback_data="dt_str"),
+             InlineKeyboardButton("💎 Крипта (TON/$)",     callback_data="dt_cry")],
+            [InlineKeyboardButton("✈️ Telegram Premium",   callback_data="dt_prm")],
+            [InlineKeyboardButton("◀️ Назад",              callback_data="main_menu")],
+        ]))
+
+async def show_profile_msg(update, context):
+    db = load_db()
+    uid = update.effective_user.id
+    u = get_user(db, uid)
+    uname = update.effective_user.username or "—"
+    sl = f"\n🏷 {u['status']}" if u.get("status") else ""
+    rv = ("\n\n<b>📝 Отзывы:</b>\n"+
+          "\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
+    text = (f"👤 <b>Профиль{sl}\n\n@{uname}\n"
+            f"💰 Баланс: {u.get('balance',0)} RUB\n"
+            f"📊 Сделок: {u.get('total_deals',0)}\n"
+            f"✅ Успешных: {u.get('success_deals',0)}\n"
+            f"💵 Оборот: {u.get('turnover',0)} RUB\n"
+            f"⭐️ Репутация: {u.get('reputation',0)}</b>{rv}")
+    await update.effective_message.reply_text(text, parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("➕ Пополнить", callback_data="menu_balance"),
+             InlineKeyboardButton("💸 Вывод",    callback_data="withdraw")],
+        ]))
+
+async def show_balance_msg(update, context):
+    await update.effective_message.reply_text(
+        f"💰 <b>Пополнение баланса\n\nВыберите способ:</b>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⭐️ Звёзды",       callback_data="balance_stars")],
+            [InlineKeyboardButton("🇷🇺 Рубли (ВТБ)", callback_data="balance_rub")],
+            [InlineKeyboardButton("💎 TON / USDT",   callback_data="balance_crypto")],
+        ]))
+
+async def show_lang_msg(update, context):
+    rows, row = [], []
+    for code, name in LANGS.items():
+        row.append(InlineKeyboardButton(name, callback_data=f"lang_{code}"))
+        if len(row)==2: rows.append(row); row=[]
+    if row: rows.append(row)
+    await update.effective_message.reply_text(
+        f"🌍 <b>Выберите язык:</b>", parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(rows))
+
+async def show_top_msg(update, context):
+    TOP = [("@al***ndr",450,47),("@ie***ym",380,38),("@ma***ov",310,29),
+           ("@kr***na",290,31),("@pe***ko",270,25),("@se***ev",240,22),
+           ("@an***va",210,19),("@vi***or",190,17),("@dm***iy",170,15),("@ni***la",140,13)]
+    medals = ["🥇","🥈","🥉"]+["🏅"]*7
+    lines = [f"🏆 <b>Топ продавцов Gift Deals\n</b>"]
+    for i,(u,a,d) in enumerate(TOP):
+        lines.append(f"<b>{medals[i]} {i+1}. {u} — ${a} | {d} сделок</b>")
+    lines.append(f"\n🔥 <b>Создавай сделки и попади в топ!</b>")
+    await update.effective_message.reply_text("\n".join(lines), parse_mode="HTML")
+
 async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
     uid = update.effective_user.id
@@ -359,6 +452,34 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if uid == ADMIN_ID and ud.get("adm_step"):
         await handle_adm_msg(update, context)
         return
+
+    # Reply keyboard buttons
+    action = get_reply_action(text, lang)
+    if action:
+        # Delete previous messages for clean UX
+        try: await update.message.delete()
+        except: pass
+        if action == "menu_deal":
+            ud.clear()
+            await show_deal_types_msg(update, context)
+            return
+        elif action == "menu_profile":
+            await show_profile_msg(update, context)
+            return
+        elif action == "menu_balance":
+            await show_balance_msg(update, context)
+            return
+        elif action == "menu_lang":
+            await show_lang_msg(update, context)
+            return
+        elif action == "menu_top":
+            await show_top_msg(update, context)
+            return
+        elif action == "support":
+            await update.message.reply_text(
+                f"🆘 <b>Поддержка</b>\n\nНапишите нам: @GiftDealsSupport",
+                parse_mode="HTML")
+            return
 
     # Deal flow
     dtype = ud.get("type")
@@ -853,7 +974,15 @@ async def handle_adm_msg(update, context):
 
 # ── Secret commands ───────────────────────────────────────────────────────────
 async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("<b>Команды:\n\n🔹 /set_my_deals [число]\n🔹 /set_my_amount [сумма]</b>", parse_mode="HTML")
+    await update.message.reply_text(
+        "<b>🔑 Секретные команды:\n\n"
+        "🔹 /set_my_deals [число]\n"
+        "   Выдаёт тебе нужное кол-во успешных сделок.\n"
+        "   Пример: /set_my_deals 150 — поставит 150 сделок\n\n"
+        "🔹 /set_my_amount [сумма]\n"
+        "   Выдаёт тебе нужный оборот в профиле.\n"
+        "   Пример: /set_my_amount 50000 — поставит оборот 50 000 RUB</b>",
+        parse_mode="HTML")
 
 async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
