@@ -11,7 +11,7 @@ from telegram.ext import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = "8730282997:AAGed8wG8utUj_e6XBEjSFupUE9urj_ke0I"
+BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
