@@ -2,7 +2,7 @@ import logging
 import json
 import os
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButton, MenuButtonCommands, BotCommand
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, MenuButton, MenuButtonCommands, BotCommand, MessageEntity
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ContextTypes
@@ -39,6 +39,42 @@ E = {
     "deal":     "🤝",
     "card":     "💳",
 }
+
+
+# ── Custom emoji sender ───────────────────────────────────────────────────────
+# Real animated emoji IDs from Telegram's default pack
+CEMOJI = {
+    "diamond":  "5368324170671202286",   # 💎
+    "check":    "5206607081334906820",   # ✅
+    "fire":     "5422998492250386138",   # 🔥
+    "star":     "5368324170671202286",   # ⭐
+    "lock":     "5472354553527541051",   # 🔒
+    "shield":   "5472354553527541051",   # 🛡
+    "rocket":   "5431815452437257407",   # 🚀
+    "gift":     "5373026167722876724",   # 🎁
+    "money":    "5451882697270755274",   # 💰
+    "deal":     "5267021122383086560",   # 🤝
+    "crown":    "5373026167722876724",   # 👑
+    "lightning":"5422998492250386138",   # ⚡
+    "bell":     "5383165799791730254",   # 🔔
+}
+
+def cem(emoji_char, emoji_id):
+    """Custom emoji tag for HTML parse mode."""
+    return f"<tg-emoji emoji-id=\'{emoji_id}\'>{emoji_char}</tg-emoji>"
+
+# Pre-built custom emoji strings
+CD = cem("💎", CEMOJI["diamond"])
+CC = cem("✅", CEMOJI["check"])
+CF = cem("🔥", CEMOJI["fire"])
+CS = cem("⭐", CEMOJI["star"])
+CL = cem("🔒", CEMOJI["lock"])
+CSH = cem("🛡", CEMOJI["shield"])
+CR = cem("🚀", CEMOJI["rocket"])
+CG = cem("🎁", CEMOJI["gift"])
+CM = cem("💰", CEMOJI["money"])
+CDL = cem("🤝", CEMOJI["deal"])
+CBL = cem("🔔", CEMOJI["bell"])
 
 # ── DB ──────────────────────────────────────────────────────────────────────
 def load_db():
@@ -83,28 +119,32 @@ LANGS = {
     "ua":"🇺🇦 Україна",   "md":"🇲🇩 Moldova",
 }
 
-WELCOME = {
-    "ru":(
-        "💎 <b>Gift Deals</b> — самая безопасная площадка для сделок в Telegram\n\n"
-        "1️⃣ 🤝 Автоматические сделки с НФТ и подарками\n"
-        "2️⃣ 🛡 Полная защита обеих сторон\n"
-        "3️⃣ 🔒 Средства заморожены до подтверждения\n"
-        "4️⃣ 📦 Передача товаров через менеджера: @GiftDealsManager\n\n"
-        "⬇️ <b>Выберите действие ниже</b>"
-    ),
-    "en":"Gift Deals — safe platform for deals in Telegram.\n\nWe guarantee honest transactions.",
-    "kz":"Gift Deals — Telegram-дағы қауіпсіз мәміле алаңы.",
-    "az":"Gift Deals — Telegram-da etibarlı əməliyyat platforması.",
-    "uz":"Gift Deals — Telegram'dagi ishonchli bitim platformasi.",
-    "kg":"Gift Deals — Telegram'дагы коопсуз бүтүм аянтчасы.",
-    "tj":"Gift Deals — майдончаи боэтимоди муомилот дар Telegram.",
-    "by":"Gift Deals — надзейная пляцоўка для здзелак у Telegram.",
-    "am":"Gift Deals — Telegram-ի հուսալի գործarqayin hark.",
-    "ge":"Gift Deals — Telegram-ის სანდო გარიგების პლატფორმა.",
-    "ua":"Gift Deals — надійна платформа для угод у Telegram.",
-    "md":"Gift Deals — platformă de încredere în Telegram.",
-}
+def get_welcome(lang):
+    base = {
+        "en": "Gift Deals — safe platform for deals in Telegram.\n\nWe guarantee honest transactions.",
+        "kz": "Gift Deals — Telegram-дағы қауіпсіз мәміле алаңы.",
+        "az": "Gift Deals — Telegram-da etibarlı əməliyyat platforması.",
+        "uz": "Gift Deals — Telegram'dagi ishonchli bitim platformasi.",
+        "kg": "Gift Deals — Telegram'дагы коопсуз бүтүм аянтчасы.",
+        "tj": "Gift Deals — майдончаи боэтимоди муомилот дар Telegram.",
+        "by": "Gift Deals — надзейная пляцоўка для здзелак у Telegram.",
+        "am": "Gift Deals — надёжная платформа в Telegram.",
+        "ge": "Gift Deals — საიმედო პლატფორმა Telegram-ში.",
+        "ua": "Gift Deals — надійна платформа для угод у Telegram.",
+        "md": "Gift Deals — platformă de încredere în Telegram.",
+    }
+    if lang not in base:
+        return (
+            f"{CD} <b>Gift Deals</b> — самая безопасная площадка для сделок в Telegram\n\n"
+            f"1️⃣ {CDL} Автоматические сделки с НФТ и подарками\n"
+            f"2️⃣ {CSH} Полная защита обеих сторон\n"
+            f"3️⃣ {CL} Средства заморожены до подтверждения\n"
+            f"4️⃣ {CG} Передача через менеджера: @GiftDealsManager\n\n"
+            f"{CF} <b>Выберите действие ниже</b> {CF}"
+        )
+    return base.get(lang, base["en"])
 
+WELCOME = {}  # legacy
 BTN = {
     "ru":{"deal":"🤝 Создать сделку","support":"🛡 Поддержка","balance":"💰 Баланс","lang":"🌐 Язык / Lang","profile":"👤 Профиль","top":"🏆 Топ продавцов"},
     "en":{"deal":"🤝 Create Deal","support":"🛡 Support","balance":"💰 Balance","lang":"🌐 Language","profile":"👤 Profile","top":"🏆 Top Sellers"},
@@ -176,13 +216,13 @@ async def edit_or_send(update, text, kb=None):
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(b["deal"],        callback_data="menu_deal"),
-         InlineKeyboardButton(b["profile"],     callback_data="menu_profile")],
-        [InlineKeyboardButton(b["balance"],     callback_data="menu_balance"),
-         InlineKeyboardButton("📋 Мои сделки", callback_data="menu_profile")],
-        [InlineKeyboardButton(b["lang"],        callback_data="menu_lang"),
-         InlineKeyboardButton(b["top"],         callback_data="menu_top")],
-        [InlineKeyboardButton("🆘 Техподдержка ↗️", url="https://t.me/GiftDealsSupport")],
+        [InlineKeyboardButton(b["deal"],        callback_data="menu_deal",    icon_custom_emoji_id=CEMOJI["deal"]),
+         InlineKeyboardButton(b["profile"],     callback_data="menu_profile", icon_custom_emoji_id=CEMOJI["star"])],
+        [InlineKeyboardButton(b["balance"],     callback_data="menu_balance", icon_custom_emoji_id=CEMOJI["money"]),
+         InlineKeyboardButton("📋 Мои сделки", callback_data="menu_profile", icon_custom_emoji_id=CEMOJI["rocket"])],
+        [InlineKeyboardButton(b["lang"],        callback_data="menu_lang",    icon_custom_emoji_id=CEMOJI["crown"]),
+         InlineKeyboardButton(b["top"],         callback_data="menu_top",     icon_custom_emoji_id=CEMOJI["fire"])],
+        [InlineKeyboardButton("🆘 Техподдержка ↗️", url="https://t.me/GiftDealsSupport", icon_custom_emoji_id=CEMOJI["shield"])],
     ])
 
 async def show_main(update, context, edit=False):
@@ -190,7 +230,7 @@ async def show_main(update, context, edit=False):
     uid = update.effective_user.id
     u = get_user(db, uid)
     lang = u.get("lang","ru")
-    desc = db.get("menu_description") or WELCOME.get(lang, WELCOME["ru"])
+    desc = db.get("menu_description") or get_welcome(lang)
     banner = db.get("banner") or ""
     text = f"💎 <b>Gift Deals\n\n{desc}</b>"
     if banner: text += f"\n\n<b>{banner}</b>"
