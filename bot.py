@@ -85,11 +85,12 @@ LANGS = {
 
 WELCOME = {
     "ru":(
-        "Gift Deals — одна из самых безопасных площадок в Telegram для проведения сделок.\n\n"
-        "🔹 Автоматические сделки с НФТ и подарками\n"
-        "🔹 Полная защита обеих сторон\n"
-        "🔹 Передача товаров через менеджера: @GiftDealsManager\n\n"
-        "Тысячи успешных сделок — каждая прошла безопасно."
+        "💎 <b>Gift Deals</b> — самая безопасная площадка для сделок в Telegram\n\n"
+        "1️⃣ 🤝 Автоматические сделки с НФТ и подарками\n"
+        "2️⃣ 🛡 Полная защита обеих сторон\n"
+        "3️⃣ 🔒 Средства заморожены до подтверждения\n"
+        "4️⃣ 📦 Передача товаров через менеджера: @GiftDealsManager\n\n"
+        "⬇️ <b>Выберите действие ниже</b>"
     ),
     "en":"Gift Deals — safe platform for deals in Telegram.\n\nWe guarantee honest transactions.",
     "kz":"Gift Deals — Telegram-дағы қауіпсіз мәміле алаңы.",
@@ -175,13 +176,13 @@ async def edit_or_send(update, text, kb=None):
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(b["deal"],    callback_data="menu_deal"),
-         InlineKeyboardButton(b["profile"], callback_data="menu_profile")],
-        [InlineKeyboardButton(b["balance"], callback_data="menu_balance"),
+        [InlineKeyboardButton(b["deal"],        callback_data="menu_deal"),
+         InlineKeyboardButton(b["profile"],     callback_data="menu_profile")],
+        [InlineKeyboardButton(b["balance"],     callback_data="menu_balance"),
          InlineKeyboardButton("📋 Мои сделки", callback_data="menu_profile")],
-        [InlineKeyboardButton(b["lang"],    callback_data="menu_lang"),
-         InlineKeyboardButton(b["top"],     callback_data="menu_top")],
-        [InlineKeyboardButton(b["support"], url="https://t.me/GiftDealsSupport")],
+        [InlineKeyboardButton(b["lang"],        callback_data="menu_lang"),
+         InlineKeyboardButton(b["top"],         callback_data="menu_top")],
+        [InlineKeyboardButton("🆘 Техподдержка ↗️", url="https://t.me/GiftDealsSupport")],
     ])
 
 async def show_main(update, context, edit=False):
@@ -318,13 +319,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад",callback_data="menu_deal")]]))
         return
     if d == "dt_cry":
-        ud.clear(); ud["type"]="crypto"; ud["partner"]="—"
-        await send_text(update, f"{E['diamond']} <b>Крипта\n\nВыберите валюту:</b>",
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton("💎 TON",   callback_data="cry_ton"),
-                 InlineKeyboardButton("💵 USDT",  callback_data="cry_usd")],
-                [InlineKeyboardButton("◀️ Назад", callback_data="menu_deal")],
-            ]))
+        ud.clear(); ud["type"]="crypto"; ud["step"]="partner"
+        await send_text(update, f"{E['diamond']} <b>💎 Крипта\n\nВведите @юзернейм партнёра:</b>",
+            InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="menu_deal")]]))
         return
     if d == "dt_prm":
         ud.clear(); ud["type"]="premium"; ud["step"]="partner"
@@ -332,14 +329,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад",callback_data="menu_deal")]]))
         return
 
-    # Crypto currency
+    # Crypto currency selection (comes after partner)
     if d == "cry_ton":
         ud["currency"]="TON"; ud["step"]="amount"
-        await send_text(update, f"{E['diamond']} <b>Крипта (TON)\n\nВведите сумму сделки:</b>")
+        await send_text(update, f"💎 <b>Крипта (TON)\n\nВведите сумму сделки:</b>")
         return
     if d == "cry_usd":
         ud["currency"]="USDT"; ud["step"]="amount"
-        await send_text(update, f"{E['diamond']} <b>Крипта (USDT)\n\nВведите сумму сделки:</b>")
+        await send_text(update, f"💎 <b>Крипта (USDT)\n\nВведите сумму сделки:</b>")
         return
 
     # Premium period
@@ -456,17 +453,26 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud["partner"] = text
         if dtype == "nft":
             ud["step"] = "nft_link"
-            await update.message.reply_text(f"{E['nft']} <b>НФТ\n\nВставьте ссылку (https://...):</b>", parse_mode="HTML")
+            await update.message.reply_text(f"🖼 <b>НФТ\n\nВставьте ссылку на НФТ (https://...):</b>", parse_mode="HTML")
         elif dtype == "username":
             ud["step"] = "trade_usr"
-            await update.message.reply_text(f"{E['user']} <b>Юзернейм\n\nВведите @юзернейм товара:</b>", parse_mode="HTML")
+            await update.message.reply_text(f"👤 <b>Юзернейм\n\nВведите @юзернейм товара:</b>", parse_mode="HTML")
         elif dtype == "stars":
             ud["step"] = "stars_cnt"
-            await update.message.reply_text(f"{E['star']} <b>Звёзды\n\nСколько звёзд?</b>", parse_mode="HTML")
+            await update.message.reply_text(f"⭐️ <b>Звёзды\n\nСколько звёзд?</b>", parse_mode="HTML")
+        elif dtype == "crypto":
+            ud["step"] = "cry_currency"
+            await update.message.reply_text(
+                f"💎 <b>Крипта\n\nВыберите валюту:</b>",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💎 TON",   callback_data="cry_ton"),
+                     InlineKeyboardButton("💵 USDT",  callback_data="cry_usd")],
+                ]))
         elif dtype == "premium":
             ud["step"] = "prem_period"
             await update.message.reply_text(
-                f"{E['premium']} <b>Telegram Premium\n\nВыберите срок:</b>",
+                f"✈️ <b>Telegram Premium\n\nВыберите срок:</b>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("3 месяца", callback_data="prm_3"),
