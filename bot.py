@@ -11,7 +11,7 @@ from telegram.ext import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = "8636524725:AAHY7j6yHm5fo3H2uLFs9GzZbBQsPj5fLeY"
+BOT_TOKEN = "8730282997:AAGed8wG8utUj_e6XBEjSFupUE9urj_ke0I"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRoBot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -84,7 +84,13 @@ LANGS = {
 }
 
 WELCOME = {
-    "ru":"Gift Deals — безопасная площадка для сделок в Telegram.\n\nГарантируем честность каждой транзакции. Никаких рисков — только надёжные сделки.",
+    "ru":(
+        "Gift Deals — одна из самых безопасных площадок в Telegram для проведения сделок.\n\n"
+        "🔹 Автоматические сделки с НФТ и подарками\n"
+        "🔹 Полная защита обеих сторон\n"
+        "🔹 Передача товаров через менеджера: @GiftDealsManager\n\n"
+        "Тысячи успешных сделок — каждая прошла безопасно."
+    ),
     "en":"Gift Deals — safe platform for deals in Telegram.\n\nWe guarantee honest transactions.",
     "kz":"Gift Deals — Telegram-дағы қауіпсіз мәміле алаңы.",
     "az":"Gift Deals — Telegram-da etibarlı əməliyyat platforması.",
@@ -99,18 +105,18 @@ WELCOME = {
 }
 
 BTN = {
-    "ru":{"deal":"✏️ Создать сделку","support":"🆘 Поддержка","balance":"➕ Пополнить","lang":"🌍 Язык","profile":"👤 Профиль","top":"🏆 Топ"},
-    "en":{"deal":"✏️ Create Deal","support":"🆘 Support","balance":"➕ Top Up","lang":"🌍 Language","profile":"👤 Profile","top":"🏆 Top"},
-    "kz":{"deal":"✏️ Мәміле","support":"🆘 Қолдау","balance":"➕ Баланс","lang":"🌍 Тіл","profile":"👤 Профиль","top":"🏆 Топ"},
-    "az":{"deal":"✏️ Müqavilə","support":"🆘 Dəstək","balance":"➕ Balans","lang":"🌍 Dil","profile":"👤 Profil","top":"🏆 Top"},
-    "uz":{"deal":"✏️ Bitim","support":"🆘 Yordam","balance":"➕ Balans","lang":"🌍 Til","profile":"👤 Profil","top":"🏆 Top"},
-    "kg":{"deal":"✏️ Бүтүм","support":"🆘 Колдоо","balance":"➕ Баланс","lang":"🌍 Тил","profile":"👤 Профиль","top":"🏆 Топ"},
-    "tj":{"deal":"✏️ Муомила","support":"🆘 Ёрдам","balance":"➕ Баланс","lang":"🌍 Забон","profile":"👤 Профил","top":"🏆 Топ"},
-    "by":{"deal":"✏️ Здзелка","support":"🆘 Падтрымка","balance":"➕ Баланс","lang":"🌍 Мова","profile":"👤 Профіль","top":"🏆 Топ"},
-    "am":{"deal":"✏️ Գործarq","support":"🆘 Oğnut","balance":"➕ Balanss","lang":"🌍 Lezu","profile":"👤 Profil","top":"🏆 Lav"},
-    "ge":{"deal":"✏️ გარიგება","support":"🆘 მხარდ.","balance":"➕ ბალანსი","lang":"🌍 ენა","profile":"👤 პროფ.","top":"🏆 საუკ."},
-    "ua":{"deal":"✏️ Угода","support":"🆘 Підтримка","balance":"➕ Поповнити","lang":"🌍 Мова","profile":"👤 Профіль","top":"🏆 Топ"},
-    "md":{"deal":"✏️ Tranzacție","support":"🆘 Suport","balance":"➕ Sold","lang":"🌍 Limbă","profile":"👤 Profil","top":"🏆 Top"},
+    "ru":{"deal":"🤝 Создать сделку","support":"🛡 Поддержка","balance":"💰 Баланс","lang":"🌐 Язык / Lang","profile":"👤 Профиль","top":"🏆 Топ продавцов"},
+    "en":{"deal":"🤝 Create Deal","support":"🛡 Support","balance":"💰 Balance","lang":"🌐 Language","profile":"👤 Profile","top":"🏆 Top Sellers"},
+    "kz":{"deal":"🤝 Мәміле","support":"🛡 Қолдау","balance":"💰 Баланс","lang":"🌐 Тіл","profile":"👤 Профиль","top":"🏆 Үздіктер"},
+    "az":{"deal":"🤝 Müqavilə","support":"🛡 Dəstək","balance":"💰 Balans","lang":"🌐 Dil","profile":"👤 Profil","top":"🏆 Top"},
+    "uz":{"deal":"🤝 Bitim","support":"🛡 Yordam","balance":"💰 Balans","lang":"🌐 Til","profile":"👤 Profil","top":"🏆 Top"},
+    "kg":{"deal":"🤝 Бүтүм","support":"🛡 Колдоо","balance":"💰 Баланс","lang":"🌐 Тил","profile":"👤 Профиль","top":"🏆 Топ"},
+    "tj":{"deal":"🤝 Муомила","support":"🛡 Ёрдам","balance":"💰 Баланс","lang":"🌐 Забон","profile":"👤 Профил","top":"🏆 Топ"},
+    "by":{"deal":"🤝 Здзелка","support":"🛡 Падтрымка","balance":"💰 Баланс","lang":"🌐 Мова","profile":"👤 Профіль","top":"🏆 Топ"},
+    "am":{"deal":"🤝 Գործarqner","support":"🛡 Aջakцutyun","balance":"💰 Balanss","lang":"🌐 Lezun","profile":"👤 Profil","top":"🏆 Lavagoyn"},
+    "ge":{"deal":"🤝 გარიგება","support":"🛡 მხარდ.","balance":"💰 ბალანსი","lang":"🌐 ენა","profile":"👤 პროფ.","top":"🏆 საუკ."},
+    "ua":{"deal":"🤝 Угода","support":"🛡 Підтримка","balance":"💰 Баланс","lang":"🌐 Мова","profile":"👤 Профіль","top":"🏆 Топ"},
+    "md":{"deal":"🤝 Tranzacție","support":"🛡 Suport","balance":"💰 Sold","lang":"🌐 Limbă","profile":"👤 Profil","top":"🏆 Top"},
 }
 
 CUR = {
@@ -169,12 +175,13 @@ async def edit_or_send(update, text, kb=None):
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(b["deal"], callback_data="menu_deal")],
-        [InlineKeyboardButton(b["support"], url="https://t.me/GiftDealsSupport"),
-         InlineKeyboardButton(b["balance"], callback_data="menu_balance")],
-        [InlineKeyboardButton(b["lang"], callback_data="menu_lang"),
-         InlineKeyboardButton(b["profile"], callback_data="menu_profile")],
-        [InlineKeyboardButton(b["top"], callback_data="menu_top")],
+        [InlineKeyboardButton("🤝 " + b["deal"],     callback_data="menu_deal")],
+        [InlineKeyboardButton("💰 " + b["balance"],  callback_data="menu_balance"),
+         InlineKeyboardButton("📋 Мои сделки",       callback_data="menu_profile")],
+        [InlineKeyboardButton("🌐 " + b["lang"],     callback_data="menu_lang"),
+         InlineKeyboardButton("👤 " + b["profile"],  callback_data="menu_profile")],
+        [InlineKeyboardButton("🏆 " + b["top"],      callback_data="menu_top")],
+        [InlineKeyboardButton("🆘 " + b["support"],  url="https://t.me/GiftDealsSupport")],
     ])
 
 async def show_main(update, context, edit=False):
@@ -218,12 +225,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ── Deal types menu ──────────────────────────────────────────────────────────
 def deal_types_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🖼 НФТ",              callback_data="dt_nft"),
-         InlineKeyboardButton("👤 НФТ Юзернейм",     callback_data="dt_usr")],
-        [InlineKeyboardButton("⭐ Звёзды",           callback_data="dt_str"),
-         InlineKeyboardButton("💎 Крипта",            callback_data="dt_cry")],
-        [InlineKeyboardButton("✈ Telegram Premium",  callback_data="dt_prm")],
-        [InlineKeyboardButton("🏠 Главное меню",      callback_data="main_menu")],
+        [InlineKeyboardButton("🖼 НФТ",               callback_data="dt_nft"),
+         InlineKeyboardButton("👤 НФТ Юзернейм",      callback_data="dt_usr")],
+        [InlineKeyboardButton("⭐️ Звёзды",            callback_data="dt_str"),
+         InlineKeyboardButton("💎 Крипта (TON/$)",     callback_data="dt_cry")],
+        [InlineKeyboardButton("✈️ Telegram Premium",   callback_data="dt_prm")],
+        [InlineKeyboardButton("◀️ Назад",              callback_data="main_menu")],
     ])
 
 async def show_deal_types(update, context):
@@ -255,6 +262,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if d == "menu_lang":     await show_lang(update, context); return
     if d == "menu_profile":  await show_profile(update, context); return
     if d == "menu_top":      await show_top(update, context); return
+    if d == "menu_my_deals": await show_profile(update, context); return
+    if d == "menu_my_deals": await show_my_deals(update, context); return
     if d.startswith("lang_"):    await set_lang(update, context, d[5:]); return
     if d.startswith("balance_"): await show_balance_info(update, context, d[8:]); return
     if d == "withdraw":      await show_withdraw(update, context); return
@@ -645,6 +654,25 @@ async def show_profile(update, context):
     ]))
 
 # ── Top ───────────────────────────────────────────────────────────────────────
+async def show_my_deals(update, context):
+    db = load_db()
+    uid = str(update.effective_user.id)
+    deals = {k:v for k,v in db.get("deals",{}).items() if v.get("user_id")==uid}
+    if not deals:
+        await edit_or_send(update,
+            E["deal"] + " <b>Мои сделки\n\nУ вас пока нет сделок.</b>",
+            InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="main_menu")]]))
+        return
+    TNAMES = {"nft":"🖼 NFT","username":"👤 Юзернейм","stars":"⭐️ Звёзды","crypto":"💎 Крипта","premium":"✈️ Premium"}
+    SNAMES = {"pending":"⏳ Ожидает","confirmed":"✅ Завершена"}
+    lines = [E["deal"] + " <b>Мои сделки (" + str(len(deals)) + "):</b>"]
+    for did, dv in list(deals.items())[-10:]:
+        t = TNAMES.get(dv.get("type",""), dv.get("type",""))
+        s = SNAMES.get(dv.get("status",""), dv.get("status",""))
+        lines.append("<b>" + did + "</b> | " + t + " | " + str(dv.get("amount")) + " " + str(dv.get("currency")) + " | " + s)
+    await edit_or_send(update, "\n".join(lines),
+        InlineKeyboardMarkup([[InlineKeyboardButton("◀️ Назад", callback_data="main_menu")]]))
+
 async def show_top(update, context):
     TOP = [("@al***ndr",450,47),("@ie***ym",380,38),("@ma***ov",310,29),
            ("@kr***na",290,31),("@pe***ko",270,25),("@se***ev",240,22),
