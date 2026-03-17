@@ -11,7 +11,7 @@ from telegram.ext import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = "8729655481:AAHAnBx9sIuJZEYzfzttOwQ50AjTusDJbbY"
+BOT_TOKEN = "8636524725:AAHohfHayrAE2MXswcFMHHiC4kLoI7fd5XE"
 ADMIN_ID = 174415647
 BOT_USERNAME = "GiftDealsRobot"
 MANAGER_USERNAME = "@GiftDealsManager"
@@ -132,18 +132,18 @@ def get_welcome(lang):
     )
 
 BTN = {
-    "ru": {"deal": "🤝 Создать сделку", "balance": "💰 Баланс", "lang": "🌐 Язык / Lang", "profile": "👤 Профиль", "top": "🏆 Топ продавцов"},
-    "en": {"deal": "🤝 Create Deal", "balance": "💰 Balance", "lang": "🌐 Language", "profile": "👤 Profile", "top": "🏆 Top Sellers"},
-    "kz": {"deal": "🤝 Мәміле", "balance": "💰 Баланс", "lang": "🌐 Тіл", "profile": "👤 Профиль", "top": "🏆 Үздіктер"},
-    "az": {"deal": "🤝 Müqavilə", "balance": "💰 Balans", "lang": "🌐 Dil", "profile": "👤 Profil", "top": "🏆 Top"},
-    "uz": {"deal": "🤝 Bitim", "balance": "💰 Balans", "lang": "🌐 Til", "profile": "👤 Profil", "top": "🏆 Top"},
-    "kg": {"deal": "🤝 Бүтүм", "balance": "💰 Баланс", "lang": "🌐 Тил", "profile": "👤 Профиль", "top": "🏆 Топ"},
-    "tj": {"deal": "🤝 Муомила", "balance": "💰 Баланс", "lang": "🌐 Забон", "profile": "👤 Профил", "top": "🏆 Топ"},
-    "by": {"deal": "🤝 Здзелка", "balance": "💰 Баланс", "lang": "🌐 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
-    "am": {"deal": "🤝 Գործ", "balance": "💰 Balanss", "lang": "🌐 Lezun", "profile": "👤 Profil", "top": "🏆 Top"},
-    "ge": {"deal": "🤝 გარიგება", "balance": "💰 ბალანსი", "lang": "🌐 ენა", "profile": "👤 პროფ.", "top": "🏆 საუკ."},
-    "ua": {"deal": "🤝 Угода", "balance": "💰 Баланс", "lang": "🌐 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
-    "md": {"deal": "🤝 Tranzacție", "balance": "💰 Sold", "lang": "🌐 Limbă", "profile": "👤 Profil", "top": "🏆 Top"},
+    "ru": {"deal": "🫱🏻‍🫲🏻 Создать сделку", "balance": "💳 Баланс", "lang": "🌍 Язык / Lang", "profile": "👤 Профиль", "top": "🏆 Топ продавцов"},
+    "en": {"deal": "🫱🏻‍🫲🏻 Create Deal", "balance": "💳 Balance", "lang": "🌍 Language", "profile": "👤 Profile", "top": "🏆 Top Sellers"},
+    "kz": {"deal": "🫱🏻‍🫲🏻 Мәміле", "balance": "💳 Баланс", "lang": "🌍 Тіл", "profile": "👤 Профиль", "top": "🏆 Үздіктер"},
+    "az": {"deal": "🫱🏻‍🫲🏻 Müqavilə", "balance": "💳 Balans", "lang": "🌍 Dil", "profile": "👤 Profil", "top": "🏆 Top"},
+    "uz": {"deal": "🫱🏻‍🫲🏻 Bitim", "balance": "💳 Balans", "lang": "🌍 Til", "profile": "👤 Profil", "top": "🏆 Top"},
+    "kg": {"deal": "🫱🏻‍🫲🏻 Бүтүм", "balance": "💳 Баланс", "lang": "🌍 Тил", "profile": "👤 Профиль", "top": "🏆 Топ"},
+    "tj": {"deal": "🫱🏻‍🫲🏻 Муомила", "balance": "💳 Баланс", "lang": "🌍 Забон", "profile": "👤 Профил", "top": "🏆 Топ"},
+    "by": {"deal": "🫱🏻‍🫲🏻 Здзелка", "balance": "💳 Баланс", "lang": "🌍 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
+    "am": {"deal": "🫱🏻‍🫲🏻 Գործ", "balance": "💳 Balanss", "lang": "🌍 Lezun", "profile": "👤 Profil", "top": "🏆 Top"},
+    "ge": {"deal": "🫱🏻‍🫲🏻 გარიგება", "balance": "💳 ბალანსი", "lang": "🌍 ენა", "profile": "👤 პროფ.", "top": "🏆 საუკ."},
+    "ua": {"deal": "🫱🏻‍🫲🏻 Угода", "balance": "💳 Баланс", "lang": "🌍 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
+    "md": {"deal": "🫱🏻‍🫲🏻 Tranzacție", "balance": "💳 Sold", "lang": "🌍 Limbă", "profile": "👤 Profil", "top": "🏆 Top"},
 }
 
 CUR = {
@@ -193,7 +193,7 @@ def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(b["deal"],callback_data="menu_deal"),InlineKeyboardButton(b["profile"],callback_data="menu_profile")],
-        [InlineKeyboardButton(b["balance"],callback_data="menu_balance"),InlineKeyboardButton("📋 Мои сделки",callback_data="menu_my_deals")],
+        [InlineKeyboardButton(b["balance"],callback_data="menu_balance"),InlineKeyboardButton("📂 Мои сделки",callback_data="menu_my_deals")],
         [InlineKeyboardButton(b["lang"],callback_data="menu_lang"),InlineKeyboardButton(b["top"],callback_data="menu_top")],
         [InlineKeyboardButton("🆘 Техподдержка ↗️",url="https://t.me/GiftDealsSupport")],
     ])
@@ -528,9 +528,9 @@ async def show_withdraw(update, context):
 def adm_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("👤 Управление пользователем",callback_data="adm_user")],
-        [InlineKeyboardButton("📢 Баннер (фото/видео/текст)",callback_data="adm_banner")],
-        [InlineKeyboardButton("📝 Описание меню",callback_data="adm_menu_desc")],
-        [InlineKeyboardButton("📋 Список сделок",callback_data="adm_deals")],
+        [InlineKeyboardButton("🖼 Баннер (фото/видео/текст)",callback_data="adm_banner")],
+        [InlineKeyboardButton("✏️ Описание меню",callback_data="adm_menu_desc")],
+        [InlineKeyboardButton("📂 Список сделок",callback_data="adm_deals")],
     ])
 
 async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
