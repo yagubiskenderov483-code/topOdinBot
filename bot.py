@@ -193,13 +193,13 @@ async def edit_or_send(update, text, kb=None):
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(b["deal"],        callback_data="menu_deal",    icon_custom_emoji_id=CEMOJI["deal"]),
-         InlineKeyboardButton(b["profile"],     callback_data="menu_profile", icon_custom_emoji_id=CEMOJI["star"])],
-        [InlineKeyboardButton(b["balance"],     callback_data="menu_balance", icon_custom_emoji_id=CEMOJI["money"]),
-         InlineKeyboardButton("📋 Мои сделки", callback_data="menu_profile", icon_custom_emoji_id=CEMOJI["rocket"])],
-        [InlineKeyboardButton(b["lang"],        callback_data="menu_lang",    icon_custom_emoji_id=CEMOJI["crown"]),
-         InlineKeyboardButton(b["top"],         callback_data="menu_top",     icon_custom_emoji_id=CEMOJI["fire"])],
-        [InlineKeyboardButton("🆘 Техподдержка ↗️", url="https://t.me/GiftDealsSupport", icon_custom_emoji_id=CEMOJI["shield"])],
+        [InlineKeyboardButton(b["deal"],        callback_data="menu_deal"),
+         InlineKeyboardButton(b["profile"],     callback_data="menu_profile")],
+        [InlineKeyboardButton(b["balance"],     callback_data="menu_balance"),
+         InlineKeyboardButton("📋 Мои сделки", callback_data="menu_profile")],
+        [InlineKeyboardButton(b["lang"],        callback_data="menu_lang"),
+         InlineKeyboardButton(b["top"],         callback_data="menu_top")],
+        [InlineKeyboardButton("🆘 Техподдержка ↗️", url="https://t.me/GiftDealsSupport")],
     ])
 
 async def show_main(update, context, edit=False):
