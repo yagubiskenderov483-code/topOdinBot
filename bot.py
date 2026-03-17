@@ -132,18 +132,18 @@ def get_welcome(lang):
     )
 
 BTN = {
-    "ru": {"deal": "🫱🏻‍🫲🏻 Создать сделку", "balance": "💳 Баланс", "lang": "🌍 Язык / Lang", "profile": "👤 Профиль", "top": "🏆 Топ продавцов"},
-    "en": {"deal": "🫱🏻‍🫲🏻 Create Deal", "balance": "💳 Balance", "lang": "🌍 Language", "profile": "👤 Profile", "top": "🏆 Top Sellers"},
-    "kz": {"deal": "🫱🏻‍🫲🏻 Мәміле", "balance": "💳 Баланс", "lang": "🌍 Тіл", "profile": "👤 Профиль", "top": "🏆 Үздіктер"},
-    "az": {"deal": "🫱🏻‍🫲🏻 Müqavilə", "balance": "💳 Balans", "lang": "🌍 Dil", "profile": "👤 Profil", "top": "🏆 Top"},
-    "uz": {"deal": "🫱🏻‍🫲🏻 Bitim", "balance": "💳 Balans", "lang": "🌍 Til", "profile": "👤 Profil", "top": "🏆 Top"},
-    "kg": {"deal": "🫱🏻‍🫲🏻 Бүтүм", "balance": "💳 Баланс", "lang": "🌍 Тил", "profile": "👤 Профиль", "top": "🏆 Топ"},
-    "tj": {"deal": "🫱🏻‍🫲🏻 Муомила", "balance": "💳 Баланс", "lang": "🌍 Забон", "profile": "👤 Профил", "top": "🏆 Топ"},
-    "by": {"deal": "🫱🏻‍🫲🏻 Здзелка", "balance": "💳 Баланс", "lang": "🌍 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
-    "am": {"deal": "🫱🏻‍🫲🏻 Գործ", "balance": "💳 Balanss", "lang": "🌍 Lezun", "profile": "👤 Profil", "top": "🏆 Top"},
-    "ge": {"deal": "🫱🏻‍🫲🏻 გარიგება", "balance": "💳 ბალანსი", "lang": "🌍 ენა", "profile": "👤 პროფ.", "top": "🏆 საუკ."},
-    "ua": {"deal": "🫱🏻‍🫲🏻 Угода", "balance": "💳 Баланс", "lang": "🌍 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
-    "md": {"deal": "🫱🏻‍🫲🏻 Tranzacție", "balance": "💳 Sold", "lang": "🌍 Limbă", "profile": "👤 Profil", "top": "🏆 Top"},
+    "ru": {"deal": "🎁 Создать сделку", "balance": "💳 Баланс", "lang": "🌍 Язык / Lang", "profile": "👤 Профиль", "top": "🏆 Топ продавцов"},
+    "en": {"deal": "🎁 Create Deal", "balance": "💳 Balance", "lang": "🌍 Language", "profile": "👤 Profile", "top": "🏆 Top Sellers"},
+    "kz": {"deal": "🎁 Мәміле", "balance": "💳 Баланс", "lang": "🌍 Тіл", "profile": "👤 Профиль", "top": "🏆 Үздіктер"},
+    "az": {"deal": "🎁 Müqavilə", "balance": "💳 Balans", "lang": "🌍 Dil", "profile": "👤 Profil", "top": "🏆 Top"},
+    "uz": {"deal": "🎁 Bitim", "balance": "💳 Balans", "lang": "🌍 Til", "profile": "👤 Profil", "top": "🏆 Top"},
+    "kg": {"deal": "🎁 Бүтүм", "balance": "💳 Баланс", "lang": "🌍 Тил", "profile": "👤 Профиль", "top": "🏆 Топ"},
+    "tj": {"deal": "🎁 Муомила", "balance": "💳 Баланс", "lang": "🌍 Забон", "profile": "👤 Профил", "top": "🏆 Топ"},
+    "by": {"deal": "🎁 Здзелка", "balance": "💳 Баланс", "lang": "🌍 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
+    "am": {"deal": "🎁 Գործ", "balance": "💳 Balanss", "lang": "🌍 Lezun", "profile": "👤 Profil", "top": "🏆 Top"},
+    "ge": {"deal": "🎁 გარიგება", "balance": "💳 ბალანსი", "lang": "🌍 ენა", "profile": "👤 პროფ.", "top": "🏆 საუკ."},
+    "ua": {"deal": "🎁 Угода", "balance": "💳 Баланс", "lang": "🌍 Мова", "profile": "👤 Профіль", "top": "🏆 Топ"},
+    "md": {"deal": "🎁 Tranzacție", "balance": "💳 Sold", "lang": "🌍 Limbă", "profile": "👤 Profil", "top": "🏆 Top"},
 }
 
 CUR = {
@@ -193,7 +193,7 @@ def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(b["deal"],callback_data="menu_deal"),InlineKeyboardButton(b["profile"],callback_data="menu_profile")],
-        [InlineKeyboardButton(b["balance"],callback_data="menu_balance"),InlineKeyboardButton("📂 Мои сделки",callback_data="menu_my_deals")],
+        [InlineKeyboardButton(b["balance"],callback_data="menu_balance"),InlineKeyboardButton("🗂 Мои сделки",callback_data="menu_my_deals")],
         [InlineKeyboardButton(b["lang"],callback_data="menu_lang"),InlineKeyboardButton(b["top"],callback_data="menu_top")],
         [InlineKeyboardButton("🆘 Техподдержка ↗️",url="https://t.me/GiftDealsSupport")],
     ])
@@ -226,7 +226,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def deal_types_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🖼 НФТ",callback_data="dt_nft"),InlineKeyboardButton("👤 НФТ Юзернейм",callback_data="dt_usr")],
+        [InlineKeyboardButton("🖼 НФТ",callback_data="dt_nft"),InlineKeyboardButton("🔤 НФТ Юзернейм",callback_data="dt_usr")],
         [InlineKeyboardButton("⭐️ Звёзды",callback_data="dt_str"),InlineKeyboardButton("💎 Крипта (TON/$)",callback_data="dt_cry")],
         [InlineKeyboardButton("✈️ Telegram Premium",callback_data="dt_prm")],
         [InlineKeyboardButton("🎭 Премиум стикеры",callback_data="dt_pst")],
@@ -447,7 +447,7 @@ async def adm_decline(update, context):
 async def show_balance(update, context):
     try:
         await edit_or_send(update,f"{E['money']} <b>Пополнение баланса\n\nВыберите способ:</b>",
-            InlineKeyboardMarkup([[InlineKeyboardButton("⭐️ Звёзды",callback_data="balance_stars")],[InlineKeyboardButton("🇷🇺 Рубли (ВТБ)",callback_data="balance_rub")],[InlineKeyboardButton("💎 TON / USDT",callback_data="balance_crypto")],[InlineKeyboardButton("◀️ Назад",callback_data="main_menu")]]))
+            InlineKeyboardMarkup([[InlineKeyboardButton("⭐️ Звёзды",callback_data="balance_stars")],[InlineKeyboardButton("🏦 Рубли (ВТБ)",callback_data="balance_rub")],[InlineKeyboardButton("💎 TON / USDT",callback_data="balance_crypto")],[InlineKeyboardButton("◀️ Назад",callback_data="main_menu")]]))
     except Exception as e: logger.error(f"show_balance: {e}")
 
 async def show_balance_info(update, context, method):
@@ -530,7 +530,7 @@ def adm_kb():
         [InlineKeyboardButton("👤 Управление пользователем",callback_data="adm_user")],
         [InlineKeyboardButton("🖼 Баннер (фото/видео/текст)",callback_data="adm_banner")],
         [InlineKeyboardButton("✏️ Описание меню",callback_data="adm_menu_desc")],
-        [InlineKeyboardButton("📂 Список сделок",callback_data="adm_deals")],
+        [InlineKeyboardButton("🗂 Список сделок",callback_data="adm_deals")],
     ])
 
 async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
