@@ -225,17 +225,17 @@ BTN = {
 }
 
 CUR = {
-    "TON": "💎 TON", "USDT": "<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> USDT",
-    "Stars": {"ru": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Звёзды", "en": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Stars", "kz": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Жұлдыздар", "az": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Ulduzlar", "uz": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Yulduzlar", "kg": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Жылдыздар", "tj": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Ситорахо", "by": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Зоркі", "am": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Աստղեր", "ge": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> ვარსკვლავები", "ua": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Зірки", "md": "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Stele"},
-    "RUB": {"ru": "🇷🇺 Рубли", "en": "🇷🇺 Rubles", "kz": "🇷🇺 Рубль", "az": "🇷🇺 Rublu", "uz": "🇷🇺 Rubl", "kg": "🇷🇺 Рубль", "tj": "🇷🇺 Рубл", "by": "🇷🇺 Рублі", "am": "🇷🇺 Ռուբլի", "ge": "🇷🇺 რუბლი", "ua": "🇷🇺 Рублі", "md": "🇷🇺 Ruble"},
-    "KZT": {"ru": "🇰🇿 Тенге", "en": "🇰🇿 Tenge", "kz": "🇰🇿 Теңге", "az": "🇰🇿 Tenge", "uz": "🇰🇿 Tenge", "kg": "🇰🇿 Теңге", "tj": "🇰🇿 Тенге", "by": "🇰🇿 Тэнге", "am": "🇰🇿 Թենգե", "ge": "🇰🇿 თენგე", "ua": "🇰🇿 Тенге", "md": "🇰🇿 Tenge"},
-    "AZN": {"ru": "🇦🇿 Манат", "en": "🇦🇿 Manat", "kz": "🇦🇿 Манат", "az": "🇦🇿 Manat", "uz": "🇦🇿 Manat", "kg": "🇦🇿 Манат", "tj": "🇦🇿 Манот", "by": "🇦🇿 Манат", "am": "🇦🇿 Մանաթ", "ge": "🇦🇿 მანათი", "ua": "🇦🇿 Манат", "md": "🇦🇿 Manat"},
-    "KGS": {"ru": "🇰🇬 Сомы", "en": "🇰🇬 Som", "kz": "🇰🇬 Сом", "az": "🇰🇬 Som", "uz": "🇰🇬 Som", "kg": "🇰🇬 Сом", "tj": "🇰🇬 Сом", "by": "🇰🇬 Сомы", "am": "🇰🇬 Սոմ", "ge": "🇰🇬 სომი", "ua": "🇰🇬 Соми", "md": "🇰🇬 Som"},
-    "UZS": {"ru": "🇺🇿 Сумы", "en": "🇺🇿 Sum", "kz": "🇺🇿 Сум", "az": "🇺🇿 Sum", "uz": "🇺🇿 So'm", "kg": "🇺🇿 Сум", "tj": "🇺🇿 Сум", "by": "🇺🇿 Сумы", "am": "🇺🇿 Սում", "ge": "🇺🇿 სუმი", "ua": "🇺🇿 Суми", "md": "🇺🇿 Sum"},
-    "TJS": {"ru": "🇹🇯 Сомони", "en": "🇹🇯 Somoni", "kz": "🇹🇯 Сомонӣ", "az": "🇹🇯 Somoni", "uz": "🇹🇯 Somoni", "kg": "🇹🇯 Сомонӣ", "tj": "🇹🇯 Сомонӣ", "by": "🇹🇯 Саманi", "am": "🇹🇯 Սոմոնի", "ge": "🇹🇯 სომონი", "ua": "🇹🇯 Сомоні", "md": "🇹🇯 Somoni"},
-    "BYN": {"ru": "🇧🇾 Рубли BY", "en": "🇧🇾 BYN", "kz": "🇧🇾 Руб. BY", "az": "🇧🇾 Rubl BY", "uz": "🇧🇾 Rubl BY", "kg": "🇧🇾 Руб. BY", "tj": "🇧🇾 Руб. BY", "by": "🇧🇾 Рублі", "am": "🇧🇾 Ռուբ. BY", "ge": "🇧🇾 რუბ. BY", "ua": "🇧🇾 Рублі BY", "md": "🇧🇾 Ruble BY"},
-    "UAH": {"ru": "🇺🇦 Гривны", "en": "🇺🇦 Hryvnia", "kz": "🇺🇦 Гривна", "az": "🇺🇦 Qrivna", "uz": "🇺🇦 Grivna", "kg": "🇺🇦 Гривна", "tj": "🇺🇦 Гривна", "by": "🇺🇦 Грыўні", "am": "🇺🇦 Գրիվնա", "ge": "🇺🇦 გრივნა", "ua": "🇺🇦 Гривні", "md": "🇺🇦 Grivne"},
-    "GEL": {"ru": "🇬🇪 Лари", "en": "🇬🇪 Lari", "kz": "🇬🇪 Лари", "az": "🇬🇪 Lari", "uz": "🇬🇪 Lari", "kg": "🇬🇪 Лари", "tj": "🇬🇪 Лари", "by": "🇬🇪 Лары", "am": "🇬🇪 Լարի", "ge": "🇬🇪 ლარი", "ua": "🇬🇪 Ларі", "md": "🇬🇪 Lari"},
+    "TON": "💎 TON", "USDT": "💵 USDT",
+    "Stars": {"ru": "⭐️ Звёзды", "en": "⭐️ Stars", "kz": "⭐️ Жұлдыз", "az": "⭐️ Ulduz", "uz": "⭐️ Yulduz", "kg": "⭐️ Жылдыз", "tj": "⭐️ Ситора", "by": "⭐️ Зоркі", "am": "⭐️ Astegh", "ge": "⭐️ ვარსკვ.", "ua": "⭐️ Зірки", "md": "⭐️ Stele"},
+    "RUB": {"ru": "🇷🇺 Рубли", "en": "🇷🇺 Rubles", "kz": "🇷🇺 Рубль", "az": "🇷🇺 Rubl", "uz": "🇷🇺 Rubl", "kg": "🇷🇺 Рубль", "tj": "🇷🇺 Рубл", "by": "🇷🇺 Рублі", "am": "🇷🇺 Rubl", "ge": "🇷🇺 რუბლი", "ua": "🇷🇺 Рублі", "md": "🇷🇺 Ruble"},
+    "KZT": {"ru": "🇰🇿 Тенге", "en": "🇰🇿 Tenge", "kz": "🇰🇿 Теңге", "az": "🇰🇿 Tenge", "uz": "🇰🇿 Tenge", "kg": "🇰🇿 Теңге", "tj": "🇰🇿 Тенге", "by": "🇰🇿 Тэнге", "am": "🇰🇿 Tenge", "ge": "🇰🇿 თენგე", "ua": "🇰🇿 Тенге", "md": "🇰🇿 Tenge"},
+    "AZN": {"ru": "🇦🇿 Манат", "en": "🇦🇿 Manat", "kz": "🇦🇿 Манат", "az": "🇦🇿 Manat", "uz": "🇦🇿 Manat", "kg": "🇦🇿 Манат", "tj": "🇦🇿 Манот", "by": "🇦🇿 Манат", "am": "🇦🇿 Manat", "ge": "🇦🇿 მანათი", "ua": "🇦🇿 Манат", "md": "🇦🇿 Manat"},
+    "KGS": {"ru": "🇰🇬 Сомы", "en": "🇰🇬 Som", "kz": "🇰🇬 Сом", "az": "🇰🇬 Som", "uz": "🇰🇬 Som", "kg": "🇰🇬 Сом", "tj": "🇰🇬 Сом", "by": "🇰🇬 Сомы", "am": "🇰🇬 Som", "ge": "🇰🇬 სომი", "ua": "🇰🇬 Соми", "md": "🇰🇬 Som"},
+    "UZS": {"ru": "🇺🇿 Сумы", "en": "🇺🇿 Sum", "kz": "🇺🇿 Сум", "az": "🇺🇿 Sum", "uz": "🇺🇿 So'm", "kg": "🇺🇿 Сум", "tj": "🇺🇿 Сум", "by": "🇺🇿 Сумы", "am": "🇺🇿 Sum", "ge": "🇺🇿 სუმი", "ua": "🇺🇿 Суми", "md": "🇺🇿 Sum"},
+    "TJS": {"ru": "🇹🇯 Сомони", "en": "🇹🇯 Somoni", "kz": "🇹🇯 Сомонӣ", "az": "🇹🇯 Somoni", "uz": "🇹🇯 Somoni", "kg": "🇹🇯 Сомонӣ", "tj": "🇹🇯 Сомонӣ", "by": "🇹🇯 Самані", "am": "🇹🇯 Somoni", "ge": "🇹🇯 სომონი", "ua": "🇹🇯 Сомоні", "md": "🇹🇯 Somoni"},
+    "BYN": {"ru": "🇧🇾 Рубли BY", "en": "🇧🇾 BYN", "kz": "🇧🇾 Руб. BY", "az": "🇧🇾 Rubl BY", "uz": "🇧🇾 Rubl BY", "kg": "🇧🇾 Руб. BY", "tj": "🇧🇾 Руб. BY", "by": "🇧🇾 Рублі", "am": "🇧🇾 Rubl BY", "ge": "🇧🇾 რუბ. BY", "ua": "🇧🇾 Рублі BY", "md": "🇧🇾 Ruble BY"},
+    "UAH": {"ru": "🇺🇦 Гривны", "en": "🇺🇦 Hryvnia", "kz": "🇺🇦 Гривна", "az": "🇺🇦 Qrivna", "uz": "🇺🇦 Grivna", "kg": "🇺🇦 Гривна", "tj": "🇺🇦 Гривна", "by": "🇺🇦 Грыўні", "am": "🇺🇦 Grivna", "ge": "🇺🇦 გრივნა", "ua": "🇺🇦 Гривні", "md": "🇺🇦 Grivne"},
+    "GEL": {"ru": "🇬🇪 Лари", "en": "🇬🇪 Lari", "kz": "🇬🇪 Лари", "az": "🇬🇪 Lari", "uz": "🇬🇪 Lari", "kg": "🇬🇪 Лари", "tj": "🇬🇪 Лари", "by": "🇬🇪 Лары", "am": "🇬🇪 Lari", "ge": "🇬🇪 ლარი", "ua": "🇬🇪 Ларі", "md": "🇬🇪 Lari"},
 }
 CURMAP = {"cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
           "cur_kzt":"KZT","cur_azn":"AZN","cur_kgs":"KGS","cur_uzs":"UZS",
@@ -403,10 +403,18 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud.clear(); ud["type"]=type_map[d]; ud["step"]="partner"
             icons={"nft":E["nft"],"username":E["user"],"stars":E["star"],"crypto":E["diamond"],"premium":E["premium"],"premium_stickers":E["sticker"]}
             icon=icons.get(type_map[d],E["deal"])
-            await send_text(update,f"{icon} <b>Введите @юзернейм партнёра:</b>",
-                InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="menu_deal")]])); return
-        if d=="cry_ton": ud["currency"]="TON"; ud["step"]="amount"; await send_text(update,f"{E['diamond']} <b>Крипта (TON)\n\nВведите сумму:</b>"); return
-        if d=="cry_usd": ud["currency"]="USDT"; ud["step"]="amount"; await send_text(update,f"{E['diamond']} <b>Крипта (USDT)\n\nВведите сумму:</b>"); return
+            try: await q.message.delete()
+            except: pass
+            msg=await update.effective_chat.send_message(f"{icon} <b>Введите @юзернейм партнёра:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="menu_deal")]]))
+            ud["last_bot_msg"]=msg.message_id; return
+        if d=="cry_ton":
+            ud["currency"]="TON"; ud["step"]="amount"
+            msg=await update.effective_chat.send_message(f"{E['diamond']} <b>Крипта (TON)\n\nВведите сумму:</b>",parse_mode="HTML")
+            ud["last_bot_msg"]=msg.message_id; return
+        if d=="cry_usd":
+            ud["currency"]="USDT"; ud["step"]="amount"
+            msg=await update.effective_chat.send_message(f"{E['diamond']} <b>Крипта (USDT)\n\nВведите сумму:</b>",parse_mode="HTML")
+            ud["last_bot_msg"]=msg.message_id; return
         if d in ("prm_3","prm_6","prm_12"):
             periods={"prm_3":"3 месяца","prm_6":"6 месяцев","prm_12":"12 месяцев"}
             ud["premium_period"]=periods[d]; ud["step"]="currency"
@@ -460,42 +468,63 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"{E['check']} <b>Отзыв сохранён!</b>",parse_mode="HTML"); return
         dtype=ud.get("type"); step=ud.get("step")
         if not dtype or not step: return
+
+        # Удаляем сообщение пользователя и предыдущий бот-ответ
+        async def delete_prev():
+            try: await update.message.delete()
+            except: pass
+            if ud.get("last_bot_msg"):
+                try: await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=ud["last_bot_msg"])
+                except: pass
+
+        async def send_step(text, kb=None):
+            await delete_prev()
+            msg = await update.effective_chat.send_message(text, parse_mode="HTML", reply_markup=kb)
+            ud["last_bot_msg"] = msg.message_id
+
         if step=="partner":
             if not text.startswith("@"):
                 await update.message.reply_text(f"{E['cross']} <b>Юзернейм должен начинаться с @</b>",parse_mode="HTML"); return
             ud["partner"]=text
-            if dtype=="nft": ud["step"]="nft_link"; await update.message.reply_text(f"{E['nft']} <b>НФТ\n\nВставьте ссылку на НФТ (https://...):</b>",parse_mode="HTML")
-            elif dtype=="username": ud["step"]="trade_usr"; await update.message.reply_text(f"{E['user']} <b>Юзернейм\n\nВведите @юзернейм товара:</b>",parse_mode="HTML")
-            elif dtype=="stars": ud["step"]="stars_cnt"; await update.message.reply_text(f"{E['star']} <b>Звёзды\n\nСколько звёзд?</b>",parse_mode="HTML")
+            if dtype=="nft":
+                ud["step"]="nft_link"
+                await send_step(f"{E['nft']} <b>НФТ\n\nВставьте ссылку на НФТ (https://...):</b>")
+            elif dtype=="username":
+                ud["step"]="trade_usr"
+                await send_step(f"{E['user']} <b>Юзернейм\n\nВведите @юзернейм товара:</b>")
+            elif dtype=="stars":
+                ud["step"]="stars_cnt"
+                await send_step(f"{E['star']} <b>Звёзды\n\nСколько звёзд?</b>")
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
-                await update.message.reply_text(f"{E['diamond']} <b>Крипта\n\nВыберите валюту:</b>",parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💎 TON",callback_data="cry_ton"),InlineKeyboardButton("💵 USDT",callback_data="cry_usd")]]))
+                await send_step(f"{E['diamond']} <b>Крипта\n\nВыберите валюту:</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton("💎 TON",callback_data="cry_ton"),InlineKeyboardButton("💵 USDT",callback_data="cry_usd")]]))
             elif dtype=="premium":
                 ud["step"]="prem_period"
-                await update.message.reply_text(f"{E['premium']} <b>Telegram Premium\n\nВыберите срок:</b>",parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("3 месяца",callback_data="prm_3"),InlineKeyboardButton("6 месяцев",callback_data="prm_6"),InlineKeyboardButton("12 месяцев",callback_data="prm_12")]]))
+                await send_step(f"{E['premium']} <b>Telegram Premium\n\nВыберите срок:</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton("3 месяца",callback_data="prm_3"),InlineKeyboardButton("6 месяцев",callback_data="prm_6"),InlineKeyboardButton("12 месяцев",callback_data="prm_12")]]))
             elif dtype=="premium_stickers":
                 ud["step"]="sticker_pack"
-                await update.message.reply_text(f"{E['sticker']} <b>Премиум стикеры\n\nВыберите количество стикерпаков:</b>",parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("1 пак",callback_data="pst_1"),InlineKeyboardButton("3 пака",callback_data="pst_3")],[InlineKeyboardButton("5 паков",callback_data="pst_5"),InlineKeyboardButton("10 паков",callback_data="pst_10")]]))
+                await send_step(f"{E['sticker']} <b>Премиум стикеры\n\nВыберите количество стикерпаков:</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton("1 пак",callback_data="pst_1"),InlineKeyboardButton("3 пака",callback_data="pst_3")],[InlineKeyboardButton("5 паков",callback_data="pst_5"),InlineKeyboardButton("10 паков",callback_data="pst_10")]]))
             return
         if step=="nft_link":
             if not text.startswith("https://"):
                 await update.message.reply_text(f"{E['cross']} <b>Ссылка должна начинаться с https://</b>",parse_mode="HTML"); return
             ud["nft_link"]=text; ud["step"]="currency"
-            await update.message.reply_text(f"{E['nft']} <b>НФТ\n\nВыберите валюту:</b>",parse_mode="HTML",reply_markup=cur_kb(lang)); return
+            await send_step(f"{E['nft']} <b>НФТ\n\nВыберите валюту:</b>", cur_kb(lang)); return
         if step=="trade_usr":
             if not text.startswith("@"):
                 await update.message.reply_text(f"{E['cross']} <b>Юзернейм должен начинаться с @</b>",parse_mode="HTML"); return
             ud["trade_username"]=text; ud["step"]="currency"
-            await update.message.reply_text(f"{E['user']} <b>Юзернейм\n\nВыберите валюту:</b>",parse_mode="HTML",reply_markup=cur_kb(lang)); return
+            await send_step(f"{E['user']} <b>Юзернейм\n\nВыберите валюту:</b>", cur_kb(lang)); return
         if step=="stars_cnt":
             if not text.isdigit():
                 await update.message.reply_text(f"{E['cross']} <b>Только цифры!</b>",parse_mode="HTML"); return
             ud["stars_count"]=text; ud["step"]="currency"
-            await update.message.reply_text(f"{E['star']} <b>Звёзды\n\nВыберите валюту:</b>",parse_mode="HTML",reply_markup=cur_kb(lang)); return
+            await send_step(f"{E['star']} <b>Звёзды\n\nВыберите валюту:</b>", cur_kb(lang)); return
         if step=="amount":
+            await delete_prev()
             ud["amount"]=text; await finalize_deal(update,context); return
     except Exception as e: logger.error(f"on_msg: {e}")
 
