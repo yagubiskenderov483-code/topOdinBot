@@ -167,7 +167,8 @@ def load_db():
         with open(DB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"users": {}, "deals": {}, "banner": None, "banner_photo": None,
-            "banner_video": None, "banner_gif": None, "menu_description": None, "deal_counter": 1}
+            "banner_video": None, "banner_gif": None, "menu_description": None, "deal_counter": 1,
+            "banners": {}}
 
 def save_db(db):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -270,23 +271,49 @@ def cur_kb(lang):
         [InlineKeyboardButton(n("UAH"),callback_data="cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
     ])
 
-async def send_with_banner(update, text, kb=None):
-    """Удаляет предыдущее сообщение и отправляет новое с баннером если есть."""
+BANNER_SECTIONS = {
+    "main":     "🏠 Главное меню",
+    "deal":     "🎁 Создать сделку",
+    "balance":  "💸 Пополнить/Вывод",
+    "profile":  "👤 Профиль",
+    "top":      "🏆 Топ продавцов",
+    "my_deals": "🗂 Мои сделки",
+    "deal_card":"💼 Карточка сделки",
+}
+
+def get_banner(db, section="main"):
+    """Получает баннер для раздела, если нет — берёт главный."""
+    banners = db.get("banners", {})
+    b = banners.get(section) or {}
+    # Если нет секционного — берём главный
+    if not b.get("photo") and not b.get("video") and not b.get("gif"):
+        return {
+            "photo": db.get("banner_photo"),
+            "video": db.get("banner_video"),
+            "gif":   db.get("banner_gif"),
+            "text":  db.get("banner") or "",
+        }
+    return b
+
+async def send_with_banner(update, text, kb=None, section="main"):
+    """Удаляет предыдущее сообщение и отправляет новое с баннером раздела."""
     try:
         db=load_db()
-        bv=db.get("banner_video"); bg=db.get("banner_gif"); bp=db.get("banner_photo")
+        b=get_banner(db, section)
+        bv=b.get("video"); bg=b.get("gif"); bp=b.get("photo")
+        banner_text=b.get("text","")
+        full_text = text + (f"\n\n<b>{banner_text}</b>" if banner_text else "")
         try:
-            if update.callback_query:
-                await update.callback_query.message.delete()
+            if update.callback_query: await update.callback_query.message.delete()
         except: pass
         if bv:
-            await update.effective_chat.send_video(video=bv,caption=text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_video(video=bv,caption=full_text,parse_mode="HTML",reply_markup=kb)
         elif bg:
-            await update.effective_chat.send_animation(animation=bg,caption=text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_animation(animation=bg,caption=full_text,parse_mode="HTML",reply_markup=kb)
         elif bp:
-            await update.effective_chat.send_photo(photo=bp,caption=text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_photo(photo=bp,caption=full_text,parse_mode="HTML",reply_markup=kb)
         else:
-            await update.effective_chat.send_message(text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_message(full_text,parse_mode="HTML",reply_markup=kb)
     except Exception as e:
         logger.error(f"send_with_banner: {e}")
         try: await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
@@ -296,8 +323,8 @@ async def send_text(update, text, kb=None):
     try: await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
     except Exception as e: logger.error(f"send_text: {e}")
 
-async def edit_or_send(update, text, kb=None):
-    await send_with_banner(update, text, kb)
+async def edit_or_send(update, text, kb=None, section="main"):
+    await send_with_banner(update, text, kb, section=section)
 
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
@@ -312,14 +339,11 @@ async def show_main(update, context, edit=False):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=u.get("lang","ru"); desc=db.get("menu_description") or get_welcome(lang)
-        banner=db.get("banner") or ""; text=desc
-        if banner: text+=f"\n\n<b>{banner}</b>"
         kb=main_kb(lang)
-        # Удаляем предыдущее
         try:
             if update.callback_query: await update.callback_query.message.delete()
         except: pass
-        await send_with_banner(update, text, kb)
+        await send_with_banner(update, desc, kb, section="main")
     except Exception as e: logger.error(f"show_main: {e}")
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -773,7 +797,7 @@ async def show_balance_info(update, context, method):
                   f"ID: <code>{uid}</code>"
                   f"</blockquote>")
         else: text="<b>?</b>"
-        await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="balance_topup")]]))
+        await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="balance_topup")]]), section="balance")
     except Exception as e: logger.error(f"show_balance_info: {e}")
 
 async def show_lang(update, context):
@@ -784,7 +808,7 @@ async def show_lang(update, context):
         for code,name in LANGS.items():
             rows.append([InlineKeyboardButton(name,callback_data=f"lang_{code}")])
         rows.append([InlineKeyboardButton("🔙 Назад" if lang=="ru" else "🔙 Back",callback_data="main_menu")])
-        await edit_or_send(update,f"<tg-emoji emoji-id='5447410659077661506'>🌐</tg-emoji> <b>{prompt}</b>",InlineKeyboardMarkup(rows))
+        await edit_or_send(update,f"<tg-emoji emoji-id='5447410659077661506'>🌐</tg-emoji> <b>{prompt}</b>",InlineKeyboardMarkup(rows), section="main")
     except Exception as e: logger.error(f"show_lang: {e}")
 
 async def set_lang(update, context, lang):
@@ -824,7 +848,7 @@ async def show_my_deals(update, context):
         db=load_db(); uid=str(update.effective_user.id); lang=get_lang(int(uid))
         deals={k:v for k,v in db.get("deals",{}).items() if v.get("user_id")==uid}
         if not deals:
-            await edit_or_send(update,f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{t('my_deals_title',lang)}\n\n{t('no_deals',lang)}</b>",InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]])); return
+            await edit_or_send(update,f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{t('my_deals_title',lang)}\n\n{t('no_deals',lang)}</b>",InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]), section="my_deals"); return
         pending = "<tg-emoji emoji-id='5386367538735104399'>⏳</tg-emoji> Ожидает" if lang=="ru" else "<tg-emoji emoji-id='5386367538735104399'>⏳</tg-emoji> Pending"
         confirmed = "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Завершена" if lang=="ru" else "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Completed"
         SNAMES={"pending":pending,"confirmed":confirmed}
@@ -832,7 +856,7 @@ async def show_my_deals(update, context):
         for did,dv in list(deals.items())[-10:]:
             tn=tname(dv.get("type",""),lang); s=SNAMES.get(dv.get("status",""),dv.get("status",""))
             lines.append(f"<b>{did}</b> | {tn} | {dv.get('amount')} {cur_native(dv.get('currency',''))} | {s}")
-        await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]))
+        await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]), section="my_deals")
     except Exception as e: logger.error(f"show_my_deals: {e}")
 
 async def show_top(update, context):
@@ -844,7 +868,7 @@ async def show_top(update, context):
         lines=[f"{E['top_medal']} <b>{title}</b>\n"]
         for i,(u,a,d) in enumerate(TOP): lines.append(f"<b>{medals[i]} {i+1}. {u} — ${a} | {d} {'сделок' if lang=='ru' else 'deals'}</b>")
         lines.append(f"\n{E['stats']} <b>{'1000+ сделок в боте' if lang=='ru' else '1000+ deals on platform'}</b>")
-        await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]))
+        await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]), section="top")
     except Exception as e: logger.error(f"show_top: {e}")
 
 async def show_withdraw(update, context):
@@ -867,10 +891,17 @@ async def show_withdraw(update, context):
 def adm_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("👤 Управление пользователем",callback_data="adm_user")],
-        [InlineKeyboardButton("🖼 Баннер (фото/видео/текст)",callback_data="adm_banner")],
+        [InlineKeyboardButton("🖼 Баннеры по разделам",callback_data="adm_banners")],
         [InlineKeyboardButton("✏️ Описание меню",callback_data="adm_menu_desc")],
         [InlineKeyboardButton("🗂 Список сделок",callback_data="adm_deals")],
     ])
+
+def adm_banners_kb():
+    rows=[]
+    for key,name in BANNER_SECTIONS.items():
+        rows.append([InlineKeyboardButton(f"{name}",callback_data=f"adm_banner_{key}")])
+    rows.append([InlineKeyboardButton("🔙 Назад",callback_data="adm_back")])
+    return InlineKeyboardMarkup(rows)
 
 async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id!=ADMIN_ID: return
@@ -884,9 +915,15 @@ async def handle_adm_cb(update, context):
         if d=="adm_user":
             ud["adm_step"]="get_user"
             await edit_or_send(update,"<b>Введите @юзернейм пользователя:</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
-        if d=="adm_banner":
-            ud["adm_step"]="banner"
-            await edit_or_send(update,"<b>Отправьте фото, видео, GIF или текст.\noff — удалить баннер.</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_back")]])); return
+        if d=="adm_banners":
+            await edit_or_send(update,"<b>🖼 Выберите раздел для баннера:</b>",adm_banners_kb()); return
+        if d.startswith("adm_banner_") and not d=="adm_banner":
+            section=d[11:]
+            if section in BANNER_SECTIONS:
+                ud["adm_step"]="banner"; ud["adm_banner_section"]=section
+                name=BANNER_SECTIONS[section]
+                await edit_or_send(update,f"<b>Баннер для раздела «{name}»\n\nОтправьте фото, видео, GIF или текст.\noff — удалить баннер этого раздела.</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_banners")]])); return
         if d=="adm_menu_desc":
             ud["adm_step"]="menu_desc"
             await edit_or_send(update,"<b>Введите новое описание меню:</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_back")]])); return
@@ -940,22 +977,33 @@ async def handle_adm_msg(update, context):
                 ]))
             ud["adm_step"]=None; return
         if step=="banner":
+            section=ud.get("adm_banner_section","main")
+            if not db.get("banners"): db["banners"]={}
+            caption=update.message.caption or "" if update.message else ""
             if update.message and update.message.photo:
-                db["banner_photo"]=update.message.photo[-1].file_id; db["banner_video"]=None; db["banner_gif"]=None; db["banner"]=update.message.caption or ""; save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Фото-баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
+                db["banners"][section]={"photo":update.message.photo[-1].file_id,"video":None,"gif":None,"text":caption}
+                save_db(db)
+                await update.message.reply_text(f"{E['check']} <b>Фото-баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif update.message and update.message.animation:
-                db["banner_gif"]=update.message.animation.file_id; db["banner_video"]=None; db["banner_photo"]=None; db["banner"]=update.message.caption or ""; save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>GIF-баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
+                db["banners"][section]={"photo":None,"video":None,"gif":update.message.animation.file_id,"text":caption}
+                save_db(db)
+                await update.message.reply_text(f"{E['check']} <b>GIF-баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif update.message and update.message.video:
-                db["banner_video"]=update.message.video.file_id; db["banner_photo"]=None; db["banner_gif"]=None; db["banner"]=update.message.caption or ""; save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Видео-баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
+                db["banners"][section]={"photo":None,"video":update.message.video.file_id,"gif":None,"text":caption}
+                save_db(db)
+                await update.message.reply_text(f"{E['check']} <b>Видео-баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif text.lower()=="off":
-                db["banner"]=db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None; save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Баннер удалён!</b>",parse_mode="HTML",reply_markup=ok_kb)
+                db["banners"][section]={}
+                # Если главный — чистим и старые поля
+                if section=="main":
+                    db["banner"]=db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None
+                save_db(db)
+                await update.message.reply_text(f"{E['check']} <b>Баннер для «{BANNER_SECTIONS.get(section,section)}» удалён!</b>",parse_mode="HTML",reply_markup=ok_kb)
             else:
-                db["banner"]=text; db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None; save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
-            ud["adm_step"]=None; return
+                db["banners"][section]={"photo":None,"video":None,"gif":None,"text":text}
+                save_db(db)
+                await update.message.reply_text(f"{E['check']} <b>Текстовый баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
+            ud["adm_step"]=None; ud.pop("adm_banner_section",None); return
         if step=="menu_desc":
             db["menu_description"]=text; save_db(db)
             await update.message.reply_text(f"{E['check']} <b>Описание обновлено!</b>",parse_mode="HTML",reply_markup=ok_kb)
