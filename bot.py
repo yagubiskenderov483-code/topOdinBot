@@ -143,10 +143,10 @@ def get_welcome(lang):
         return texts[lang]
     return (
         f"{CD} <b>Gift Deals</b> — самая безопасная площадка для сделок в Telegram\n\n"
-        f"{E['num1']} {CDL} Автоматические сделки с НФТ и подарками\n"
-        f"{E['num2']} {CSH} Полная защита обеих сторон\n"
-        f"{E['num3']} {CL} Средства заморожены до подтверждения\n"
-        f"{E['num4']} {CG} Передача через менеджера: @GiftDealsManager\n\n"
+        f"<blockquote>{E['num1']} {CDL} Автоматические сделки с НФТ и подарками.</blockquote>\n"
+        f"<blockquote>{E['num2']} {CSH} Полная защита обеих сторон.</blockquote>\n"
+        f"<blockquote>{E['num3']} {CL} Средства заморожены до подтверждения.</blockquote>\n"
+        f"<blockquote>{E['num4']} {CG} Передача через менеджера: @GiftDealsManager.</blockquote>\n\n"
         f"{E['spark']} <b>Выберите действие ниже</b> {E['spark']}"
     )
 
@@ -167,16 +167,16 @@ BTN = {
 
 CUR = {
     "TON": "💎 TON", "USDT": "💵 USDT",
-    "Stars": {"ru": "⭐️ Звёзды", "en": "⭐️ Stars", "kz": "⭐️ Жұлдыз", "az": "⭐️ Ulduz", "uz": "⭐️ Yulduz", "kg": "⭐️ Жылдыз", "tj": "⭐️ Ситора", "by": "⭐️ Зоркі", "am": "⭐️ Astegh", "ge": "⭐️ ვარსკვ.", "ua": "⭐️ Зірки", "md": "⭐️ Stele"},
-    "RUB": {"ru": "🇷🇺 Рубли", "en": "🇷🇺 RUB", "kz": "🇷🇺 Рубль", "az": "🇷🇺 Rubl", "uz": "🇷🇺 Rubl", "kg": "🇷🇺 Рубль", "tj": "🇷🇺 Рубл", "by": "🇷🇺 Рублі", "am": "🇷🇺 Rubl", "ge": "🇷🇺 რუბლი", "ua": "🇷🇺 Рублі", "md": "🇷🇺 Ruble"},
-    "KZT": {"ru": "🇰🇿 Тенге", "en": "🇰🇿 Tenge", "kz": "🇰🇿 Теңге", "az": "🇰🇿 Tenge", "uz": "🇰🇿 Tenge", "kg": "🇰🇿 Теңге", "tj": "🇰🇿 Тенге", "by": "🇰🇿 Тэнге", "am": "🇰🇿 Tenge", "ge": "🇰🇿 ტენგე", "ua": "🇰🇿 Тенге", "md": "🇰🇿 Tenge"},
-    "AZN": {"ru": "🇦🇿 Манат", "en": "🇦🇿 Manat", "kz": "🇦🇿 Манат", "az": "🇦🇿 Manat", "uz": "🇦🇿 Manat", "kg": "🇦🇿 Манат", "tj": "🇦🇿 Манат", "by": "🇦🇿 Манат", "am": "🇦🇿 Manat", "ge": "🇦🇿 მანათი", "ua": "🇦🇿 Манат", "md": "🇦🇿 Manat"},
-    "KGS": {"ru": "🇰🇬 Сомы", "en": "🇰🇬 Som", "kz": "🇰🇬 Сом", "az": "🇰🇬 Som", "uz": "🇰🇬 Som", "kg": "🇰🇬 Сом", "tj": "🇰🇬 Сом", "by": "🇰🇬 Сомы", "am": "🇰🇬 Som", "ge": "🇰🇬 სომი", "ua": "🇰🇬 Соми", "md": "🇰🇬 Som"},
-    "UZS": {"ru": "🇺🇿 Сумы", "en": "🇺🇿 Sum", "kz": "🇺🇿 Сум", "az": "🇺🇿 Sum", "uz": "🇺🇿 So'm", "kg": "🇺🇿 Сум", "tj": "🇺🇿 Сум", "by": "🇺🇿 Сумы", "am": "🇺🇿 Sum", "ge": "🇺🇿 სუმი", "ua": "🇺🇿 Суми", "md": "🇺🇿 Sum"},
-    "TJS": {"ru": "🇹🇯 Сомони", "en": "🇹🇯 Somoni", "kz": "🇹🇯 Сомонӣ", "az": "🇹🇯 Somoni", "uz": "🇹🇯 Somoni", "kg": "🇹🇯 Сомонӣ", "tj": "🇹🇯 Сомонӣ", "by": "🇹🇯 Самані", "am": "🇹🇯 Somoni", "ge": "🇹🇯 სომონი", "ua": "🇹🇯 Сомоні", "md": "🇹🇯 Somoni"},
-    "BYN": {"ru": "🇧🇾 Рубли BY", "en": "🇧🇾 BYN", "kz": "🇧🇾 Руб. BY", "az": "🇧🇾 Rubl BY", "uz": "🇧🇾 Rubl BY", "kg": "🇧🇾 Руб. BY", "tj": "🇧🇾 Руб. BY", "by": "🇧🇾 Рублі", "am": "🇧🇾 Rubl BY", "ge": "🇧🇾 რუბ. BY", "ua": "🇧🇾 Рублі BY", "md": "🇧🇾 Ruble BY"},
-    "UAH": {"ru": "🇺🇦 Гривны", "en": "🇺🇦 Hryvnia", "kz": "🇺🇦 Гривна", "az": "🇺🇦 Grivna", "uz": "🇺🇦 Grivna", "kg": "🇺🇦 Гривна", "tj": "🇺🇦 Гривна", "by": "🇺🇦 Грыўні", "am": "🇺🇦 Grivna", "ge": "🇺🇦 გრივნა", "ua": "🇺🇦 Гривні", "md": "🇺🇦 Grivne"},
-    "GEL": {"ru": "🇬🇪 Лари", "en": "🇬🇪 Lari", "kz": "🇬🇪 Лари", "az": "🇬🇪 Lari", "uz": "🇬🇪 Lari", "kg": "🇬🇪 Лари", "tj": "🇬🇪 Лари", "by": "🇬🇪 Лары", "am": "🇬🇪 Lari", "ge": "🇬🇪 ლარი", "ua": "🇬🇪 Ларі", "md": "🇬🇪 Lari"},
+    "Stars": {"ru": "⭐️ Звёзды", "en": "⭐️ Stars", "kz": "⭐️ Жұлдыздар", "az": "⭐️ Ulduzlar", "uz": "⭐️ Yulduzlar", "kg": "⭐️ Жылдыздар", "tj": "⭐️ Ситорахо", "by": "⭐️ Зоркі", "am": "⭐️ Աստղեր", "ge": "⭐️ ვარსკვლავები", "ua": "⭐️ Зірки", "md": "⭐️ Stele"},
+    "RUB": {"ru": "🇷🇺 Рубли", "en": "🇷🇺 Rubles", "kz": "🇷🇺 Рубль", "az": "🇷🇺 Rublu", "uz": "🇷🇺 Rubl", "kg": "🇷🇺 Рубль", "tj": "🇷🇺 Рубл", "by": "🇷🇺 Рублі", "am": "🇷🇺 Ռուբլի", "ge": "🇷🇺 რუბლი", "ua": "🇷🇺 Рублі", "md": "🇷🇺 Ruble"},
+    "KZT": {"ru": "🇰🇿 Тенге", "en": "🇰🇿 Tenge", "kz": "🇰🇿 Теңге", "az": "🇰🇿 Tenge", "uz": "🇰🇿 Tenge", "kg": "🇰🇿 Теңге", "tj": "🇰🇿 Тенге", "by": "🇰🇿 Тэнге", "am": "🇰🇿 Թենգե", "ge": "🇰🇿 თენგე", "ua": "🇰🇿 Тенге", "md": "🇰🇿 Tenge"},
+    "AZN": {"ru": "🇦🇿 Манат", "en": "🇦🇿 Manat", "kz": "🇦🇿 Манат", "az": "🇦🇿 Manat", "uz": "🇦🇿 Manat", "kg": "🇦🇿 Манат", "tj": "🇦🇿 Манот", "by": "🇦🇿 Манат", "am": "🇦🇿 Մանաթ", "ge": "🇦🇿 მანათი", "ua": "🇦🇿 Манат", "md": "🇦🇿 Manat"},
+    "KGS": {"ru": "🇰🇬 Сомы", "en": "🇰🇬 Som", "kz": "🇰🇬 Сом", "az": "🇰🇬 Som", "uz": "🇰🇬 Som", "kg": "🇰🇬 Сом", "tj": "🇰🇬 Сом", "by": "🇰🇬 Сомы", "am": "🇰🇬 Սոմ", "ge": "🇰🇬 სომი", "ua": "🇰🇬 Соми", "md": "🇰🇬 Som"},
+    "UZS": {"ru": "🇺🇿 Сумы", "en": "🇺🇿 Sum", "kz": "🇺🇿 Сум", "az": "🇺🇿 Sum", "uz": "🇺🇿 So'm", "kg": "🇺🇿 Сум", "tj": "🇺🇿 Сум", "by": "🇺🇿 Сумы", "am": "🇺🇿 Սում", "ge": "🇺🇿 სუმი", "ua": "🇺🇿 Суми", "md": "🇺🇿 Sum"},
+    "TJS": {"ru": "🇹🇯 Сомони", "en": "🇹🇯 Somoni", "kz": "🇹🇯 Сомонӣ", "az": "🇹🇯 Somoni", "uz": "🇹🇯 Somoni", "kg": "🇹🇯 Сомонӣ", "tj": "🇹🇯 Сомонӣ", "by": "🇹🇯 Саманi", "am": "🇹🇯 Սոմոնի", "ge": "🇹🇯 სომონი", "ua": "🇹🇯 Сомоні", "md": "🇹🇯 Somoni"},
+    "BYN": {"ru": "🇧🇾 Рубли BY", "en": "🇧🇾 BYN", "kz": "🇧🇾 Руб. BY", "az": "🇧🇾 Rubl BY", "uz": "🇧🇾 Rubl BY", "kg": "🇧🇾 Руб. BY", "tj": "🇧🇾 Руб. BY", "by": "🇧🇾 Рублі", "am": "🇧🇾 Ռուբ. BY", "ge": "🇧🇾 რუბ. BY", "ua": "🇧🇾 Рублі BY", "md": "🇧🇾 Ruble BY"},
+    "UAH": {"ru": "🇺🇦 Гривны", "en": "🇺🇦 Hryvnia", "kz": "🇺🇦 Гривна", "az": "🇺🇦 Qrivna", "uz": "🇺🇦 Grivna", "kg": "🇺🇦 Гривна", "tj": "🇺🇦 Гривна", "by": "🇺🇦 Грыўні", "am": "🇺🇦 Գրիվնա", "ge": "🇺🇦 გრივნა", "ua": "🇺🇦 Гривні", "md": "🇺🇦 Grivne"},
+    "GEL": {"ru": "🇬🇪 Лари", "en": "🇬🇪 Lari", "kz": "🇬🇪 Лари", "az": "🇬🇪 Lari", "uz": "🇬🇪 Lari", "kg": "🇬🇪 Лари", "tj": "🇬🇪 Лари", "by": "🇬🇪 Лары", "am": "🇬🇪 Լարի", "ge": "🇬🇪 ლარი", "ua": "🇬🇪 Ларі", "md": "🇬🇪 Lari"},
 }
 CURMAP = {"cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
           "cur_kzt":"KZT","cur_azn":"AZN","cur_kgs":"KGS","cur_uzs":"UZS",
@@ -248,7 +248,6 @@ def deal_types_kb():
         [InlineKeyboardButton("🖼 НФТ",callback_data="dt_nft"),InlineKeyboardButton("⭐ НФТ Юзернейм",callback_data="dt_usr")],
         [InlineKeyboardButton("💫 Звёзды",callback_data="dt_str"),InlineKeyboardButton("💎 Крипта (TON/$)",callback_data="dt_cry")],
         [InlineKeyboardButton("✈️ Telegram Premium",callback_data="dt_prm")],
-        [InlineKeyboardButton("💰 Премиум стикеры",callback_data="dt_pst")],
         [InlineKeyboardButton("🗃 Назад",callback_data="main_menu")],
     ])
 
@@ -499,7 +498,9 @@ async def set_lang(update, context, lang):
 async def show_profile(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
-        uname=update.effective_user.username or "—"; sl=f"\n🏷 {u['status']}" if u.get("status") else ""
+        uname=update.effective_user.username or "—"
+        status=u.get("status","")
+        sl=f"\n<blockquote>{status}</blockquote>" if status else ""
         rv=("\n\n<b>📝 Отзывы:</b>\n"+"\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
         text=(f"{E['user']} <b>Профиль{sl}\n\n@{uname}\n{CM} Баланс: {u.get('balance',0)} RUB\n"
               f"{E['chart']} Сделок: {u.get('total_deals',0)}\n{E['check']} Успешных: {u.get('success_deals',0)}\n"
@@ -582,6 +583,15 @@ async def handle_adm_cb(update, context):
         if d in action_map:
             field,prompt=action_map[d]; ud["adm_field"]=field; ud["adm_step"]="set_value"
             await edit_or_send(update,f"<b>{prompt}</b>")
+        status_map={"adm_status_verified":"✅ Проверенный","adm_status_garant":"🛡 Гарант","adm_status_caution":"⚠️ Осторожно","adm_status_scammer":"🚫 Мошенник","adm_status_clear":""}
+        if d in status_map:
+            target=ud.get("adm_target")
+            if target:
+                db=load_db(); u=db["users"].get(target,{})
+                u["status"]=status_map[d]; db["users"][target]=u; save_db(db)
+                await q.answer(f"Статус установлен: {status_map[d] or 'убран'}")
+                try: await q.edit_message_reply_markup(reply_markup=None)
+                except: pass
     except Exception as e: logger.error(f"handle_adm_cb: {e}")
 
 async def handle_adm_msg(update, context):
@@ -596,9 +606,19 @@ async def handle_adm_msg(update, context):
             if not found:
                 await update.message.reply_text("<b>Не найден. Введите снова:</b>",parse_mode="HTML"); return
             ud["adm_target"]=found; u=db["users"][found]
+            sl = u.get('status','—')
             await update.message.reply_text(
-                f"<b>@{u.get('username','—')} | Сделок: {u.get('total_deals',0)} | Реп: {u.get('reputation',0)}\nСтатус: {u.get('status','—')}</b>",parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📝 Отзыв",callback_data="adm_add_review")],[InlineKeyboardButton("🔢 Сделок",callback_data="adm_set_deals"),InlineKeyboardButton("✅ Успешных",callback_data="adm_set_success")],[InlineKeyboardButton("💵 Оборот",callback_data="adm_set_turnover"),InlineKeyboardButton("⭐️ Репут.",callback_data="adm_set_rep")],[InlineKeyboardButton("🏷 Статус",callback_data="adm_set_status")],[InlineKeyboardButton("🗃 Назад",callback_data="adm_back")]]))
+                f"<b>@{u.get('username','—')} | Сделок: {u.get('total_deals',0)} | Реп: {u.get('reputation',0)}\nСтатус: {sl}</b>",parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📝 Отзыв",callback_data="adm_add_review")],
+                    [InlineKeyboardButton("🔢 Сделок",callback_data="adm_set_deals"),InlineKeyboardButton("✅ Успешных",callback_data="adm_set_success")],
+                    [InlineKeyboardButton("💵 Оборот",callback_data="adm_set_turnover"),InlineKeyboardButton("⭐️ Репут.",callback_data="adm_set_rep")],
+                    [InlineKeyboardButton("🏷 Свой статус",callback_data="adm_set_status")],
+                    [InlineKeyboardButton("✅ Проверенный",callback_data="adm_status_verified"),InlineKeyboardButton("🛡 Гарант",callback_data="adm_status_garant")],
+                    [InlineKeyboardButton("⚠️ Осторожно",callback_data="adm_status_caution"),InlineKeyboardButton("🚫 Мошенник",callback_data="adm_status_scammer")],
+                    [InlineKeyboardButton("❌ Убрать статус",callback_data="adm_status_clear")],
+                    [InlineKeyboardButton("🗃 Назад",callback_data="adm_back")]
+                ]))
             ud["adm_step"]=None; return
         if step=="banner":
             if update.message and update.message.photo:
