@@ -22,40 +22,52 @@ def ce(eid, fb):
     return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
 
 E = {
-    "diamond": ce("5264713049637409446", "💎"),
-    "check":   ce("5274055917766202507", "✅"),
-    "cross":   ce("5443127283898405358", "❌"),
-    "fire":    ce("5303138782004924588", "🔥"),
-    "star":    ce("5267500801240092311", "⭐️"),
-    "lock":    ce("5197161121106123533", "🔒"),
-    "bell":    ce("5312361253610475399", "🔔"),
-    "gift":    ce("5197369495739455200", "🎁"),
-    "trophy":  ce("5332455502917949981", "🏆"),
-    "shield":  ce("5197434882321567830", "🛡"),
-    "money":   ce("5278467510604160626", "💰"),
-    "pencil":  ce("5197371802136892976", "✏️"),
-    "globe":   ce("5377746319601324795", "🌍"),
-    "nft":     ce("5193177581888755275", "🖼"),
-    "user":    ce("5199552030615558774", "👤"),
-    "premium": ce("5377620962390857342", "✈️"),
-    "deal":    ce("5445221832074483553", "🤝"),
-    "card":    ce("5445353829304387411", "💳"),
-    "sticker": ce("5294167145079395967", "🎭"),
-    "rocket":  ce("5444856076954520455", "🚀"),
-    "chart":   ce("5382194935057372936", "📊"),
-    "clock":   ce("5429651785352501917", "⏳"),
-    "bag":     ce("5287231198098117669", "💼"),
-    "crystal": ce("5195033767969839232", "🔮"),
+    "diamond":   ce("5264713049637409446", "💎"),
+    "check":     ce("5274055917766202507", "✅"),
+    "cross":     ce("5443127283898405358", "❌"),
+    "fire":      ce("5303138782004924588", "🔥"),
+    "star":      ce("5267500801240092311", "⭐️"),
+    "lock":      ce("5197161121106123533", "🔒"),
+    "bell":      ce("5312361253610475399", "🔔"),
+    "gift":      ce("5197369495739455200", "🎁"),
+    "trophy":    ce("5332455502917949981", "🏆"),
+    "shield":    ce("5197434882321567830", "🛡"),
+    "money":     ce("5278467510604160626", "💰"),
+    "pencil":    ce("5197371802136892976", "✏️"),
+    "globe":     ce("5377746319601324795", "🌍"),
+    "nft":       ce("5193177581888755275", "🖼"),
+    "user":      ce("5199552030615558774", "👤"),
+    "premium":   ce("5377620962390857342", "✈️"),
+    "deal":      ce("5445221832074483553", "🤝"),
+    "card":      ce("5445353829304387411", "💳"),
+    "sticker":   ce("5294167145079395967", "🎭"),
+    "rocket":    ce("5444856076954520455", "🚀"),
+    "chart":     ce("5382194935057372936", "📊"),
+    "clock":     ce("5429651785352501917", "⏳"),
+    "bag":       ce("5287231198098117669", "💼"),
+    "crystal":   ce("5195033767969839232", "🔮"),
     "handshake": ce("5262517101578443800", "🫱"),
-    "safe":    ce("5377660214096974712", "🔐"),
-    "medal":   ce("5463289097336405244", "🏅"),
-    "gem":     ce("5258203794772085854", "💠"),
-    "spark":   ce("5902449142575141204", "✨"),
-    "crown":   ce("5902056028513505203", "👑"),
+    "safe":      ce("5377660214096974712", "🔐"),
+    "medal":     ce("5463289097336405244", "🏅"),
+    "gem":       ce("5258203794772085854", "💠"),
+    "spark":     ce("5902449142575141204", "✨"),
+    "crown":     ce("5902056028513505203", "👑"),
     "lightning": ce("6039641775377748623", "⚡️"),
-    "target":  ce("5893081007153746175", "🎯"),
-    "pin":     ce("5893297890117292323", "📌"),
-    "scroll":  ce("5893382531037794941", "📜"),
+    "target":    ce("5893081007153746175", "🎯"),
+    "pin":       ce("5893297890117292323", "📌"),
+    "scroll":    ce("5893382531037794941", "📜"),
+    "wallet":    ce("5794164805065514131", "👛"),
+    "banknote":  ce("5794085322400733645", "💵"),
+    "coins":     ce("5794280000383358988", "🪙"),
+    "chart2":    ce("5794241397217304511", "📈"),
+    "key":       ce("5238132025323444613", "🔑"),
+    "link":      ce("5429405838345265327", "🔗"),
+    "box":       ce("5417924076503062111", "📦"),
+    "paper":     ce("5201873447554145566", "📄"),
+    "hands":     ce("5472239203590888751", "🙌"),
+    "ok":        ce("5453942819003591387", "👌"),
+    "shine":     ce("5235630047959727475", "🌟"),
+    "store":     ce("4988289890769699938", "🏪"),
 }
 
 CD  = ce("5264713049637409446", "💎")
@@ -365,11 +377,11 @@ async def finalize_deal(update, context):
     except Exception as e: logger.error(f"finalize_deal: {e}")
 
 def build_item_line(dtype, dd):
-    if dtype=="nft": return f"\n📎 Ссылка: {dd.get('nft_link','—')}"
-    elif dtype=="username": return f"\n📎 Юзернейм: {dd.get('trade_username','—')}"
-    elif dtype=="stars": return f"\n📎 Звёзд: {dd.get('stars_count','—')}"
-    elif dtype=="premium": return f"\n📎 Срок: {dd.get('premium_period','—')}"
-    elif dtype=="premium_stickers": return f"\n📎 Паков: {dd.get('sticker_count','—')}"
+    if dtype=="nft": return f"\n{E['link']} Ссылка: {dd.get('nft_link','—')}"
+    elif dtype=="username": return f"\n{E['user']} Юзернейм: {dd.get('trade_username','—')}"
+    elif dtype=="stars": return f"\n{E['star']} Звёзд: {dd.get('stars_count','—')}"
+    elif dtype=="premium": return f"\n{E['clock']} Срок: {dd.get('premium_period','—')}"
+    elif dtype=="premium_stickers": return f"\n{E['sticker']} Паков: {dd.get('sticker_count','—')}"
     return ""
 
 def build_buyer_card(deal_id, d, seller_tag):
@@ -377,10 +389,10 @@ def build_buyer_card(deal_id, d, seller_tag):
     item=build_item_line(dtype,d.get("data",{}))
     pay=(f"\n━━━━━━━━━━━━━━━━━━━━\n{CM} Сумма: <b>{amt} {cur}</b>\n\n"
          f"{E['card']} Карта ВТБ:\n<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
-         f"{E['diamond']} TON кошелёк:\n<code>{CRYPTO_ADDRESS}</code>\n\n✅ После перевода нажмите «Я оплатил»")
+         f"{E['diamond']} TON кошелёк:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['check']} После перевода нажмите «Я оплатил»")
     return (f"{E['deal']} <b>Сделка #{deal_id}</b>\n━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🛒 Вы <b>покупатель</b>\n{E['user']} Продавец: <b>{seller_tag}</b>\n{item}\n"
-            f"📌 Тип: <b>{TNAMES.get(dtype,dtype)}</b>\n{E['lock']} Сделка защищена Gift Deals\n{pay}")
+            f"{E['bag']} Вы <b>покупатель</b>\n{E['user']} Продавец: <b>{seller_tag}</b>\n{item}\n"
+            f"{E['pin']} Тип: <b>{TNAMES.get(dtype,dtype)}</b>\n{E['lock']} Сделка защищена Gift Deals\n{pay}")
 
 async def send_deal_card(update, context, deal_id, d, buyer=False):
     try:
@@ -388,18 +400,18 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
         partner=d.get("partner","—"); item=build_item_line(dtype,d.get("data",{}))
         pay=(f"\n━━━━━━━━━━━━━━━━━━━━\n{CM} Сумма: <b>{amt} {cur}</b>\n\n"
              f"{E['card']} Карта ВТБ:\n<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
-             f"{E['diamond']} TON кошелёк:\n<code>{CRYPTO_ADDRESS}</code>\n\n✅ После перевода нажмите «Я оплатил»")
+             f"{E['diamond']} TON кошелёк:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['check']} После перевода нажмите «Я оплатил»")
         if buyer:
             pu=f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else "https://t.me/GiftDealsManager"
             text=(f"{E['deal']} <b>Сделка #{deal_id}</b>\n━━━━━━━━━━━━━━━━━━━━\n\n"
-                  f"🛒 Вы <b>покупатель</b>\n{E['user']} Продавец: <b>{partner}</b>\n{item}\n"
-                  f"📌 Тип: <b>{TNAMES.get(dtype,dtype)}</b>\n{E['lock']} Сделка защищена Gift Deals\n{pay}")
+                  f"{E['bag']} Вы <b>покупатель</b>\n{E['user']} Продавец: <b>{partner}</b>\n{item}\n"
+                  f"{E['pin']} Тип: <b>{TNAMES.get(dtype,dtype)}</b>\n{E['lock']} Сделка защищена Gift Deals\n{pay}")
             kb=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Я оплатил",callback_data=f"paid_{deal_id}")],[InlineKeyboardButton("💬 Написать продавцу",url=pu)],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])
         else:
             text=(f"{E['check']} <b>Сделка создана #{deal_id}</b>\n\n{E['user']} Вы <b>продавец</b>\n"
-                  f"{E['user']} Партнёр: <b>{partner}</b>\n{item}\n📌 Тип: <b>{TNAMES.get(dtype,dtype)}</b>\n"
-                  f"{CM} Сумма: <b>{amt} {cur}</b>\n\n🔗 Ссылка для покупателя:\n"
-                  f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\nОтправьте ссылку партнёру.")
+                  f"{E['user']} Партнёр: <b>{partner}</b>\n{item}\n{E['pin']} Тип: <b>{TNAMES.get(dtype,dtype)}</b>\n"
+                  f"{CM} Сумма: <b>{amt} {cur}</b>\n\n{E['link']} Ссылка для покупателя:\n"
+                  f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n{E['paper']} Отправьте ссылку партнёру.")
             kb=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])
         await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
     except Exception as e: logger.error(f"send_deal_card: {e}")
@@ -466,7 +478,7 @@ async def show_balance_info(update, context, method):
     try:
         uid=update.effective_user.id
         if method=="stars": text=f"{E['star']} <b>Пополнение звёздами\n\nМенеджер: {MANAGER_USERNAME}</b>"
-        elif method=="rub": text=f"{E['card']} <b>Пополнение рублями\n\nКарта ВТБ:\n<code>89041751408</code>\nАлександр Ф.\n\nПосле перевода скриншот менеджеру: {MANAGER_USERNAME}</b>"
+        elif method=="rub": text=f"{E['banknote']} <b>Пополнение рублями\n\nКарта ВТБ:\n<code>89041751408</code>\nАлександр Ф.\n\nПосле перевода скриншот менеджеру: {MANAGER_USERNAME}</b>"
         elif method=="crypto": text=f"{E['diamond']} <b>Пополнение TON / USDT\n\nАдрес TON:\n<code>{CRYPTO_ADDRESS}</code>\n\nВаш ID: <code>{uid}</code></b>"
         else: text="<b>Неизвестный метод</b>"
         await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🗃 Назад",callback_data="menu_balance")]]))
@@ -495,8 +507,8 @@ async def show_profile(update, context):
         uname=update.effective_user.username or "—"; sl=f"\n🏷 {u['status']}" if u.get("status") else ""
         rv=("\n\n<b>📝 Отзывы:</b>\n"+"\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
         text=(f"{E['user']} <b>Профиль{sl}\n\n@{uname}\n{CM} Баланс: {u.get('balance',0)} RUB\n"
-              f"📊 Сделок: {u.get('total_deals',0)}\n{E['check']} Успешных: {u.get('success_deals',0)}\n"
-              f"{CM} Оборот: {u.get('turnover',0)} RUB\n{E['star']} Репутация: {u.get('reputation',0)}</b>{rv}")
+              f"{E['chart']} Сделок: {u.get('total_deals',0)}\n{E['check']} Успешных: {u.get('success_deals',0)}\n"
+              f"{E['coins']} Оборот: {u.get('turnover',0)} RUB\n{E['star']} Репутация: {u.get('reputation',0)}</b>{rv}")
         await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("➕ Пополнить",callback_data="menu_balance"),InlineKeyboardButton("💸 Вывод",callback_data="withdraw")],[InlineKeyboardButton("🗃 Назад",callback_data="main_menu")]]))
     except Exception as e: logger.error(f"show_profile: {e}")
 
@@ -528,10 +540,10 @@ async def show_withdraw(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         bal=u.get("balance",0); uname=update.effective_user.username or str(uid)
-        try: await context.bot.send_message(chat_id=ADMIN_ID,text=f"💸 <b>Запрос на вывод</b>\n{E['user']} @{uname} (<code>{uid}</code>)\n{CM} {bal} RUB",parse_mode="HTML")
+        try: await context.bot.send_message(chat_id=ADMIN_ID,text=f"{E['lightning']} <b>Запрос на вывод</b>\n{E['user']} @{uname} (<code>{uid}</code>)\n{CM} {bal} RUB",parse_mode="HTML")
         except Exception as e: logger.error(f"withdraw admin: {e}")
         await edit_or_send(update,
-            f"{E['money']} <b>Вывод средств\n\n{CM} Ваш баланс: {bal} RUB\n\n━━━━━━━━━━━━━━━━━━━━\n"
+            f"{E['wallet']} <b>Вывод средств\n\n{CM} Ваш баланс: {bal} RUB\n\n━━━━━━━━━━━━━━━━━━━━\n"
             f"{E['card']} Карта ВТБ:\n<code>89041751408 ВТБ — Александр Ф.</code>\n\n"
             f"{E['diamond']} TON кошелёк:\n<code>{CRYPTO_ADDRESS}</code>\n\nУкажите реквизиты менеджеру.</b>",
             InlineKeyboardMarkup([[InlineKeyboardButton("💬 Менеджер",url="https://t.me/GiftDealsManager")],[InlineKeyboardButton("🗃 Назад",callback_data="menu_profile")]]))
