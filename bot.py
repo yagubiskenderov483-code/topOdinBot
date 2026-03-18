@@ -220,8 +220,8 @@ def get_welcome(lang):
     )
 
 BTN = {
-    "ru": {"deal": "💎 Создать сделку", "balance": "💸 Пополнить/Вывод", "lang": "🌍 Язык / Lang", "profile": "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji> Профиль", "top": "🏆 Топ продавцов"},
-    "en": {"deal": "💎 Create Deal", "balance": "💸 Top Up/Withdraw", "lang": "🌍 Language", "profile": "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji> Profile", "top": "🏆 Top Sellers"},
+    "ru": {"deal": "💎 Создать сделку", "balance": "💸 Пополнить/Вывод", "lang": "🌍 Язык / Lang", "profile": "⭐ Профиль", "top": "🏆 Топ продавцов"},
+    "en": {"deal": "💎 Create Deal", "balance": "💸 Top Up/Withdraw", "lang": "🌍 Language", "profile": "⭐ Profile", "top": "🏆 Top Sellers"},
 }
 
 CUR = {
@@ -330,7 +330,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def deal_types_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎁 NFT",callback_data="dt_nft"),InlineKeyboardButton("🎴 NFT Username",callback_data="dt_usr")],
-        [InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Звёзды",callback_data="dt_str"),InlineKeyboardButton("💎 Крипта",callback_data="dt_cry")],
+        [InlineKeyboardButton("⭐️ Звёзды",callback_data="dt_str"),InlineKeyboardButton("💎 Крипта",callback_data="dt_cry")],
         [InlineKeyboardButton("✈️ Telegram Premium",callback_data="dt_prm")],
         [InlineKeyboardButton("🔙 Назад",callback_data="main_menu")],
     ])
@@ -356,7 +356,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="balance_topup":
             await edit_or_send(update,f"{E['money']} <b>Выберите способ пополнения:</b>",
                 InlineKeyboardMarkup([
-                    [InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Звёзды",callback_data="balance_stars")],
+                    [InlineKeyboardButton("⭐️ Звёзды",callback_data="balance_stars")],
                     [InlineKeyboardButton("💰 Рубли",callback_data="balance_rub")],
                     [InlineKeyboardButton("💎 TON / USDT",callback_data="balance_crypto")],
                     [InlineKeyboardButton("🔙 Назад",callback_data="menu_balance")],
@@ -470,7 +470,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
                 await update.message.reply_text(f"{E['diamond']} <b>Крипта\n\nВыберите валюту:</b>",parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💎 TON",callback_data="cry_ton"),InlineKeyboardButton("<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> USDT",callback_data="cry_usd")]]))
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💎 TON",callback_data="cry_ton"),InlineKeyboardButton("💵 USDT",callback_data="cry_usd")]]))
             elif dtype=="premium":
                 ud["step"]="prem_period"
                 await update.message.reply_text(f"{E['premium']} <b>Telegram Premium\n\nВыберите срок:</b>",parse_mode="HTML",
@@ -589,7 +589,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
             )
             kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton("<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> " + ("Я оплатил" if ru else "I paid"),callback_data=f"paid_{deal_id}")],
+                [InlineKeyboardButton("✅ " + ("Я оплатил" if ru else "I paid"),callback_data=f"paid_{deal_id}")],
                 [InlineKeyboardButton("💬 " + ("Написать продавцу" if ru else "Write to seller"),url=pu)],
                 [InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"),callback_data="main_menu")]
             ])
@@ -623,7 +623,7 @@ async def on_paid(update, context):
                  f"{E['user']} {btag} (<code>{buyer.id}</code>)\n{E['pin']} {TNAMES.get(dtype,dtype)}\n{CM} {amt} {cur}\n\nПроверьте поступление:")
         try:
             await context.bot.send_message(chat_id=ADMIN_ID,text=adm_txt,parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Пришла",callback_data=f"adm_confirm_{deal_id}"),InlineKeyboardButton("❌ Не пришла",callback_data=f"adm_decline_{deal_id}")]]))
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Пришла",callback_data=f"adm_confirm_{deal_id}"),InlineKeyboardButton("❌ Не пришла",callback_data=f"adm_decline_{deal_id}")]]))
         except Exception as e: logger.error(f"on_paid admin: {e}")
         seller=d.get("user_id")
         if seller and seller!=str(buyer.id):
@@ -632,7 +632,7 @@ async def on_paid(update, context):
                     text=f"{E['bell']} <b>Покупатель сообщил об оплате!</b>\n📄 <code>{deal_id}</code>\n{E['user']} {btag}\n{CM} {amt} {cur}",parse_mode="HTML")
             except Exception as e: logger.error(f"on_paid seller: {e}")
         try:
-            await q.edit_message_reply_markup(InlineKeyboardMarkup([[InlineKeyboardButton("<tg-emoji emoji-id='5386367538735104399'>⏳</tg-emoji> Ожидание подтверждения...",callback_data="noop")],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]]))
+            await q.edit_message_reply_markup(InlineKeyboardMarkup([[InlineKeyboardButton("⏳ Ожидание подтверждения...",callback_data="noop")],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]]))
         except Exception as e: logger.error(f"on_paid edit: {e}")
     except Exception as e: logger.error(f"on_paid: {e}")
 
@@ -660,7 +660,7 @@ async def adm_confirm(update, context):
                              f"Оцените покупателя {buyer_tag}:",
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>1",callback_data=f"rev_{deal_id}_s_1"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>2",callback_data=f"rev_{deal_id}_s_2"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>3",callback_data=f"rev_{deal_id}_s_3"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>4",callback_data=f"rev_{deal_id}_s_4"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>5",callback_data=f"rev_{deal_id}_s_5")],
+                            [InlineKeyboardButton("⭐️1",callback_data=f"rev_{deal_id}_s_1"),InlineKeyboardButton("⭐️2",callback_data=f"rev_{deal_id}_s_2"),InlineKeyboardButton("⭐️3",callback_data=f"rev_{deal_id}_s_3"),InlineKeyboardButton("⭐️4",callback_data=f"rev_{deal_id}_s_4"),InlineKeyboardButton("⭐️5",callback_data=f"rev_{deal_id}_s_5")],
                         ]))
                 except Exception as e: logger.error(f"adm_confirm notify seller: {e}")
             # Уведомляем покупателя с просьбой оставить отзыв
@@ -676,7 +676,7 @@ async def adm_confirm(update, context):
                              f"Оцените продавца {seller_tag}:",
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>1",callback_data=f"rev_{deal_id}_b_1"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>2",callback_data=f"rev_{deal_id}_b_2"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>3",callback_data=f"rev_{deal_id}_b_3"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>4",callback_data=f"rev_{deal_id}_b_4"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>5",callback_data=f"rev_{deal_id}_b_5")],
+                            [InlineKeyboardButton("⭐️1",callback_data=f"rev_{deal_id}_b_1"),InlineKeyboardButton("⭐️2",callback_data=f"rev_{deal_id}_b_2"),InlineKeyboardButton("⭐️3",callback_data=f"rev_{deal_id}_b_3"),InlineKeyboardButton("⭐️4",callback_data=f"rev_{deal_id}_b_4"),InlineKeyboardButton("⭐️5",callback_data=f"rev_{deal_id}_b_5")],
                         ]))
                 except Exception as e: logger.error(f"adm_confirm notify buyer: {e}")
     except Exception as e: logger.error(f"adm_confirm: {e}")
@@ -686,7 +686,7 @@ async def adm_decline(update, context):
         q=update.callback_query; await q.answer()
         if update.effective_user.id!=ADMIN_ID: return
         deal_id=q.data[12:]; db=load_db(); d=db.get("deals",{}).get(deal_id,{})
-        try: await q.edit_message_text(f"{E['cross']} <b>Не подтверждена.</b>\n📄 <code>{deal_id}</code>\n{CM} {d.get('amount','—')} {d.get('currency','—')}",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Всё же пришла",callback_data=f"adm_confirm_{deal_id}")]]))
+        try: await q.edit_message_text(f"{E['cross']} <b>Не подтверждена.</b>\n📄 <code>{deal_id}</code>\n{CM} {d.get('amount','—')} {d.get('currency','—')}",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Всё же пришла",callback_data=f"adm_confirm_{deal_id}")]]))
         except Exception as e: logger.error(f"adm_decline edit: {e}")
     except Exception as e: logger.error(f"adm_decline: {e}")
 
@@ -810,7 +810,7 @@ async def show_withdraw(update, context):
         await edit_or_send(update,
             f"{E['wallet']} <b>Вывод средств</b>\n\n<blockquote>Ваш баланс: {bal} RUB\n\nВыберите способ вывода:</blockquote>",
             InlineKeyboardMarkup([
-                [InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Звёзды",callback_data="withdraw_stars")],
+                [InlineKeyboardButton("⭐️ Звёзды",callback_data="withdraw_stars")],
                 [InlineKeyboardButton("💎 Крипта (TON/USDT)",callback_data="withdraw_crypto")],
                 [InlineKeyboardButton("💳 На карту",callback_data="withdraw_card")],
                 [InlineKeyboardButton("🔙 Назад",callback_data="menu_balance")],
@@ -819,7 +819,7 @@ async def show_withdraw(update, context):
 
 def adm_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("<tg-emoji emoji-id='5275979556308674886'>👤</tg-emoji> Управление пользователем",callback_data="adm_user")],
+        [InlineKeyboardButton("👤 Управление пользователем",callback_data="adm_user")],
         [InlineKeyboardButton("🖼 Баннер (фото/видео/текст)",callback_data="adm_banner")],
         [InlineKeyboardButton("✏️ Описание меню",callback_data="adm_menu_desc")],
         [InlineKeyboardButton("🗂 Список сделок",callback_data="adm_deals")],
@@ -883,10 +883,10 @@ async def handle_adm_msg(update, context):
                 f"<b>@{u.get('username','—')} | Сделок: {u.get('total_deals',0)} | Реп: {u.get('reputation',0)}\nСтатус: {sl}</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("📝 Отзыв",callback_data="adm_add_review")],
-                    [InlineKeyboardButton("🔢 Сделок",callback_data="adm_set_deals"),InlineKeyboardButton("<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Успешных",callback_data="adm_set_success")],
-                    [InlineKeyboardButton("<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> Оборот",callback_data="adm_set_turnover"),InlineKeyboardButton("<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> Репут.",callback_data="adm_set_rep")],
+                    [InlineKeyboardButton("🔢 Сделок",callback_data="adm_set_deals"),InlineKeyboardButton("✅ Успешных",callback_data="adm_set_success")],
+                    [InlineKeyboardButton("💵 Оборот",callback_data="adm_set_turnover"),InlineKeyboardButton("⭐️ Репут.",callback_data="adm_set_rep")],
                     [InlineKeyboardButton("🏷 Свой статус",callback_data="adm_set_status")],
-                    [InlineKeyboardButton("<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Проверенный",callback_data="adm_status_verified"),InlineKeyboardButton("🛡 Гарант",callback_data="adm_status_garant")],
+                    [InlineKeyboardButton("✅ Проверенный",callback_data="adm_status_verified"),InlineKeyboardButton("🛡 Гарант",callback_data="adm_status_garant")],
                     [InlineKeyboardButton("⚠️ Осторожно",callback_data="adm_status_caution"),InlineKeyboardButton("🚫 Мошенник",callback_data="adm_status_scammer")],
                     [InlineKeyboardButton("❌ Убрать статус",callback_data="adm_status_clear")],
                     [InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]
