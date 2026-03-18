@@ -261,8 +261,8 @@ BTN = {
 }
 
 CUR = {
-    "TON": "💎 TON", "USDT": "<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> USDT",
-    "Stars": {"ru": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Звёзды", "en": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Stars", "kz": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Жұлдыз", "az": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Ulduz", "uz": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Yulduz", "kg": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Жылдыз", "tj": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Ситора", "by": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Зоркі", "am": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Astegh", "ge": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> ვარსკვ.", "ua": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Зірки", "md": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Stele"},
+    "TON": "💎 TON", "USDT": "💵 USDT",
+    "Stars": {"ru": "⭐️ Звёзды", "en": "⭐️ Stars", "kz": "⭐️ Жұлдыз", "az": "⭐️ Ulduz", "uz": "⭐️ Yulduz", "kg": "⭐️ Жылдыз", "tj": "⭐️ Ситора", "by": "⭐️ Зоркі", "am": "⭐️ Astegh", "ge": "⭐️ ვარსკვ.", "ua": "⭐️ Зірки", "md": "⭐️ Stele"},
     "RUB": {"ru": "🇷🇺 Рубли", "en": "🇷🇺 Rubles", "kz": "🇷🇺 Рубль", "az": "🇷🇺 Rubl", "uz": "🇷🇺 Rubl", "kg": "🇷🇺 Рубль", "tj": "🇷🇺 Рубл", "by": "🇷🇺 Рублі", "am": "🇷🇺 Rubl", "ge": "🇷🇺 რუბლი", "ua": "🇷🇺 Рублі", "md": "🇷🇺 Ruble"},
     "KZT": {"ru": "🇰🇿 Тенге", "en": "🇰🇿 Tenge", "kz": "🇰🇿 Теңге", "az": "🇰🇿 Tenge", "uz": "🇰🇿 Tenge", "kg": "🇰🇿 Теңге", "tj": "🇰🇿 Тенге", "by": "🇰🇿 Тэнге", "am": "🇰🇿 Tenge", "ge": "🇰🇿 თენგე", "ua": "🇰🇿 Тенге", "md": "🇰🇿 Tenge"},
     "AZN": {"ru": "🇦🇿 Манат", "en": "🇦🇿 Manat", "kz": "🇦🇿 Манат", "az": "🇦🇿 Manat", "uz": "🇦🇿 Manat", "kg": "🇦🇿 Манат", "tj": "🇦🇿 Манот", "by": "🇦🇿 Манат", "am": "🇦🇿 Manat", "ge": "🇦🇿 მანათი", "ua": "🇦🇿 Манат", "md": "🇦🇿 Manat"},
@@ -413,9 +413,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not buyer_reqs.get("card") and not buyer_reqs.get("ton") and not buyer_reqs.get("stars"):
                     warn_e = ce("5420323339723881652","⚠️")
                     msg = (f"{warn_e} <b>{'Вы не можете продолжить сделку, пока не добавите реквизиты.' if ru else 'You cannot proceed until you add your requisites.'}</b>\n\n"
-                           f"<blockquote>{'Реквизиты нужны на случай спора или возврата. Укажите хотя бы один способ получения средств.' if ru else 'Requisites are needed in case of dispute. Add at least one payment method.'}</blockquote>")
+                           f"<blockquote>{'Реквизиты нужны на случай спора или возврата. Выберите что хотите добавить:' if ru else 'Requisites are needed in case of dispute. Choose what to add:'}</blockquote>")
                     kb=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("📋 "+("Добавить реквизиты" if ru else "Add Requisites"),callback_data=f"add_req_{deal_id}")],
+                        [InlineKeyboardButton("💳 "+("Карта / СБП" if ru else "Card / SBP"),callback_data=f"req_deal_card_{deal_id}")],
+                        [InlineKeyboardButton("💎 TON / USDT",callback_data=f"req_deal_ton_{deal_id}")],
+                        [InlineKeyboardButton("⭐️ "+("Звёзды" if ru else "Stars"),callback_data=f"req_deal_stars_{deal_id}")],
                     ])
                     await update.effective_message.reply_text(msg, parse_mode="HTML", reply_markup=kb)
                     context.user_data["pending_deal"]=deal_id
@@ -471,13 +473,26 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=f"{labels.get(field,'?')}\n\n<blockquote>{descs.get(field,'?')}</blockquote>"
             await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="menu_req")]])); return
         if d.startswith("add_req_"):
-            deal_id=d[8:]; context.user_data["req_for_deal"]=deal_id
-            context.user_data["req_step"]="card"; ru=lang=="ru"
-            text=(f"📋 <b>{'Добавьте реквизиты для участия в сделке' if ru else 'Add requisites to join the deal'}</b>\n\n"
-                  f"💳 <b>{'Шаг 1: Карта / Телефон (СБП)' if ru else 'Step 1: Card / Phone (SBP)'}:</b>\n"
-                  f"<blockquote>{'Введите номер телефона или карты.' if ru else 'Enter your phone or card number.'}\n\n"
-                  f"{'Примеры' if ru else 'Examples'}:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code></blockquote>")
-            await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]])); return
+            deal_id=d[8:]; context.user_data["req_for_deal"]=deal_id; ru=lang=="ru"
+            warn=ce("5420323339723881652","⚠️")
+            text=(f"{warn} <b>{'Добавьте реквизиты для участия в сделке' if ru else 'Add requisites to join the deal'}</b>\n\n"
+                  f"<blockquote>{'Выберите способ получения средств в случае спора или возврата.' if ru else 'Choose a refund method in case of dispute.'}</blockquote>")
+            kb=InlineKeyboardMarkup([
+                [InlineKeyboardButton("💳 "+("Карта / СБП" if ru else "Card / SBP"),callback_data=f"req_deal_card_{deal_id}")],
+                [InlineKeyboardButton("💎 TON "+("адрес" if ru else "address"),callback_data=f"req_deal_ton_{deal_id}")],
+                [InlineKeyboardButton("⭐️ "+("Юзернейм для звёзд" if ru else "Stars username"),callback_data=f"req_deal_stars_{deal_id}")],
+                [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")],
+            ])
+            await edit_or_send(update,text,kb); return
+        if d.startswith("req_deal_"):
+            parts=d[9:].split("_",1); field=parts[0]; deal_id=parts[1] if len(parts)>1 else ""
+            context.user_data["req_step"]=field; context.user_data["req_for_deal"]=deal_id; ru=lang=="ru"
+            prompts={
+                "card":(f"💳 <b>{'Карта / СБП' if ru else 'Card / SBP'}</b>\n\n<blockquote>{'Введите номер телефона (СБП) или карты.' if ru else 'Enter phone (SBP) or card number.'}\n\n{'Примеры' if ru else 'Examples'}:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code></blockquote>"),
+                "ton": (f"💎 <b>TON {'адрес' if ru else 'address'}</b>\n\n<blockquote>{'Введите TON адрес (начинается с UQ или EQ).' if ru else 'Enter TON address (starts with UQ or EQ).'}\n\n{'Пример' if ru else 'Example'}:\n<code>UQDxxx...xxx</code></blockquote>"),
+                "stars":(f"{ce('5438496463044752972','⭐️')} <b>{'Звёзды' if ru else 'Stars'}</b>\n\n<blockquote>{'Введите ваш @юзернейм.' if ru else 'Enter your @username.'}\n\n{'Пример' if ru else 'Example'}:\n<code>@username</code></blockquote>"),
+            }
+            await edit_or_send(update,prompts.get(field,"?"),InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data=f"add_req_{deal_id}")]])); return
         if d=="main_menu":
             ud.clear()
             try: await q.message.delete()
@@ -1050,25 +1065,36 @@ async def show_req(update, context):
         lang=get_lang(uid); ru=lang=="ru"
         reqs=u.get("requisites",{})
         card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
-        card_line = f"<code>{card}</code>" if card else ("<b>Добавить карту</b>" if ru else "<b>Add Card</b>")
-        ton_line  = f"<code>{ton}</code>"  if ton  else ("<b>Добавить TON адрес</b>" if ru else "<b>Add TON Address</b>")
-        star_line = f"<code>{stars}</code>" if stars else ("<b>Добавить юзернейм</b>" if ru else "<b>Add Username</b>")
+
+        e_card  = ce("5445353829304387411","💳")
+        e_ton   = ce("5397829221605191505","💎")
+        e_star  = ce("5321485469249198987","⭐️")
+        e_check = ce("5206607081334906820","✅")
+        e_add   = ce("5274055917766202507","➕")
+
+        card_line = f"{e_check} <code>{card}</code>" if card else f"{e_add} <b>{'Добавить карту' if ru else 'Add card'}</b>"
+        ton_line  = f"{e_check} <code>{ton}</code>"  if ton  else f"{e_add} <b>{'Добавить TON адрес' if ru else 'Add TON address'}</b>"
+        star_line = f"{e_check} <code>{stars}</code>" if stars else f"{e_add} <b>{'Добавить юзернейм' if ru else 'Add username'}</b>"
+
         text=(
             f"📋 <b>{'Мои реквизиты' if ru else 'My Requisites'}</b>\n\n"
-            f"💳 <b>{'Карта / Телефон (СБП)' if ru else 'Card / Phone (SBP)'}:</b>\n"
+            f"{e_card} <b>{'Карта / СБП' if ru else 'Card / SBP'}:</b>\n"
             f"<blockquote>{card_line}</blockquote>\n\n"
-            f"💎 <b>TON {'адрес' if ru else 'address'}:</b>\n"
+            f"{e_ton} <b>TON / USDT:</b>\n"
             f"<blockquote>{ton_line}</blockquote>\n\n"
-            f"{ce('5438496463044752972','⭐️')} <b>{'Звёзды (@username)' if ru else 'Stars (@username)'}:</b>\n"
+            f"{e_star} <b>{'Звёзды' if ru else 'Stars'}:</b>\n"
             f"<blockquote>{star_line}</blockquote>"
         )
-        r1 = [InlineKeyboardButton("💳 "+("Изменить" if ru else "Edit"), callback_data="req_edit_card"),
-              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Del"), callback_data="req_del_card")] if card else [InlineKeyboardButton("💳 "+("Добавить карту" if ru else "Add Card"), callback_data="req_edit_card")]
-        r2 = [InlineKeyboardButton("💎 "+("Изменить" if ru else "Edit"), callback_data="req_edit_ton"),
-              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Del"), callback_data="req_del_ton")] if ton else [InlineKeyboardButton("💎 "+("Добавить TON адрес" if ru else "Add TON Address"), callback_data="req_edit_ton")]
-        r3 = [InlineKeyboardButton("⭐️ "+("Изменить" if ru else "Edit"), callback_data="req_edit_stars"),
-              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Del"), callback_data="req_del_stars")] if stars else [InlineKeyboardButton("⭐️ "+("Добавить юзернейм" if ru else "Add Username"), callback_data="req_edit_stars")]
-        await edit_or_send(update, text, InlineKeyboardMarkup([r1, r2, r3, [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"), callback_data="main_menu")]]))
+        r1 = [InlineKeyboardButton("💳 "+("Изменить" if ru else "Edit"),callback_data="req_edit_card"),
+              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Delete"),callback_data="req_del_card")] if card \
+         else [InlineKeyboardButton("💳 "+("Добавить карту" if ru else "Add Card"),callback_data="req_edit_card")]
+        r2 = [InlineKeyboardButton("💎 "+("Изменить" if ru else "Edit"),callback_data="req_edit_ton"),
+              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Delete"),callback_data="req_del_ton")] if ton \
+         else [InlineKeyboardButton("💎 "+("Добавить TON" if ru else "Add TON"),callback_data="req_edit_ton")]
+        r3 = [InlineKeyboardButton("⭐️ "+("Изменить" if ru else "Edit"),callback_data="req_edit_stars"),
+              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Delete"),callback_data="req_del_stars")] if stars \
+         else [InlineKeyboardButton("⭐️ "+("Добавить юзернейм" if ru else "Add Username"),callback_data="req_edit_stars")]
+        await edit_or_send(update,text,InlineKeyboardMarkup([r1,r2,r3,[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]]))
     except Exception as e: logger.error(f"show_req: {e}")
 
 async def show_my_deals(update, context):
