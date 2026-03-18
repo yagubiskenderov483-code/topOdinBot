@@ -17,7 +17,7 @@ BOT_USERNAME = "GiftDealsRobot"
 MANAGER_USERNAME = "@GiftDealsManager"
 CRYPTO_ADDRESS = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
 CRYPTO_BOT = "https://t.me/send?start=IVbfPL7Tk4XA"
-CARD_NUMBER = "2200 2281 6493 7284"
+CARD_NUMBER = "+79041751408"
 CARD_NAME = "Александр Ф."
 CARD_BANK = "ВТБ"
 DB_FILE = "db.json"
@@ -80,12 +80,12 @@ CS  = ce("5267500801240092311", "⭐")
 CR  = ce("5195033767969839232", "🚀")
 
 TNAMES = {
-    "nft":              f"{E['nft']} NFT",
-    "username":         f"{E['user']} Юзернейм",
-    "stars":            f"{E['star']} Звёзды",
-    "crypto":           f"{E['diamond']} Крипта",
-    "premium":          f"{E['premium']} Premium",
-    "premium_stickers": f"{E['sticker']} Премиум стикеры",
+    "nft":              "🎁 NFT подарок",
+    "username":         "🎴 NFT Username",
+    "stars":            "⭐️ Звёзды Telegram",
+    "crypto":           "💎 Крипта (TON/USDT)",
+    "premium":          "✈️ Telegram Premium",
+    "premium_stickers": "🎭 Премиум стикеры",
 }
 
 def load_db():
@@ -125,7 +125,7 @@ LANGS = {
     "kz": "🇰🇿 Қазақстан", "az": "🇦🇿 Azərbaycan",
     "uz": "🇺🇿 O'zbek",    "kg": "🇰🇬 Кыргызстан",
     "tj": "🇹🇯 Тоҷикистон","by": "🇧🇾 Беларусь",
-    "am": "🇦🇲 Հայاستан",  "ge": "🇬🇪 საქართველო",
+    "am": "🇦🇲 Հայաստան",  "ge": "🇬🇪 საქართველო",
     "ua": "🇺🇦 Україна",   "md": "🇲🇩 Moldova",
 }
 
@@ -475,57 +475,83 @@ def build_item_line(dtype, dd):
 def build_buyer_card(deal_id, d, seller_tag):
     dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
     item=build_item_line(dtype,d.get("data",{}))
-    return (f"{E['deal']} <b>Сделка #{deal_id}</b>\n\n"
-            f"<blockquote>"
-            f"Покупатель: Вы\n"
-            f"Продавец: {seller_tag}\n"
-            f"{item.strip()}\n"
-            f"Тип: {TNAMES.get(dtype,dtype)}\n"
-            f"Сумма: {amt} {cur_native(cur)}\n"
-            f"{E['lock']} Сделка защищена Gift Deals"
-            f"</blockquote>\n\n"
-            f"{E['card']} <b>Карта {CARD_BANK}:</b>\n<code>{CARD_NUMBER} — {CARD_NAME}</code>\n\n"
-            f"{E['shine']} <b>TON кошелёк:</b>\n<code>{CRYPTO_ADDRESS}</code>\n\n"
-            f"{E['star']} <b>Крипто бот:</b> {CRYPTO_BOT}\n\n"
-            f"{E['check']} После перевода нажмите «Я оплатил»")
+    item_str=f"\n{item.strip()}" if item.strip() else ""
+    return (
+        f"💼 <b>Сделка #{deal_id}</b>\n\n"
+        f"<blockquote>"
+        f"👤 Продавец: <b>{seller_tag}</b>\n"
+        f"🛒 Покупатель: <b>Вы</b>\n"
+        f"📦 Тип сделки: <b>{TNAMES.get(dtype,dtype)}</b>"
+        f"{item_str}\n"
+        f"💰 Сумма: <b>{amt} {cur_native(cur)}</b>"
+        f"</blockquote>\n\n"
+        f"🔒 <b>Гарантия безопасности</b>\n"
+        f"<blockquote>Средства заморожены до подтверждения передачи. "
+        f"Сделка защищена платформой Gift Deals.</blockquote>\n\n"
+        f"💳 <b>Реквизиты для оплаты:</b>\n"
+        f"<blockquote>"
+        f"Банк: {CARD_BANK}\n"
+        f"Телефон: <code>{CARD_NUMBER}</code>\n"
+        f"Получатель: {CARD_NAME}\n\n"
+        f"TON адрес:\n<code>{CRYPTO_ADDRESS}</code>\n\n"
+        f"Крипто бот: {CRYPTO_BOT}\n\n"
+        f"Звёзды: @GiftDealsManager"
+        f"</blockquote>\n\n"
+        f"✅ После перевода нажмите кнопку <b>«Я оплатил»</b>"
+    )
 
 async def send_deal_card(update, context, deal_id, d, buyer=False):
     try:
         dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
         partner=d.get("partner","—"); item=build_item_line(dtype,d.get("data",{}))
         db=load_db(); seller_uid=d.get("user_id")
-        seller_status=""
-        if seller_uid and seller_uid in db.get("users",{}):
-            st=db["users"][seller_uid].get("status","")
-            if st: seller_status=f"\n{E['star']} Статус: <b>{st}</b>"
+        seller_name=f"@{update.effective_user.username}" if update.effective_user.username else f"#{update.effective_user.id}"
+        item_str=f"\n{item.strip()}" if item.strip() else ""
         if buyer:
             pu=f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
-            text=(f"{E['deal']} <b>Сделка #{deal_id}</b>\n\n"
-                  f"<blockquote>"
-                  f"Покупатель: Вы\n"
-                  f"Продавец: {partner}{seller_status}\n"
-                  f"{item.strip()}\n"
-                  f"Тип: {TNAMES.get(dtype,dtype)}\n"
-                  f"Сумма: {amt} {cur_native(cur)}\n"
-                  f"{E['lock']} Сделка защищена Gift Deals"
-                  f"</blockquote>\n\n"
-                  f"{E['card']} <b>Карта {CARD_BANK}:</b>\n<code>{CARD_NUMBER} — {CARD_NAME}</code>\n\n"
-                  f"{E['shine']} <b>TON кошелёк:</b>\n<code>{CRYPTO_ADDRESS}</code>\n\n"
-                  f"{E['star']} <b>Крипто бот:</b> {CRYPTO_BOT}\n\n"
-                  f"{E['check']} После перевода нажмите «Я оплатил»")
-            kb=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Я оплатил",callback_data=f"paid_{deal_id}")],[InlineKeyboardButton("💬 Написать продавцу",url=pu)],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])
+            status_str=f"\n{E['medal']} Статус: <b>{db['users'][seller_uid].get('status','')}</b>" if seller_uid and seller_uid in db.get('users',{}) and db['users'][seller_uid].get('status') else ""
+            text=(
+                f"💼 <b>Сделка #{deal_id}</b>\n\n"
+                f"<blockquote>"
+                f"👤 Продавец: <b>{partner}</b>{status_str}\n"
+                f"🛒 Покупатель: <b>Вы</b>\n"
+                f"📦 Тип сделки: <b>{TNAMES.get(dtype,dtype)}</b>"
+                f"{item_str}\n"
+                f"💰 Сумма: <b>{amt} {cur_native(cur)}</b>"
+                f"</blockquote>\n\n"
+                f"🔒 <b>Гарантия безопасности</b>\n"
+                f"<blockquote>Средства заморожены до подтверждения передачи. "
+                f"Сделка защищена платформой Gift Deals.</blockquote>\n\n"
+                f"💳 <b>Реквизиты для оплаты:</b>\n"
+                f"<blockquote>"
+                f"Банк: {CARD_BANK}\n"
+                f"Телефон: <code>{CARD_NUMBER}</code>\n"
+                f"Получатель: {CARD_NAME}\n\n"
+                f"TON адрес:\n<code>{CRYPTO_ADDRESS}</code>\n\n"
+                f"Крипто бот: {CRYPTO_BOT}\n\n"
+                f"Звёзды: @GiftDealsManager"
+                f"</blockquote>\n\n"
+                f"✅ После перевода нажмите кнопку <b>«Я оплатил»</b>"
+            )
+            kb=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Я оплатил",callback_data=f"paid_{deal_id}")],
+                [InlineKeyboardButton("💬 Написать продавцу",url=pu)],
+                [InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]
+            ])
         else:
-            text=(f"{E['check']} <b>Сделка создана #{deal_id}</b>\n\n"
-                  f"<blockquote>"
-                  f"Продавец: Вы\n"
-                  f"Покупатель: {partner}\n"
-                  f"{item.strip()}\n"
-                  f"Тип: {TNAMES.get(dtype,dtype)}\n"
-                  f"Сумма: {amt} {cur_native(cur)}"
-                  f"</blockquote>\n\n"
-                  f"{E['link']} Ссылка для покупателя:\n"
-                  f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n"
-                  f"Отправьте ссылку партнёру.")
+            text=(
+                f"✅ <b>Сделка создана #{deal_id}</b>\n\n"
+                f"<blockquote>"
+                f"👤 Продавец: <b>Вы</b>\n"
+                f"🛒 Покупатель: <b>{partner}</b>\n"
+                f"📦 Тип сделки: <b>{TNAMES.get(dtype,dtype)}</b>"
+                f"{item_str}\n"
+                f"💰 Сумма: <b>{amt} {cur_native(cur)}</b>"
+                f"</blockquote>\n\n"
+                f"🔗 Ссылка для покупателя:\n"
+                f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n"
+                f"📨 Отправьте ссылку партнёру."
+            )
             kb=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])
         await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
     except Exception as e: logger.error(f"send_deal_card: {e}")
@@ -625,14 +651,24 @@ async def show_balance_info(update, context, method):
     try:
         uid=update.effective_user.id
         if method=="stars":
-            text=(f"{E['star']} <b>Пополнение звёздами</b>\n\n"
-                  f"<blockquote>Отправьте звёзды на: {MANAGER_USERNAME}\n\nПосле отправки баланс пополнится в течение 5 минут.</blockquote>")
+            text=(f"⭐️ <b>Пополнение звёздами</b>\n\n"
+                  f"<blockquote>Отправьте звёзды на:\n@GiftDealsManager\n\n"
+                  f"После отправки баланс пополнится в течение 5 минут.</blockquote>")
         elif method=="rub":
-            text=(f"{E['banknote']} <b>Пополнение рублями</b>\n\n"
-                  f"<blockquote>Банк: {CARD_BANK}\nКарта: <code>{CARD_NUMBER}</code>\nПолучатель: {CARD_NAME}\n\nПосле перевода баланс пополнится в течение 5 минут.</blockquote>")
+            text=(f"💳 <b>Пополнение рублями</b>\n\n"
+                  f"<blockquote>"
+                  f"Банк: {CARD_BANK}\n"
+                  f"Телефон: <code>{CARD_NUMBER}</code>\n"
+                  f"Получатель: {CARD_NAME}\n\n"
+                  f"После перевода баланс пополнится в течение 5 минут."
+                  f"</blockquote>")
         elif method=="crypto":
-            text=(f"{E['shine']} <b>Пополнение TON / USDT</b>\n\n"
-                  f"<blockquote>TON адрес:\n<code>{CRYPTO_ADDRESS}</code>\n\nКрипто бот: {CRYPTO_BOT}\n\nВаш ID: <code>{uid}</code></blockquote>")
+            text=(f"💎 <b>Пополнение TON / USDT</b>\n\n"
+                  f"<blockquote>"
+                  f"TON адрес:\n<code>{CRYPTO_ADDRESS}</code>\n\n"
+                  f"Крипто бот: {CRYPTO_BOT}\n\n"
+                  f"Ваш ID: <code>{uid}</code>"
+                  f"</blockquote>")
         else: text="<b>Неизвестный метод</b>"
         await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="balance_topup")]]))
     except Exception as e: logger.error(f"show_balance_info: {e}")
