@@ -167,7 +167,7 @@ def load_db():
         with open(DB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"users": {}, "deals": {}, "banner": None, "banner_photo": None,
-            "banner_video": None, "menu_description": None, "deal_counter": 1}
+            "banner_video": None, "banner_gif": None, "menu_description": None, "deal_counter": 1}
 
 def save_db(db):
     with open(DB_FILE, "w", encoding="utf-8") as f:
@@ -295,8 +295,9 @@ async def show_main(update, context, edit=False):
         lang=u.get("lang","ru"); desc=db.get("menu_description") or get_welcome(lang)
         banner=db.get("banner") or ""; text=desc
         if banner: text+=f"\n\n<b>{banner}</b>"
-        kb=main_kb(lang); bv=db.get("banner_video"); bp=db.get("banner_photo")
+        kb=main_kb(lang); bv=db.get("banner_video"); bp=db.get("banner_photo"); bg=db.get("banner_gif")
         if bv: await update.effective_message.reply_video(video=bv,caption=text,parse_mode="HTML",reply_markup=kb)
+        elif bg: await update.effective_message.reply_animation(animation=bg,caption=text,parse_mode="HTML",reply_markup=kb)
         elif bp: await update.effective_message.reply_photo(photo=bp,caption=text,parse_mode="HTML",reply_markup=kb)
         elif edit:
             try: await update.callback_query.edit_message_text(text,parse_mode="HTML",reply_markup=kb)
@@ -868,7 +869,7 @@ async def handle_adm_cb(update, context):
             await edit_or_send(update,"<b>Введите @юзернейм пользователя:</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
         if d=="adm_banner":
             ud["adm_step"]="banner"
-            await edit_or_send(update,"<b>Отправьте фото, видео или текст.\noff — удалить баннер.</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_back")]])); return
+            await edit_or_send(update,"<b>Отправьте фото, видео, GIF или текст.\noff — удалить баннер.</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_back")]])); return
         if d=="adm_menu_desc":
             ud["adm_step"]="menu_desc"
             await edit_or_send(update,"<b>Введите новое описание меню:</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_back")]])); return
@@ -923,16 +924,19 @@ async def handle_adm_msg(update, context):
             ud["adm_step"]=None; return
         if step=="banner":
             if update.message and update.message.photo:
-                db["banner_photo"]=update.message.photo[-1].file_id; db["banner_video"]=None; db["banner"]=update.message.caption or ""; save_db(db)
+                db["banner_photo"]=update.message.photo[-1].file_id; db["banner_video"]=None; db["banner_gif"]=None; db["banner"]=update.message.caption or ""; save_db(db)
                 await update.message.reply_text(f"{E['check']} <b>Фото-баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
+            elif update.message and update.message.animation:
+                db["banner_gif"]=update.message.animation.file_id; db["banner_video"]=None; db["banner_photo"]=None; db["banner"]=update.message.caption or ""; save_db(db)
+                await update.message.reply_text(f"{E['check']} <b>GIF-баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif update.message and update.message.video:
-                db["banner_video"]=update.message.video.file_id; db["banner_photo"]=None; db["banner"]=update.message.caption or ""; save_db(db)
+                db["banner_video"]=update.message.video.file_id; db["banner_photo"]=None; db["banner_gif"]=None; db["banner"]=update.message.caption or ""; save_db(db)
                 await update.message.reply_text(f"{E['check']} <b>Видео-баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif text.lower()=="off":
-                db["banner"]=db["banner_photo"]=db["banner_video"]=None; save_db(db)
+                db["banner"]=db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None; save_db(db)
                 await update.message.reply_text(f"{E['check']} <b>Баннер удалён!</b>",parse_mode="HTML",reply_markup=ok_kb)
             else:
-                db["banner"]=text; db["banner_photo"]=db["banner_video"]=None; save_db(db)
+                db["banner"]=text; db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None; save_db(db)
                 await update.message.reply_text(f"{E['check']} <b>Баннер установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             ud["adm_step"]=None; return
         if step=="menu_desc":
@@ -1013,7 +1017,7 @@ def main():
     app.add_handler(CommandHandler("set_my_amount",cmd_set_amount))
     app.add_handler(CallbackQueryHandler(on_cb))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,on_msg))
-    app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO,handle_adm_msg))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION,handle_adm_msg))
     print(f"Bot @{BOT_USERNAME} started!")
     app.run_polling()
 
