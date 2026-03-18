@@ -93,21 +93,21 @@ CS  = ce("5267500801240092311", "⭐")
 CR  = ce("5195033767969839232", "🚀")
 
 TNAMES = {
-    "nft":              "🎁 NFT подарок",
-    "username":         "🎴 NFT Username",
-    "stars":            "⭐️ Звёзды Telegram",
-    "crypto":           "💎 Крипта (TON/USDT)",
-    "premium":          "✈️ Telegram Premium",
-    "premium_stickers": "🎭 Премиум стикеры",
+    "nft":              f"{E['nft']} NFT подарок",
+    "username":         f"{E['user']} NFT Username",
+    "stars":            f"{E['stars_deal']} Звёзды Telegram",
+    "crypto":           f"{E['tonkeeper']} Крипта (TON/USDT)",
+    "premium":          f"{E['premium']} Telegram Premium",
+    "premium_stickers": f"{E['sticker']} Премиум стикеры",
 }
 
 TNAMES_EN = {
-    "nft":              "🎁 NFT Gift",
-    "username":         "🎴 NFT Username",
-    "stars":            "⭐️ Telegram Stars",
-    "crypto":           "💎 Crypto (TON/USDT)",
-    "premium":          "✈️ Telegram Premium",
-    "premium_stickers": "🎭 Premium Stickers",
+    "nft":              f"{E['nft']} NFT Gift",
+    "username":         f"{E['user']} NFT Username",
+    "stars":            f"{E['stars_deal']} Telegram Stars",
+    "crypto":           f"{E['tonkeeper']} Crypto (TON/USDT)",
+    "premium":          f"{E['premium']} Telegram Premium",
+    "premium_stickers": f"{E['sticker']} Premium Stickers",
 }
 
 def tname(dtype, lang):
@@ -209,12 +209,12 @@ def get_welcome(lang):
         intro = "Gift Deals — the safest platform for deals in Telegram"
         pts = ["Automatic NFT & gift deals","Full protection for both parties","Funds frozen until confirmation","Transfer via manager: @GiftDealsManager"]
         footer = "Choose an action below"
-        stats = "1000+ deals completed · $500,000+ turnover"
+        stats = "1000+ deals · $6,350 turnover"
     else:
         intro = "Gift Deals — самая безопасная площадка для сделок в Telegram"
         pts = ["Автоматические сделки с НФТ и подарками","Полная защита обеих сторон","Средства заморожены до подтверждения","Передача через менеджера: @GiftDealsManager"]
         footer = "Выберите действие ниже"
-        stats = "1000+ сделок завершено · оборот $500,000+"
+        stats = "1000+ сделок · оборот $6,350"
     nums = [E['num1'], E['num2'], E['num3'], E['num4']]
     lines = "\n".join(f"<blockquote>{nums[i]} {pts[i]}.</blockquote>" for i in range(4))
     return (
@@ -335,7 +335,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def deal_types_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎁 NFT",callback_data="dt_nft"),InlineKeyboardButton("🎴 NFT Username",callback_data="dt_usr")],
-        [InlineKeyboardButton("⭐️ Звёзды",callback_data="dt_str"),InlineKeyboardButton("💎 Крипта (TON/$)",callback_data="dt_cry")],
+        [InlineKeyboardButton("⭐️ Звёзды",callback_data="dt_str"),InlineKeyboardButton("💎 Крипта",callback_data="dt_cry")],
         [InlineKeyboardButton("✈️ Telegram Premium",callback_data="dt_prm")],
         [InlineKeyboardButton("🔙 Назад",callback_data="main_menu")],
     ])
@@ -535,7 +535,7 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
     dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
     item=build_item_line(dtype,d.get("data",{}))
     item_str=f"\n{item.strip()}" if item.strip() else ""
-    stars_line = f"\n\n{E['stars_deal']} <b>{t('stars_title',lang)}:</b>\n<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>" if dtype in ("stars","username") else f"\n\n{E['stars_deal']} <b>{t('stars_title',lang)}:</b>\n<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>"
+    stars_line = f"\n\n{E['stars_deal']} <b>{'Звёзды / NFT Username' if lang=='ru' else 'Stars / NFT Username'}:</b>\n<blockquote>{'Отправьте звёзды менеджеру' if lang=='ru' else 'Send stars to manager'}: @GiftDealsManager</blockquote>"
     return (
         f"💼 <b>{t('deal_title',lang)} #{deal_id}</b>\n\n"
         f"<blockquote>"
@@ -567,7 +567,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
         if buyer:
             pu=f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
             status_str=f"\n⭐️ {t('status_label',lang)}: <b>{db['users'][seller_uid].get('status','')}</b>" if seller_uid and seller_uid in db.get('users',{}) and db['users'][seller_uid].get('status') else ""
-            stars_line = f"\n\n{E['stars_deal']} <b>{t('stars_title',lang)}:</b>\n<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>"
+            stars_line = f"\n\n{E['stars_deal']} <b>{'Звёзды / NFT Username' if lang=='ru' else 'Stars / NFT Username'}:</b>\n<blockquote>{'Отправьте звёзды менеджеру' if lang=='ru' else 'Send stars to manager'}: @GiftDealsManager</blockquote>"
             text=(
                 f"💼 <b>{t('deal_title',lang)} #{deal_id}</b>\n\n"
                 f"<blockquote>"
@@ -582,7 +582,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"{E['warning']} <b>{'Важно' if lang=='ru' else 'Important'}:</b>\n"
                 f"<blockquote>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if lang=='ru' else 'Do not transfer goods directly! Only through manager @GiftDealsManager.'}</blockquote>\n\n"
                 f"{E['requisites']} <b>{t('sbp',lang)} {CARD_BANK}:</b>\n"
-                f"<blockquote>{E['balance_e']} {t('phone',lang)}: <code>{CARD_NUMBER}</code>\n{t('recipient',lang)}: {CARD_NAME}\n{t('bank',lang)}: {CARD_BANK}</blockquote>\n\n"
+                f"<blockquote>{t('phone',lang)}: <code>{CARD_NUMBER}</code>\n{t('recipient',lang)}: {CARD_NAME}\n{t('bank',lang)}: {CARD_BANK}</blockquote>\n\n"
                 f"{E['tonkeeper']} <b>{t('ton_title',lang)}:</b>\n"
                 f"<blockquote>{t('ton_addr',lang)}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {t('crypto_bot',lang)}: {CRYPTO_BOT}</blockquote>"
                 f"{stars_line}\n\n"
@@ -706,8 +706,8 @@ async def show_balance_info(update, context, method):
     try:
         uid=update.effective_user.id; lang=get_lang(uid)
         if method=="stars":
-            text=(f"⭐️ <b>{t('stars_topup',lang)}</b>\n\n"
-                  f"<blockquote>{t('stars_send_to',lang)}: @GiftDealsManager\n\n{t('within_5min',lang)}</blockquote>")
+            text=(f"{E['stars_deal']} <b>{'Пополнение звёздами' if lang=='ru' else 'Top up with Stars'}</b>\n\n"
+                  f"<blockquote>{'Отправьте звёзды менеджеру' if lang=='ru' else 'Send stars to manager'}: @GiftDealsManager\n\n{t('within_5min',lang)}</blockquote>")
         elif method=="rub":
             text=(f"💳 <b>{t('rub_topup',lang)}</b>\n\n"
                   f"<blockquote>"
@@ -730,14 +730,11 @@ async def show_balance_info(update, context, method):
 async def show_lang(update, context):
     try:
         uid=update.effective_user.id; lang=get_lang(uid)
-        LANG_TEXT={"ru":"Выберите язык:","en":"Select language:","kz":"Тілді таңдаңыз:","az":"Dil seçin:","uz":"Tilni tanlang:","kg":"Тилди тандаңыз:","tj":"Забонро интихоб кунед:","by":"Выберыце мову:","am":"Ընտրեք լեզուն:","ge":"აირჩიეთ ენა:","ua":"Оберіть мову:","md":"Selectați limba:"}
-        prompt=LANG_TEXT.get(lang,"Выберите язык:")
-        rows,row=[],[]
+        prompt = "Select language:" if lang=="en" else "Выберите язык:"
+        rows=[]
         for code,name in LANGS.items():
-            row.append(InlineKeyboardButton(name,callback_data=f"lang_{code}"))
-            if len(row)==2: rows.append(row); row=[]
-        if row: rows.append(row)
-        rows.append([InlineKeyboardButton("🔙 Назад",callback_data="main_menu")])
+            rows.append([InlineKeyboardButton(name,callback_data=f"lang_{code}")])
+        rows.append([InlineKeyboardButton("🔙 Назад" if lang=="ru" else "🔙 Back",callback_data="main_menu")])
         await edit_or_send(update,f"🌐 <b>{prompt}</b>",InlineKeyboardMarkup(rows))
     except Exception as e: logger.error(f"show_lang: {e}")
 
