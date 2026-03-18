@@ -270,15 +270,34 @@ def cur_kb(lang):
         [InlineKeyboardButton(n("UAH"),callback_data="cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
     ])
 
+async def send_with_banner(update, text, kb=None):
+    """Удаляет предыдущее сообщение и отправляет новое с баннером если есть."""
+    try:
+        db=load_db()
+        bv=db.get("banner_video"); bg=db.get("banner_gif"); bp=db.get("banner_photo")
+        try:
+            if update.callback_query:
+                await update.callback_query.message.delete()
+        except: pass
+        if bv:
+            await update.effective_chat.send_video(video=bv,caption=text,parse_mode="HTML",reply_markup=kb)
+        elif bg:
+            await update.effective_chat.send_animation(animation=bg,caption=text,parse_mode="HTML",reply_markup=kb)
+        elif bp:
+            await update.effective_chat.send_photo(photo=bp,caption=text,parse_mode="HTML",reply_markup=kb)
+        else:
+            await update.effective_chat.send_message(text,parse_mode="HTML",reply_markup=kb)
+    except Exception as e:
+        logger.error(f"send_with_banner: {e}")
+        try: await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
+        except: pass
+
 async def send_text(update, text, kb=None):
     try: await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
     except Exception as e: logger.error(f"send_text: {e}")
 
 async def edit_or_send(update, text, kb=None):
-    try: await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=kb)
-    except Exception:
-        try: await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
-        except Exception as e: logger.error(f"edit_or_send: {e}")
+    await send_with_banner(update, text, kb)
 
 def main_kb(lang):
     b = BTN.get(lang, BTN["ru"])
@@ -295,14 +314,12 @@ async def show_main(update, context, edit=False):
         lang=u.get("lang","ru"); desc=db.get("menu_description") or get_welcome(lang)
         banner=db.get("banner") or ""; text=desc
         if banner: text+=f"\n\n<b>{banner}</b>"
-        kb=main_kb(lang); bv=db.get("banner_video"); bp=db.get("banner_photo"); bg=db.get("banner_gif")
-        if bv: await update.effective_message.reply_video(video=bv,caption=text,parse_mode="HTML",reply_markup=kb)
-        elif bg: await update.effective_message.reply_animation(animation=bg,caption=text,parse_mode="HTML",reply_markup=kb)
-        elif bp: await update.effective_message.reply_photo(photo=bp,caption=text,parse_mode="HTML",reply_markup=kb)
-        elif edit:
-            try: await update.callback_query.edit_message_text(text,parse_mode="HTML",reply_markup=kb)
-            except: await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
-        else: await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
+        kb=main_kb(lang)
+        # Удаляем предыдущее
+        try:
+            if update.callback_query: await update.callback_query.message.delete()
+        except: pass
+        await send_with_banner(update, text, kb)
     except Exception as e: logger.error(f"show_main: {e}")
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
