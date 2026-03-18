@@ -247,11 +247,11 @@ def get_welcome(lang):
         footer = "Выберите действие ниже"
         stats = "1000+ сделок · оборот $6,350"
     nums = [E['num1'], E['num2'], E['num3'], E['num4']]
-    lines = "\n".join(f"<blockquote>{nums[i]} {pts[i]}.</blockquote>" for i in range(4))
+    lines = "\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
     return (
         f"{E['welcome']} <b>{intro}</b>\n\n"
         f"{lines}\n\n"
-        f"<blockquote>{E['stats']} {stats}</blockquote>\n\n"
+        f"<blockquote><b>{E['stats']} {stats}</b></blockquote>\n\n"
         f"{E['spark']} <b>{footer}</b>"
     )
 
@@ -413,7 +413,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not buyer_reqs.get("card") and not buyer_reqs.get("ton") and not buyer_reqs.get("stars"):
                     warn_e = ce("5420323339723881652","⚠️")
                     msg = (f"{warn_e} <b>{'Вы не можете продолжить сделку, пока не добавите реквизиты.' if ru else 'You cannot proceed until you add your requisites.'}</b>\n\n"
-                           f"<blockquote>{'Реквизиты нужны на случай спора или возврата. Выберите что хотите добавить:' if ru else 'Requisites are needed in case of dispute. Choose what to add:'}</blockquote>")
+                           f"<blockquote><b>{'Реквизиты нужны на случай спора или возврата. Выберите что хотите добавить:' if ru else 'Requisites are needed in case of dispute. Choose what to add:'}</b></blockquote>")
                     kb=InlineKeyboardMarkup([
                         [InlineKeyboardButton("💳 "+("Карта / СБП" if ru else "Card / SBP"),callback_data=f"req_deal_card_{deal_id}")],
                         [InlineKeyboardButton("💎 TON / USDT",callback_data=f"req_deal_ton_{deal_id}")],
@@ -433,8 +433,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     seller_lang=get_lang(int(seller_uid))
                     try:
                         notify=(f"{E['joined']} <b>{'Покупатель присоединился к сделке!' if seller_lang=='ru' else 'Buyer joined the deal!'}</b>\n\n"
-                               f"<blockquote>{'Сделка' if seller_lang=='ru' else 'Deal'}: #{deal_id}\n"
-                               f"{'Покупатель' if seller_lang=='ru' else 'Buyer'}: {buyer_tag}</blockquote>")
+                               f"<blockquote><b>{'Сделка' if seller_lang=='ru' else 'Deal'}: #{deal_id}\n"
+                               f"{'Покупатель' if seller_lang=='ru' else 'Buyer'}: {buyer_tag}</b></blockquote>")
                         await context.bot.send_message(chat_id=int(seller_uid),text=notify,parse_mode="HTML")
                     except Exception as e: logger.error(f"joined notify: {e}")
                 await send_deal_card(update,context,deal_id,d,buyer=True); return
@@ -470,13 +470,13 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                    "ton":("Введите TON адрес (начинается с UQ или EQ, 48 символов).\n\nПример:\n<code>UQDxxx...xxx</code>" if ru else "Enter TON address (starts with UQ or EQ, 48 chars).\n\nExample:\n<code>UQDxxx...xxx</code>"),
                    "stars":("Введите @юзернейм Telegram для получения звёзд.\n\nПример:\n<code>@username</code>" if ru else "Enter Telegram @username for receiving stars.\n\nExample:\n<code>@username</code>")}
             context.user_data["req_step"]=field
-            text=f"{labels.get(field,'?')}\n\n<blockquote>{descs.get(field,'?')}</blockquote>"
+            text=f"{labels.get(field,'?')}\n\n<blockquote><b>{descs.get(field,'?')}</b></blockquote>"
             await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="menu_req")]])); return
         if d.startswith("add_req_"):
             deal_id=d[8:]; context.user_data["req_for_deal"]=deal_id; ru=lang=="ru"
             warn=ce("5420323339723881652","⚠️")
             text=(f"{warn} <b>{'Добавьте реквизиты для участия в сделке' if ru else 'Add requisites to join the deal'}</b>\n\n"
-                  f"<blockquote>{'Выберите способ получения средств в случае спора или возврата.' if ru else 'Choose a refund method in case of dispute.'}</blockquote>")
+                  f"<blockquote><b>{'Выберите способ получения средств в случае спора или возврата.' if ru else 'Choose a refund method in case of dispute.'}</b></blockquote>")
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton("💳 "+("Карта / СБП" if ru else "Card / SBP"),callback_data=f"req_deal_card_{deal_id}")],
                 [InlineKeyboardButton("💎 TON "+("адрес" if ru else "address"),callback_data=f"req_deal_ton_{deal_id}")],
@@ -488,9 +488,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d[9:].split("_",1); field=parts[0]; deal_id=parts[1] if len(parts)>1 else ""
             context.user_data["req_step"]=field; context.user_data["req_for_deal"]=deal_id; ru=lang=="ru"
             prompts={
-                "card":(f"💳 <b>{'Карта / СБП' if ru else 'Card / SBP'}</b>\n\n<blockquote>{'Введите номер телефона (СБП) или карты.' if ru else 'Enter phone (SBP) or card number.'}\n\n{'Примеры' if ru else 'Examples'}:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code></blockquote>"),
-                "ton": (f"💎 <b>TON {'адрес' if ru else 'address'}</b>\n\n<blockquote>{'Введите TON адрес (начинается с UQ или EQ).' if ru else 'Enter TON address (starts with UQ or EQ).'}\n\n{'Пример' if ru else 'Example'}:\n<code>UQDxxx...xxx</code></blockquote>"),
-                "stars":(f"{ce('5438496463044752972','⭐️')} <b>{'Звёзды' if ru else 'Stars'}</b>\n\n<blockquote>{'Введите ваш @юзернейм.' if ru else 'Enter your @username.'}\n\n{'Пример' if ru else 'Example'}:\n<code>@username</code></blockquote>"),
+                "card":(f"💳 <b>{'Карта / СБП' if ru else 'Card / SBP'}</b>\n\n<blockquote><b>{'Введите номер телефона (СБП) или карты.' if ru else 'Enter phone (SBP) or card number.'}\n\n{'Примеры' if ru else 'Examples'}:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code></b></blockquote>"),
+                "ton": (f"💎 <b>TON {'адрес' if ru else 'address'}</b>\n\n<blockquote><b>{'Введите TON адрес (начинается с UQ или EQ).' if ru else 'Enter TON address (starts with UQ or EQ).'}\n\n{'Пример' if ru else 'Example'}:\n<code>UQDxxx...xxx</code></b></blockquote>"),
+                "stars":(f"{ce('5438496463044752972','⭐️')} <b>{'Звёзды' if ru else 'Stars'}</b>\n\n<blockquote><b>{'Введите ваш @юзернейм.' if ru else 'Enter your @username.'}\n\n{'Пример' if ru else 'Example'}:\n<code>@username</code></b></blockquote>"),
             }
             await edit_or_send(update,prompts.get(field,"?"),InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data=f"add_req_{deal_id}")]])); return
         if d=="main_menu":
@@ -538,7 +538,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             method=d[9:]
             prompts={"stars":"Укажите @юзернейм получателя звёзд:","crypto":"Укажите TON/USDT адрес для вывода:","card":"Укажите номер карты для вывода:"}
             context.user_data["withdraw_method"]=method; context.user_data["withdraw_step"]="requisite"
-            await edit_or_send(update,f"{E['wallet']} <b>Вывод средств</b>\n\n<blockquote>{prompts.get(method,'Укажите реквизиты:')}</blockquote>",
+            await edit_or_send(update,f"{E['wallet']} <b>Вывод средств</b>\n\n<blockquote><b>{prompts.get(method,'Укажите реквизиты:')}</b></blockquote>",
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="withdraw")]])); return
         if d.startswith("rev_"):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars=int(parts[3])
@@ -618,38 +618,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(f"❌ {err}",parse_mode="HTML"); return
 
             u["requisites"][field]=text; save_db(db); ud.pop("req_step",None)
-
-            # Если добавляли в рамках сделки — спрашиваем следующий реквизит или открываем
-            pending_deal=ud.get("req_for_deal") or ud.get("pending_deal")
-            reqs=u.get("requisites",{})
-            # Если это был первый шаг (card) — спрашиваем TON
-            if field=="card" and pending_deal:
-                ud["req_step"]="ton"
-                await update.message.reply_text(
-                    f"💎 <b>{'Шаг 2: TON адрес' if ru_r else 'Step 2: TON address'}:</b>\n\n"
-                    f"<blockquote>{'Введите TON адрес или напишите прочерк' if ru_r else 'Enter TON address or type a dash'} -\n\n"
-                    f"{'Пример' if ru_r else 'Example'}: <code>UQDxxx...xxx</code></blockquote>",
-                    parse_mode="HTML"); return
-            if field=="ton" and pending_deal:
-                # Валидация -
-                if text=="-": u["requisites"]["ton"]=None; save_db(db)
-                ud["req_step"]="stars"
-                await update.message.reply_text(
-                    f"⭐️ <b>{'Шаг 3: Юзернейм для звёзд' if ru_r else 'Step 3: Stars username'}:</b>\n\n"
-                    f"<blockquote>{'Введите @юзернейм или прочерк' if ru_r else 'Enter @username or dash'} -\n\n"
-                    f"{'Пример' if ru_r else 'Example'}: <code>@username</code></blockquote>",
-                    parse_mode="HTML"); return
-            if field=="stars" and pending_deal:
-                if text=="-": u["requisites"]["stars"]=None; save_db(db)
-                ud.pop("req_for_deal",None); ud.pop("pending_deal",None)
+            pending_deal=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
+            if pending_deal:
                 db2=load_db(); d2=db2.get("deals",{}).get(pending_deal)
                 if d2:
-                    await update.message.reply_text(f"{E['check']} <b>{'Реквизиты сохранены! Открываем сделку...' if ru_r else 'Requisites saved! Opening deal...'}</b>",parse_mode="HTML")
+                    await update.message.reply_text(f"{ce('5206607081334906820','✅')} <b>{'Реквизиты сохранены! Открываем сделку...' if ru_r else 'Requisites saved! Opening deal...'}</b>",parse_mode="HTML")
                     add_log(db2,"🔗 Покупатель открыл сделку",deal_id=pending_deal,uid=uid,username=u.get("username",""))
                     save_db(db2)
                     await send_deal_card(update,context,pending_deal,d2,buyer=True); return
-
-            await update.message.reply_text(f"{E['check']} <b>{'Реквизиты сохранены!' if ru_r else 'Requisites saved!'}</b>",parse_mode="HTML",
+            await update.message.reply_text(f"{ce('5206607081334906820','✅')} <b>{'Реквизиты сохранены!' if ru_r else 'Requisites saved!'}</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 "+("Мои реквизиты" if ru_r else "My Requisites"),callback_data="menu_req")]])); return
         # Обработка реквизитов вывода
         if ud.get("withdraw_step")=="requisite":
@@ -662,7 +639,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=f"{E['gem']} <b>Запрос на вывод — {mname}</b>\n{E['user']} @{uname3} (<code>{uid3}</code>)\n{CM} {bal} RUB\n\nРеквизиты: <code>{text}</code>",parse_mode="HTML")
             except Exception as e: logger.error(f"withdraw req admin: {e}")
             ud.pop("withdraw_step",None); ud.pop("withdraw_method",None)
-            await update.message.reply_text(f"{E['check']} <b>Запрос отправлен!</b>\n\n<blockquote>Способ: {mname}\nСумма: {bal} RUB\n\nМенеджер свяжется с вами в ближайшее время.</blockquote>",parse_mode="HTML",
+            await update.message.reply_text(f"{E['check']} <b>Запрос отправлен!</b>\n\n<blockquote><b>Способ: {mname}\nСумма: {bal} RUB\n\nМенеджер свяжется с вами в ближайшее время.</b></blockquote>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 Менеджер",url=f"https://t.me/{MANAGER_USERNAME.lstrip('@')}")],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])); return
             deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars=ud.get("review_stars",5)
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
@@ -789,15 +766,15 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
         f"{'Сумма' if ru else 'Amount'}: <b>{amt} {cur_native(cur)}</b>"
         f"</blockquote>\n\n"
         f"{E['security_e']} <b>{'Гарантия безопасности' if ru else 'Security guarantee'}</b>\n"
-        f"<blockquote>{t('security_text',lang)}</blockquote>\n\n"
+        f"<blockquote><b>{t('security_text',lang)}</b></blockquote>\n\n"
         f"{E['warning']} <b>{'Важно' if ru else 'Important'}:</b>\n"
-        f"<blockquote>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if ru else 'Do not transfer goods directly! Only through @GiftDealsManager.'}</blockquote>\n\n"
+        f"<blockquote><b>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if ru else 'Do not transfer goods directly! Only through @GiftDealsManager.'}</b></blockquote>\n\n"
         f"{E['requisites']} <b>{'СБП / Карта' if ru else 'SBP / Card'} {CARD_BANK}:</b>\n"
-        f"<blockquote>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</blockquote>\n\n"
+        f"<blockquote><b>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</b></blockquote>\n\n"
         f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
-        f"<blockquote>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</blockquote>\n\n"
+        f"<blockquote><b>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</b></blockquote>\n\n"
         f"{E['stars_deal']} <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
-        f"<blockquote>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</blockquote>\n\n"
+        f"<blockquote><b>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</b></blockquote>\n\n"
         f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
     )
 
@@ -822,15 +799,15 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"{'Сумма' if ru else 'Amount'}: <b>{amt} {cur_native(cur)}</b>"
                 f"</blockquote>\n\n"
                 f"{E['security_e']} <b>{'Гарантия безопасности' if ru else 'Security guarantee'}</b>\n"
-                f"<blockquote>{t('security_text',lang)}</blockquote>\n\n"
+                f"<blockquote><b>{t('security_text',lang)}</b></blockquote>\n\n"
                 f"{E['warning']} <b>{'Важно' if ru else 'Important'}:</b>\n"
-                f"<blockquote>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if ru else 'Do not transfer goods directly! Only through @GiftDealsManager.'}</blockquote>\n\n"
+                f"<blockquote><b>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if ru else 'Do not transfer goods directly! Only through @GiftDealsManager.'}</b></blockquote>\n\n"
                 f"{E['requisites']} <b>{'СБП / Карта' if ru else 'SBP / Card'} {CARD_BANK}:</b>\n"
-                f"<blockquote>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</blockquote>\n\n"
+                f"<blockquote><b>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</b></blockquote>\n\n"
                 f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
-                f"<blockquote>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</blockquote>\n\n"
+                f"<blockquote><b>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</b></blockquote>\n\n"
                 f"{E['stars_deal']} <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
-                f"<blockquote>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</blockquote>\n\n"
+                f"<blockquote><b>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</b></blockquote>\n\n"
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
             )
             kb=InlineKeyboardMarkup([
@@ -913,7 +890,7 @@ async def adm_confirm(update, context):
                             extra=f"+{bonus} RUB (3% от сделки {deal_id})")
                         try:
                             await context.bot.send_message(chat_id=int(ref_uid),
-                                text=f"💰 <b>Реферальный бонус!</b>\n\n<blockquote>+{bonus} RUB (3% от сделки #{deal_id})</blockquote>",
+                                text=f"💰 <b>Реферальный бонус!</b>\n\n<blockquote><b>+{bonus} RUB (3% от сделки #{deal_id})</b></blockquote>",
                                 parse_mode="HTML")
                         except: pass
             save_db(db)
@@ -962,7 +939,7 @@ async def show_balance(update, context):
         lang=get_lang(uid); bal=u.get("balance",0)
         ru=lang=="ru"
         await edit_or_send(update,
-            f"💸 <b>{'Пополнить / Вывод' if ru else 'Top Up / Withdraw'}</b>\n\n<blockquote>{'Баланс' if ru else 'Balance'}: {bal} RUB</blockquote>",
+            f"💸 <b>{'Пополнить / Вывод' if ru else 'Top Up / Withdraw'}</b>\n\n<blockquote><b>{'Баланс' if ru else 'Balance'}: {bal} RUB</b></blockquote>",
             InlineKeyboardMarkup([
                 [InlineKeyboardButton("➕ "+("Пополнить" if ru else "Top Up"),callback_data="balance_topup")],
                 [InlineKeyboardButton("➖ "+("Вывод" if ru else "Withdraw"),callback_data="withdraw")],
@@ -975,22 +952,22 @@ async def show_balance_info(update, context, method):
         uid=update.effective_user.id; lang=get_lang(uid)
         if method=="stars":
             text=(f"{E['stars_deal']} <b>{'Пополнение звёздами' if lang=='ru' else 'Top up with Stars'}</b>\n\n"
-                  f"<blockquote>{'Отправьте звёзды менеджеру' if lang=='ru' else 'Send stars to manager'}: @GiftDealsManager\n\n{t('within_5min',lang)}</blockquote>")
+                  f"<blockquote><b>{'Отправьте звёзды менеджеру' if lang=='ru' else 'Send stars to manager'}: @GiftDealsManager\n\n{t('within_5min',lang)}</b></blockquote>")
         elif method=="rub":
             text=(f"{E['requisites']} <b>{'Пополнение рублями' if lang=='ru' else 'Top up in Rubles'}</b>\n\n"
-                  f"<blockquote>"
+                  f"<blockquote><b>"
                   f"{'Банк' if lang=='ru' else 'Bank'}: {CARD_BANK}\n"
                   f"{'Телефон' if lang=='ru' else 'Phone'}: <code>{CARD_NUMBER}</code>\n"
                   f"{'Получатель' if lang=='ru' else 'Recipient'}: {CARD_NAME}\n\n"
                   f"{t('within_5min',lang)}"
-                  f"</blockquote>")
+                  f"</b></blockquote>")
         elif method=="crypto":
             text=(f"{E['tonkeeper']} <b>{'Пополнение TON / USDT' if lang=='ru' else 'Top up TON / USDT'}</b>\n\n"
-                  f"<blockquote>"
+                  f"<blockquote><b>"
                   f"{'TON адрес' if lang=='ru' else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n"
                   f"{E['cryptobot']} {'Крипто бот' if lang=='ru' else 'Crypto bot'}: {CRYPTO_BOT}\n\n"
                   f"ID: <code>{uid}</code>"
-                  f"</blockquote>")
+                  f"</b></blockquote>")
         else: text="<b>?</b>"
         await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="balance_topup")]]), section="balance")
     except Exception as e: logger.error(f"show_balance_info: {e}")
@@ -1020,10 +997,10 @@ async def show_profile(update, context):
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); uname=update.effective_user.username or "—"
         status=u.get("status","")
-        sl=f"\n<blockquote>{t('status_label',lang)}: {status}</blockquote>" if status else ""
+        sl=f"\n<blockquote><b>{t('status_label',lang)}: {status}</b></blockquote>" if status else ""
         rv=("\n\n<b>"+t("reviews_title",lang)+":</b>\n"+"\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
         ru=lang=="ru"
-        sl=f"\n<blockquote>{'Статус' if ru else 'Status'}: {status}</blockquote>" if status else ""
+        sl=f"\n<blockquote><b>{'Статус' if ru else 'Status'}: {status}</b></blockquote>" if status else ""
         rv=("\n\n<b>"+("Отзывы" if ru else "Reviews")+":</b>\n"+"\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
         text=(f"<tg-emoji emoji-id='5275979556308674886'>👤</tg-emoji> <b>{'Профиль' if ru else 'Profile'}{sl}\n\n@{uname}\n"
               f"{E['balance_e']} {'Баланс' if ru else 'Balance'}: {u.get('balance',0)} RUB\n"
@@ -1079,11 +1056,11 @@ async def show_req(update, context):
         text=(
             f"📋 <b>{'Мои реквизиты' if ru else 'My Requisites'}</b>\n\n"
             f"{e_card} <b>{'Карта / СБП' if ru else 'Card / SBP'}:</b>\n"
-            f"<blockquote>{card_line}</blockquote>\n\n"
+            f"<blockquote><b>{card_line}</b></blockquote>\n\n"
             f"{e_ton} <b>TON / USDT:</b>\n"
-            f"<blockquote>{ton_line}</blockquote>\n\n"
+            f"<blockquote><b>{ton_line}</b></blockquote>\n\n"
             f"{e_star} <b>{'Звёзды' if ru else 'Stars'}:</b>\n"
-            f"<blockquote>{star_line}</blockquote>"
+            f"<blockquote><b>{star_line}</b></blockquote>"
         )
         r1 = [InlineKeyboardButton("💳 "+("Изменить" if ru else "Edit"),callback_data="req_edit_card"),
               InlineKeyboardButton("🗑 "+("Удалить" if ru else "Delete"),callback_data="req_del_card")] if card \
@@ -1102,7 +1079,7 @@ async def show_my_deals(update, context):
         db=load_db(); uid=str(update.effective_user.id); lang=get_lang(int(uid))
         deals={k:v for k,v in db.get("deals",{}).items() if v.get("user_id")==uid}
         if not deals:
-            await edit_or_send(update,f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{t('my_deals_title',lang)}\n\n{t('no_deals',lang)}</b>",InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]), section="my_deals"); return
+            await edit_or_send(update,f"💼 <b>{t('my_deals_title',lang)}\n\n{t('no_deals',lang)}</b>",InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]), section="my_deals"); return
         pending = "<tg-emoji emoji-id='5386367538735104399'>⏳</tg-emoji> Ожидает" if lang=="ru" else "<tg-emoji emoji-id='5386367538735104399'>⏳</tg-emoji> Pending"
         confirmed = "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Завершена" if lang=="ru" else "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Completed"
         SNAMES={"pending":pending,"confirmed":confirmed}
@@ -1130,10 +1107,10 @@ async def show_withdraw(update, context):
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         bal=u.get("balance",0)
         if bal<=0:
-            await edit_or_send(update,f"{E['cross']} <b>Недостаточно средств для вывода.</b>\n\n<blockquote>Ваш баланс: {bal} RUB</blockquote>",
+            await edit_or_send(update,f"{E['cross']} <b>Недостаточно средств для вывода.</b>\n\n<blockquote><b>Ваш баланс: {bal} RUB</b></blockquote>",
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="menu_balance")]])); return
         await edit_or_send(update,
-            f"{E['wallet']} <b>Вывод средств</b>\n\n<blockquote>Ваш баланс: {bal} RUB\n\nВыберите способ вывода:</blockquote>",
+            f"{E['wallet']} <b>Вывод средств</b>\n\n<blockquote><b>Ваш баланс: {bal} RUB\n\nВыберите способ вывода:</b></blockquote>",
             InlineKeyboardMarkup([
                 [InlineKeyboardButton("⭐️ Звёзды",callback_data="withdraw_stars")],
                 [InlineKeyboardButton("💎 Крипта (TON/USDT)",callback_data="withdraw_crypto")],
