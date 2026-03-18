@@ -26,10 +26,10 @@ def ce(eid, fb):
     return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
 
 E = {
-    "user":      ce("5199552030615558774", "<tg-emoji emoji-id='5275979556308674886'>👤</tg-emoji>"),
-    "star":      ce("5267500801240092311", "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>"),
-    "shield":    ce("5197434882321567830", "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>"),
-    "gift":      ce("5197369495739455200", "<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji>"),
+    "user":      ce("5199552030615558774", "👤"),
+    "star":      ce("5267500801240092311", "⭐"),
+    "shield":    ce("5197434882321567830", "⭐"),
+    "gift":      ce("5197369495739455200", "💵"),
     "lock":      ce("5197161121106123533", "💶"),
     "globe":     ce("5377746319601324795", "💴"),
     "premium":   ce("5377620962390857342", "🪙"),
@@ -40,14 +40,14 @@ E = {
     "sticker":   ce("5294167145079395967", "🛍"),
     "fire":      ce("5303138782004924588", "💬"),
     "bell":      ce("5312361253610475399", "🛒"),
-    "deal":      ce("5445221832074483553", "<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji>"),
+    "deal":      ce("5445221832074483553", "💼"),
     "trophy":    ce("5332455502917949981", "🏦"),
     "check":     ce("5274055917766202507", "🗓"),
     "money":     ce("5278467510604160626", "💰"),
     "diamond":   ce("5264713049637409446", "🪙"),
     "nft":       ce("5193177581888755275", "💻"),
     "bag":       ce("5377660214096974712", "🛍"),
-    "medal":     ce("5463289097336405244", "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>"),
+    "medal":     ce("5463289097336405244", "⭐️"),
     "gem":       ce("5258203794772085854", "⚡️"),
     "clock":     ce("5429651785352501917", "↗️"),
     "handshake": ce("5287231198098117669", "💰"),
@@ -63,19 +63,19 @@ E = {
     "num3":      ce("5794280000383358988", "3️⃣"),
     "num4":      ce("5794241397217304511", "4️⃣"),
     "bank":      ce("5238132025323444613", "🏦"),
-    "banknote":  ce("5201873447554145566", "<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji>"),
+    "banknote":  ce("5201873447554145566", "💵"),
     "link":      ce("5902449142575141204", "🔗"),
     "shine":     ce("5235630047959727475", "💎"),
-    "store":     ce("4988289890769699938", "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>"),
+    "store":     ce("4988289890769699938", "⭐️"),
     # Новые
     "tonkeeper":  ce("5397829221605191505", "💎"),  # адрес тонкипера
     "top_medal":  ce("5188344996356448758", "🏆"),  # топ продавцов
-    "stars_deal": ce("5321485469249198987", "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>"), # звёзды в сделке/пополнении
+    "stars_deal": ce("5321485469249198987", "⭐️"), # звёзды в сделке/пополнении
     "joined":     ce("5902335789798265487", "🤝"),  # второй участник присоединился
     "security_e": ce("5197288647275071607", "🛡"),  # безопасность в сделке
     "deal_link":  ce("5972261808747057065", "🔗"),  # ссылка при создании сделки
-    "warning":    ce("5447644880824181073", "<tg-emoji emoji-id='5420323339723881652'>⚠️</tg-emoji>"),  # предупреждение про менеджера
-    "stats":      ce("5028746137645876535", "<tg-emoji emoji-id='5028746137645876535'>📊</tg-emoji>"),  # статистика в меню
+    "warning":    ce("5447644880824181073", "⚠️"),  # предупреждение про менеджера
+    "stats":      ce("5028746137645876535", "📊"),  # статистика в меню
     "requisites": ce("5242631901214171852", "💳"),  # реквизиты
     "cryptobot":  ce("5242606681166220600", "🤖"),  # крипто бот
     "welcome":    ce("5251340119205501791", "👋"),  # приветствие в меню
@@ -84,12 +84,12 @@ E = {
 
 CD  = ce("5235630047959727475", "💎")
 CM  = ce("5278467510604160626", "💰")
-CDL = ce("5445221832074483553", "<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji>")
-CSH = ce("5197434882321567830", "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>")
+CDL = ce("5445221832074483553", "💼")
+CSH = ce("5197434882321567830", "⭐")
 CL  = ce("5197161121106123533", "💶")
-CG  = ce("5197369495739455200", "<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji>")
+CG  = ce("5197369495739455200", "💵")
 CF  = ce("5303138782004924588", "💬")
-CS  = ce("5267500801240092311", "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>")
+CS  = ce("5267500801240092311", "⭐")
 CR  = ce("5195033767969839232", "🚀")
 
 TNAMES = {
@@ -134,7 +134,7 @@ T = {
     "you":             {"ru": "Вы", "en": "You"},
     "link_for_buyer":  {"ru": "Ссылка для покупателя", "en": "Link for buyer"},
     "send_link":       {"ru": "Отправьте ссылку партнёру.", "en": "Send the link to your partner."},
-    "i_paid":          {"ru": "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Я оплатил", "en": "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> I paid"},
+    "i_paid":          {"ru": "✅ Я оплатил", "en": "✅ I paid"},
     "write_seller":    {"ru": "💬 Написать продавцу", "en": "💬 Write to seller"},
     "main_menu":       {"ru": "🏠 Главное меню", "en": "🏠 Main menu"},
     "profile_title":   {"ru": "Профиль", "en": "Profile"},
@@ -310,10 +310,10 @@ BANNER_SECTIONS = {
     "main":     "🏠 Главное меню",
     "deal":     "🎁 Создать сделку",
     "balance":  "💸 Пополнить/Вывод",
-    "profile":  "<tg-emoji emoji-id='5275979556308674886'>👤</tg-emoji> Профиль",
+    "profile":  "👤 Профиль",
     "top":      "🏆 Топ продавцов",
     "my_deals": "🗂 Мои сделки",
-    "deal_card":"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> Карточка сделки",
+    "deal_card":"💼 Карточка сделки",
 }
 
 def get_banner(db, section="main"):
@@ -395,7 +395,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ref_uid != str(uid) and ref_uid in db.get("users",{}):
                 u["ref_by"]=ref_uid
                 db["users"][ref_uid]["ref_count"]=db["users"][ref_uid].get("ref_count",0)+1
-                add_log(db,"<tg-emoji emoji-id='6001526766714227911'>👥</tg-emoji> Новый реферал",uid=uid,username=u["username"],
+                add_log(db,"👥 Новый реферал",uid=uid,username=u["username"],
                     extra=f"Пришёл по ссылке от {db['users'][ref_uid].get('username','?')}")
 
         save_db(db); context.user_data.clear()
@@ -411,7 +411,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 lang=u.get("lang","ru")
                 ru=lang=="ru"
                 if not buyer_reqs.get("card") and not buyer_reqs.get("ton") and not buyer_reqs.get("stars"):
-                    warn_e = ce("5420323339723881652","⚠️")
+                    warn_e = ce("5420323339723881652", "⚠️")
                     msg = (f"{warn_e} <b>{'Вы не можете продолжить сделку, пока не добавите реквизиты.' if ru else 'You cannot proceed until you add your requisites.'}</b>\n\n"
                            f"<blockquote><b>{'Реквизиты нужны на случай спора или возврата. Выберите что хотите добавить:' if ru else 'Requisites are needed in case of dispute. Choose what to add:'}</b></blockquote>")
                     kb=InlineKeyboardMarkup([
@@ -465,7 +465,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             examples={"card":"79041751408 или 2200 1234 5678 9012","ton":"UQD...xyz (48 символов)","stars":"@username"}
             labels={"card":"💳 "+("Карта / Телефон (СБП)" if ru else "Card / Phone (SBP)"),
                     "ton":"💎 TON "+("адрес" if ru else "address"),
-                    "stars":ce("5438496463044752972","⭐️")+" "+("Юзернейм для звёзд" if ru else "Stars username")}
+                    "stars":ce("5438496463044752972", "⭐️")+" "+("Юзернейм для звёзд" if ru else "Stars username")}
             descs={"card":("Введите номер телефона (СБП) или номер карты.\n\nПримеры:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code>" if ru else "Enter phone number (SBP) or card number.\n\nExamples:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code>"),
                    "ton":("Введите TON адрес (начинается с UQ или EQ, 48 символов).\n\nПример:\n<code>UQDxxx...xxx</code>" if ru else "Enter TON address (starts with UQ or EQ, 48 chars).\n\nExample:\n<code>UQDxxx...xxx</code>"),
                    "stars":("Введите @юзернейм Telegram для получения звёзд.\n\nПример:\n<code>@username</code>" if ru else "Enter Telegram @username for receiving stars.\n\nExample:\n<code>@username</code>")}
@@ -474,7 +474,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="menu_req")]])); return
         if d.startswith("add_req_"):
             deal_id=d[8:]; context.user_data["req_for_deal"]=deal_id; ru=lang=="ru"
-            warn=ce("5420323339723881652","⚠️")
+            warn=ce("5420323339723881652", "⚠️")
             text=(f"{warn} <b>{'Добавьте реквизиты для участия в сделке' if ru else 'Add requisites to join the deal'}</b>\n\n"
                   f"<blockquote><b>{'Выберите способ получения средств в случае спора или возврата.' if ru else 'Choose a refund method in case of dispute.'}</b></blockquote>")
             kb=InlineKeyboardMarkup([
@@ -544,7 +544,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars=int(parts[3])
             context.user_data["review_deal"]=deal_id; context.user_data["review_role"]=role; context.user_data["review_stars"]=stars
             context.user_data["review_step"]="text"
-            star_e = ce("5438496463044752972","<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>")
+            star_e = ce("5438496463044752972", "⭐️")
             await q.edit_message_text(f"{star_e*stars} Оценка: {stars}/5\n\nНапишите комментарий к отзыву:",parse_mode="HTML"); return
         if d.startswith("paid_"): await on_paid(update,context); return
         if d=="noop": return
@@ -646,7 +646,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 Менеджер",url=f"https://t.me/{MANAGER_USERNAME.lstrip('@')}")],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])); return
             deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars=ud.get("review_stars",5)
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
-            star_e2 = ce("5438496463044752972","<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>")
+            star_e2 = ce("5438496463044752972", "⭐️")
             review_text=f"{star_e2*stars} {stars}/5 — {text}"
             # Продавец оценивает покупателя
             if role=="s":
@@ -878,7 +878,7 @@ async def adm_confirm(update, context):
                 db["users"][s]["turnover"]=db["users"][s].get("turnover",0)+int(amt_num)
             # Лог подтверждения
             seller_uname=db["users"].get(s,{}).get("username","?") if s else "?"
-            add_log(db,"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Сделка подтверждена",deal_id=deal_id,uid=s,
+            add_log(db,"✅ Сделка подтверждена",deal_id=deal_id,uid=s,
                 username=seller_uname,extra=f"Сумма: {amt_str} {d.get('currency','')}")
             # 3% рефераллу продавца
             if s and s in db["users"]:
@@ -989,7 +989,7 @@ async def show_lang(update, context):
 async def set_lang(update, context, lang):
     try:
         db=load_db(); u=get_user(db,update.effective_user.id); u["lang"]=lang; save_db(db)
-        await update.callback_query.answer("<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji>")
+        await update.callback_query.answer("✅")
         try: await update.callback_query.message.delete()
         except: pass
         await show_main(update,context,edit=False)
@@ -1046,11 +1046,11 @@ async def show_req(update, context):
         reqs=u.get("requisites",{})
         card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
 
-        e_card  = ce("5445353829304387411","💳")
-        e_ton   = ce("5397829221605191505","💎")
-        e_star  = ce("5321485469249198987","⭐️")
-        e_check = ce("5206607081334906820","✅")
-        e_add   = ce("5274055917766202507","➕")
+        e_card  = ce("5445353829304387411", "💳")
+        e_ton   = ce("5397829221605191505", "💎")
+        e_star  = ce("5321485469249198987", "⭐️")
+        e_check = ce("5206607081334906820", "✅")
+        e_add   = ce("5274055917766202507", "➕")
 
         card_line = f"{e_check} <code>{card}</code>" if card else f"{e_add} <b>{'Добавить карту' if ru else 'Add card'}</b>"
         ton_line  = f"{e_check} <code>{ton}</code>"  if ton  else f"{e_add} <b>{'Добавить TON адрес' if ru else 'Add TON address'}</b>"
@@ -1083,8 +1083,8 @@ async def show_my_deals(update, context):
         deals={k:v for k,v in db.get("deals",{}).items() if v.get("user_id")==uid}
         if not deals:
             await edit_or_send(update,f"💼 <b>{t('my_deals_title',lang)}\n\n{t('no_deals',lang)}</b>",InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]), section="my_deals"); return
-        pending = "<tg-emoji emoji-id='5386367538735104399'>⏳</tg-emoji> Ожидает" if lang=="ru" else "<tg-emoji emoji-id='5386367538735104399'>⏳</tg-emoji> Pending"
-        confirmed = "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Завершена" if lang=="ru" else "<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Completed"
+        pending = "⏳ Ожидает" if lang=="ru" else "⏳ Pending"
+        confirmed = "✅ Завершена" if lang=="ru" else "✅ Completed"
         SNAMES={"pending":pending,"confirmed":confirmed}
         lines=[f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{t('my_deals_title',lang)} ({len(deals)}):</b>"]
         for did,dv in list(deals.items())[-10:]:
