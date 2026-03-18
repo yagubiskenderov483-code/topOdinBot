@@ -47,7 +47,7 @@ E = {
     "diamond":   ce("5264713049637409446", "🪙"),
     "nft":       ce("5193177581888755275", "💻"),
     "bag":       ce("5377660214096974712", "🛍"),
-    "medal":     ce("5463289097336405244", "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>"),
+    "medal":     ce("5463289097336405244", "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>"),
     "gem":       ce("5258203794772085854", "⚡️"),
     "clock":     ce("5429651785352501917", "↗️"),
     "handshake": ce("5287231198098117669", "💰"),
@@ -66,15 +66,15 @@ E = {
     "banknote":  ce("5201873447554145566", "<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji>"),
     "link":      ce("5902449142575141204", "🔗"),
     "shine":     ce("5235630047959727475", "💎"),
-    "store":     ce("4988289890769699938", "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>"),
+    "store":     ce("4988289890769699938", "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>"),
     # Новые
     "tonkeeper":  ce("5397829221605191505", "💎"),  # адрес тонкипера
     "top_medal":  ce("5188344996356448758", "🏆"),  # топ продавцов
-    "stars_deal": ce("5321485469249198987", "<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji>"), # звёзды в сделке/пополнении
+    "stars_deal": ce("5321485469249198987", "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>"), # звёзды в сделке/пополнении
     "joined":     ce("5902335789798265487", "🤝"),  # второй участник присоединился
     "security_e": ce("5197288647275071607", "🛡"),  # безопасность в сделке
     "deal_link":  ce("5972261808747057065", "🔗"),  # ссылка при создании сделки
-    "warning":    ce("5447644880824181073", "⚠️"),  # предупреждение про менеджера
+    "warning":    ce("5447644880824181073", "<tg-emoji emoji-id='5420323339723881652'>⚠️</tg-emoji>"),  # предупреждение про менеджера
     "stats":      ce("5028746137645876535", "<tg-emoji emoji-id='5028746137645876535'>📊</tg-emoji>"),  # статистика в меню
     "requisites": ce("5242631901214171852", "💳"),  # реквизиты
     "cryptobot":  ce("5242606681166220600", "🤖"),  # крипто бот
@@ -256,13 +256,13 @@ def get_welcome(lang):
     )
 
 BTN = {
-    "ru": {"deal": "💎 Создать сделку", "balance": "💸 Пополнить/Вывод", "lang": "🌍 Язык / Lang", "profile": "⭐ Профиль", "top": "🏆 Топ продавцов"},
-    "en": {"deal": "💎 Create Deal", "balance": "💸 Top Up/Withdraw", "lang": "🌍 Language", "profile": "⭐ Profile", "top": "🏆 Top Sellers"},
+    "ru": {"deal": "💎 Создать сделку", "balance": "💸 Пополнить/Вывод", "lang": "🌍 Язык / Lang", "profile": "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji> Профиль", "top": "🏆 Топ продавцов"},
+    "en": {"deal": "💎 Create Deal", "balance": "💸 Top Up/Withdraw", "lang": "🌍 Language", "profile": "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji> Profile", "top": "🏆 Top Sellers"},
 }
 
 CUR = {
-    "TON": "💎 TON", "USDT": "💵 USDT",
-    "Stars": {"ru": "⭐️ Звёзды", "en": "⭐️ Stars", "kz": "⭐️ Жұлдыз", "az": "⭐️ Ulduz", "uz": "⭐️ Yulduz", "kg": "⭐️ Жылдыз", "tj": "⭐️ Ситора", "by": "⭐️ Зоркі", "am": "⭐️ Astegh", "ge": "⭐️ ვარსკვ.", "ua": "⭐️ Зірки", "md": "⭐️ Stele"},
+    "TON": "💎 TON", "USDT": "<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> USDT",
+    "Stars": {"ru": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Звёзды", "en": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Stars", "kz": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Жұлдыз", "az": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Ulduz", "uz": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Yulduz", "kg": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Жылдыз", "tj": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Ситора", "by": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Зоркі", "am": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Astegh", "ge": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> ვარსკვ.", "ua": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Зірки", "md": "<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> Stele"},
     "RUB": {"ru": "🇷🇺 Рубли", "en": "🇷🇺 Rubles", "kz": "🇷🇺 Рубль", "az": "🇷🇺 Rubl", "uz": "🇷🇺 Rubl", "kg": "🇷🇺 Рубль", "tj": "🇷🇺 Рубл", "by": "🇷🇺 Рублі", "am": "🇷🇺 Rubl", "ge": "🇷🇺 რუბლი", "ua": "🇷🇺 Рублі", "md": "🇷🇺 Ruble"},
     "KZT": {"ru": "🇰🇿 Тенге", "en": "🇰🇿 Tenge", "kz": "🇰🇿 Теңге", "az": "🇰🇿 Tenge", "uz": "🇰🇿 Tenge", "kg": "🇰🇿 Теңге", "tj": "🇰🇿 Тенге", "by": "🇰🇿 Тэнге", "am": "🇰🇿 Tenge", "ge": "🇰🇿 თენგე", "ua": "🇰🇿 Тенге", "md": "🇰🇿 Tenge"},
     "AZN": {"ru": "🇦🇿 Манат", "en": "🇦🇿 Manat", "kz": "🇦🇿 Манат", "az": "🇦🇿 Manat", "uz": "🇦🇿 Manat", "kg": "🇦🇿 Манат", "tj": "🇦🇿 Манот", "by": "🇦🇿 Манат", "am": "🇦🇿 Manat", "ge": "🇦🇿 მანათი", "ua": "🇦🇿 Манат", "md": "🇦🇿 Manat"},
@@ -310,10 +310,10 @@ BANNER_SECTIONS = {
     "main":     "🏠 Главное меню",
     "deal":     "🎁 Создать сделку",
     "balance":  "💸 Пополнить/Вывод",
-    "profile":  "👤 Профиль",
+    "profile":  "<tg-emoji emoji-id='5275979556308674886'>👤</tg-emoji> Профиль",
     "top":      "🏆 Топ продавцов",
     "my_deals": "🗂 Мои сделки",
-    "deal_card":"💼 Карточка сделки",
+    "deal_card":"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> Карточка сделки",
 }
 
 def get_banner(db, section="main"):
@@ -395,7 +395,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ref_uid != str(uid) and ref_uid in db.get("users",{}):
                 u["ref_by"]=ref_uid
                 db["users"][ref_uid]["ref_count"]=db["users"][ref_uid].get("ref_count",0)+1
-                add_log(db,"👥 Новый реферал",uid=uid,username=u["username"],
+                add_log(db,"<tg-emoji emoji-id='6001526766714227911'>👥</tg-emoji> Новый реферал",uid=uid,username=u["username"],
                     extra=f"Пришёл по ссылке от {db['users'][ref_uid].get('username','?')}")
 
         save_db(db); context.user_data.clear()
@@ -411,14 +411,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 lang=u.get("lang","ru")
                 ru=lang=="ru"
                 if not buyer_reqs.get("card") and not buyer_reqs.get("ton") and not buyer_reqs.get("stars"):
-                    # Нет реквизитов — просим добавить
+                    warn_e = ce("5420323339723881652","⚠️")
+                    msg = (f"{warn_e} <b>{'Вы не можете продолжить сделку, пока не добавите реквизиты.' if ru else 'You cannot proceed until you add your requisites.'}</b>\n\n"
+                           f"<blockquote>{'Реквизиты нужны на случай спора или возврата. Укажите хотя бы один способ получения средств.' if ru else 'Requisites are needed in case of dispute. Add at least one payment method.'}</blockquote>")
                     kb=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("💳 "+("Добавить реквизиты" if ru else "Add requisites"),callback_data=f"add_req_{deal_id}")],
+                        [InlineKeyboardButton("📋 "+("Добавить реквизиты" if ru else "Add Requisites"),callback_data=f"add_req_{deal_id}")],
                     ])
-                    await update.effective_message.reply_text(
-                        f"{'⚠️ Для участия в сделке необходимо добавить реквизиты для возврата средств в случае спора.' if ru else '⚠️ To join a deal, please add your requisites for refund in case of dispute.'}\n\n"
-                        f"{'Укажите хотя бы один: номер карты, TON адрес или @юзернейм для звёзд.' if ru else 'Add at least one: card number, TON address, or @username for stars.'}",
-                        parse_mode="HTML", reply_markup=kb)
+                    await update.effective_message.reply_text(msg, parse_mode="HTML", reply_markup=kb)
                     context.user_data["pending_deal"]=deal_id
                     return
 
@@ -454,20 +453,31 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud=context.user_data; uid=update.effective_user.id; lang=get_lang(uid)
         if d=="menu_ref": await show_ref(update,context); return
         if d=="menu_req": await show_req(update,context); return
+        if d.startswith("req_del_"):
+            field=d[8:]; db=load_db(); u=get_user(db,uid)
+            if "requisites" not in u: u["requisites"]={}
+            u["requisites"].pop(field,None); save_db(db)
+            await show_req(update,context); return
         if d.startswith("req_edit_"):
-            field=d[9:]; lang=get_lang(uid); ru=lang=="ru"
-            prompts={"card":"💳 "+("Введите номер карты или телефона:" if ru else "Enter card/phone number:"),
-                     "ton":"💎 "+("Введите TON адрес:" if ru else "Enter TON address:"),
-                     "stars":"⭐️ "+("Введите @юзернейм для получения звёзд:" if ru else "Enter @username for stars:")}
+            field=d[9:]; ru=lang=="ru"
+            examples={"card":"79041751408 или 2200 1234 5678 9012","ton":"UQD...xyz (48 символов)","stars":"@username"}
+            labels={"card":"💳 "+("Карта / Телефон (СБП)" if ru else "Card / Phone (SBP)"),
+                    "ton":"💎 TON "+("адрес" if ru else "address"),
+                    "stars":ce("5438496463044752972","⭐️")+" "+("Юзернейм для звёзд" if ru else "Stars username")}
+            descs={"card":("Введите номер телефона (СБП) или номер карты.\n\nПримеры:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code>" if ru else "Enter phone number (SBP) or card number.\n\nExamples:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code>"),
+                   "ton":("Введите TON адрес (начинается с UQ или EQ, 48 символов).\n\nПример:\n<code>UQDxxx...xxx</code>" if ru else "Enter TON address (starts with UQ or EQ, 48 chars).\n\nExample:\n<code>UQDxxx...xxx</code>"),
+                   "stars":("Введите @юзернейм Telegram для получения звёзд.\n\nПример:\n<code>@username</code>" if ru else "Enter Telegram @username for receiving stars.\n\nExample:\n<code>@username</code>")}
             context.user_data["req_step"]=field
-            await edit_or_send(update,prompts.get(field,"?"),InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="menu_req")]])); return
+            text=f"{labels.get(field,'?')}\n\n<blockquote>{descs.get(field,'?')}</blockquote>"
+            await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="menu_req")]])); return
         if d.startswith("add_req_"):
-            deal_id=d[8:]; context.user_data["req_for_deal"]=deal_id; context.user_data["req_step"]="card"
-            lang=get_lang(uid); ru=lang=="ru"
-            await edit_or_send(update,
-                f"💳 <b>{'Добавьте реквизиты' if ru else 'Add requisites'}</b>\n\n"
-                f"<blockquote>{'Введите номер карты или телефона (или пропустите /skip):' if ru else 'Enter card/phone number (or skip /skip):'}</blockquote>",
-                InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="main_menu")]])); return
+            deal_id=d[8:]; context.user_data["req_for_deal"]=deal_id
+            context.user_data["req_step"]="card"; ru=lang=="ru"
+            text=(f"📋 <b>{'Добавьте реквизиты для участия в сделке' if ru else 'Add requisites to join the deal'}</b>\n\n"
+                  f"💳 <b>{'Шаг 1: Карта / Телефон (СБП)' if ru else 'Step 1: Card / Phone (SBP)'}:</b>\n"
+                  f"<blockquote>{'Введите номер телефона или карты.' if ru else 'Enter your phone or card number.'}\n\n"
+                  f"{'Примеры' if ru else 'Examples'}:\n<code>+79041751408</code>\n<code>2200 1234 5678 9012</code></blockquote>")
+            await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]])); return
         if d=="main_menu":
             ud.clear()
             try: await q.message.delete()
@@ -519,7 +529,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars=int(parts[3])
             context.user_data["review_deal"]=deal_id; context.user_data["review_role"]=role; context.user_data["review_stars"]=stars
             context.user_data["review_step"]="text"
-            star_e = ce("5438496463044752972","⭐️")
+            star_e = ce("5438496463044752972","<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>")
             await q.edit_message_text(f"{star_e*stars} Оценка: {stars}/5\n\nНапишите комментарий к отзыву:",parse_mode="HTML"); return
         if d.startswith("paid_"): await on_paid(update,context); return
         if d=="noop": return
@@ -568,20 +578,62 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Обработка сохранения реквизитов
         if ud.get("req_step") in ("card","ton","stars"):
             field=ud.get("req_step"); db=load_db(); u=get_user(db,uid)
+            ru_r=lang=="ru"
             if not u.get("requisites"): u["requisites"]={}
-            if text=="/skip": u["requisites"][field]="—"
-            else: u["requisites"][field]=text
-            save_db(db); ud.pop("req_step",None)
-            lang_r=get_lang(uid); ru_r=lang_r=="ru"
-            # Если были pending deal — продолжаем
-            pending_deal=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
-            if pending_deal:
+
+            # Валидация
+            err=None
+            if field=="card":
+                clean=text.replace(" ","").replace("+","")
+                if not (clean.isdigit() and 10<=len(clean)<=19):
+                    err=("Введите корректный номер телефона или карты.\n\nПримеры:\n<code>+79041751408</code>\n<code>2200123456789012</code>" if ru_r else
+                         "Enter a valid phone or card number.\n\nExamples:\n<code>+79041751408</code>\n<code>2200123456789012</code>")
+            elif field=="ton":
+                if not ((text.startswith("UQ") or text.startswith("EQ")) and len(text)>=40):
+                    err=("Введите корректный TON адрес (начинается с UQ или EQ).\n\nПример:\n<code>UQDxxx...xxx</code>" if ru_r else
+                         "Enter a valid TON address (starts with UQ or EQ).\n\nExample:\n<code>UQDxxx...xxx</code>")
+            elif field=="stars":
+                t_clean=text if text.startswith("@") else f"@{text}"
+                if len(t_clean)<3:
+                    err=("Введите @юзернейм.\n\nПример:\n<code>@username</code>" if ru_r else
+                         "Enter @username.\n\nExample:\n<code>@username</code>")
+                else: text=t_clean
+
+            if err:
+                await update.message.reply_text(f"❌ {err}",parse_mode="HTML"); return
+
+            u["requisites"][field]=text; save_db(db); ud.pop("req_step",None)
+
+            # Если добавляли в рамках сделки — спрашиваем следующий реквизит или открываем
+            pending_deal=ud.get("req_for_deal") or ud.get("pending_deal")
+            reqs=u.get("requisites",{})
+            # Если это был первый шаг (card) — спрашиваем TON
+            if field=="card" and pending_deal:
+                ud["req_step"]="ton"
+                await update.message.reply_text(
+                    f"💎 <b>{'Шаг 2: TON адрес' if ru_r else 'Step 2: TON address'}:</b>\n\n"
+                    f"<blockquote>{'Введите TON адрес или напишите прочерк' if ru_r else 'Enter TON address or type a dash'} -\n\n"
+                    f"{'Пример' if ru_r else 'Example'}: <code>UQDxxx...xxx</code></blockquote>",
+                    parse_mode="HTML"); return
+            if field=="ton" and pending_deal:
+                # Валидация -
+                if text=="-": u["requisites"]["ton"]=None; save_db(db)
+                ud["req_step"]="stars"
+                await update.message.reply_text(
+                    f"<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> <b>{'Шаг 3: Юзернейм для звёзд' if ru_r else 'Step 3: Stars username'}:</b>\n\n"
+                    f"<blockquote>{'Введите @юзернейм или прочерк' if ru_r else 'Enter @username or dash'} -\n\n"
+                    f"{'Пример' if ru_r else 'Example'}: <code>@username</code></blockquote>",
+                    parse_mode="HTML"); return
+            if field=="stars" and pending_deal:
+                if text=="-": u["requisites"]["stars"]=None; save_db(db)
+                ud.pop("req_for_deal",None); ud.pop("pending_deal",None)
                 db2=load_db(); d2=db2.get("deals",{}).get(pending_deal)
                 if d2:
                     await update.message.reply_text(f"{E['check']} <b>{'Реквизиты сохранены! Открываем сделку...' if ru_r else 'Requisites saved! Opening deal...'}</b>",parse_mode="HTML")
                     add_log(db2,"🔗 Покупатель открыл сделку",deal_id=pending_deal,uid=uid,username=u.get("username",""))
                     save_db(db2)
                     await send_deal_card(update,context,pending_deal,d2,buyer=True); return
+
             await update.message.reply_text(f"{E['check']} <b>{'Реквизиты сохранены!' if ru_r else 'Requisites saved!'}</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 "+("Мои реквизиты" if ru_r else "My Requisites"),callback_data="menu_req")]])); return
         # Обработка реквизитов вывода
@@ -599,7 +651,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 Менеджер",url=f"https://t.me/{MANAGER_USERNAME.lstrip('@')}")],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])); return
             deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars=ud.get("review_stars",5)
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
-            star_e2 = ce("5438496463044752972","⭐️")
+            star_e2 = ce("5438496463044752972","<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji>")
             review_text=f"{star_e2*stars} {stars}/5 — {text}"
             # Продавец оценивает покупателя
             if role=="s":
@@ -743,7 +795,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
         item_str=f"\n{item.strip()}" if item.strip() else ""
         if buyer:
             pu=f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
-            status_str=f"\n<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> {'Статус' if lang=='ru' else 'Status'}: <b>{db['users'][seller_uid].get('status','')}</b>" if seller_uid and seller_uid in db.get('users',{}) and db['users'][seller_uid].get('status') else ""
+            status_str=f"\n<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> {'Статус' if lang=='ru' else 'Status'}: <b>{db['users'][seller_uid].get('status','')}</b>" if seller_uid and seller_uid in db.get('users',{}) and db['users'][seller_uid].get('status') else ""
             ru = lang=="ru"
             text=(
                 f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
@@ -831,7 +883,7 @@ async def adm_confirm(update, context):
                 db["users"][s]["turnover"]=db["users"][s].get("turnover",0)+int(amt_num)
             # Лог подтверждения
             seller_uname=db["users"].get(s,{}).get("username","?") if s else "?"
-            add_log(db,"✅ Сделка подтверждена",deal_id=deal_id,uid=s,
+            add_log(db,"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Сделка подтверждена",deal_id=deal_id,uid=s,
                 username=seller_uname,extra=f"Сумма: {amt_str} {d.get('currency','')}")
             # 3% рефераллу продавца
             if s and s in db["users"]:
@@ -963,7 +1015,7 @@ async def show_profile(update, context):
               f"<tg-emoji emoji-id='5028746137645876535'>📊</tg-emoji> {'Сделок' if ru else 'Deals'}: {u.get('total_deals',0)}\n"
               f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'Успешных' if ru else 'Successful'}: {u.get('success_deals',0)}\n"
               f"<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> {'Оборот' if ru else 'Turnover'}: {u.get('turnover',0)} RUB\n"
-              f"<tg-emoji emoji-id='5438496463044752972'><tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji>️</tg-emoji> {'Репутация' if ru else 'Reputation'}: {u.get('reputation',0)}</b>{rv}")
+              f"<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> {'Репутация' if ru else 'Reputation'}: {u.get('reputation',0)}</b>{rv}")
         await edit_or_send(update,text,InlineKeyboardMarkup([
             [InlineKeyboardButton("➕ "+("Пополнить" if ru else "Top Up"),callback_data="menu_balance"),
              InlineKeyboardButton("➖ "+("Вывод" if ru else "Withdraw"),callback_data="withdraw")],
@@ -978,16 +1030,16 @@ async def show_ref(update, context):
         ref_link=f"https://t.me/{BOT_USERNAME}?start=ref_{uid}"
         ref_count=u.get("ref_count",0); ref_earned=u.get("ref_earned",0)
         text=(
-            f"👥 <b>{'Реферальная программа' if ru else 'Referral Program'}</b>\n\n"
+            f"{ce('6001526766714227911','👥')} <b>{'Реферальная программа' if ru else 'Referral Program'}</b>\n\n"
             f"<blockquote>"
             f"{'Приглашайте друзей и получайте 3% с каждой их сделки!' if ru else 'Invite friends and earn 3% from each their deal!'}\n\n"
-            f"{'Приглашено' if ru else 'Invited'}: {ref_count}\n"
-            f"{'Заработано' if ru else 'Earned'}: {ref_earned} RUB"
+            f"{'Приглашено' if ru else 'Invited'}: <b>{ref_count}</b>\n"
+            f"{'Заработано' if ru else 'Earned'}: <b>{ref_earned} RUB</b>"
             f"</blockquote>\n\n"
-            f"{'Ваша ссылка' if ru else 'Your link'}:\n<code>{ref_link}</code>"
+            f"{'Ваша реферальная ссылка (нажмите чтобы скопировать):' if ru else 'Your referral link (tap to copy):'}\n"
+            f"<code>{ref_link}</code>"
         )
         await edit_or_send(update,text,InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔗 "+("Скопировать ссылку" if ru else "Copy link"),url=ref_link)],
             [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]
         ]))
     except Exception as e: logger.error(f"show_ref: {e}")
@@ -997,22 +1049,26 @@ async def show_req(update, context):
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); ru=lang=="ru"
         reqs=u.get("requisites",{})
-        card=reqs.get("card","—"); ton=reqs.get("ton","—"); stars=reqs.get("stars","—")
+        card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
+        card_line = f"<code>{card}</code>" if card else ("<b>Добавить карту</b>" if ru else "<b>Add Card</b>")
+        ton_line  = f"<code>{ton}</code>"  if ton  else ("<b>Добавить TON адрес</b>" if ru else "<b>Add TON Address</b>")
+        star_line = f"<code>{stars}</code>" if stars else ("<b>Добавить юзернейм</b>" if ru else "<b>Add Username</b>")
         text=(
             f"📋 <b>{'Мои реквизиты' if ru else 'My Requisites'}</b>\n\n"
-            f"<blockquote>"
-            f"💳 {'Карта/Телефон' if ru else 'Card/Phone'}: {card}\n"
-            f"💎 TON: {ton}\n"
-            f"⭐️ {'Звёзды (@юзернейм)' if ru else 'Stars (@username)'}: {stars}"
-            f"</blockquote>\n\n"
-            f"{'Реквизиты нужны для возврата средств в случае спора.' if ru else 'Requisites are needed for refunds in case of dispute.'}"
+            f"💳 <b>{'Карта / Телефон (СБП)' if ru else 'Card / Phone (SBP)'}:</b>\n"
+            f"<blockquote>{card_line}</blockquote>\n\n"
+            f"💎 <b>TON {'адрес' if ru else 'address'}:</b>\n"
+            f"<blockquote>{ton_line}</blockquote>\n\n"
+            f"{ce('5438496463044752972','⭐️')} <b>{'Звёзды (@username)' if ru else 'Stars (@username)'}:</b>\n"
+            f"<blockquote>{star_line}</blockquote>"
         )
-        await edit_or_send(update,text,InlineKeyboardMarkup([
-            [InlineKeyboardButton("✏️ "+("Изменить карту" if ru else "Edit card"),callback_data="req_edit_card")],
-            [InlineKeyboardButton("✏️ "+("Изменить TON" if ru else "Edit TON"),callback_data="req_edit_ton")],
-            [InlineKeyboardButton("✏️ "+("Изменить звёзды" if ru else "Edit stars"),callback_data="req_edit_stars")],
-            [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]
-        ]))
+        r1 = [InlineKeyboardButton("💳 "+("Изменить" if ru else "Edit"), callback_data="req_edit_card"),
+              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Del"), callback_data="req_del_card")] if card else [InlineKeyboardButton("💳 "+("Добавить карту" if ru else "Add Card"), callback_data="req_edit_card")]
+        r2 = [InlineKeyboardButton("💎 "+("Изменить" if ru else "Edit"), callback_data="req_edit_ton"),
+              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Del"), callback_data="req_del_ton")] if ton else [InlineKeyboardButton("💎 "+("Добавить TON адрес" if ru else "Add TON Address"), callback_data="req_edit_ton")]
+        r3 = [InlineKeyboardButton("⭐️ "+("Изменить" if ru else "Edit"), callback_data="req_edit_stars"),
+              InlineKeyboardButton("🗑 "+("Удалить" if ru else "Del"), callback_data="req_del_stars")] if stars else [InlineKeyboardButton("⭐️ "+("Добавить юзернейм" if ru else "Add Username"), callback_data="req_edit_stars")]
+        await edit_or_send(update, text, InlineKeyboardMarkup([r1, r2, r3, [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"), callback_data="main_menu")]]))
     except Exception as e: logger.error(f"show_req: {e}")
 
 async def show_my_deals(update, context):
@@ -1142,7 +1198,7 @@ async def handle_adm_cb(update, context):
         if d in action_map:
             field,prompt=action_map[d]; ud["adm_field"]=field; ud["adm_step"]="set_value"
             await edit_or_send(update,f"<b>{prompt}</b>")
-        status_map={"adm_status_verified":"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Проверенный","adm_status_garant":"🛡 Гарант","adm_status_caution":"⚠️ Осторожно","adm_status_scammer":"🚫 Мошенник","adm_status_clear":""}
+        status_map={"adm_status_verified":"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Проверенный","adm_status_garant":"🛡 Гарант","adm_status_caution":"<tg-emoji emoji-id='5420323339723881652'>⚠️</tg-emoji> Осторожно","adm_status_scammer":"🚫 Мошенник","adm_status_clear":""}
         if d in status_map:
             target=ud.get("adm_target")
             if target:
