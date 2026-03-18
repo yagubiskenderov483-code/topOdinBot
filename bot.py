@@ -256,8 +256,8 @@ def get_welcome(lang):
     )
 
 BTN = {
-    "ru": {"deal": "💎 Создать сделку", "balance": "💸 Пополнить/Вывод", "lang": "🌍 Язык / Lang", "profile": "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji> Профиль", "top": "🏆 Топ продавцов"},
-    "en": {"deal": "💎 Create Deal", "balance": "💸 Top Up/Withdraw", "lang": "🌍 Language", "profile": "<tg-emoji emoji-id='5438496463044752972'>⭐</tg-emoji> Profile", "top": "🏆 Top Sellers"},
+    "ru": {"deal": "💎 Создать сделку", "balance": "💸 Пополнить/Вывод", "lang": "🌍 Язык / Lang", "profile": "⭐ Профиль", "top": "🏆 Топ продавцов"},
+    "en": {"deal": "💎 Create Deal", "balance": "💸 Top Up/Withdraw", "lang": "🌍 Language", "profile": "⭐ Profile", "top": "🏆 Top Sellers"},
 }
 
 CUR = {
@@ -635,7 +635,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if text=="-": u["requisites"]["ton"]=None; save_db(db)
                 ud["req_step"]="stars"
                 await update.message.reply_text(
-                    f"<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> <b>{'Шаг 3: Юзернейм для звёзд' if ru_r else 'Step 3: Stars username'}:</b>\n\n"
+                    f"⭐️ <b>{'Шаг 3: Юзернейм для звёзд' if ru_r else 'Step 3: Stars username'}:</b>\n\n"
                     f"<blockquote>{'Введите @юзернейм или прочерк' if ru_r else 'Enter @username or dash'} -\n\n"
                     f"{'Пример' if ru_r else 'Example'}: <code>@username</code></blockquote>",
                     parse_mode="HTML"); return
