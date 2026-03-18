@@ -550,7 +550,10 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="noop": return
         if d.startswith("adm_confirm_"): await adm_confirm(update,context); return
         if d.startswith("adm_decline_"): await adm_decline(update,context); return
-        if d=="adm_back": await edit_or_send(update,f"{E['shield']} <b>Панель администратора</b>",adm_kb()); return
+        if d=="adm_back":
+            try: await q.message.edit_text(f"{E['shield']} <b>Панель администратора</b>",parse_mode="HTML",reply_markup=adm_kb())
+            except: await q.message.reply_text(f"{E['shield']} <b>Панель администратора</b>",parse_mode="HTML",reply_markup=adm_kb())
+            return
         if d.startswith("adm_"): await handle_adm_cb(update,context); return
         type_map={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium","dt_pst":"premium_stickers"}
         if d in type_map:
@@ -1144,14 +1147,27 @@ async def handle_adm_cb(update, context):
     try:
         q=update.callback_query; d=q.data; ud=context.user_data
         if update.effective_user.id!=ADMIN_ID: return
+
         if d=="adm_user":
             ud["adm_step"]="get_user"
-            await edit_or_send(update,"<b>Введите @юзернейм пользователя:</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
+            await q.message.edit_text("<b>Введите @юзернейм пользователя:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
+
+        if d=="adm_banners":
+            await q.message.edit_text("<b>🖼 Выберите раздел для баннера:</b>",parse_mode="HTML",reply_markup=adm_banners_kb()); return
+
+        if d.startswith("adm_banner_"):
+            section=d[11:]
+            if section in BANNER_SECTIONS:
+                ud["adm_step"]="banner"; ud["adm_banner_section"]=section
+                name=BANNER_SECTIONS[section]
+                await q.message.edit_text(f"<b>Баннер для раздела «{name}»\n\nОтправьте фото, видео, GIF или текст.\noff — удалить баннер.</b>",parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_banners")]])); return
+
         if d in ("adm_logs","adm_logs_hidden"):
             hidden=d=="adm_logs_hidden"; db=load_db()
             logs=db.get("logs",[])[-20:][::-1]
             if not logs:
-                await edit_or_send(update,"<b>Логов пока нет.</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
+                await q.message.edit_text("<b>Логов пока нет.</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
             lines=["<b>📋 Последние события:</b>\n"]
             for log in logs:
                 uname=mask(f"@{log['username']}") if hidden and log.get('username') else (f"@{log['username']}" if log.get('username') else "")
@@ -1159,55 +1175,37 @@ async def handle_adm_cb(update, context):
                 deal=f" #{log['deal_id']}" if log.get('deal_id') else ""
                 extra=f" — {log['extra']}" if log.get('extra') else ""
                 lines.append(f"<b>{log['time']}</b> {log['event']}{deal}\n{uname} {uid_str}{extra}\n")
-            await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([
-                [InlineKeyboardButton("👁 Показать данные" if hidden else "🙈 Скрыть данные",callback_data="adm_logs" if hidden else "adm_logs_hidden")],
-                [InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]
-            ])); return
-            await edit_or_send(update,"<b>🖼 Выберите раздел для баннера:</b>",adm_banners_kb()); return
-        if d.startswith("adm_banner_") and not d=="adm_banner":
-            section=d[11:]
-            if section in BANNER_SECTIONS:
-                ud["adm_step"]="banner"; ud["adm_banner_section"]=section
-                name=BANNER_SECTIONS[section]
-                await edit_or_send(update,f"<b>Баннер для раздела «{name}»\n\nОтправьте фото, видео, GIF или текст.\noff — удалить баннер этого раздела.</b>",
-                    InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_banners")]])); return
-        if d in ("adm_logs","adm_logs_hidden"):
-            db=load_db(); logs=db.get("logs",[])
-            hidden=d=="adm_logs_hidden"
-            if not logs:
-                await edit_or_send(update,"<b>📋 Логов пока нет.</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
-            lines=["<b>📋 Последние 20 событий:</b>\n"]
-            for entry in reversed(logs[-20:]):
-                uname=mask(f"@{entry['username']}") if hidden and entry.get("username") else (f"@{entry['username']}" if entry.get("username") else "—")
-                uid_show=mask(entry.get("uid","")) if hidden and entry.get("uid") else (entry.get("uid","") or "—")
-                deal=f" #{entry['deal_id']}" if entry.get("deal_id") else ""
-                extra=f" | {entry['extra']}" if entry.get("extra") else ""
-                lines.append(f"<b>{entry['time']}</b> {entry['event']}{deal}\n{uname} ({uid_show}){extra}\n")
-            await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([
+            txt="\n".join(lines)[:4000]
+            await q.message.edit_text(txt,parse_mode="HTML",reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("👁 Показать реальные" if hidden else "🙈 Скрыть данные",callback_data="adm_logs" if hidden else "adm_logs_hidden")],
                 [InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]
             ])); return
+
+        if d=="adm_menu_desc":
             ud["adm_step"]="menu_desc"
-            await edit_or_send(update,"<b>Введите новое описание меню:</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_back")]])); return
+            await q.message.edit_text("<b>Введите новое описание меню:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена",callback_data="adm_back")]])); return
+
         if d=="adm_deals":
             db=load_db(); deals=db.get("deals",{})
             if not deals:
-                await edit_or_send(update,"<b>Сделок нет.</b>",InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
+                await q.message.edit_text("<b>Сделок нет.</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
             text="<b>📋 Последние 10 сделок:</b>\n"
             for did,dv in list(deals.items())[-10:]:
                 text+=f"\n<b>{did}</b> | {TNAMES.get(dv.get('type',''),dv.get('type',''))} | {dv.get('amount')} {dv.get('currency')} | {dv.get('status')}"
-            await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
+            await q.message.edit_text(text,parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
+
         action_map={"adm_add_review":("review","Введите отзыв:"),"adm_set_deals":("total_deals","Введите кол-во сделок:"),"adm_set_success":("success_deals","Введите успешных сделок:"),"adm_set_turnover":("turnover","Введите оборот:"),"adm_set_rep":("reputation","Введите репутацию:"),"adm_set_status":("status","Введите статус:")}
         if d in action_map:
             field,prompt=action_map[d]; ud["adm_field"]=field; ud["adm_step"]="set_value"
-            await edit_or_send(update,f"<b>{prompt}</b>")
-        status_map={"adm_status_verified":"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> Проверенный","adm_status_garant":"🛡 Гарант","adm_status_caution":"<tg-emoji emoji-id='5420323339723881652'>⚠️</tg-emoji> Осторожно","adm_status_scammer":"🚫 Мошенник","adm_status_clear":""}
+            await q.message.edit_text(f"<b>{prompt}</b>",parse_mode="HTML"); return
+
+        status_map={"adm_status_verified":"✅ Проверенный","adm_status_garant":"🛡 Гарант","adm_status_caution":"⚠️ Осторожно","adm_status_scammer":"🚫 Мошенник","adm_status_clear":""}
         if d in status_map:
             target=ud.get("adm_target")
             if target:
                 db=load_db(); u=db["users"].get(target,{})
                 u["status"]=status_map[d]; db["users"][target]=u; save_db(db)
-                await q.answer(f"Статус установлен: {status_map[d] or 'убран'}")
+                await q.answer(f"Статус: {status_map[d] or 'убран'}")
                 try: await q.edit_message_reply_markup(reply_markup=None)
                 except: pass
     except Exception as e: logger.error(f"handle_adm_cb: {e}")
