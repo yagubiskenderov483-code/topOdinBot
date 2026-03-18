@@ -67,6 +67,19 @@ E = {
     "link":      ce("5902449142575141204", "🔗"),
     "shine":     ce("5235630047959727475", "💎"),
     "store":     ce("4988289890769699938", "⭐️"),
+    # Новые
+    "tonkeeper":  ce("5397829221605191505", "💎"),  # адрес тонкипера
+    "top_medal":  ce("5188344996356448758", "🏆"),  # топ продавцов
+    "stars_deal": ce("5321485469249198987", "⭐️"), # звёзды в сделке/пополнении
+    "joined":     ce("5902335789798265487", "🤝"),  # второй участник присоединился
+    "security_e": ce("5197288647275071607", "🛡"),  # безопасность в сделке
+    "deal_link":  ce("5972261808747057065", "🔗"),  # ссылка при создании сделки
+    "warning":    ce("5447644880824181073", "⚠️"),  # предупреждение про менеджера
+    "stats":      ce("5028746137645876535", "📊"),  # статистика в меню
+    "requisites": ce("5242631901214171852", "💳"),  # реквизиты
+    "cryptobot":  ce("5242606681166220600", "🤖"),  # крипто бот
+    "welcome":    ce("5251340119205501791", "👋"),  # приветствие в меню
+    "balance_e":  ce("5424976816530014958", "💰"),  # баланс в профиле/реквизиты
 }
 
 CD  = ce("5235630047959727475", "💎")
@@ -187,66 +200,33 @@ def gen_deal_id(db):
     return f"GD{n:05d}"
 
 LANGS = {
-    "ru": "🇷🇺 Россия",    "en": "🇬🇧 English",
-    "kz": "🇰🇿 Қазақстан", "az": "🇦🇿 Azərbaycan",
-    "uz": "🇺🇿 O'zbek",    "kg": "🇰🇬 Кыргызстан",
-    "tj": "🇹🇯 Тоҷикистон","by": "🇧🇾 Беларусь",
-    "am": "🇦🇲 Հայաստան",  "ge": "🇬🇪 საქართველო",
-    "ua": "🇺🇦 Україна",   "md": "🇲🇩 Moldova",
+    "ru": "🇷🇺 Русский",
+    "en": "🇬🇧 English",
 }
 
 def get_welcome(lang):
-    intros = {
-        "en": "Gift Deals — the safest platform for deals in Telegram",
-        "kz": "Gift Deals — Telegram-дағы ең қауіпсіз мәміле алаңы",
-        "az": "Gift Deals — Telegram-da ən etibarlı əməliyyat platforması",
-        "uz": "Gift Deals — Telegram'dagi eng ishonchli bitim platformasi",
-        "kg": "Gift Deals — Telegram'дагы эң коопсуз бүтүм аянтчасы",
-        "tj": "Gift Deals — бехтарин майдончаи муомилот дар Telegram",
-        "by": "Gift Deals — самая надзейная пляцоўка для здзелак у Telegram",
-        "am": "Gift Deals — Telegram-ի ամենահուսալի գործարքային հարթակը",
-        "ge": "Gift Deals — Telegram-ის ყველაზე სანდო პლატფორმა",
-        "ua": "Gift Deals — найнадійніша платформа для угод у Telegram",
-        "md": "Gift Deals — cea mai sigură platformă pentru tranzacții în Telegram",
-        "ru": "Gift Deals — самая безопасная площадка для сделок в Telegram",
-    }
-    items = {
-        "ru": ["Автоматические сделки с НФТ и подарками","Полная защита обеих сторон","Средства заморожены до подтверждения","Передача через менеджера: @GiftDealsManager"],
-        "en": ["Automatic deals with NFT and gifts","Full protection for both parties","Funds frozen until confirmation","Transfer via manager: @GiftDealsManager"],
-        "kz": ["НФТ және сыйлықтармен автоматты мәмілелер","Екі тараптың толық қорғанысы","Растауға дейін қаражат бұғатталған","Менеджер арқылы: @GiftDealsManager"],
-        "az": ["NFT və hədiyyələrlə avtomatik əməliyyatlar","Hər iki tərəf üçün tam qoruma","Təsdiqə qədər vəsaitlər dondurulur","Menecer vasitəsilə: @GiftDealsManager"],
-        "uz": ["NFT va sovg'alar bilan avtomatik bitimlar","Ikkala tomon uchun to'liq himoya","Tasdiqlanguncha mablag'lar muzlatilgan","Menejer orqali: @GiftDealsManager"],
-        "kg": ["НФТ жана белектер менен авто бүтүмдөр","Эки тараптын толук коргоосу","Тастыкталганга чейин каражат тоңдурулган","Менеджер аркылуу: @GiftDealsManager"],
-        "tj": ["Муомилоти автоматӣ бо НФТ ва тӯҳфаҳо","Ҳифзи пурраи ҳарду тараф","Маблағ то тасдиқ яхкарда аст","Тавассути менеҷер: @GiftDealsManager"],
-        "by": ["Аўтаматычныя здзелкі з НФТ і падарункамі","Поўная абарона абодвух бакоў","Сродкі замарожаны да пацверджання","Перадача праз мэнэджара: @GiftDealsManager"],
-        "am": ["Ավտոմատ գործարքներ NFT-ով և նվերներով","Երկու կողմի լիարժեք պաշտպանություն","Հաստատման ժամանակ միջոցները սառեցված են","Կառավարչի միջոցով: @GiftDealsManager"],
-        "ge": ["ავტომატური გარიგებები NFT-ით და საჩუქრებით","ორივე მხარის სრული დაცვა","სახსრები დადასტურებამდე გაყინულია","მენეჯერის მეშვეობით: @GiftDealsManager"],
-        "ua": ["Автоматичні угоди з НФТ та подарунками","Повний захист обох сторін","Кошти заморожені до підтвердження","Передача через менеджера: @GiftDealsManager"],
-        "md": ["Tranzacții automate cu NFT și cadouri","Protecție completă pentru ambele părți","Fonduri înghețate până la confirmare","Transfer prin manager: @GiftDealsManager"],
-    }
-    intro = intros.get(lang, intros["ru"])
-    pts = items.get(lang, items["ru"])
+    if lang == "en":
+        intro = "Gift Deals — the safest platform for deals in Telegram"
+        pts = ["Automatic NFT & gift deals","Full protection for both parties","Funds frozen until confirmation","Transfer via manager: @GiftDealsManager"]
+        footer = "Choose an action below"
+        stats = "1000+ deals completed · $500,000+ turnover"
+    else:
+        intro = "Gift Deals — самая безопасная площадка для сделок в Telegram"
+        pts = ["Автоматические сделки с НФТ и подарками","Полная защита обеих сторон","Средства заморожены до подтверждения","Передача через менеджера: @GiftDealsManager"]
+        footer = "Выберите действие ниже"
+        stats = "1000+ сделок завершено · оборот $500,000+"
     nums = [E['num1'], E['num2'], E['num3'], E['num4']]
     lines = "\n".join(f"<blockquote>{nums[i]} {pts[i]}.</blockquote>" for i in range(4))
     return (
-        f"{CD} <b>{intro}</b>\n\n"
+        f"{E['welcome']} <b>{intro}</b>\n\n"
         f"{lines}\n\n"
-        f"{E['spark']} <b>{'Выберите действие ниже' if lang=='ru' else 'Choose an action below' if lang=='en' else '👇'}</b>"
+        f"<blockquote>{E['stats']} {stats}</blockquote>\n\n"
+        f"{E['spark']} <b>{footer}</b>"
     )
 
 BTN = {
     "ru": {"deal": "💎 Создать сделку", "balance": "💸 Пополнить/Вывод", "lang": "🌍 Язык / Lang", "profile": "⭐ Профиль", "top": "🏆 Топ продавцов"},
     "en": {"deal": "💎 Create Deal", "balance": "💸 Top Up/Withdraw", "lang": "🌍 Language", "profile": "⭐ Profile", "top": "🏆 Top Sellers"},
-    "kz": {"deal": "💎 Мәміле", "balance": "💸 Толықтыру/Шығару", "lang": "🌍 Тіл", "profile": "⭐ Профиль", "top": "🏆 Үздіктер"},
-    "az": {"deal": "💎 Müqavilə", "balance": "💸 Doldur/Çıxar", "lang": "🌍 Dil", "profile": "⭐ Profil", "top": "🏆 Top"},
-    "uz": {"deal": "💎 Bitim", "balance": "💸 To'ldirish/Chiqarish", "lang": "🌍 Til", "profile": "⭐ Profil", "top": "🏆 Top"},
-    "kg": {"deal": "💎 Бүтүм", "balance": "💸 Толуктоо/Чыгаруу", "lang": "🌍 Тил", "profile": "⭐ Профиль", "top": "🏆 Топ"},
-    "tj": {"deal": "💎 Муомила", "balance": "💸 Пур кардан/Баровардан", "lang": "🌍 Забон", "profile": "⭐ Профил", "top": "🏆 Топ"},
-    "by": {"deal": "💎 Здзелка", "balance": "💸 Папоўніць/Вывесці", "lang": "🌍 Мова", "profile": "⭐ Профіль", "top": "🏆 Топ"},
-    "am": {"deal": "💎 Գործ", "balance": "💸 Լրացնել/Հանել", "lang": "🌍 Lezun", "profile": "⭐ Profil", "top": "🏆 Top"},
-    "ge": {"deal": "💎 გარიგება", "balance": "💸 შევსება/გამოტანა", "lang": "🌍 ენა", "profile": "⭐ პროფ.", "top": "🏆 საუკ."},
-    "ua": {"deal": "💎 Угода", "balance": "💸 Поповнити/Вивести", "lang": "🌍 Мова", "profile": "⭐ Профіль", "top": "🏆 Топ"},
-    "md": {"deal": "💎 Tranzacție", "balance": "💸 Reîncărcare/Retragere", "lang": "🌍 Limbă", "profile": "⭐ Profil", "top": "🏆 Top"},
 }
 
 CUR = {
@@ -331,12 +311,24 @@ async def show_main(update, context, edit=False):
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        db=load_db(); u=get_user(db,update.effective_user.id)
+        db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         u["username"]=update.effective_user.username or ""; save_db(db); context.user_data.clear()
         args=context.args
         if args and args[0].startswith("deal_"):
             deal_id=args[0][5:].upper(); d=db.get("deals",{}).get(deal_id)
-            if d: await send_deal_card(update,context,deal_id,d,buyer=True); return
+            if d:
+                buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
+                seller_uid=d.get("user_id")
+                # Уведомляем продавца что покупатель присоединился
+                if seller_uid and seller_uid!=str(uid):
+                    seller_lang=get_lang(int(seller_uid))
+                    try:
+                        notify=(f"{E['joined']} <b>{'Покупатель присоединился к сделке!' if seller_lang=='ru' else 'Buyer joined the deal!'}</b>\n\n"
+                               f"<blockquote>{'Сделка' if seller_lang=='ru' else 'Deal'}: #{deal_id}\n"
+                               f"{'Покупатель' if seller_lang=='ru' else 'Buyer'}: {buyer_tag}</blockquote>")
+                        await context.bot.send_message(chat_id=int(seller_uid),text=notify,parse_mode="HTML")
+                    except Exception as e: logger.error(f"joined notify: {e}")
+                await send_deal_card(update,context,deal_id,d,buyer=True); return
         await show_main(update,context)
     except Exception as e: logger.error(f"cmd_start: {e}")
 
@@ -543,6 +535,7 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
     dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
     item=build_item_line(dtype,d.get("data",{}))
     item_str=f"\n{item.strip()}" if item.strip() else ""
+    stars_line = f"\n\n{E['stars_deal']} <b>{t('stars_title',lang)}:</b>\n<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>" if dtype in ("stars","username") else f"\n\n{E['stars_deal']} <b>{t('stars_title',lang)}:</b>\n<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>"
     return (
         f"💼 <b>{t('deal_title',lang)} #{deal_id}</b>\n\n"
         f"<blockquote>"
@@ -552,14 +545,15 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
         f"{item_str}\n"
         f"{t('amount',lang)}: <b>{amt} {cur_native(cur)}</b>"
         f"</blockquote>\n\n"
-        f"{t('security',lang)}\n"
+        f"{E['security_e']} <b>{t('security',lang)}</b>\n"
         f"<blockquote>{t('security_text',lang)}</blockquote>\n\n"
-        f"{t('sbp',lang)} {CARD_BANK}:\n"
+        f"{E['warning']} <b>{'Важно' if lang=='ru' else 'Important'}:</b>\n"
+        f"<blockquote>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if lang=='ru' else 'Do not transfer goods directly! Only through manager @GiftDealsManager.'}</blockquote>\n\n"
+        f"{E['requisites']} <b>{t('sbp',lang)} {CARD_BANK}:</b>\n"
         f"<blockquote>{t('phone',lang)}: <code>{CARD_NUMBER}</code>\n{t('recipient',lang)}: {CARD_NAME}\n{t('bank',lang)}: {CARD_BANK}</blockquote>\n\n"
-        f"{t('ton_title',lang)}:\n"
-        f"<blockquote>{t('ton_addr',lang)}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{t('crypto_bot',lang)}: {CRYPTO_BOT}</blockquote>\n\n"
-        f"{t('stars_title',lang)}:\n"
-        f"<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>\n\n"
+        f"{E['tonkeeper']} <b>{t('ton_title',lang)}:</b>\n"
+        f"<blockquote>{t('ton_addr',lang)}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {t('crypto_bot',lang)}: {CRYPTO_BOT}</blockquote>"
+        f"{stars_line}\n\n"
         f"{t('after_pay',lang)}"
     )
 
@@ -573,6 +567,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
         if buyer:
             pu=f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
             status_str=f"\n⭐️ {t('status_label',lang)}: <b>{db['users'][seller_uid].get('status','')}</b>" if seller_uid and seller_uid in db.get('users',{}) and db['users'][seller_uid].get('status') else ""
+            stars_line = f"\n\n{E['stars_deal']} <b>{t('stars_title',lang)}:</b>\n<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>"
             text=(
                 f"💼 <b>{t('deal_title',lang)} #{deal_id}</b>\n\n"
                 f"<blockquote>"
@@ -582,14 +577,15 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"{item_str}\n"
                 f"{t('amount',lang)}: <b>{amt} {cur_native(cur)}</b>"
                 f"</blockquote>\n\n"
-                f"{t('security',lang)}\n"
+                f"{E['security_e']} <b>{t('security',lang)}</b>\n"
                 f"<blockquote>{t('security_text',lang)}</blockquote>\n\n"
-                f"{t('sbp',lang)} {CARD_BANK}:\n"
-                f"<blockquote>{t('phone',lang)}: <code>{CARD_NUMBER}</code>\n{t('recipient',lang)}: {CARD_NAME}\n{t('bank',lang)}: {CARD_BANK}</blockquote>\n\n"
-                f"{t('ton_title',lang)}:\n"
-                f"<blockquote>{t('ton_addr',lang)}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{t('crypto_bot',lang)}: {CRYPTO_BOT}</blockquote>\n\n"
-                f"{t('stars_title',lang)}:\n"
-                f"<blockquote>{t('stars_text',lang)}: @GiftDealsManager</blockquote>\n\n"
+                f"{E['warning']} <b>{'Важно' if lang=='ru' else 'Important'}:</b>\n"
+                f"<blockquote>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if lang=='ru' else 'Do not transfer goods directly! Only through manager @GiftDealsManager.'}</blockquote>\n\n"
+                f"{E['requisites']} <b>{t('sbp',lang)} {CARD_BANK}:</b>\n"
+                f"<blockquote>{E['balance_e']} {t('phone',lang)}: <code>{CARD_NUMBER}</code>\n{t('recipient',lang)}: {CARD_NAME}\n{t('bank',lang)}: {CARD_BANK}</blockquote>\n\n"
+                f"{E['tonkeeper']} <b>{t('ton_title',lang)}:</b>\n"
+                f"<blockquote>{t('ton_addr',lang)}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {t('crypto_bot',lang)}: {CRYPTO_BOT}</blockquote>"
+                f"{stars_line}\n\n"
                 f"{t('after_pay',lang)}"
             )
             kb=InlineKeyboardMarkup([
@@ -607,7 +603,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"{item_str}\n"
                 f"{t('amount',lang)}: <b>{amt} {cur_native(cur)}</b>"
                 f"</blockquote>\n\n"
-                f"{t('link_for_buyer',lang)}:\n"
+                f"{E['deal_link']} {t('link_for_buyer',lang)}:\n"
                 f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n"
                 f"{t('send_link',lang)}"
             )
@@ -762,7 +758,7 @@ async def show_profile(update, context):
         sl=f"\n<blockquote>{t('status_label',lang)}: {status}</blockquote>" if status else ""
         rv=("\n\n<b>"+t("reviews_title",lang)+":</b>\n"+"\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
         text=(f"👤 <b>{t('profile_title',lang)}{sl}\n\n@{uname}\n"
-              f"💰 {t('balance',lang)}: {u.get('balance',0)} RUB\n"
+              f"{E['balance_e']} {t('balance',lang)}: {u.get('balance',0)} RUB\n"
               f"📊 {t('deals_count',lang)}: {u.get('total_deals',0)}\n"
               f"✅ {t('success',lang)}: {u.get('success_deals',0)}\n"
               f"💵 {t('turnover',lang)}: {u.get('turnover',0)} RUB\n"
@@ -791,12 +787,14 @@ async def show_my_deals(update, context):
 
 async def show_top(update, context):
     try:
+        lang=get_lang(update.effective_user.id)
         TOP=[("@al***ndr",450,47),("@ie***ym",380,38),("@ma***ov",310,29),("@kr***na",290,31),("@pe***ko",270,25),("@se***ev",240,22),("@an***va",210,19),("@vi***or",190,17),("@dm***iy",170,15),("@ni***la",140,13)]
         medals=["🥇","🥈","🥉"]+["🏅"]*7
-        lines=[f"{E['trophy']} <b>Топ продавцов Gift Deals\n</b>"]
-        for i,(u,a,d) in enumerate(TOP): lines.append(f"<b>{medals[i]} {i+1}. {u} — ${a} | {d} сделок</b>")
-        lines.append(f"\n{E['rocket']} <b>Создавай сделки!</b>")
-        await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="main_menu")]]))
+        title = t("top_title",lang)
+        lines=[f"{E['top_medal']} <b>{title}</b>\n"]
+        for i,(u,a,d) in enumerate(TOP): lines.append(f"<b>{medals[i]} {i+1}. {u} — ${a} | {d} {'сделок' if lang=='ru' else 'deals'}</b>")
+        lines.append(f"\n{E['stats']} <b>{'1000+ сделок в боте' if lang=='ru' else '1000+ deals on platform'}</b>")
+        await edit_or_send(update,"\n".join(lines),InlineKeyboardMarkup([[InlineKeyboardButton(t("back",lang),callback_data="main_menu")]]))
     except Exception as e: logger.error(f"show_top: {e}")
 
 async def show_withdraw(update, context):
