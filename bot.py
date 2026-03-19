@@ -501,7 +501,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                    "stars":("Введите @юзернейм Telegram для получения звёзд.\n\nПример:\n<code>@username</code>" if ru else "Enter Telegram @username for receiving stars.\n\nExample:\n<code>@username</code>")}
             context.user_data["req_step"]=field
             text=f"{labels.get(field,'?')}\n\n<blockquote><b>{descs.get(field,'?')}</b></blockquote>"
-            await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="menu_req")]])); return
+            await edit_or_send(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="menu_req")]]), section="profile"); return
         if d.startswith("add_req_"):
             deal_id=d[8:]; context.user_data["req_for_deal"]=deal_id; ru=lang=="ru"
             warn=ce("5420323339723881652", "⚠️")
@@ -513,7 +513,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton("⭐️ "+("Юзернейм для звёзд" if ru else "Stars username"),callback_data=f"req_deal_stars_{deal_id}")],
                 [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")],
             ])
-            await edit_or_send(update,text,kb); return
+            await edit_or_send(update,text,kb, section="deal_card"); return
         if d.startswith("req_deal_"):
             parts=d[9:].split("_",1); field=parts[0]; deal_id=parts[1] if len(parts)>1 else ""
             context.user_data["req_step"]=field; context.user_data["req_for_deal"]=deal_id; ru=lang=="ru"
@@ -522,7 +522,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "ton": (f"💎 <b>TON {'адрес' if ru else 'address'}</b>\n\n<blockquote><b>{'Введите TON адрес (начинается с UQ или EQ).' if ru else 'Enter TON address (starts with UQ or EQ).'}\n\n{'Пример' if ru else 'Example'}:\n<code>UQDxxx...xxx</code></b></blockquote>"),
                 "stars":(f"{ce('5438496463044752972','⭐️')} <b>{'Звёзды' if ru else 'Stars'}</b>\n\n<blockquote><b>{'Введите ваш @юзернейм.' if ru else 'Enter your @username.'}\n\n{'Пример' if ru else 'Example'}:\n<code>@username</code></b></blockquote>"),
             }
-            await edit_or_send(update,prompts.get(field,"?"),InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data=f"add_req_{deal_id}")]])); return
+            await edit_or_send(update,prompts.get(field,"?"),InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data=f"add_req_{deal_id}")]]), section="deal_card"); return
         if d=="main_menu":
             ud.clear()
             try: await q.message.delete()
@@ -544,7 +544,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [InlineKeyboardButton("💰 Рубли",callback_data="balance_rub")],
                     [InlineKeyboardButton("💎 TON / USDT",callback_data="balance_crypto")],
                     [InlineKeyboardButton("🔙 Назад",callback_data="menu_balance")],
-                ])); return
+                ]),section="balance"); return
         if d=="menu_lang":
             try: await q.message.delete()
             except: pass
@@ -569,7 +569,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             prompts={"stars":"Укажите @юзернейм получателя звёзд:","crypto":"Укажите TON/USDT адрес для вывода:","card":"Укажите номер карты для вывода:"}
             context.user_data["withdraw_method"]=method; context.user_data["withdraw_step"]="requisite"
             await edit_or_send(update,f"{E['wallet']} <b>Вывод средств</b>\n\n<blockquote><b>{prompts.get(method,'Укажите реквизиты:')}</b></blockquote>",
-                InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="withdraw")]])); return
+                InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="withdraw")]]), section="balance"); return
         if d.startswith("rev_"):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars=int(parts[3])
             context.user_data["review_deal"]=deal_id; context.user_data["review_role"]=role; context.user_data["review_stars"]=stars
@@ -977,7 +977,7 @@ async def show_balance(update, context):
                 [InlineKeyboardButton("➕ "+("Пополнить" if ru else "Top Up"),callback_data="balance_topup")],
                 [InlineKeyboardButton("➖ "+("Вывод" if ru else "Withdraw"),callback_data="withdraw")],
                 [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")],
-            ]))
+            ]), section="balance")
     except Exception as e: logger.error(f"show_balance: {e}")
 
 async def show_balance_info(update, context, method):
@@ -1045,7 +1045,7 @@ async def show_profile(update, context):
             [InlineKeyboardButton("➕ "+("Пополнить" if ru else "Top Up"),callback_data="menu_balance"),
              InlineKeyboardButton("➖ "+("Вывод" if ru else "Withdraw"),callback_data="withdraw")],
             [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]
-        ]))
+        ]), section="profile")
     except Exception as e: logger.error(f"show_profile: {e}")
 
 async def show_ref(update, context):
@@ -1066,7 +1066,7 @@ async def show_ref(update, context):
         )
         await edit_or_send(update,text,InlineKeyboardMarkup([
             [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]
-        ]))
+        ]), section="profile")
     except Exception as e: logger.error(f"show_ref: {e}")
 
 async def show_req(update, context):
@@ -1104,7 +1104,7 @@ async def show_req(update, context):
         r3 = [InlineKeyboardButton("⭐️ "+("Изменить" if ru else "Edit"),callback_data="req_edit_stars"),
               InlineKeyboardButton("🗑 "+("Удалить" if ru else "Delete"),callback_data="req_del_stars")] if stars \
          else [InlineKeyboardButton("⭐️ "+("Добавить юзернейм" if ru else "Add Username"),callback_data="req_edit_stars")]
-        await edit_or_send(update,text,InlineKeyboardMarkup([r1,r2,r3,[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]]))
+        await edit_or_send(update,text,InlineKeyboardMarkup([r1,r2,r3,[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")]]), section="profile")
     except Exception as e: logger.error(f"show_req: {e}")
 
 async def show_my_deals(update, context):
@@ -1141,7 +1141,7 @@ async def show_withdraw(update, context):
         bal=u.get("balance",0)
         if bal<=0:
             await edit_or_send(update,f"{E['cross']} <b>Недостаточно средств для вывода.</b>\n\n<blockquote><b>Ваш баланс: {bal} RUB</b></blockquote>",
-                InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="menu_balance")]])); return
+                InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="menu_balance")]]), section="balance"); return
         await edit_or_send(update,
             f"{E['wallet']} <b>Вывод средств</b>\n\n<blockquote><b>Ваш баланс: {bal} RUB\n\nВыберите способ вывода:</b></blockquote>",
             InlineKeyboardMarkup([
@@ -1149,7 +1149,7 @@ async def show_withdraw(update, context):
                 [InlineKeyboardButton("💎 Крипта (TON/USDT)",callback_data="withdraw_crypto")],
                 [InlineKeyboardButton("💳 На карту",callback_data="withdraw_card")],
                 [InlineKeyboardButton("🔙 Назад",callback_data="menu_balance")],
-            ]))
+            ]), section="balance")
     except Exception as e: logger.error(f"show_withdraw: {e}")
 
 def adm_kb():
