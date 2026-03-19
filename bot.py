@@ -422,9 +422,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Реферальная система
         if args and args[0].startswith("ref_") and not u.get("ref_by"):
             ref_uid=args[0][4:]
-            # Проверяем: не сам себе, реферер существует в БД, и у реферера есть username (реальный пользователь)
+            # Проверяем: не сам себе, реферер существует в БД
             ref_user=db.get("users",{}).get(ref_uid)
-            if ref_uid != str(uid) and ref_user and ref_user.get("username"):
+            if ref_uid != str(uid) and ref_user is not None:
                 u["ref_by"]=ref_uid
                 db["users"][ref_uid]["ref_count"]=db["users"][ref_uid].get("ref_count",0)+1
                 add_log(db,"👥 Новый реферал",uid=uid,username=u["username"],
@@ -738,13 +738,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if step=="partner":
             ru=lang=="ru"
+            # Нормализуем — добавляем @ если нет
             if not text.startswith("@"):
-                await update.message.reply_text(f"{E['cross']} <b>{'Юзернейм должен начинаться с @' if ru else 'Username must start with @'}</b>",parse_mode="HTML"); return
-            # Проверяем существование юзернейма через Telegram
-            try:
-                chat=await context.bot.get_chat(text)
-            except Exception:
-                await update.message.reply_text(f"{E['cross']} <b>{'Пользователь @' if ru else 'User @'}{text.lstrip('@')} {'не найден в Telegram. Проверьте юзернейм.' if ru else 'not found in Telegram. Check the username.'}</b>",parse_mode="HTML"); return
+                text="@"+text
+            # Проверяем формат юзернейма: @буквы_цифры, минимум 5 символов
+            uname=text[1:]
+            if len(uname)<4 or not all(c.isalnum() or c=='_' for c in uname):
+                await update.message.reply_text(
+                    f"{E['cross']} <b>{'Неверный формат юзернейма. Пример: @username' if ru else 'Invalid username format. Example: @username'}</b>",
+                    parse_mode="HTML"); return
             ud["partner"]=text
             if dtype=="nft":
                 ud["step"]="nft_link"
