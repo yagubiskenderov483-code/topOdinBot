@@ -317,41 +317,74 @@ BANNER_SECTIONS = {
 }
 
 def get_banner(db, section="main"):
-    """Получает баннер для раздела, если нет — берёт главный."""
+    """Каждый раздел полностью независим. Нет баннера — нет медиа."""
     banners = db.get("banners", {})
-    b = banners.get(section) or {}
-    # Если нет секционного — берём главный
-    if not b.get("photo") and not b.get("video") and not b.get("gif"):
-        return {
+    b = banners.get(section)
+    if b and (b.get("photo") or b.get("video") or b.get("gif") or b.get("text")):
+        return b
+    # Только main использует legacy поля для обратной совместимости
+    if section == "main":
+        legacy = {
             "photo": db.get("banner_photo"),
             "video": db.get("banner_video"),
             "gif":   db.get("banner_gif"),
             "text":  db.get("banner") or "",
         }
-    return b
-
+        if legacy["photo"] or legacy["video"] or legacy["gif"] or legacy["text"]:
+            return legacy
+    return None  # Нет баннера для этого раздела
 async def send_with_banner(update, text, kb=None, section="main"):
-    """Удаляет предыдущее сообщение и отправляет новое с баннером раздела."""
+    """Отправляет сообщение с баннером раздела. Каждый раздел полностью независим."""
     try:
         db=load_db()
         b=get_banner(db, section)
-        bv=b.get("video"); bg=b.get("gif"); bp=b.get("photo")
-        banner_text=b.get("text","")
+        bv=b.get("video") if b else None
+        bg=b.get("gif")   if b else None
+        bp=b.get("photo") if b else None
+        banner_text=(b.get("text","") if b else "")
         full_text = text + (f"\n\n<b>{banner_text}</b>" if banner_text else "")
+        has_media = bool(bv or bg or bp)
+
+        old_msg = None
+        old_has_media = False
         try:
-            if update.callback_query: await update.callback_query.message.delete()
+            if update.callback_query:
+                old_msg = update.callback_query.message
+                if old_msg:
+                    old_has_media = bool(old_msg.photo or old_msg.video or old_msg.animation)
         except: pass
+
+        if not has_media and not old_has_media and old_msg:
+            # Оба текстовые — просто редактируем
+            try:
+                await old_msg.edit_text(full_text, parse_mode="HTML", reply_markup=kb)
+                return
+            except: pass
+        elif has_media and old_has_media and old_msg:
+            # Оба медиа — пробуем edit_caption, иначе удаляем и шлём новое
+            try:
+                await old_msg.edit_caption(caption=full_text, parse_mode="HTML", reply_markup=kb)
+                return
+            except:
+                try: await old_msg.delete()
+                except: pass
+        elif old_msg:
+            # Смена типа — удаляем старое
+            try: await old_msg.delete()
+            except: pass
+
+        # Отправляем новое
         if bv:
-            await update.effective_chat.send_video(video=bv,caption=full_text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_video(video=bv, caption=full_text, parse_mode="HTML", reply_markup=kb)
         elif bg:
-            await update.effective_chat.send_animation(animation=bg,caption=full_text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_animation(animation=bg, caption=full_text, parse_mode="HTML", reply_markup=kb)
         elif bp:
-            await update.effective_chat.send_photo(photo=bp,caption=full_text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_photo(photo=bp, caption=full_text, parse_mode="HTML", reply_markup=kb)
         else:
-            await update.effective_chat.send_message(full_text,parse_mode="HTML",reply_markup=kb)
+            await update.effective_chat.send_message(full_text, parse_mode="HTML", reply_markup=kb)
     except Exception as e:
         logger.error(f"send_with_banner: {e}")
-        try: await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
+        try: await update.effective_message.reply_text(text, parse_mode="HTML", reply_markup=kb)
         except: pass
 
 async def send_text(update, text, kb=None):
@@ -377,9 +410,6 @@ async def show_main(update, context, edit=False):
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=u.get("lang","ru"); desc=db.get("menu_description") or get_welcome(lang)
         kb=main_kb(lang)
-        try:
-            if update.callback_query: await update.callback_query.message.delete()
-        except: pass
         await send_with_banner(update, desc, kb, section="main")
     except Exception as e: logger.error(f"show_main: {e}")
 
@@ -834,7 +864,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"{'Отправьте ссылку партнёру.' if ru else 'Send the link to your partner.'}"
             )
             kb=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"),callback_data="main_menu")]])
-        await update.effective_message.reply_text(text,parse_mode="HTML",reply_markup=kb)
+        await send_with_banner(update, text, kb, section="deal_card")
     except Exception as e: logger.error(f"send_deal_card: {e}")
 
 async def on_paid(update, context):
@@ -1131,10 +1161,21 @@ def adm_kb():
         [InlineKeyboardButton("📋 Логи событий",callback_data="adm_logs"),InlineKeyboardButton("📋 Логи (скрыт.)",callback_data="adm_logs_hidden")],
     ])
 
-def adm_banners_kb():
+def adm_banners_kb(db=None):
+    if db is None: db=load_db()
+    banners=db.get("banners",{})
     rows=[]
     for key,name in BANNER_SECTIONS.items():
-        rows.append([InlineKeyboardButton(f"{name}",callback_data=f"adm_banner_{key}")])
+        b=banners.get(key) or {}
+        has=bool(b.get("photo") or b.get("video") or b.get("gif") or b.get("text"))
+        # Legacy для main
+        if not has and key=="main":
+            has=bool(db.get("banner_photo") or db.get("banner_video") or db.get("banner_gif") or db.get("banner"))
+        status="✅" if has else "➕"
+        rows.append([
+            InlineKeyboardButton(f"{status} {name}",callback_data=f"adm_banner_{key}"),
+            InlineKeyboardButton("🗑",callback_data=f"adm_banner_del_{key}") if has else InlineKeyboardButton("   ",callback_data="noop"),
+        ])
     rows.append([InlineKeyboardButton("🔙 Назад",callback_data="adm_back")])
     return InlineKeyboardMarkup(rows)
 
@@ -1153,7 +1194,27 @@ async def handle_adm_cb(update, context):
             await q.message.edit_text("<b>Введите @юзернейм пользователя:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
 
         if d=="adm_banners":
-            await q.message.edit_text("<b>🖼 Выберите раздел для баннера:</b>",parse_mode="HTML",reply_markup=adm_banners_kb()); return
+            db=load_db()
+            await q.message.edit_text(
+                "<b>🖼 Баннеры по разделам</b>\n\n"
+                "<blockquote>✅ — установлен  |  ➕ — не установлен  |  🗑 — удалить\n\nКаждый раздел независим.</blockquote>",
+                parse_mode="HTML",reply_markup=adm_banners_kb(db)); return
+
+        if d.startswith("adm_banner_del_"):
+            section=d[15:]
+            if section in BANNER_SECTIONS:
+                db=load_db()
+                if not db.get("banners"): db["banners"]={}
+                db["banners"][section]={}
+                if section=="main":
+                    db["banner"]=db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None
+                save_db(db)
+                await q.answer(f"Баннер удалён")
+                db2=load_db()
+                await q.message.edit_text(
+                    "<b>🖼 Баннеры по разделам</b>\n\n"
+                    "<blockquote>✅ — установлен  |  ➕ — не установлен  |  🗑 — удалить\n\nКаждый раздел независим.</blockquote>",
+                    parse_mode="HTML",reply_markup=adm_banners_kb(db2)); return
 
         if d.startswith("adm_banner_"):
             section=d[11:]
@@ -1243,27 +1304,27 @@ async def handle_adm_msg(update, context):
             if update.message and update.message.photo:
                 db["banners"][section]={"photo":update.message.photo[-1].file_id,"video":None,"gif":None,"text":caption}
                 save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Фото-баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif update.message and update.message.animation:
                 db["banners"][section]={"photo":None,"video":None,"gif":update.message.animation.file_id,"text":caption}
                 save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>GIF-баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif update.message and update.message.video:
                 db["banners"][section]={"photo":None,"video":update.message.video.file_id,"gif":None,"text":caption}
                 save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Видео-баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
             elif text.lower()=="off":
                 db["banners"][section]={}
-                # Если главный — чистим и старые поля
                 if section=="main":
                     db["banner"]=db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None
                 save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Баннер для «{BANNER_SECTIONS.get(section,section)}» удалён!</b>",parse_mode="HTML",reply_markup=ok_kb)
             else:
                 db["banners"][section]={"photo":None,"video":None,"gif":None,"text":text}
                 save_db(db)
-                await update.message.reply_text(f"{E['check']} <b>Текстовый баннер для «{BANNER_SECTIONS.get(section,section)}» установлен!</b>",parse_mode="HTML",reply_markup=ok_kb)
-            ud["adm_step"]=None; ud.pop("adm_banner_section",None); return
+            ud["adm_step"]=None; ud.pop("adm_banner_section",None)
+            db2=load_db()
+            await update.message.reply_text(
+                f"{E['check']} <b>Баннер раздела «{BANNER_SECTIONS.get(section,section)}» обновлён!</b>\n\n"
+                "<b>🖼 Баннеры по разделам:</b>\n"
+                "<blockquote>✅ — установлен  |  ➕ — нет  |  🗑 — удалить</blockquote>",
+                parse_mode="HTML",reply_markup=adm_banners_kb(db2)); return
         if step=="menu_desc":
             db["menu_description"]=text; save_db(db)
             await update.message.reply_text(f"{E['check']} <b>Описание обновлено!</b>",parse_mode="HTML",reply_markup=ok_kb)
@@ -1330,6 +1391,17 @@ async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e: logger.error(f"cmd_set_amount: {e}")
 
 def main():
+    # Миграция: переносим legacy banner_photo/video/gif в banners["main"] и чистим legacy
+    db=load_db()
+    migrated=False
+    if not db.get("banners"): db["banners"]={}
+    lp=db.get("banner_photo"); lv=db.get("banner_video"); lg=db.get("banner_gif"); lt=db.get("banner") or ""
+    if (lp or lv or lg or lt) and not db["banners"].get("main"):
+        db["banners"]["main"]={"photo":lp,"video":lv,"gif":lg,"text":lt}
+        db["banner_photo"]=None; db["banner_video"]=None; db["banner_gif"]=None; db["banner"]=None
+        save_db(db); migrated=True
+        logger.info("Миграция баннера в banners['main'] выполнена")
+
     app=Application.builder().token(BOT_TOKEN).build()
     async def post_init(application):
         await application.bot.set_my_commands([BotCommand("start","🏠 Главное меню")])
