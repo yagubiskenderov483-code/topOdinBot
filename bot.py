@@ -738,14 +738,19 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if step=="partner":
             ru=lang=="ru"
-            # Нормализуем — добавляем @ если нет
             if not text.startswith("@"):
                 text="@"+text
-            # Проверяем формат юзернейма: @буквы_цифры, минимум 5 символов
             uname=text[1:]
             if len(uname)<4 or not all(c.isalnum() or c=='_' for c in uname):
                 await update.message.reply_text(
-                    f"{E['cross']} <b>{'Неверный формат юзернейма. Пример: @username' if ru else 'Invalid username format. Example: @username'}</b>",
+                    f"{E['cross']} <b>{'Неверный формат. Пример: @username' if ru else 'Invalid format. Example: @username'}</b>",
+                    parse_mode="HTML"); return
+            # Проверяем существование через Telegram API
+            try:
+                await context.bot.get_chat(text)
+            except Exception:
+                await update.message.reply_text(
+                    f"{E['cross']} <b>{'Пользователь ' if ru else 'User '}{text} {'не найден. Проверьте юзернейм.' if ru else 'not found. Check the username.'}</b>",
                     parse_mode="HTML"); return
             ud["partner"]=text
             if dtype=="nft":
@@ -867,11 +872,17 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             pu=f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
             status_str=f"\n<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> {'Статус' if lang=='ru' else 'Status'}: <b>{db['users'][seller_uid].get('status','')}</b>" if seller_uid and seller_uid in db.get('users',{}) and db['users'][seller_uid].get('status') else ""
             ru = lang=="ru"
+            # Реальный юзернейм продавца из БД
+            seller_uname=db["users"].get(seller_uid,{}).get("username","") if seller_uid else ""
+            seller_display=f"@{seller_uname}" if seller_uname else (partner if partner.startswith("@") else f"#{seller_uid}")
+            # Реальный юзернейм покупателя
+            buyer_uname=update.effective_user.username or ""
+            buyer_display=f"@{buyer_uname}" if buyer_uname else f"#{update.effective_user.id}"
             text=(
                 f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
                 f"<blockquote>"
-                f"{'Продавец' if ru else 'Seller'}: <b>{partner}</b>{status_str}\n"
-                f"{'Покупатель' if ru else 'Buyer'}: <b>{'Вы' if ru else 'You'}</b>\n"
+                f"{'Продавец' if ru else 'Seller'}: <b>{seller_display}</b>{status_str}\n"
+                f"{'Покупатель' if ru else 'Buyer'}: <b>{buyer_display}</b>\n"
                 f"{'Тип' if ru else 'Type'}: <b>{tname(dtype,lang)}</b>"
                 f"{item_str}\n"
                 f"{'Сумма' if ru else 'Amount'}: <b>{amt} {cur_native(cur)}</b>"
@@ -895,10 +906,12 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             ])
         else:
             ru = lang=="ru"
+            seller_uname=update.effective_user.username or ""
+            seller_display=f"@{seller_uname}" if seller_uname else f"#{update.effective_user.id}"
             text=(
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>{'Сделка создана' if ru else 'Deal created'} #{deal_id}</b>\n\n"
                 f"<blockquote>"
-                f"{'Продавец' if ru else 'Seller'}: <b>{'Вы' if ru else 'You'}</b>\n"
+                f"{'Продавец' if ru else 'Seller'}: <b>{seller_display}</b>\n"
                 f"{'Покупатель' if ru else 'Buyer'}: <b>{partner}</b>\n"
                 f"{'Тип' if ru else 'Type'}: <b>{tname(dtype,lang)}</b>"
                 f"{item_str}\n"
@@ -1102,16 +1115,24 @@ async def show_profile(update, context):
 
 async def show_ref(update, context):
     try:
-        db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
+        db=load_db(); uid=update.effective_user.id; u=get_user(db,uid); save_db(db)
+        # Перечитываем чтобы получить актуальный ref_count
+        db=load_db(); u=db["users"][str(uid)]
         lang=get_lang(uid); ru=lang=="ru"
         ref_link=f"https://t.me/{BOT_USERNAME}?start=ref_{uid}"
         ref_count=u.get("ref_count",0); ref_earned=u.get("ref_earned",0)
+        # Найти рефералов
+        refs=[v.get("username","?") for v in db.get("users",{}).values() if v.get("ref_by")==str(uid)]
+        refs_str=""
+        if refs:
+            refs_str="\n\n"+(("Рефералы" if ru else "Referrals")+":\n")+"\n".join(f"• @{r}" if r and r!="?" else f"• #{uid}" for r in refs[-10:])
         text=(
             f"{ce('6001526766714227911','👥')} <b>{'Реферальная программа' if ru else 'Referral Program'}</b>\n\n"
             f"<blockquote>"
             f"{'Приглашайте друзей и получайте 3% с каждой их сделки!' if ru else 'Invite friends and earn 3% from each their deal!'}\n\n"
             f"{'Приглашено' if ru else 'Invited'}: <b>{ref_count}</b>\n"
             f"{'Заработано' if ru else 'Earned'}: <b>{ref_earned} RUB</b>"
+            f"{refs_str}"
             f"</blockquote>\n\n"
             f"{'Ваша реферальная ссылка (нажмите чтобы скопировать):' if ru else 'Your referral link (tap to copy):'}\n"
             f"<code>{ref_link}</code>"
