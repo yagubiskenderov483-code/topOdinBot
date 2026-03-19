@@ -422,11 +422,22 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Реферальная система
         if args and args[0].startswith("ref_") and not u.get("ref_by"):
             ref_uid=args[0][4:]
-            if ref_uid != str(uid) and ref_uid in db.get("users",{}):
+            # Проверяем: не сам себе, реферер существует в БД, и у реферера есть username (реальный пользователь)
+            ref_user=db.get("users",{}).get(ref_uid)
+            if ref_uid != str(uid) and ref_user and ref_user.get("username"):
                 u["ref_by"]=ref_uid
                 db["users"][ref_uid]["ref_count"]=db["users"][ref_uid].get("ref_count",0)+1
                 add_log(db,"👥 Новый реферал",uid=uid,username=u["username"],
-                    extra=f"Пришёл по ссылке от {db['users'][ref_uid].get('username','?')}")
+                    extra=f"Пришёл по ссылке от @{ref_user.get('username','?')}")
+                # Уведомляем реферера
+                ref_lang=ref_user.get("lang","ru"); ru_ref=ref_lang=="ru"
+                new_user_tag=f"@{u['username']}" if u.get('username') else f"#{uid}"
+                try:
+                    await context.bot.send_message(chat_id=int(ref_uid),
+                        text=f"👥 <b>{'По вашей реферальной ссылке зарегистрировался новый пользователь!' if ru_ref else 'A new user joined via your referral link!'}</b>\n\n"
+                             f"<blockquote>{new_user_tag}</blockquote>",
+                        parse_mode="HTML")
+                except: pass
 
         save_db(db); context.user_data.clear()
 
@@ -729,10 +740,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ru=lang=="ru"
             if not text.startswith("@"):
                 await update.message.reply_text(f"{E['cross']} <b>{'Юзернейм должен начинаться с @' if ru else 'Username must start with @'}</b>",parse_mode="HTML"); return
+            # Проверяем существование юзернейма через Telegram
+            try:
+                chat=await context.bot.get_chat(text)
+            except Exception:
+                await update.message.reply_text(f"{E['cross']} <b>{'Пользователь @' if ru else 'User @'}{text.lstrip('@')} {'не найден в Telegram. Проверьте юзернейм.' if ru else 'not found in Telegram. Check the username.'}</b>",parse_mode="HTML"); return
             ud["partner"]=text
             if dtype=="nft":
                 ud["step"]="nft_link"
-                await send_step(f"{E['nft']} <b>{'НФТ' if ru else 'NFT'}\n\n{'Вставьте ссылку на НФТ (https://...)' if ru else 'Paste the NFT link (https://...)'}:</b>")
+                await send_step(f"{E['nft']} <b>{'НФТ' if ru else 'NFT'}\n\n{'Вставьте ссылку на НФТ (t.me/...)' if ru else 'Paste the NFT link (t.me/...)'}:</b>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
                 await send_step(f"{E['user']} <b>{'Юзернейм' if ru else 'Username'}\n\n{'Введите @юзернейм товара' if ru else 'Enter the @username of the item'}:</b>")
@@ -754,8 +770,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if step=="nft_link":
             ru=lang=="ru"
-            if not text.startswith("https://"):
-                await update.message.reply_text(f"{E['cross']} <b>{'Ссылка должна начинаться с https://' if ru else 'Link must start with https://'}</b>",parse_mode="HTML"); return
+            # NFT ссылка должна быть на t.me
+            clean_link=text.replace("https://","").replace("http://","")
+            if not (clean_link.startswith("t.me/") or text.startswith("t.me/")):
+                await update.message.reply_text(
+                    f"{E['cross']} <b>{'Ссылка должна быть на t.me (например: t.me/nft/...)' if ru else 'Link must be from t.me (e.g. t.me/nft/...)'}</b>",
+                    parse_mode="HTML"); return
+            # Нормализуем — оставляем как есть или убираем https://
             ud["nft_link"]=text; ud["step"]="currency"
             await send_step(f"{E['nft']} <b>{'НФТ' if ru else 'NFT'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>", cur_kb(lang)); return
         if step=="trade_usr":
