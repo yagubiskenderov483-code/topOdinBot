@@ -402,7 +402,7 @@ def main_kb(lang):
         [InlineKeyboardButton(b["balance"],callback_data="menu_balance"),InlineKeyboardButton("🪪 "+("Мои сделки" if ru else "My Deals"),callback_data="menu_my_deals")],
         [InlineKeyboardButton(b["lang"],callback_data="menu_lang"),InlineKeyboardButton(b["top"],callback_data="menu_top")],
         [InlineKeyboardButton("👥 "+("Рефералы" if ru else "Referrals"),callback_data="menu_ref"),InlineKeyboardButton("📋 "+("Реквизиты" if ru else "Requisites"),callback_data="menu_req")],
-        [InlineKeyboardButton("🆘 Техподдержка",url="https://t.me/GiftDealsSupport")],
+        [InlineKeyboardButton("🆘 "+("Техподдержка" if ru else "Support"),url="https://t.me/GiftDealsSupport")],
     ])
 
 async def show_main(update, context, edit=False):
