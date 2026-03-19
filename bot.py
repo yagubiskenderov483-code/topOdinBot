@@ -471,12 +471,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_main(update,context)
     except Exception as e: logger.error(f"cmd_start: {e}")
 
-def deal_types_kb():
+def deal_types_kb(lang="ru"):
+    ru=lang=="ru"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎁 NFT",callback_data="dt_nft"),InlineKeyboardButton("🎴 NFT Username",callback_data="dt_usr")],
-        [InlineKeyboardButton("⭐️ Звёзды",callback_data="dt_str"),InlineKeyboardButton("💎 Крипта",callback_data="dt_cry")],
+        [InlineKeyboardButton("⭐️ "+("Звёзды" if ru else "Stars"),callback_data="dt_str"),InlineKeyboardButton("💎 "+("Крипта" if ru else "Crypto"),callback_data="dt_cry")],
         [InlineKeyboardButton("✈️ Telegram Premium",callback_data="dt_prm")],
-        [InlineKeyboardButton("🔙 Назад",callback_data="main_menu")],
+        [InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="main_menu")],
     ])
 
 async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -530,9 +531,10 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_main(update,context,edit=False); return
         if d=="menu_deal":
             ud.clear()
+            ru=lang=="ru"
             try: await q.message.delete()
             except: pass
-            await update.effective_message.reply_text(f"{E['pencil']} <b>Создать сделку\n\nВыберите тип:</b>",parse_mode="HTML",reply_markup=deal_types_kb()); return
+            await update.effective_message.reply_text(f"{E['pencil']} <b>{'Создать сделку' if ru else 'Create Deal'}\n\n{'Выберите тип' if ru else 'Choose type'}:</b>",parse_mode="HTML",reply_markup=deal_types_kb(lang)); return
         if d=="menu_balance":
             try: await q.message.delete()
             except: pass
@@ -574,8 +576,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars=int(parts[3])
             context.user_data["review_deal"]=deal_id; context.user_data["review_role"]=role; context.user_data["review_stars"]=stars
             context.user_data["review_step"]="text"
+            ru=lang=="ru"
             star_e = ce("5438496463044752972", "⭐️")
-            await q.edit_message_text(f"{star_e*stars} Оценка: {stars}/5\n\nНапишите комментарий к отзыву:",parse_mode="HTML"); return
+            await q.edit_message_text(f"{star_e*stars} {'Оценка' if ru else 'Rating'}: {stars}/5\n\n{'Напишите комментарий к отзыву' if ru else 'Write a review comment'}:",parse_mode="HTML"); return
         if d.startswith("paid_"): await on_paid(update,context); return
         if d=="noop": return
         if d.startswith("adm_confirm_"): await adm_confirm(update,context); return
@@ -588,33 +591,38 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         type_map={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium","dt_pst":"premium_stickers"}
         if d in type_map:
             ud.clear(); ud["type"]=type_map[d]; ud["step"]="partner"
+            ru=lang=="ru"
             icons={"nft":E["nft"],"username":E["user"],"stars":E["star"],"crypto":E["diamond"],"premium":E["premium"],"premium_stickers":E["sticker"]}
             icon=icons.get(type_map[d],E["deal"])
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(f"{icon} <b>Введите @юзернейм партнёра:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="menu_deal")]]))
+            msg=await update.effective_chat.send_message(f"{icon} <b>{'Введите @юзернейм партнёра' if ru else 'Enter partner @username'}:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+("Назад" if ru else "Back"),callback_data="menu_deal")]]))
             ud["last_bot_msg"]=msg.message_id; return
         if d=="cry_ton":
-            ud["currency"]="TON"; ud["step"]="amount"
-            msg=await update.effective_chat.send_message(f"{E['diamond']} <b>Крипта (TON)\n\nВведите сумму:</b>",parse_mode="HTML")
+            ru=lang=="ru"; ud["currency"]="TON"; ud["step"]="amount"
+            msg=await update.effective_chat.send_message(f"{E['diamond']} <b>{'Крипта' if ru else 'Crypto'} (TON)\n\n{'Введите сумму' if ru else 'Enter amount'}:</b>",parse_mode="HTML")
             ud["last_bot_msg"]=msg.message_id; return
         if d=="cry_usd":
-            ud["currency"]="USDT"; ud["step"]="amount"
-            msg=await update.effective_chat.send_message(f"{E['diamond']} <b>Крипта (USDT)\n\nВведите сумму:</b>",parse_mode="HTML")
+            ru=lang=="ru"; ud["currency"]="USDT"; ud["step"]="amount"
+            msg=await update.effective_chat.send_message(f"{E['diamond']} <b>{'Крипта' if ru else 'Crypto'} (USDT)\n\n{'Введите сумму' if ru else 'Enter amount'}:</b>",parse_mode="HTML")
             ud["last_bot_msg"]=msg.message_id; return
         if d in ("prm_3","prm_6","prm_12"):
-            periods={"prm_3":"3 месяца","prm_6":"6 месяцев","prm_12":"12 месяцев"}
-            ud["premium_period"]=periods[d]; ud["step"]="currency"
-            await send_text(update,f"{E['premium']} <b>Telegram Premium\n\nВыберите валюту:</b>",cur_kb(lang)); return
+            ru=lang=="ru"
+            periods_ru={"prm_3":"3 месяца","prm_6":"6 месяцев","prm_12":"12 месяцев"}
+            periods_en={"prm_3":"3 months","prm_6":"6 months","prm_12":"12 months"}
+            ud["premium_period"]=(periods_ru if ru else periods_en)[d]; ud["step"]="currency"
+            await send_text(update,f"{E['premium']} <b>Telegram Premium\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>",cur_kb(lang)); return
         if d in ("pst_1","pst_3","pst_5","pst_10"):
-            counts={"pst_1":"1 пак","pst_3":"3 пака","pst_5":"5 паков","pst_10":"10 паков"}
-            ud["sticker_count"]=counts[d]; ud["step"]="currency"
-            await send_text(update,f"{E['sticker']} <b>Премиум стикеры\n\nВыберите валюту:</b>",cur_kb(lang)); return
+            ru=lang=="ru"
+            counts_ru={"pst_1":"1 пак","pst_3":"3 пака","pst_5":"5 паков","pst_10":"10 паков"}
+            counts_en={"pst_1":"1 pack","pst_3":"3 packs","pst_5":"5 packs","pst_10":"10 packs"}
+            ud["sticker_count"]=(counts_ru if ru else counts_en)[d]; ud["step"]="currency"
+            await send_text(update,f"{E['sticker']} <b>{'Премиум стикеры' if ru else 'Premium Stickers'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>",cur_kb(lang)); return
         if d.startswith("cur_"):
-            ud["currency"]=CURMAP.get(d,d); ud["step"]="amount"
+            ru=lang=="ru"; ud["currency"]=CURMAP.get(d,d); ud["step"]="amount"
             icons={"nft":E["nft"],"username":E["user"],"stars":E["star"],"premium":E["premium"],"premium_stickers":E["sticker"]}
             icon=icons.get(ud.get("type",""),E["deal"])
-            await send_text(update,f"{icon} <b>Введите сумму сделки:</b>"); return
+            await send_text(update,f"{icon} <b>{'Введите сумму сделки' if ru else 'Enter deal amount'}:</b>"); return
     except Exception as e: logger.error(f"on_cb: {e}")
 
 async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -664,16 +672,24 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Обработка реквизитов вывода
         if ud.get("withdraw_step")=="requisite":
             method=ud.get("withdraw_method","?"); db=load_db()
+            ru_w=lang=="ru"
             uid3=update.effective_user.id; u3=get_user(db,uid3); bal=u3.get("balance",0)
             uname3=update.effective_user.username or str(uid3)
-            methods={"stars":"Звёзды","crypto":"Крипта","card":"Карта"}
+            methods={"stars":"Звёзды" if ru_w else "Stars","crypto":"Крипта" if ru_w else "Crypto","card":"Карта" if ru_w else "Card"}
             mname=methods.get(method,method)
             try: await context.bot.send_message(chat_id=ADMIN_ID,
                 text=f"{E['gem']} <b>Запрос на вывод — {mname}</b>\n{E['user']} @{uname3} (<code>{uid3}</code>)\n{CM} {bal} RUB\n\nРеквизиты: <code>{text}</code>",parse_mode="HTML")
             except Exception as e: logger.error(f"withdraw req admin: {e}")
             ud.pop("withdraw_step",None); ud.pop("withdraw_method",None)
-            await update.message.reply_text(f"{E['check']} <b>Запрос отправлен!</b>\n\n<blockquote><b>Способ: {mname}\nСумма: {bal} RUB\n\nМенеджер свяжется с вами в ближайшее время.</b></blockquote>",parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("💬 Менеджер",url=f"https://t.me/{MANAGER_USERNAME.lstrip('@')}")],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]])); return
+            await update.message.reply_text(
+                f"{E['check']} <b>{'Запрос отправлен!' if ru_w else 'Request sent!'}</b>\n\n"
+                f"<blockquote><b>{'Способ' if ru_w else 'Method'}: {mname}\n{'Сумма' if ru_w else 'Amount'}: {bal} RUB\n\n"
+                f"{'Менеджер свяжется с вами в ближайшее время.' if ru_w else 'Manager will contact you shortly.'}</b></blockquote>",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💬 "+("Менеджер" if ru_w else "Manager"),url=f"https://t.me/{MANAGER_USERNAME.lstrip('@')}")],
+                    [InlineKeyboardButton("🏠 "+("Главное меню" if ru_w else "Main menu"),callback_data="main_menu")]
+                ])); return
             deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars=ud.get("review_stars",5)
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
             star_e2 = ce("5438496463044752972", "⭐️")
@@ -691,7 +707,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     db["users"][seller_uid].setdefault("reviews",[]).append(review_text)
                     save_db(db)
             ud.pop("review_step",None); ud.pop("review_deal",None); ud.pop("review_role",None); ud.pop("review_stars",None)
-            await update.message.reply_text(f"{E['check']} <b>Отзыв сохранён!</b>",parse_mode="HTML"); return
+            ru_rev=lang=="ru"
+            await update.message.reply_text(f"{E['check']} <b>{'Отзыв сохранён!' if ru_rev else 'Review saved!'}</b>",parse_mode="HTML"); return
         dtype=ud.get("type"); step=ud.get("step")
         if not dtype or not step: return
 
@@ -709,46 +726,50 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["last_bot_msg"] = msg.message_id
 
         if step=="partner":
+            ru=lang=="ru"
             if not text.startswith("@"):
-                await update.message.reply_text(f"{E['cross']} <b>Юзернейм должен начинаться с @</b>",parse_mode="HTML"); return
+                await update.message.reply_text(f"{E['cross']} <b>{'Юзернейм должен начинаться с @' if ru else 'Username must start with @'}</b>",parse_mode="HTML"); return
             ud["partner"]=text
             if dtype=="nft":
                 ud["step"]="nft_link"
-                await send_step(f"{E['nft']} <b>НФТ\n\nВставьте ссылку на НФТ (https://...):</b>")
+                await send_step(f"{E['nft']} <b>{'НФТ' if ru else 'NFT'}\n\n{'Вставьте ссылку на НФТ (https://...)' if ru else 'Paste the NFT link (https://...)'}:</b>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
-                await send_step(f"{E['user']} <b>Юзернейм\n\nВведите @юзернейм товара:</b>")
+                await send_step(f"{E['user']} <b>{'Юзернейм' if ru else 'Username'}\n\n{'Введите @юзернейм товара' if ru else 'Enter the @username of the item'}:</b>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
-                await send_step(f"{E['star']} <b>Звёзды\n\nСколько звёзд?</b>")
+                await send_step(f"{E['star']} <b>{'Звёзды' if ru else 'Stars'}\n\n{'Сколько звёзд?' if ru else 'How many stars?'}</b>")
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
-                await send_step(f"{E['diamond']} <b>Крипта\n\nВыберите валюту:</b>",
+                await send_step(f"{E['diamond']} <b>{'Крипта' if ru else 'Crypto'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>",
                     InlineKeyboardMarkup([[InlineKeyboardButton("💎 TON",callback_data="cry_ton"),InlineKeyboardButton("💵 USDT",callback_data="cry_usd")]]))
             elif dtype=="premium":
                 ud["step"]="prem_period"
-                await send_step(f"{E['premium']} <b>Telegram Premium\n\nВыберите срок:</b>",
-                    InlineKeyboardMarkup([[InlineKeyboardButton("3 месяца",callback_data="prm_3"),InlineKeyboardButton("6 месяцев",callback_data="prm_6"),InlineKeyboardButton("12 месяцев",callback_data="prm_12")]]))
+                await send_step(f"{E['premium']} <b>Telegram Premium\n\n{'Выберите срок' if ru else 'Choose period'}:</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton("3 "+("месяца" if ru else "months"),callback_data="prm_3"),InlineKeyboardButton("6 "+("месяцев" if ru else "months"),callback_data="prm_6"),InlineKeyboardButton("12 "+("месяцев" if ru else "months"),callback_data="prm_12")]]))
             elif dtype=="premium_stickers":
                 ud["step"]="sticker_pack"
-                await send_step(f"{E['sticker']} <b>Премиум стикеры\n\nВыберите количество стикерпаков:</b>",
-                    InlineKeyboardMarkup([[InlineKeyboardButton("1 пак",callback_data="pst_1"),InlineKeyboardButton("3 пака",callback_data="pst_3")],[InlineKeyboardButton("5 паков",callback_data="pst_5"),InlineKeyboardButton("10 паков",callback_data="pst_10")]]))
+                await send_step(f"{E['sticker']} <b>{'Премиум стикеры' if ru else 'Premium Stickers'}\n\n{'Выберите количество стикерпаков' if ru else 'Choose number of sticker packs'}:</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton("1 "+("пак" if ru else "pack"),callback_data="pst_1"),InlineKeyboardButton("3 "+("пака" if ru else "packs"),callback_data="pst_3")],[InlineKeyboardButton("5 "+("паков" if ru else "packs"),callback_data="pst_5"),InlineKeyboardButton("10 "+("паков" if ru else "packs"),callback_data="pst_10")]]))
             return
         if step=="nft_link":
+            ru=lang=="ru"
             if not text.startswith("https://"):
-                await update.message.reply_text(f"{E['cross']} <b>Ссылка должна начинаться с https://</b>",parse_mode="HTML"); return
+                await update.message.reply_text(f"{E['cross']} <b>{'Ссылка должна начинаться с https://' if ru else 'Link must start with https://'}</b>",parse_mode="HTML"); return
             ud["nft_link"]=text; ud["step"]="currency"
-            await send_step(f"{E['nft']} <b>НФТ\n\nВыберите валюту:</b>", cur_kb(lang)); return
+            await send_step(f"{E['nft']} <b>{'НФТ' if ru else 'NFT'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>", cur_kb(lang)); return
         if step=="trade_usr":
+            ru=lang=="ru"
             if not text.startswith("@"):
-                await update.message.reply_text(f"{E['cross']} <b>Юзернейм должен начинаться с @</b>",parse_mode="HTML"); return
+                await update.message.reply_text(f"{E['cross']} <b>{'Юзернейм должен начинаться с @' if ru else 'Username must start with @'}</b>",parse_mode="HTML"); return
             ud["trade_username"]=text; ud["step"]="currency"
-            await send_step(f"{E['user']} <b>Юзернейм\n\nВыберите валюту:</b>", cur_kb(lang)); return
+            await send_step(f"{E['user']} <b>{'Юзернейм' if ru else 'Username'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>", cur_kb(lang)); return
         if step=="stars_cnt":
+            ru=lang=="ru"
             if not text.isdigit():
-                await update.message.reply_text(f"{E['cross']} <b>Только цифры!</b>",parse_mode="HTML"); return
+                await update.message.reply_text(f"{E['cross']} <b>{'Только цифры!' if ru else 'Numbers only!'}</b>",parse_mode="HTML"); return
             ud["stars_count"]=text; ud["step"]="currency"
-            await send_step(f"{E['star']} <b>Звёзды\n\nВыберите валюту:</b>", cur_kb(lang)); return
+            await send_step(f"{E['star']} <b>{'Звёзды' if ru else 'Stars'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>", cur_kb(lang)); return
         if step=="amount":
             await delete_prev()
             ud["amount"]=text; await finalize_deal(update,context); return
@@ -776,17 +797,18 @@ async def finalize_deal(update, context):
         context.user_data.clear()
     except Exception as e: logger.error(f"finalize_deal: {e}")
 
-def build_item_line(dtype, dd):
-    if dtype=="nft": return f"\n{E['link']} Ссылка: {dd.get('nft_link','—')}"
-    elif dtype=="username": return f"\n{E['user']} Юзернейм: {dd.get('trade_username','—')}"
-    elif dtype=="stars": return f"\n{E['star']} Звёзд: {dd.get('stars_count','—')}"
-    elif dtype=="premium": return f"\n{E['clock']} Срок: {dd.get('premium_period','—')}"
-    elif dtype=="premium_stickers": return f"\n{E['sticker']} Паков: {dd.get('sticker_count','—')}"
+def build_item_line(dtype, dd, lang="ru"):
+    ru=lang=="ru"
+    if dtype=="nft": return f"\n{E['link']} {'Ссылка' if ru else 'Link'}: {dd.get('nft_link','—')}"
+    elif dtype=="username": return f"\n{E['user']} {'Юзернейм' if ru else 'Username'}: {dd.get('trade_username','—')}"
+    elif dtype=="stars": return f"\n{E['star']} {'Звёзд' if ru else 'Stars'}: {dd.get('stars_count','—')}"
+    elif dtype=="premium": return f"\n{E['clock']} {'Срок' if ru else 'Period'}: {dd.get('premium_period','—')}"
+    elif dtype=="premium_stickers": return f"\n{E['sticker']} {'Паков' if ru else 'Packs'}: {dd.get('sticker_count','—')}"
     return ""
 
 def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
     dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
-    item=build_item_line(dtype,d.get("data",{}))
+    item=build_item_line(dtype,d.get("data",{}),lang)
     item_str=f"\n{item.strip()}" if item.strip() else ""
     ru = lang=="ru"
     return (
@@ -874,6 +896,8 @@ async def on_paid(update, context):
         btag=f"@{buyer.username}" if buyer.username else str(buyer.id)
         db=load_db(); d=db.get("deals",{}).get(deal_id,{})
         amt=d.get("amount","—"); cur=d.get("currency","—"); dtype=d.get("type","")
+        buyer_lang=get_lang(buyer.id); ru_b=buyer_lang=="ru"
+        seller_uid=d.get("user_id"); seller_lang=get_lang(int(seller_uid)) if seller_uid else "ru"; ru_s=seller_lang=="ru"
         adm_txt=(f"{E['bell']} <b>Покупатель нажал «Я оплатил»</b>\n\n{E['deal']} <code>{deal_id}</code>\n"
                  f"{E['user']} {btag} (<code>{buyer.id}</code>)\n{E['pin']} {TNAMES.get(dtype,dtype)}\n{CM} {amt} {cur}\n\nПроверьте поступление:")
         try:
@@ -884,10 +908,13 @@ async def on_paid(update, context):
         if seller and seller!=str(buyer.id):
             try:
                 await context.bot.send_message(chat_id=int(seller),
-                    text=f"{E['bell']} <b>Покупатель сообщил об оплате!</b>\n📄 <code>{deal_id}</code>\n{E['user']} {btag}\n{CM} {amt} {cur}",parse_mode="HTML")
+                    text=f"{E['bell']} <b>{'Покупатель сообщил об оплате!' if ru_s else 'Buyer reported payment!'}</b>\n<code>{deal_id}</code>\n{E['user']} {btag}\n{CM} {amt} {cur}",parse_mode="HTML")
             except Exception as e: logger.error(f"on_paid seller: {e}")
         try:
-            await q.edit_message_reply_markup(InlineKeyboardMarkup([[InlineKeyboardButton("⏳ Ожидание подтверждения...",callback_data="noop")],[InlineKeyboardButton("🏠 Главное меню",callback_data="main_menu")]]))
+            await q.edit_message_reply_markup(InlineKeyboardMarkup([
+                [InlineKeyboardButton("⏳ "+("Ожидание подтверждения..." if ru_b else "Waiting for confirmation..."),callback_data="noop")],
+                [InlineKeyboardButton("🏠 "+("Главное меню" if ru_b else "Main menu"),callback_data="main_menu")]
+            ]))
         except Exception as e: logger.error(f"on_paid edit: {e}")
     except Exception as e: logger.error(f"on_paid: {e}")
 
@@ -931,10 +958,11 @@ async def adm_confirm(update, context):
             except Exception as e: logger.error(f"adm_confirm edit: {e}")
             if s:
                 try:
+                    sl=get_lang(int(s)); ru_s=sl=="ru"
                     buyer_tag=d.get("partner","—")
                     await context.bot.send_message(chat_id=int(s),
-                        text=f"{E['check']} <b>Оплата подтверждена! Сделка завершена.</b>\n<code>{deal_id}</code>\n\n"
-                             f"Оцените покупателя {buyer_tag}:",
+                        text=f"{E['check']} <b>{'Оплата подтверждена! Сделка завершена.' if ru_s else 'Payment confirmed! Deal completed.'}</b>\n<code>{deal_id}</code>\n\n"
+                             f"{'Оцените покупателя' if ru_s else 'Rate the buyer'} {buyer_tag}:",
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([
                             [InlineKeyboardButton("⭐️1",callback_data=f"rev_{deal_id}_s_1"),InlineKeyboardButton("⭐️2",callback_data=f"rev_{deal_id}_s_2"),InlineKeyboardButton("⭐️3",callback_data=f"rev_{deal_id}_s_3"),InlineKeyboardButton("⭐️4",callback_data=f"rev_{deal_id}_s_4"),InlineKeyboardButton("⭐️5",callback_data=f"rev_{deal_id}_s_5")],
@@ -946,10 +974,11 @@ async def adm_confirm(update, context):
                     buyer_uid=uid_; break
             if buyer_uid:
                 try:
-                    seller_tag=f"@{db['users'].get(s,{}).get('username','продавец')}" if s else "продавца"
+                    bl=get_lang(int(buyer_uid)); ru_b=bl=="ru"
+                    seller_tag=f"@{db['users'].get(s,{}).get('username',('продавец' if ru_b else 'seller'))}" if s else ("продавца" if ru_b else "seller")
                     await context.bot.send_message(chat_id=int(buyer_uid),
-                        text=f"{E['check']} <b>Сделка подтверждена!</b>\n<code>{deal_id}</code>\n\n"
-                             f"Оцените продавца {seller_tag}:",
+                        text=f"{E['check']} <b>{'Сделка подтверждена!' if ru_b else 'Deal confirmed!'}</b>\n<code>{deal_id}</code>\n\n"
+                             f"{'Оцените продавца' if ru_b else 'Rate the seller'} {seller_tag}:",
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([
                             [InlineKeyboardButton("⭐️1",callback_data=f"rev_{deal_id}_b_1"),InlineKeyboardButton("⭐️2",callback_data=f"rev_{deal_id}_b_2"),InlineKeyboardButton("⭐️3",callback_data=f"rev_{deal_id}_b_3"),InlineKeyboardButton("⭐️4",callback_data=f"rev_{deal_id}_b_4"),InlineKeyboardButton("⭐️5",callback_data=f"rev_{deal_id}_b_5")],
