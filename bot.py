@@ -67,19 +67,18 @@ E = {
     "link":      ce("5902449142575141204", "🔗"),
     "shine":     ce("5235630047959727475", "💎"),
     "store":     ce("4988289890769699938", "⭐️"),
-    # Новые
-    "tonkeeper":  ce("5397829221605191505", "💎"),  # адрес тонкипера
-    "top_medal":  ce("5188344996356448758", "🏆"),  # топ продавцов
-    "stars_deal": ce("5321485469249198987", "⭐️"), # звёзды в сделке/пополнении
-    "joined":     ce("5902335789798265487", "🤝"),  # второй участник присоединился
-    "security_e": ce("5197288647275071607", "🛡"),  # безопасность в сделке
-    "deal_link":  ce("5972261808747057065", "🔗"),  # ссылка при создании сделки
-    "warning":    ce("5447644880824181073", "⚠️"),  # предупреждение про менеджера
-    "stats":      ce("5028746137645876535", "📊"),  # статистика в меню
-    "requisites": ce("5242631901214171852", "💳"),  # реквизиты
-    "cryptobot":  ce("5242606681166220600", "🤖"),  # крипто бот
-    "welcome":    ce("5251340119205501791", "👋"),  # приветствие в меню
-    "balance_e":  ce("5424976816530014958", "💰"),  # баланс в профиле/реквизиты
+    "tonkeeper":  ce("5397829221605191505", "💎"),
+    "top_medal":  ce("5188344996356448758", "🏆"),
+    "stars_deal": ce("5321485469249198987", "⭐️"),
+    "joined":     ce("5902335789798265487", "🤝"),
+    "security_e": ce("5197288647275071607", "🛡"),
+    "deal_link":  ce("5972261808747057065", "🔗"),
+    "warning":    ce("5447644880824181073", "⚠️"),
+    "stats":      ce("5028746137645876535", "📊"),
+    "requisites": ce("5242631901214171852", "💳"),
+    "cryptobot":  ce("5242606681166220600", "🤖"),
+    "welcome":    ce("5251340119205501791", "👋"),
+    "balance_e":  ce("5424976816530014958", "💰"),
 }
 
 CD  = ce("5235630047959727475", "💎")
@@ -185,12 +184,10 @@ def add_log(db, event, deal_id=None, uid=None, username=None, extra=""):
         "extra": extra,
     }
     db["logs"].append(entry)
-    # Храним последние 500 событий
     if len(db["logs"]) > 500:
         db["logs"] = db["logs"][-500:]
 
 def mask(text):
-    """Скрываем середину строки: @username -> @us***me"""
     if not text: return "—"
     if text.startswith("@"):
         t = text[1:]
@@ -209,7 +206,6 @@ def get_user(db, uid):
             "requisites": {}, "ref_by": None, "ref_count": 0, "ref_earned": 0,
             "hidden": False}
     u = db["users"][k]
-    # Добавляем новые поля если их нет (для старых пользователей)
     if "requisites" not in u: u["requisites"] = {}
     if "ref_by" not in u: u["ref_by"] = None
     if "ref_count" not in u: u["ref_count"] = 0
@@ -282,7 +278,6 @@ def cur_name(code, lang):
     if isinstance(v, dict): return v.get(lang, v.get("ru", code))
     return v
 
-# Название валюты на языке страны происхождения
 CUR_NATIVE = {
     "TON": "TON", "USDT": "USDT",
     "Stars": "Stars", "RUB": "Рубли",
@@ -317,12 +312,10 @@ BANNER_SECTIONS = {
 }
 
 def get_banner(db, section="main"):
-    """Каждый раздел полностью независим. Нет баннера — нет медиа."""
     banners = db.get("banners", {})
     b = banners.get(section)
     if b and (b.get("photo") or b.get("video") or b.get("gif") or b.get("text")):
         return b
-    # Только main использует legacy поля для обратной совместимости
     if section == "main":
         legacy = {
             "photo": db.get("banner_photo"),
@@ -332,9 +325,9 @@ def get_banner(db, section="main"):
         }
         if legacy["photo"] or legacy["video"] or legacy["gif"] or legacy["text"]:
             return legacy
-    return None  # Нет баннера для этого раздела
+    return None
+
 async def send_with_banner(update, text, kb=None, section="main"):
-    """Отправляет сообщение с баннером раздела. Каждый раздел полностью независим."""
     try:
         db=load_db()
         b=get_banner(db, section)
@@ -355,13 +348,11 @@ async def send_with_banner(update, text, kb=None, section="main"):
         except: pass
 
         if not has_media and not old_has_media and old_msg:
-            # Оба текстовые — просто редактируем
             try:
                 await old_msg.edit_text(full_text, parse_mode="HTML", reply_markup=kb)
                 return
             except: pass
         elif has_media and old_has_media and old_msg:
-            # Оба медиа — пробуем edit_caption, иначе удаляем и шлём новое
             try:
                 await old_msg.edit_caption(caption=full_text, parse_mode="HTML", reply_markup=kb)
                 return
@@ -369,11 +360,9 @@ async def send_with_banner(update, text, kb=None, section="main"):
                 try: await old_msg.delete()
                 except: pass
         elif old_msg:
-            # Смена типа — удаляем старое
             try: await old_msg.delete()
             except: pass
 
-        # Отправляем новое
         if bv:
             await update.effective_chat.send_video(video=bv, caption=full_text, parse_mode="HTML", reply_markup=kb)
         elif bg:
@@ -419,17 +408,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         u["username"]=update.effective_user.username or ""
         args=context.args
 
-        # Реферальная система
         if args and args[0].startswith("ref_") and not u.get("ref_by"):
             ref_uid=args[0][4:]
-            # Проверяем: не сам себе, реферер существует в БД
             ref_user=db.get("users",{}).get(ref_uid)
             if ref_uid != str(uid) and ref_user is not None:
                 u["ref_by"]=ref_uid
                 db["users"][ref_uid]["ref_count"]=db["users"][ref_uid].get("ref_count",0)+1
                 add_log(db,"👥 Новый реферал",uid=uid,username=u["username"],
                     extra=f"Пришёл по ссылке от @{ref_user.get('username','?')}")
-                # Уведомляем реферера
                 ref_lang=ref_user.get("lang","ru"); ru_ref=ref_lang=="ru"
                 new_user_tag=f"@{u['username']}" if u.get('username') else f"#{uid}"
                 try:
@@ -447,7 +433,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
                 seller_uid=d.get("user_id")
 
-                # Проверяем реквизиты покупателя
                 buyer_reqs = u.get("requisites",{})
                 lang=u.get("lang","ru")
                 ru=lang=="ru"
@@ -464,12 +449,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.user_data["pending_deal"]=deal_id
                     return
 
-                # Логируем вход в сделку
                 add_log(db,"🔗 Покупатель открыл сделку",deal_id=deal_id,uid=uid,
                     username=u["username"],extra=f"Продавец: {d.get('partner','?')}")
                 save_db(db)
 
-                # Уведомляем продавца
                 if seller_uid and seller_uid!=str(uid):
                     seller_lang=get_lang(int(seller_uid))
                     try:
@@ -642,13 +625,11 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=update.message.text.strip() if update.message.text else ""
         if uid==ADMIN_ID and ud.get("adm_step"): await handle_adm_msg(update,context); return
 
-        # Обработка сохранения реквизитов
         if ud.get("req_step") in ("card","ton","stars"):
             field=ud.get("req_step"); db=load_db(); u=get_user(db,uid)
             ru_r=lang=="ru"
             if not u.get("requisites"): u["requisites"]={}
 
-            # Валидация
             err=None
             if field=="card":
                 clean=text.replace(" ","").replace("+","")
@@ -680,7 +661,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await send_deal_card(update,context,pending_deal,d2,buyer=True); return
             await update.message.reply_text(f"{ce('5206607081334906820','✅')} <b>{'Реквизиты сохранены!' if ru_r else 'Requisites saved!'}</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 "+("Мои реквизиты" if ru_r else "My Requisites"),callback_data="menu_req")]])); return
-        # Обработка реквизитов вывода
+
         if ud.get("withdraw_step")=="requisite":
             method=ud.get("withdraw_method","?"); db=load_db()
             ru_w=lang=="ru"
@@ -701,17 +682,17 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [InlineKeyboardButton("💬 "+("Менеджер" if ru_w else "Manager"),url=f"https://t.me/{MANAGER_USERNAME.lstrip('@')}")],
                     [InlineKeyboardButton("🏠 "+("Главное меню" if ru_w else "Main menu"),callback_data="main_menu")]
                 ])); return
+
+        if ud.get("review_step")=="text":
             deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars=ud.get("review_stars",5)
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
             star_e2 = ce("5438496463044752972", "⭐️")
             review_text=f"{star_e2*stars} {stars}/5 — {text}"
-            # Продавец оценивает покупателя
             if role=="s":
                 buyer_uid=next((k for k,v in db.get("users",{}).items() if v.get("username","").lower()==deal.get("partner","").lstrip("@").lower()),None)
                 if buyer_uid:
                     db["users"][buyer_uid].setdefault("reviews",[]).append(review_text)
                     save_db(db)
-            # Покупатель оценивает продавца
             elif role=="b":
                 seller_uid=deal.get("user_id")
                 if seller_uid and seller_uid in db.get("users",{}):
@@ -720,10 +701,10 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud.pop("review_step",None); ud.pop("review_deal",None); ud.pop("review_role",None); ud.pop("review_stars",None)
             ru_rev=lang=="ru"
             await update.message.reply_text(f"{E['check']} <b>{'Отзыв сохранён!' if ru_rev else 'Review saved!'}</b>",parse_mode="HTML"); return
+
         dtype=ud.get("type"); step=ud.get("step")
         if not dtype or not step: return
 
-        # Удаляем сообщение пользователя и предыдущий бот-ответ
         async def delete_prev():
             try: await update.message.delete()
             except: pass
@@ -743,14 +724,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             uname=text[1:]
             if len(uname)<4 or not all(c.isalnum() or c=='_' for c in uname):
                 await update.message.reply_text(
-                    f"{E['cross']} <b>{'Неверный формат. Пример: @username' if ru else 'Invalid format. Example: @username'}</b>",
-                    parse_mode="HTML"); return
-            # Проверяем существование через Telegram API
-            try:
-                await context.bot.get_chat(text)
-            except Exception:
-                await update.message.reply_text(
-                    f"{E['cross']} <b>{'Пользователь ' if ru else 'User '}{text} {'не найден. Проверьте юзернейм.' if ru else 'not found. Check the username.'}</b>",
+                    f"{E['cross']} <b>{'Неверный формат. Минимум 4 символа, только буквы/цифры/_. Пример: @username' if ru else 'Invalid format. Min 4 chars, only letters/digits/_. Example: @username'}</b>",
                     parse_mode="HTML"); return
             ud["partner"]=text
             if dtype=="nft":
@@ -777,13 +751,11 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if step=="nft_link":
             ru=lang=="ru"
-            # NFT ссылка должна быть на t.me
             clean_link=text.replace("https://","").replace("http://","")
             if not (clean_link.startswith("t.me/") or text.startswith("t.me/")):
                 await update.message.reply_text(
                     f"{E['cross']} <b>{'Ссылка должна быть на t.me (например: t.me/nft/...)' if ru else 'Link must be from t.me (e.g. t.me/nft/...)'}</b>",
                     parse_mode="HTML"); return
-            # Нормализуем — оставляем как есть или убираем https://
             ud["nft_link"]=text; ud["step"]="currency"
             await send_step(f"{E['nft']} <b>{'НФТ' if ru else 'NFT'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>", cur_kb(lang)); return
         if step=="trade_usr":
@@ -872,10 +844,8 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             pu=f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
             status_str=f"\n<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> {'Статус' if lang=='ru' else 'Status'}: <b>{db['users'][seller_uid].get('status','')}</b>" if seller_uid and seller_uid in db.get('users',{}) and db['users'][seller_uid].get('status') else ""
             ru = lang=="ru"
-            # Реальный юзернейм продавца из БД
             seller_uname=db["users"].get(seller_uid,{}).get("username","") if seller_uid else ""
             seller_display=f"@{seller_uname}" if seller_uname else (partner if partner.startswith("@") else f"#{seller_uid}")
-            # Реальный юзернейм покупателя
             buyer_uname=update.effective_user.username or ""
             buyer_display=f"@{buyer_uname}" if buyer_uname else f"#{update.effective_user.id}"
             text=(
@@ -969,11 +939,9 @@ async def adm_confirm(update, context):
                 db["users"][s]["success_deals"]=db["users"][s].get("success_deals",0)+1
                 db["users"][s]["total_deals"]=db["users"][s].get("total_deals",0)+1
                 db["users"][s]["turnover"]=db["users"][s].get("turnover",0)+int(amt_num)
-            # Лог подтверждения
             seller_uname=db["users"].get(s,{}).get("username","?") if s else "?"
             add_log(db,"✅ Сделка подтверждена",deal_id=deal_id,uid=s,
                 username=seller_uname,extra=f"Сумма: {amt_str} {d.get('currency','')}")
-            # 3% рефераллу продавца
             if s and s in db["users"]:
                 ref_uid=db["users"][s].get("ref_by")
                 if ref_uid and ref_uid in db["users"] and amt_num>0:
@@ -1095,8 +1063,6 @@ async def show_profile(update, context):
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); uname=update.effective_user.username or "—"
         status=u.get("status","")
-        sl=f"\n<blockquote><b>{t('status_label',lang)}: {status}</b></blockquote>" if status else ""
-        rv=("\n\n<b>"+t("reviews_title",lang)+":</b>\n"+"\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
         ru=lang=="ru"
         sl=f"\n<blockquote><b>{'Статус' if ru else 'Status'}: {status}</b></blockquote>" if status else ""
         rv=("\n\n<b>"+("Отзывы" if ru else "Reviews")+":</b>\n"+"\n".join(f"• {r}" for r in u.get("reviews",[])[-5:])) if u.get("reviews") else ""
@@ -1116,12 +1082,10 @@ async def show_profile(update, context):
 async def show_ref(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid); save_db(db)
-        # Перечитываем чтобы получить актуальный ref_count
         db=load_db(); u=db["users"][str(uid)]
         lang=get_lang(uid); ru=lang=="ru"
         ref_link=f"https://t.me/{BOT_USERNAME}?start=ref_{uid}"
         ref_count=u.get("ref_count",0); ref_earned=u.get("ref_earned",0)
-        # Найти рефералов
         refs=[v.get("username","?") for v in db.get("users",{}).values() if v.get("ref_by")==str(uid)]
         refs_str=""
         if refs:
@@ -1241,7 +1205,6 @@ def adm_banners_kb(db=None):
     for key,name in BANNER_SECTIONS.items():
         b=banners.get(key) or {}
         has=bool(b.get("photo") or b.get("video") or b.get("gif") or b.get("text"))
-        # Legacy для main
         if not has and key=="main":
             has=bool(db.get("banner_photo") or db.get("banner_video") or db.get("banner_gif") or db.get("banner"))
         status="✅" if has else "➕"
@@ -1264,7 +1227,7 @@ async def handle_adm_cb(update, context):
 
         if d=="adm_user":
             ud["adm_step"]="get_user"
-            await q.message.edit_text("<b>Введите @юзернейм пользователя:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
+            await q.message.edit_text("<b>Введите @юзернейм или числовой ID пользователя:</b>",parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
 
         if d=="adm_banners":
             db=load_db()
@@ -1350,15 +1313,23 @@ async def handle_adm_msg(update, context):
         if not step: return
         text=update.message.text.strip() if update.message and update.message.text else ""
         db=load_db(); ok_kb=InlineKeyboardMarkup([[InlineKeyboardButton("🛠 В панель",callback_data="adm_back")]])
+
         if step=="get_user":
             uname=text.lstrip("@").lower()
+            # Поиск по юзернейму (регистронезависимо)
             found=next((k for k,v in db["users"].items() if v.get("username","").lower()==uname),None)
+            # Если не нашли — пробуем по числовому ID
+            if not found and text.lstrip("@").isdigit():
+                candidate=text.lstrip("@")
+                found=candidate if candidate in db["users"] else None
             if not found:
-                await update.message.reply_text("<b>Не найден. Введите снова:</b>",parse_mode="HTML"); return
+                similar=[v.get("username","") for v in db["users"].values() if len(uname)>=3 and uname[:3] in v.get("username","").lower() and v.get("username","")]
+                hint=f"\n\nПохожие: {', '.join('@'+s for s in similar[:5])}" if similar else f"\n\nВсего пользователей в БД: {len(db['users'])}"
+                await update.message.reply_text(f"<b>Не найден: @{uname}{hint}\n\nВведите @юзернейм или числовой ID:</b>",parse_mode="HTML"); return
             ud["adm_target"]=found; u=db["users"][found]
             sl = u.get('status','—')
             await update.message.reply_text(
-                f"<b>@{u.get('username','—')} | Сделок: {u.get('total_deals',0)} | Реп: {u.get('reputation',0)}\nСтатус: {sl}</b>",parse_mode="HTML",
+                f"<b>@{u.get('username','—')} (ID: <code>{found}</code>)\nСделок: {u.get('total_deals',0)} | Реп: {u.get('reputation',0)}\nСтатус: {sl}</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("📝 Отзыв",callback_data="adm_add_review")],
                     [InlineKeyboardButton("🔢 Сделок",callback_data="adm_set_deals"),InlineKeyboardButton("✅ Успешных",callback_data="adm_set_success")],
@@ -1370,6 +1341,7 @@ async def handle_adm_msg(update, context):
                     [InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]
                 ]))
             ud["adm_step"]=None; return
+
         if step=="banner":
             section=ud.get("adm_banner_section","main")
             if not db.get("banners"): db["banners"]={}
@@ -1398,10 +1370,12 @@ async def handle_adm_msg(update, context):
                 "<b>🖼 Баннеры по разделам:</b>\n"
                 "<blockquote>✅ — установлен  |  ➕ — нет  |  🗑 — удалить</blockquote>",
                 parse_mode="HTML",reply_markup=adm_banners_kb(db2)); return
+
         if step=="menu_desc":
             db["menu_description"]=text; save_db(db)
             await update.message.reply_text(f"{E['check']} <b>Описание обновлено!</b>",parse_mode="HTML",reply_markup=ok_kb)
             ud["adm_step"]=None; return
+
         if step=="set_value":
             field=ud.get("adm_field"); target=ud.get("adm_target")
             if not field or not target: return
@@ -1464,15 +1438,13 @@ async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e: logger.error(f"cmd_set_amount: {e}")
 
 def main():
-    # Миграция: переносим legacy banner_photo/video/gif в banners["main"] и чистим legacy
     db=load_db()
-    migrated=False
     if not db.get("banners"): db["banners"]={}
     lp=db.get("banner_photo"); lv=db.get("banner_video"); lg=db.get("banner_gif"); lt=db.get("banner") or ""
     if (lp or lv or lg or lt) and not db["banners"].get("main"):
         db["banners"]["main"]={"photo":lp,"video":lv,"gif":lg,"text":lt}
         db["banner_photo"]=None; db["banner_video"]=None; db["banner_gif"]=None; db["banner"]=None
-        save_db(db); migrated=True
+        save_db(db)
         logger.info("Миграция баннера в banners['main'] выполнена")
 
     app=Application.builder().token(BOT_TOKEN).build()
