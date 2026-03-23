@@ -1039,26 +1039,53 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
 
         if buyer:
             pu = f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
+
+            # Seller info
             seller_uname = db["users"].get(seller_uid, {}).get("username","") if seller_uid else ""
             seller_display = f"@{seller_uname}" if seller_uname else (partner if partner.startswith("@") else f"#{seller_uid}")
-            buyer_uname = update.effective_user.username or ""
-            buyer_display = f"@{buyer_uname}" if buyer_uname else f"#{update.effective_user.id}"
-            # Seller stats
             seller_data = db["users"].get(seller_uid, {}) if seller_uid else {}
             s_deals = seller_data.get("success_deals", 0)
+            s_turnover = seller_data.get("turnover", 0)
             s_status = seller_data.get("status", "")
             s_reviews = seller_data.get("reviews", [])
-            status_str = f"\n{'Статус' if ru else 'Status'}: <b>{s_status}</b>" if s_status else ""
+            s_rep = seller_data.get("reputation", 0)
+            s_status_line = f"\n{ce('5438496463044752972','⭐️')} <b>{s_status}</b>" if s_status else ""
+            s_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in s_reviews[-3:])) if s_reviews else ""
+
+            # Buyer info
+            buyer_uid = str(update.effective_user.id)
+            buyer_uname = update.effective_user.username or ""
+            buyer_display = f"@{buyer_uname}" if buyer_uname else f"#{buyer_uid}"
+            buyer_data = db["users"].get(buyer_uid, {})
+            b_deals = buyer_data.get("success_deals", 0)
+            b_turnover = buyer_data.get("turnover", 0)
+            b_reviews = buyer_data.get("reviews", [])
+            b_rep = buyer_data.get("reputation", 0)
+            b_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in b_reviews[-3:])) if b_reviews else ""
+
             text = (
-                f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
+                f"{E['deal']} <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
+                f"<b>{'Тип' if ru else 'Type'}:</b> {tname(dtype, lang)}{item_str}\n"
+                f"<b>{'Сумма' if ru else 'Amount'}:</b> {amt} {cur_native(cur)}\n\n"
+
+                f"{ce('5199552030615558774','👤')} <b>{'Продавец' if ru else 'Seller'}</b>\n"
                 f"<blockquote>"
-                f"{'Продавец' if ru else 'Seller'}: <b>{seller_display}</b>{status_str}\n"
-                f"{'Сделок' if ru else 'Deals'}: <b>{s_deals}</b> | {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>\n"
-                f"{'Покупатель' if ru else 'Buyer'}: <b>{buyer_display}</b>\n"
-                f"{'Тип' if ru else 'Type'}: <b>{tname(dtype, lang)}</b>"
-                f"{item_str}\n"
-                f"{'Сумма' if ru else 'Amount'}: <b>{amt} {cur_native(cur)}</b>"
+                f"<b>{seller_display}</b>{s_status_line}\n"
+                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{s_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{s_turnover} RUB</b>\n"
+                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{s_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>{s_reviews_text}"
                 f"</blockquote>\n\n"
+
+                f"{ce('5199552030615558774','👤')} <b>{'Покупатель' if ru else 'Buyer'}</b>\n"
+                f"<blockquote>"
+                f"<b>{buyer_display}</b>\n"
+                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{b_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{b_turnover} RUB</b>\n"
+                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{b_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(b_reviews)}</b>{b_reviews_text}"
+                f"</blockquote>\n\n"
+
                 f"{E['security_e']} <b>{'Гарантия безопасности' if ru else 'Security guarantee'}</b>\n"
                 f"<blockquote><b>{'Средства заморожены до подтверждения передачи. Сделка защищена платформой Gift Deals.' if ru else 'Funds are frozen until the transfer is confirmed. The deal is protected by Gift Deals.'}</b></blockquote>\n\n"
                 f"{E['warning']} <b>{'Важно' if ru else 'Important'}:</b>\n"
@@ -1078,23 +1105,53 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 [InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"), callback_data="main_menu")]
             ])
         else:
+            # Seller card (after creating deal)
+            seller_uid_str = str(update.effective_user.id)
             seller_uname = update.effective_user.username or ""
-            seller_display = f"@{seller_uname}" if seller_uname else f"#{update.effective_user.id}"
-            seller_data = db["users"].get(str(update.effective_user.id), {})
-            seller_deals = seller_data.get("success_deals", 0)
-            seller_status = seller_data.get("status", "")
-            seller_reviews = seller_data.get("reviews", [])
-            s_status_line = f"\n{'Статус' if ru else 'Status'}: <b>{seller_status}</b>" if seller_status else ""
+            seller_display = f"@{seller_uname}" if seller_uname else f"#{seller_uid_str}"
+            seller_data = db["users"].get(seller_uid_str, {})
+            s_deals = seller_data.get("success_deals", 0)
+            s_turnover = seller_data.get("turnover", 0)
+            s_status = seller_data.get("status", "")
+            s_reviews = seller_data.get("reviews", [])
+            s_rep = seller_data.get("reputation", 0)
+            s_status_line = f"\n{ce('5438496463044752972','⭐️')} <b>{s_status}</b>" if s_status else ""
+            s_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in s_reviews[-3:])) if s_reviews else ""
+
+            # Buyer info — get from DB by username, or show partner tag
+            buyer_pname = partner.lstrip("@").lower() if partner.startswith("@") else ""
+            buyer_uid_str = next((k for k,v in db.get("users",{}).items()
+                if v.get("username","").lower() == buyer_pname), None) if buyer_pname else None
+            buyer_data = db["users"].get(buyer_uid_str, {}) if buyer_uid_str else {}
+            b_deals = buyer_data.get("success_deals", 0)
+            b_turnover = buyer_data.get("turnover", 0)
+            b_reviews = buyer_data.get("reviews", [])
+            b_rep = buyer_data.get("reputation", 0)
+            b_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in b_reviews[-3:])) if b_reviews else ""
+
             text = (
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>{'Сделка создана' if ru else 'Deal created'} #{deal_id}</b>\n\n"
+                f"<b>{'Тип' if ru else 'Type'}:</b> {tname(dtype, lang)}{item_str}\n"
+                f"<b>{'Сумма' if ru else 'Amount'}:</b> {amt} {cur_native(cur)}\n\n"
+
+                f"{ce('5199552030615558774','👤')} <b>{'Продавец' if ru else 'Seller'}</b>\n"
                 f"<blockquote>"
-                f"{'Продавец' if ru else 'Seller'}: <b>{seller_display}</b>{s_status_line}\n"
-                f"{'Сделок' if ru else 'Deals'}: <b>{seller_deals}</b> | {'Отзывов' if ru else 'Reviews'}: <b>{len(seller_reviews)}</b>\n"
-                f"{'Покупатель' if ru else 'Buyer'}: <b>{partner}</b>\n"
-                f"{'Тип' if ru else 'Type'}: <b>{tname(dtype, lang)}</b>"
-                f"{item_str}\n"
-                f"{'Сумма' if ru else 'Amount'}: <b>{amt} {cur_native(cur)}</b>"
+                f"<b>{seller_display}</b>{s_status_line}\n"
+                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{s_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{s_turnover} RUB</b>\n"
+                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{s_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>{s_reviews_text}"
                 f"</blockquote>\n\n"
+
+                f"{ce('5199552030615558774','👤')} <b>{'Покупатель' if ru else 'Buyer'}</b>\n"
+                f"<blockquote>"
+                f"<b>{partner}</b>\n"
+                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{b_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{b_turnover} RUB</b>\n"
+                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{b_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(b_reviews)}</b>{b_reviews_text}"
+                f"</blockquote>\n\n"
+
                 f"{E['deal_link']} {'Ссылка для покупателя' if ru else 'Link for buyer'}:\n"
                 f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n"
                 f"{'Отправьте ссылку партнёру.' if ru else 'Send the link to your partner.'}"
