@@ -290,14 +290,14 @@ CUR = {
     "TON": "💎 TON", "USDT": "💵 USDT",
     "Stars": {"ru": "⭐️ Stars", "en": "⭐️ Stars"},
     "RUB": {"ru": "🇷🇺 Rubles", "en": "🇷🇺 Rubles"},
-    "KZT": {"ru": "🇰🇿 Tenge", "en": "🇰🇿 Tenge"},
+    "KZT": {"ru": "🇰🇿 Теңге", "en": "🇰🇿 Теңге"},
     "AZN": {"ru": "🇦🇿 Manat", "en": "🇦🇿 Manat"},
-    "KGS": {"ru": "🇰🇬 Som", "en": "🇰🇬 Som"},
-    "UZS": {"ru": "🇺🇿 Sum", "en": "🇺🇿 Sum"},
-    "TJS": {"ru": "🇹🇯 Somoni", "en": "🇹🇯 Somoni"},
-    "BYN": {"ru": "🇧🇾 BYN", "en": "🇧🇾 BYN"},
-    "UAH": {"ru": "🇺🇦 Hryvnia", "en": "🇺🇦 Hryvnia"},
-    "GEL": {"ru": "🇬🇪 Lari", "en": "🇬🇪 Lari"},
+    "KGS": {"ru": "🇰🇬 Сом", "en": "🇰🇬 Сом"},
+    "UZS": {"ru": "🇺🇿 So'm", "en": "🇺🇿 So'm"},
+    "TJS": {"ru": "🇹🇯 Сомонӣ", "en": "🇹🇯 Сомонӣ"},
+    "BYN": {"ru": "🇧🇾 Рублі", "en": "🇧🇾 Рублі"},
+    "UAH": {"ru": "🇺🇦 Гривня", "en": "🇺🇦 Гривня"},
+    "GEL": {"ru": "🇬🇪 ლარი", "en": "🇬🇪 ლარი"},
 }
 CURMAP = {"cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
           "cur_kzt":"KZT","cur_azn":"AZN","cur_kgs":"KGS","cur_uzs":"UZS",
@@ -999,7 +999,7 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
         "KZT": "🇰🇿 Теңге", "AZN": "🇦🇿 Manat",
         "KGS": "🇰🇬 Сом", "UZS": "🇺🇿 So'm",
         "TJS": "🇹🇯 Сомонӣ", "BYN": "🇧🇾 Рублі",
-        "UAH": "🇺🇦 Гривні", "GEL": "🇬🇪 ლარი",
+        "UAH": "🇺🇦 Гривня", "GEL": "🇬🇪 ლარი",
     }
     cur_full = CUR_FULL.get(cur, cur)
     try:
@@ -1538,12 +1538,16 @@ async def show_withdraw(update, context):
     except Exception as e: logger.error(f"show_withdraw: {e}")
 
 def adm_kb():
+    db = load_db()
+    hidden = db.get("log_hidden", False)
+    toggle_label = "👁 Логи: данные открыты" if not hidden else "🙈 Логи: данные скрыты"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("👤 Управление пользователем", callback_data="adm_user")],
         [InlineKeyboardButton("🖼 Баннеры по разделам", callback_data="adm_banners")],
         [InlineKeyboardButton("✏️ Описание меню", callback_data="adm_menu_desc")],
         [InlineKeyboardButton("🗂 Список сделок", callback_data="adm_deals")],
-        [InlineKeyboardButton("📋 Логи событий", callback_data="adm_logs")],
+        [InlineKeyboardButton("📋 Логи событий", callback_data="adm_logs"),
+         InlineKeyboardButton(toggle_label, callback_data="adm_toggle_hidden")],
         [InlineKeyboardButton("📡 Настройка лог-канала", callback_data="adm_log_channel")],
     ])
 
@@ -1663,6 +1667,17 @@ async def handle_adm_cb(update, context):
                     [InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]
                 ]))
             await q.answer("✅ Обновлено")
+            return
+
+        if d == "adm_toggle_hidden":
+            db = load_db()
+            db["log_hidden"] = not db.get("log_hidden", False)
+            save_db(db)
+            hidden = db["log_hidden"]
+            await q.answer("🙈 Данные скрыты" if hidden else "👁 Данные открыты")
+            try:
+                await q.message.edit_text("⚙️ <b>Панель администратора</b>", parse_mode="HTML", reply_markup=adm_kb())
+            except: pass
             return
 
         if d in ("adm_logs", "adm_logs_hidden", "adm_logs_toggle"):
