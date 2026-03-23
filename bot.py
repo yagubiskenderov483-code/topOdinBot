@@ -863,19 +863,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"❌ <b>{'Неверный формат. Введите @username' if ru else 'Invalid format. Enter @username'}</b>\n\n"
                     f"<b>{'Пример' if ru else 'Example'}:</b> <code>@username</code>",
                     parse_mode="HTML"); return
-            # Check username via Telegram API
-            user_exists = False
-            try:
-                chat = await context.bot.get_chat(f"@{uname}")
-                if chat:
-                    user_exists = True
-            except Exception:
-                user_exists = False
-            if not user_exists:
-                await update.message.reply_text(
-                    f"❌ <b>@{uname} — {'пользователь не найден.' if ru else 'user not found.'}</b>\n\n"
-                    f"{'Убедитесь что юзернейм написан верно.' if ru else 'Make sure the username is correct.'}",
-                    parse_mode="HTML"); return
             ud["partner"] = text
             if dtype == "nft":
                 ud["step"] = "nft_link"
