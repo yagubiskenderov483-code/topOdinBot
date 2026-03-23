@@ -288,8 +288,8 @@ BTN = {
 
 CUR = {
     "TON": "💎 TON", "USDT": "💵 USDT",
-    "Stars": {"ru": "⭐️ Stars", "en": "⭐️ Stars"},
-    "RUB": {"ru": "🇷🇺 Rubles", "en": "🇷🇺 Rubles"},
+    "Stars": {"ru": "⭐️ Звёзды", "en": "⭐️ Stars"},
+    "RUB": {"ru": "🇷🇺 Рубли", "en": "🇷🇺 Rubles"},
     "KZT": {"ru": "🇰🇿 Теңге", "en": "🇰🇿 Теңге"},
     "AZN": {"ru": "🇦🇿 Manat", "en": "🇦🇿 Manat"},
     "KGS": {"ru": "🇰🇬 Сом", "en": "🇰🇬 Сом"},
@@ -310,11 +310,11 @@ def cur_name(code, lang):
 
 CUR_NATIVE = {
     "TON": "TON", "USDT": "USDT",
-    "Stars": "Stars", "RUB": "RUB",
-    "KZT": "KZT", "AZN": "AZN",
-    "KGS": "KGS", "UZS": "UZS",
-    "TJS": "TJS", "BYN": "BYN",
-    "UAH": "UAH", "GEL": "GEL",
+    "Stars": "⭐ Звёзды", "RUB": "🇷🇺 Рубли",
+    "KZT": "🇰🇿 Теңге", "AZN": "🇦🇿 Manat",
+    "KGS": "🇰🇬 Сом", "UZS": "🇺🇿 So'm",
+    "TJS": "🇹🇯 Сомонӣ", "BYN": "🇧🇾 Рублі",
+    "UAH": "🇺🇦 Гривня", "GEL": "🇬🇪 ლარი",
 }
 
 def cur_native(code):
@@ -448,8 +448,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if ref_uid != str(uid) and ref_user is not None:
                 u["ref_by"] = ref_uid
                 db["users"][ref_uid]["ref_count"] = db["users"][ref_uid].get("ref_count", 0) + 1
-                add_log(db, "👥 New referral", uid=uid, username=u["username"],
-                    extra=f"Joined via @{ref_user.get('username', '?')}")
+                add_log(db, "👥 Новый реферал", uid=uid, username=u["username"],
+                    extra=f"Пришёл по реф. ссылке @{ref_user.get('username', '?')}")
                 new_user_tag = f"@{u['username']}" if u.get('username') else f"#{uid}"
                 try:
                     ref_lang = ref_user.get("lang", "ru"); ru_ref = ref_lang == "ru"
@@ -956,8 +956,8 @@ async def finalize_deal(update, context):
         db["deals"][deal_id] = {"user_id":str(user.id),"type":dtype,"partner":partner,
             "currency":currency,"amount":amount,"status":"pending",
             "created":datetime.now().isoformat(),"data":dict(ud)}
-        add_log(db, "🆕 New deal created", deal_id=deal_id, uid=user.id,
-            username=user.username or "", extra=f"Type: {dtype} | Amount: {amount} {currency}")
+        add_log(db, "🆕 Новая сделка", deal_id=deal_id, uid=user.id,
+            username=user.username or "", extra=f"Тип: {dtype} | Сумма: {amount} {currency}")
         save_db(db)
         if db.get("logs"):
             await send_log_to_channel(context, db, db["logs"][-1], hidden=db.get("log_hidden", False))
@@ -1241,6 +1241,7 @@ async def adm_confirm(update, context):
             db["deals"][deal_id]["status"] = "confirmed"
             d = db["deals"][deal_id]
             s = d.get("user_id"); amt_str = d.get("amount","0")
+            dtype = d.get("type",""); dd = d.get("data", {})
             try: amt_num = float(amt_str)
             except: amt_num = 0
             if s and s in db["users"]:
@@ -1248,8 +1249,8 @@ async def adm_confirm(update, context):
                 db["users"][s]["total_deals"] = db["users"][s].get("total_deals",0) + 1
                 db["users"][s]["turnover"] = db["users"][s].get("turnover",0) + int(amt_num)
             seller_uname = db["users"].get(s,{}).get("username","?") if s else "?"
-            add_log(db, "✅ Deal confirmed", deal_id=deal_id, uid=s,
-                username=seller_uname, extra=f"Amount: {amt_str} {d.get('currency','')}")
+            add_log(db, "✅ Сделка подтверждена", deal_id=deal_id, uid=s,
+                username=seller_uname, extra=f"Сумма: {amt_str} {d.get('currency','')}")
             if s and s in db["users"]:
                 ref_uid = db["users"][s].get("ref_by")
                 if ref_uid and ref_uid in db["users"] and amt_num > 0:
@@ -1257,9 +1258,9 @@ async def adm_confirm(update, context):
                     if bonus > 0:
                         db["users"][ref_uid]["ref_earned"] = db["users"][ref_uid].get("ref_earned",0) + bonus
                         db["users"][ref_uid]["balance"] = db["users"][ref_uid].get("balance",0) + bonus
-                        add_log(db, "💰 Referral bonus", uid=ref_uid,
+                        add_log(db, "💰 Реферальный бонус", uid=ref_uid,
                             username=db["users"][ref_uid].get("username","?"),
-                            extra=f"+{bonus} RUB (3% from deal {deal_id})")
+                            extra=f"+{bonus} RUB (3% от сделки {deal_id})")
                         try:
                             rl = get_lang(int(ref_uid)); ru_r = rl == "ru"
                             await context.bot.send_message(chat_id=int(ref_uid),
@@ -1270,8 +1271,15 @@ async def adm_confirm(update, context):
             if db.get("logs"):
                 await send_log_to_channel(context, db, db["logs"][-1], hidden=db.get("log_hidden", False))
 
+            # Build item link line for confirmation messages
+            item_link = ""
+            if dtype == "nft" and dd.get("nft_link"):
+                item_link = f"\n🔗 <b>NFT:</b> {dd['nft_link']}"
+            elif dtype == "username" and dd.get("trade_username"):
+                item_link = f"\n🔗 <b>Username:</b> {dd['trade_username']}"
+
             try: await q.edit_message_text(
-                f"✅ <b>Оплата подтверждена!</b>\n<code>{deal_id}</code>\n{CM} {d.get('amount')} {d.get('currency')}",
+                f"✅ <b>Оплата подтверждена!</b>\n<code>{deal_id}</code>\n💰 {d.get('amount')} {d.get('currency')}{item_link}",
                 parse_mode="HTML")
             except Exception as e: logger.error(f"adm_confirm edit: {e}")
 
@@ -1280,7 +1288,8 @@ async def adm_confirm(update, context):
                     sl = get_lang(int(s)); ru_s = sl == "ru"
                     buyer_tag = d.get("partner","—")
                     await context.bot.send_message(chat_id=int(s),
-                        text=f"{E['check']} <b>{'Оплата подтверждена! Сделка завершена.' if ru_s else 'Payment confirmed! Deal completed.'}</b>\n<code>{deal_id}</code>\n\n"
+                        text=f"{E['check']} <b>{'Оплата подтверждена! Сделка завершена.' if ru_s else 'Payment confirmed! Deal completed.'}</b>\n"
+                             f"<code>{deal_id}</code>{item_link}\n\n"
                              f"{'Оцените покупателя' if ru_s else 'Rate the buyer'} {buyer_tag}:",
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([[
@@ -1302,7 +1311,8 @@ async def adm_confirm(update, context):
                     bl = get_lang(int(buyer_uid)); ru_b = bl == "ru"
                     seller_tag = f"@{db['users'].get(s,{}).get('username',('продавец' if ru_b else 'seller'))}" if s else ("продавца" if ru_b else "seller")
                     await context.bot.send_message(chat_id=int(buyer_uid),
-                        text=f"{E['check']} <b>{'Сделка подтверждена!' if ru_b else 'Deal confirmed!'}</b>\n<code>{deal_id}</code>\n\n"
+                        text=f"{E['check']} <b>{'Сделка подтверждена!' if ru_b else 'Deal confirmed!'}</b>\n"
+                             f"<code>{deal_id}</code>{item_link}\n\n"
                              f"{'Оцените продавца' if ru_b else 'Rate the seller'} {seller_tag}:",
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([[
