@@ -675,14 +675,18 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d == "cry_ton":
             ru = lang == "ru"; ud["currency"] = "TON"; ud["step"] = "amount"
+            try: await q.message.delete()
+            except: pass
             msg = await update.effective_chat.send_message(
-                f"{E['diamond']} <b>{'Крипта' if ru else 'Crypto'} (TON)\n\n{'Введите сумму' if ru else 'Enter amount'}:</b>", parse_mode="HTML")
+                f"{'Введите сумму' if ru else 'Enter amount'} (TON):", parse_mode="HTML")
             ud["last_bot_msg"] = msg.message_id; return
 
         if d == "cry_usd":
             ru = lang == "ru"; ud["currency"] = "USDT"; ud["step"] = "amount"
+            try: await q.message.delete()
+            except: pass
             msg = await update.effective_chat.send_message(
-                f"{E['diamond']} <b>{'Крипта' if ru else 'Crypto'} (USDT)\n\n{'Введите сумму' if ru else 'Enter amount'}:</b>", parse_mode="HTML")
+                f"{'Введите сумму' if ru else 'Enter amount'} (USDT):", parse_mode="HTML")
             ud["last_bot_msg"] = msg.message_id; return
 
         if d in ("prm_3","prm_6","prm_12"):
@@ -690,20 +694,31 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             periods_ru = {"prm_3":"3 месяца","prm_6":"6 месяцев","prm_12":"12 месяцев"}
             periods_en = {"prm_3":"3 months","prm_6":"6 months","prm_12":"12 months"}
             ud["premium_period"] = (periods_ru if ru else periods_en)[d]; ud["step"] = "currency"
-            await send_text(update, f"{E['premium']} <b>Telegram Premium\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>", cur_kb(lang)); return
+            try: await q.message.delete()
+            except: pass
+            msg = await update.effective_chat.send_message(
+                f"{'Выберите валюту' if ru else 'Choose currency'}:", reply_markup=cur_kb(lang), parse_mode="HTML")
+            ud["last_bot_msg"] = msg.message_id; return
 
         if d in ("pst_1","pst_3","pst_5","pst_10"):
             ru = lang == "ru"
             counts_ru = {"pst_1":"1 пак","pst_3":"3 пака","pst_5":"5 паков","pst_10":"10 паков"}
             counts_en = {"pst_1":"1 pack","pst_3":"3 packs","pst_5":"5 packs","pst_10":"10 packs"}
             ud["sticker_count"] = (counts_ru if ru else counts_en)[d]; ud["step"] = "currency"
-            await send_text(update, f"{E['sticker']} <b>{'Премиум стикеры' if ru else 'Premium Stickers'}\n\n{'Выберите валюту' if ru else 'Choose currency'}:</b>", cur_kb(lang)); return
+            try: await q.message.delete()
+            except: pass
+            msg = await update.effective_chat.send_message(
+                f"{'Выберите валюту' if ru else 'Choose currency'}:", reply_markup=cur_kb(lang), parse_mode="HTML")
+            ud["last_bot_msg"] = msg.message_id; return
 
         if d.startswith("cur_"):
             ru = lang == "ru"; ud["currency"] = CURMAP.get(d, d); ud["step"] = "amount"
-            icons = {"nft":E["nft"],"username":E["user"],"stars":E["star"],"premium":E["premium"],"premium_stickers":E["sticker"]}
-            icon = icons.get(ud.get("type",""), E["deal"])
-            await send_text(update, f"{icon} <b>{'Введите сумму сделки' if ru else 'Enter deal amount'}:</b>"); return
+            try: await q.message.delete()
+            except: pass
+            cur_code = CURMAP.get(d, d)
+            msg = await update.effective_chat.send_message(
+                f"{'Введите сумму сделки' if ru else 'Enter deal amount'} ({cur_code}):", parse_mode="HTML")
+            ud["last_bot_msg"] = msg.message_id; return
 
     except Exception as e: logger.error(f"on_cb: {e}")
 
@@ -1085,7 +1100,6 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"{'Отправьте ссылку партнёру.' if ru else 'Send the link to your partner.'}"
             )
             kb = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🆘 " + ("Тех. поддержка" if ru else "Support"), url="https://t.me/GiftDealsSupport")],
                 [InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"), callback_data="main_menu")]
             ])
 
