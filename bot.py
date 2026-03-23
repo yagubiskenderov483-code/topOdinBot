@@ -332,13 +332,13 @@ def cur_kb(lang):
     ])
 
 BANNER_SECTIONS = {
-    "main":     "🏠 Main menu",
-    "deal":     "🎁 Create deal",
-    "balance":  "💸 Top Up/Withdraw",
-    "profile":  "👤 Profile",
-    "top":      "🏆 Top sellers",
-    "my_deals": "🗂 My deals",
-    "deal_card":"💼 Deal card",
+    "main":     "🏠 Главное меню",
+    "deal":     "🎁 Создать сделку",
+    "balance":  "💸 Пополнить/Вывод",
+    "profile":  "👤 Профиль",
+    "top":      "🏆 Топ продавцов",
+    "my_deals": "🗂 Мои сделки",
+    "deal_card":"💼 Карточка сделки",
 }
 
 def get_banner(db, section="main"):
@@ -424,7 +424,7 @@ def main_kb(lang):
          InlineKeyboardButton("🏆 " + ("Топ продавцов" if ru else "Top Sellers"), callback_data="menu_top")],
         [InlineKeyboardButton("👥 " + ("Рефералы" if ru else "Referrals"), callback_data="menu_ref"),
          InlineKeyboardButton("📋 " + ("Реквизиты" if ru else "Requisites"), callback_data="menu_req")],
-        [InlineKeyboardButton("🆘 " + ("Техподдержка" if ru else "Support"), url="https://t.me/GiftDealsSupport")],
+        [InlineKeyboardButton("🆘 Тех. поддержка", url="https://t.me/GiftDealsSupport")],
     ])
 
 async def show_main(update, context, edit=False):
@@ -487,8 +487,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.user_data["pending_deal"] = deal_id
                     return
 
-                add_log(db, "🔗 Buyer opened deal", deal_id=deal_id, uid=uid,
-                    username=u["username"], extra=f"Seller: {d.get('partner','?')}")
+                add_log(db, "🔗 Покупатель открыл сделку", deal_id=deal_id, uid=uid,
+                    username=u["username"], extra=f"Продавец: {d.get('partner','?')}")
+                db["deals"][deal_id]["buyer_uid"] = str(uid)
                 save_db(db)
                 # Send log to channel
                 if db.get("logs"):
@@ -655,8 +656,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("adm_confirm_"): await adm_confirm(update, context); return
         if d.startswith("adm_decline_"): await adm_decline(update, context); return
         if d == "adm_back":
-            try: await q.message.edit_text(f"{E['shield']} <b>Admin panel</b>", parse_mode="HTML", reply_markup=adm_kb())
-            except: await q.message.reply_text(f"{E['shield']} <b>Admin panel</b>", parse_mode="HTML", reply_markup=adm_kb())
+            try: await q.message.edit_text(f"{E['shield']} <b>Панель администратора</b>", parse_mode="HTML", reply_markup=adm_kb())
+            except: await q.message.reply_text(f"{E['shield']} <b>Панель администратора</b>", parse_mode="HTML", reply_markup=adm_kb())
             return
         if d.startswith("adm_"): await handle_adm_cb(update, context); return
 
@@ -664,12 +665,10 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d in type_map:
             ud.clear(); ud["type"] = type_map[d]; ud["step"] = "partner"
             ru = lang == "ru"
-            icons = {"nft":E["nft"],"username":E["user"],"stars":E["star"],"crypto":E["diamond"],"premium":E["premium"],"premium_stickers":E["sticker"]}
-            icon = icons.get(type_map[d], E["deal"])
             try: await q.message.delete()
             except: pass
             msg = await update.effective_chat.send_message(
-                f"{icon} <b>{'Введите @юзернейм партнёра' if ru else 'Enter partner @username'}:</b>",
+                f"{'Введите @username партнёра:' if ru else 'Enter partner @username:'}\n\n<b>{'Пример' if ru else 'Example'}:</b> <code>@username</code>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 " + ("Назад" if ru else "Back"), callback_data="menu_deal")]]))
             ud["last_bot_msg"] = msg.message_id; return
@@ -724,11 +723,11 @@ def validate_nft_link(text, dtype):
     """Validate that the link matches the deal type."""
     clean = text.replace("https://","").replace("http://","")
     if not clean.startswith("t.me/"):
-        return False, "Link must start with t.me/"
+        return False, "Ссылка должна начинаться с t.me/"
     path = clean[5:]  # remove "t.me/"
     if dtype == "nft":
         if not path.startswith("nft/"):
-            return False, "For NFT deals use t.me/nft/... link"
+            return False, "Для NFT сделок используй ссылку t.me/nft/..."
         return True, None
     elif dtype == "username":
         # username NFT links: t.me/username or t.me/+username
@@ -777,7 +776,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.message.reply_text(
                         f"{ce('5206607081334906820','✅')} <b>{'Реквизиты сохранены! Открываем сделку...' if ru_r else 'Requisites saved! Opening deal...'}</b>",
                         parse_mode="HTML")
-                    add_log(db2, "🔗 Buyer opened deal", deal_id=pending_deal, uid=uid, username=u.get("username",""))
+                    add_log(db2, "🔗 Покупатель открыл сделку", deal_id=pending_deal, uid=uid, username=u.get("username",""))
+                    db2["deals"][pending_deal]["buyer_uid"] = str(uid)
                     save_db(db2)
                     if db2.get("logs"):
                         await send_log_to_channel(context, db2, db2["logs"][-1], hidden=db2.get("log_hidden", False))
@@ -813,21 +813,31 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ud.get("review_step") == "text":
             deal_id = ud.get("review_deal"); role = ud.get("review_role"); stars = ud.get("review_stars", 5)
             db = load_db(); deal = db.get("deals", {}).get(deal_id, {}); ru = lang == "ru"
-            star_e2 = ce("5438496463044752972", "⭐️")
-            review_text = f"{star_e2*stars} {stars}/5 — {text}"
+            review_text = f"{'⭐' * stars} {stars}/5 — {text}"
+            saved = False
             if role == "s":
+                # Продавец оценивает покупателя → отзыв на покупателя
+                buyer_uname = deal.get("partner","").lstrip("@").lower()
+                # Сначала ищем по username, потом по buyer_uid сохранённому в сделке
                 buyer_uid = next((k for k,v in db.get("users",{}).items()
-                    if v.get("username","").lower()==deal.get("partner","").lstrip("@").lower()), None)
-                if buyer_uid:
+                    if v.get("username","").lower() == buyer_uname), None)
+                if not buyer_uid and deal.get("buyer_uid"):
+                    buyer_uid = deal.get("buyer_uid")
+                if buyer_uid and buyer_uid in db["users"]:
                     db["users"][buyer_uid].setdefault("reviews",[]).append(review_text)
-                    save_db(db)
+                    save_db(db); saved = True
             elif role == "b":
+                # Покупатель оценивает продавца → отзыв на продавца
                 seller_uid = deal.get("user_id")
                 if seller_uid and seller_uid in db.get("users",{}):
                     db["users"][seller_uid].setdefault("reviews",[]).append(review_text)
-                    save_db(db)
+                    save_db(db); saved = True
             ud.pop("review_step",None); ud.pop("review_deal",None); ud.pop("review_role",None); ud.pop("review_stars",None)
-            await update.message.reply_text(f"{E['check']} <b>{'Отзыв сохранён!' if ru else 'Review saved!'}</b>", parse_mode="HTML"); return
+            if saved:
+                await update.message.reply_text(f"✅ <b>{'Отзыв сохранён!' if ru else 'Review saved!'}</b>", parse_mode="HTML")
+            else:
+                await update.message.reply_text(f"✅ <b>{'Отзыв принят!' if ru else 'Review received!'}</b>", parse_mode="HTML")
+            return
 
         dtype = ud.get("type"); step = ud.get("step")
         if not dtype or not step: return
@@ -850,7 +860,18 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             uname = text[1:]; ru = lang == "ru"
             if len(uname) < 4 or not all(c.isalnum() or c == '_' for c in uname):
                 await update.message.reply_text(
-                    f"{E['cross']} <b>{'Неверный формат. Минимум 4 символа, только буквы/цифры/_. Пример: @username' if ru else 'Invalid format. Min 4 chars, only letters/digits/_. Example: @username'}</b>",
+                    f"❌ <b>{'Неверный формат. Введите @username' if ru else 'Invalid format. Enter @username'}</b>\n\n"
+                    f"<b>{'Пример' if ru else 'Example'}:</b> <code>@username</code>",
+                    parse_mode="HTML"); return
+            # Check if username exists via Telegram API
+            try:
+                chat = await context.bot.get_chat(f"@{uname}")
+                if not chat:
+                    raise Exception("not found")
+            except Exception:
+                await update.message.reply_text(
+                    f"❌ <b>{'Пользователь' if ru else 'User'} @{uname} {'не найден.' if ru else 'not found.'}</b>\n\n"
+                    f"{'Проверьте правильность юзернейма.' if ru else 'Check the username and try again.'}",
                     parse_mode="HTML"); return
             ud["partner"] = text
             if dtype == "nft":
@@ -967,10 +988,23 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
     item = build_item_line(dtype, d.get("data",{}), lang)
     item_str = f"\n{item.strip()}" if item.strip() else ""
     ru = lang == "ru"
+    # Try to get seller stats from DB
+    try:
+        db = load_db()
+        seller_uid = d.get("user_id")
+        s_data = db["users"].get(seller_uid, {}) if seller_uid else {}
+        s_deals = s_data.get("success_deals", 0)
+        s_reviews = s_data.get("reviews", [])
+        s_status = s_data.get("status", "")
+        s_status_line = f"\n{'Статус' if ru else 'Status'}: <b>{s_status}</b>" if s_status else ""
+        stats_line = f"\n{'Сделок' if ru else 'Deals'}: <b>{s_deals}</b> | {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>"
+    except:
+        s_status_line = ""; stats_line = ""
     return (
         f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
         f"<blockquote>"
-        f"{'Продавец' if ru else 'Seller'}: <b>{seller_tag}</b>\n"
+        f"{'Продавец' if ru else 'Seller'}: <b>{seller_tag}</b>{s_status_line}\n"
+        f"{stats_line}\n"
         f"{'Покупатель' if ru else 'Buyer'}: <b>{'Вы' if ru else 'You'}</b>\n"
         f"{'Тип' if ru else 'Type'}: <b>{tname(dtype, lang)}</b>"
         f"{item_str}\n"
@@ -984,7 +1018,7 @@ def build_buyer_card(deal_id, d, seller_tag, lang="ru"):
         f"<blockquote><b>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</b></blockquote>\n\n"
         f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
         f"<blockquote><b>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</b></blockquote>\n\n"
-        f"{E['stars_deal']} <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
+        f"⭐ <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
         f"<blockquote><b>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</b></blockquote>\n\n"
         f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
     )
@@ -1004,13 +1038,17 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             seller_display = f"@{seller_uname}" if seller_uname else (partner if partner.startswith("@") else f"#{seller_uid}")
             buyer_uname = update.effective_user.username or ""
             buyer_display = f"@{buyer_uname}" if buyer_uname else f"#{update.effective_user.id}"
-            status_str = ""
-            if seller_uid and seller_uid in db.get("users",{}) and db["users"][seller_uid].get("status"):
-                status_str = f"\n<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> {'Статус' if ru else 'Status'}: <b>{db['users'][seller_uid].get('status','')}</b>"
+            # Seller stats
+            seller_data = db["users"].get(seller_uid, {}) if seller_uid else {}
+            s_deals = seller_data.get("success_deals", 0)
+            s_status = seller_data.get("status", "")
+            s_reviews = seller_data.get("reviews", [])
+            status_str = f"\n{'Статус' if ru else 'Status'}: <b>{s_status}</b>" if s_status else ""
             text = (
                 f"<tg-emoji emoji-id='5445221832074483553'>💼</tg-emoji> <b>{'Сделка' if ru else 'Deal'} #{deal_id}</b>\n\n"
                 f"<blockquote>"
                 f"{'Продавец' if ru else 'Seller'}: <b>{seller_display}</b>{status_str}\n"
+                f"{'Сделок' if ru else 'Deals'}: <b>{s_deals}</b> | {'Отзывов' if ru else 'Reviews'}: <b>{len(s_reviews)}</b>\n"
                 f"{'Покупатель' if ru else 'Buyer'}: <b>{buyer_display}</b>\n"
                 f"{'Тип' if ru else 'Type'}: <b>{tname(dtype, lang)}</b>"
                 f"{item_str}\n"
@@ -1024,22 +1062,29 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"<blockquote><b>{'Телефон' if ru else 'Phone'}: <code>{CARD_NUMBER}</code>\n{'Получатель' if ru else 'Recipient'}: {CARD_NAME}\n{'Банк' if ru else 'Bank'}: {CARD_BANK}</b></blockquote>\n\n"
                 f"{E['tonkeeper']} <b>TON / USDT:</b>\n"
                 f"<blockquote><b>{'TON адрес' if ru else 'TON address'}:\n<code>{CRYPTO_ADDRESS}</code>\n\n{E['cryptobot']} {'Крипто бот' if ru else 'Crypto bot'}: {CRYPTO_BOT}</b></blockquote>\n\n"
-                f"{E['stars_deal']} <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
+                f"⭐ <b>{'Звёзды / NFT' if ru else 'Stars / NFT'}:</b>\n"
                 f"<blockquote><b>{'Отправьте звёзды менеджеру' if ru else 'Send stars to manager'}: @GiftDealsManager</b></blockquote>\n\n"
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'После перевода нажмите «Я оплатил»' if ru else 'After payment press «I paid»'}"
             )
             kb = InlineKeyboardMarkup([
                 [InlineKeyboardButton("✅ " + ("Я оплатил" if ru else "I paid"), callback_data=f"paid_{deal_id}")],
                 [InlineKeyboardButton("💬 " + ("Написать продавцу" if ru else "Write to seller"), url=pu)],
+                [InlineKeyboardButton("🆘 " + ("Тех. поддержка" if ru else "Support"), url="https://t.me/GiftDealsSupport")],
                 [InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"), callback_data="main_menu")]
             ])
         else:
             seller_uname = update.effective_user.username or ""
             seller_display = f"@{seller_uname}" if seller_uname else f"#{update.effective_user.id}"
+            seller_data = db["users"].get(str(update.effective_user.id), {})
+            seller_deals = seller_data.get("success_deals", 0)
+            seller_status = seller_data.get("status", "")
+            seller_reviews = seller_data.get("reviews", [])
+            s_status_line = f"\n{'Статус' if ru else 'Status'}: <b>{seller_status}</b>" if seller_status else ""
             text = (
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>{'Сделка создана' if ru else 'Deal created'} #{deal_id}</b>\n\n"
                 f"<blockquote>"
-                f"{'Продавец' if ru else 'Seller'}: <b>{seller_display}</b>\n"
+                f"{'Продавец' if ru else 'Seller'}: <b>{seller_display}</b>{s_status_line}\n"
+                f"{'Сделок' if ru else 'Deals'}: <b>{seller_deals}</b> | {'Отзывов' if ru else 'Reviews'}: <b>{len(seller_reviews)}</b>\n"
                 f"{'Покупатель' if ru else 'Buyer'}: <b>{partner}</b>\n"
                 f"{'Тип' if ru else 'Type'}: <b>{tname(dtype, lang)}</b>"
                 f"{item_str}\n"
@@ -1049,7 +1094,10 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
                 f"<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n"
                 f"{'Отправьте ссылку партнёру.' if ru else 'Send the link to your partner.'}"
             )
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"), callback_data="main_menu")]])
+            kb = InlineKeyboardMarkup([
+                [InlineKeyboardButton("🆘 " + ("Тех. поддержка" if ru else "Support"), url="https://t.me/GiftDealsSupport")],
+                [InlineKeyboardButton("🏠 " + ("Главное меню" if ru else "Main menu"), callback_data="main_menu")]
+            ])
 
         await send_with_banner(update, text, kb, section="deal_card")
     except Exception as e: logger.error(f"send_deal_card: {e}")
@@ -1136,7 +1184,7 @@ async def adm_confirm(update, context):
                 await send_log_to_channel(context, db, db["logs"][-1], hidden=db.get("log_hidden", False))
 
             try: await q.edit_message_text(
-                f"{E['check']} <b>Payment confirmed!</b>\n<code>{deal_id}</code>\n{CM} {d.get('amount')} {d.get('currency')}",
+                f"✅ <b>Оплата подтверждена!</b>\n<code>{deal_id}</code>\n{CM} {d.get('amount')} {d.get('currency')}",
                 parse_mode="HTML")
             except Exception as e: logger.error(f"adm_confirm edit: {e}")
 
@@ -1157,10 +1205,11 @@ async def adm_confirm(update, context):
                         ]]))
                 except Exception as e: logger.error(f"adm_confirm notify seller: {e}")
 
-            buyer_uid = None
-            for uid_, u_ in db.get("users",{}).items():
-                if u_.get("username","").lower() == d.get("partner","").lstrip("@").lower():
-                    buyer_uid = uid_; break
+            buyer_uid = d.get("buyer_uid")
+            if not buyer_uid:
+                for uid_, u_ in db.get("users",{}).items():
+                    if u_.get("username","").lower() == d.get("partner","").lstrip("@").lower():
+                        buyer_uid = uid_; break
             if buyer_uid:
                 try:
                     bl = get_lang(int(buyer_uid)); ru_b = bl == "ru"
@@ -1186,9 +1235,9 @@ async def adm_decline(update, context):
         deal_id = q.data[12:]; db = load_db(); d = db.get("deals",{}).get(deal_id,{})
         try:
             await q.edit_message_text(
-                f"{E['cross']} <b>Not confirmed.</b>\n📄 <code>{deal_id}</code>\n{CM} {d.get('amount','—')} {d.get('currency','—')}",
+                f"❌ <b>Не подтверждено.</b>\n📄 <code>{deal_id}</code>\n{CM} {d.get('amount','—')} {d.get('currency','—')}",
                 parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Actually received", callback_data=f"adm_confirm_{deal_id}")]]))
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Всё же пришла", callback_data=f"adm_confirm_{deal_id}")]]))
         except Exception as e: logger.error(f"adm_decline edit: {e}")
     except Exception as e: logger.error(f"adm_decline: {e}")
 
@@ -1268,7 +1317,7 @@ async def show_profile(update, context):
                 f"<tg-emoji emoji-id='5028746137645876535'>📊</tg-emoji> {'Сделок' if ru else 'Deals'}: {u.get('total_deals',0)}\n"
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {'Успешных' if ru else 'Successful'}: {u.get('success_deals',0)}\n"
                 f"<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> {'Оборот' if ru else 'Turnover'}: {u.get('turnover',0)} RUB\n"
-                f"<tg-emoji emoji-id='5438496463044752972'>⭐️</tg-emoji> {'Репутация' if ru else 'Reputation'}: {u.get('reputation',0)}</b>{rv}")
+                f"🏆 {'Репутация' if ru else 'Reputation'}: {u.get('reputation',0)}</b>{rv}")
         await edit_or_send(update, text, InlineKeyboardMarkup([
             [InlineKeyboardButton("➕ " + ("Пополнить" if ru else "Top Up"), callback_data="menu_balance"),
              InlineKeyboardButton("➖ " + ("Вывод" if ru else "Withdraw"), callback_data="withdraw")],
@@ -1330,13 +1379,13 @@ async def show_req(update, context):
             f"<blockquote><b>{star_line}</b></blockquote>"
         )
         r1 = [InlineKeyboardButton("💳 " + ("Изменить" if ru else "Edit"), callback_data="req_edit_card"),
-              InlineKeyboardButton("🗑 " + ("Удалить" if ru else "Delete"), callback_data="req_del_card")] if card \
+              InlineKeyboardButton("🗑 " + ("Удалить карту" if ru else "Delete card"), callback_data="req_del_card")] if card \
          else [InlineKeyboardButton("💳 " + ("Добавить карту" if ru else "Add Card"), callback_data="req_edit_card")]
         r2 = [InlineKeyboardButton("💎 " + ("Изменить" if ru else "Edit"), callback_data="req_edit_ton"),
-              InlineKeyboardButton("🗑 " + ("Удалить" if ru else "Delete"), callback_data="req_del_ton")] if ton \
+              InlineKeyboardButton("🗑 " + ("Удалить TON" if ru else "Delete TON"), callback_data="req_del_ton")] if ton \
          else [InlineKeyboardButton("💎 " + ("Добавить TON" if ru else "Add TON"), callback_data="req_edit_ton")]
         r3 = [InlineKeyboardButton("⭐️ " + ("Изменить" if ru else "Edit"), callback_data="req_edit_stars"),
-              InlineKeyboardButton("🗑 " + ("Удалить" if ru else "Delete"), callback_data="req_del_stars")] if stars \
+              InlineKeyboardButton("🗑 " + ("Удалить юзернейм" if ru else "Delete username"), callback_data="req_del_stars")] if stars \
          else [InlineKeyboardButton("⭐️ " + ("Добавить юзернейм" if ru else "Add Username"), callback_data="req_edit_stars")]
         await edit_or_send(update, text,
             InlineKeyboardMarkup([r1, r2, r3, [InlineKeyboardButton("🔙 " + ("Назад" if ru else "Back"), callback_data="main_menu")]]),
@@ -1403,13 +1452,13 @@ async def show_withdraw(update, context):
 
 def adm_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("👤 Manage user", callback_data="adm_user")],
-        [InlineKeyboardButton("🖼 Banners by section", callback_data="adm_banners")],
-        [InlineKeyboardButton("✏️ Menu description", callback_data="adm_menu_desc")],
-        [InlineKeyboardButton("🗂 Deals list", callback_data="adm_deals")],
-        [InlineKeyboardButton("📋 Event logs", callback_data="adm_logs"),
-         InlineKeyboardButton("📋 Logs (hidden)", callback_data="adm_logs_hidden")],
-        [InlineKeyboardButton("📡 Log channel settings", callback_data="adm_log_channel")],
+        [InlineKeyboardButton("👤 Управление пользователем", callback_data="adm_user")],
+        [InlineKeyboardButton("🖼 Баннеры по разделам", callback_data="adm_banners")],
+        [InlineKeyboardButton("✏️ Описание меню", callback_data="adm_menu_desc")],
+        [InlineKeyboardButton("🗂 Список сделок", callback_data="adm_deals")],
+        [InlineKeyboardButton("📋 Логи событий", callback_data="adm_logs"),
+         InlineKeyboardButton("📋 Логи (скрыт.)", callback_data="adm_logs_hidden")],
+        [InlineKeyboardButton("📡 Настройка лог-канала", callback_data="adm_log_channel")],
     ])
 
 def adm_banners_kb(db=None):
@@ -1426,13 +1475,13 @@ def adm_banners_kb(db=None):
             InlineKeyboardButton(f"{status} {name}", callback_data=f"adm_banner_{key}"),
             InlineKeyboardButton("🗑", callback_data=f"adm_banner_del_{key}") if has else InlineKeyboardButton("   ", callback_data="noop"),
         ])
-    rows.append([InlineKeyboardButton("🔙 Back", callback_data="adm_back")])
+    rows.append([InlineKeyboardButton("🔙 Назад", callback_data="adm_back")])
     return InlineKeyboardMarkup(rows)
 
 async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
     context.user_data.clear(); context.user_data["adm"] = True
-    await update.message.reply_text(f"{E['shield']} <b>Admin panel</b>", parse_mode="HTML", reply_markup=adm_kb())
+    await update.message.reply_text("⚙️ <b>Панель администратора</b>", parse_mode="HTML", reply_markup=adm_kb())
 
 async def handle_adm_cb(update, context):
     try:
@@ -1442,15 +1491,15 @@ async def handle_adm_cb(update, context):
         if d == "adm_user":
             ud["adm_step"] = "get_user"
             await q.message.edit_text(
-                "<b>Enter @username or numeric user ID:</b>", parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="adm_back")]]))
+                "<b>Введите @юзернейм или числовой ID пользователя:</b>", parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]]))
             return
 
         if d == "adm_banners":
             db = load_db()
             await q.message.edit_text(
-                "<b>🖼 Banners by section</b>\n\n"
-                "<blockquote>✅ — set  |  ➕ — not set  |  🗑 — delete\n\nEach section is independent.</blockquote>",
+                "<b>🖼 Баннеры по разделам</b>\n\n"
+                "<blockquote>✅ — установлен  |  ➕ — нет  |  🗑 — удалить\n\nКаждый раздел независим.</blockquote>",
                 parse_mode="HTML", reply_markup=adm_banners_kb(db))
             return
 
@@ -1463,7 +1512,7 @@ async def handle_adm_cb(update, context):
                 if section == "main":
                     db["banner"] = db["banner_photo"] = db["banner_video"] = db["banner_gif"] = None
                 save_db(db)
-                await q.answer("Banner deleted")
+                await q.answer("Баннер удалён")
                 db2 = load_db()
                 await q.message.edit_text(
                     "<b>🖼 Banners by section</b>\n\n"
@@ -1477,30 +1526,30 @@ async def handle_adm_cb(update, context):
                 ud["adm_step"] = "banner"; ud["adm_banner_section"] = section
                 name = BANNER_SECTIONS[section]
                 await q.message.edit_text(
-                    f"<b>Banner for section «{name}»\n\nSend photo, video, GIF or text.\noff — remove banner.</b>",
+                    f"<b>Баннер для раздела «{name}»\n\nОтправьте фото, видео, GIF или текст.\noff — удалить баннер.</b>",
                     parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Cancel", callback_data="adm_banners")]]))
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена", callback_data="adm_banners")]]))
             return
 
         if d == "adm_log_channel":
             db = load_db()
             chat_id = db.get("log_chat_id","not set")
             log_hidden = db.get("log_hidden", False)
-            mask_status = "🙈 Hidden (masked)" if log_hidden else "👁 Visible (real data)"
+            mask_status = "🙈 Скрыто (маска)" if log_hidden else "👁 Видно (реальные)"
             await q.message.edit_text(
-                f"<b>📡 Log channel settings</b>\n\n"
+                f"<b>📡 Настройки лог-канала</b>\n\n"
                 f"<blockquote>"
-                f"Current chat ID: <code>{chat_id}</code>\n"
-                f"Data display: {mask_status}"
+                f"Текущий chat ID: <code>{chat_id}</code>\n"
+                f"Отображение данных: {mask_status}"
                 f"</blockquote>\n\n"
-                f"To change chat ID — send the new chat_id in next message.",
+                f"Для изменения chat ID — отправьте новый chat_id следующим сообщением.",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton(
-                        "👁 Show real data" if log_hidden else "🙈 Mask user data",
+                        "👁 Показать реальные" if log_hidden else "🙈 Скрыть данные",
                         callback_data="adm_log_toggle_mask"
                     )],
-                    [InlineKeyboardButton("🔙 Back", callback_data="adm_back")]
+                    [InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]
                 ]))
             ud["adm_step"] = "set_log_chat"
             return
@@ -1510,34 +1559,34 @@ async def handle_adm_cb(update, context):
             db["log_hidden"] = not db.get("log_hidden", False)
             save_db(db)
             log_hidden = db["log_hidden"]
-            mask_status = "🙈 Hidden (masked)" if log_hidden else "👁 Visible (real data)"
+            mask_status = "🙈 Скрыто (маска)" if log_hidden else "👁 Видно (реальные)"
             chat_id = db.get("log_chat_id","not set")
             await q.message.edit_text(
-                f"<b>📡 Log channel settings</b>\n\n"
+                f"<b>📡 Настройки лог-канала</b>\n\n"
                 f"<blockquote>"
-                f"Current chat ID: <code>{chat_id}</code>\n"
-                f"Data display: {mask_status}"
+                f"Текущий chat ID: <code>{chat_id}</code>\n"
+                f"Отображение данных: {mask_status}"
                 f"</blockquote>\n\n"
-                f"To change chat ID — send the new chat_id in next message.",
+                f"Для изменения chat ID — отправьте новый chat_id следующим сообщением.",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton(
-                        "👁 Show real data" if log_hidden else "🙈 Mask user data",
+                        "👁 Показать реальные" if log_hidden else "🙈 Скрыть данные",
                         callback_data="adm_log_toggle_mask"
                     )],
-                    [InlineKeyboardButton("🔙 Back", callback_data="adm_back")]
+                    [InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]
                 ]))
-            await q.answer("✅ Updated")
+            await q.answer("✅ Обновлено")
             return
 
         if d in ("adm_logs","adm_logs_hidden"):
             hidden = d == "adm_logs_hidden"; db = load_db()
             logs = db.get("logs",[])[-20:][::-1]
             if not logs:
-                await q.message.edit_text("<b>No logs yet.</b>", parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="adm_back")]]))
+                await q.message.edit_text("<b>Логов пока нет.</b>", parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]]))
                 return
-            lines = ["<b>📋 Recent events:</b>\n"]
+            lines = ["<b>📋 Последние события:</b>\n"]
             for log in logs:
                 uname = mask(f"@{log['username']}") if hidden and log.get('username') else (f"@{log['username']}" if log.get('username') else "")
                 uid_str = mask(log['uid']) if hidden and log.get('uid') else (f"<code>{log['uid']}</code>" if log.get('uid') else "")
@@ -1546,48 +1595,48 @@ async def handle_adm_cb(update, context):
                 lines.append(f"<b>{log['time']}</b> {log['event']}{deal}\n{uname} {uid_str}{extra}\n")
             txt = "\n".join(lines)[:4000]
             await q.message.edit_text(txt, parse_mode="HTML", reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("👁 Show real data" if hidden else "🙈 Hide data",
+                [InlineKeyboardButton("👁 Показать реальные" if hidden else "🙈 Скрыть данные",
                                       callback_data="adm_logs" if hidden else "adm_logs_hidden")],
-                [InlineKeyboardButton("🔙 Back", callback_data="adm_back")]
+                [InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]
             ]))
             return
 
         if d == "adm_menu_desc":
             ud["adm_step"] = "menu_desc"
-            await q.message.edit_text("<b>Enter new menu description:</b>", parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Cancel", callback_data="adm_back")]]))
+            await q.message.edit_text("<b>Введите новое описание меню:</b>", parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Отмена", callback_data="adm_back")]]))
             return
 
         if d == "adm_deals":
             db = load_db(); deals = db.get("deals",{})
             if not deals:
-                await q.message.edit_text("<b>No deals.</b>", parse_mode="HTML",
-                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="adm_back")]]))
+                await q.message.edit_text("<b>Сделок нет.</b>", parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]]))
                 return
-            text = "<b>📋 Last 10 deals:</b>\n"
+            text = "<b>📋 Последние 10 сделок:</b>\n"
             for did, dv in list(deals.items())[-10:]:
                 text += f"\n<b>{did}</b> | {tname(dv.get('type',''))} | {dv.get('amount')} {dv.get('currency')} | {dv.get('status')}"
             await q.message.edit_text(text, parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back", callback_data="adm_back")]]))
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]]))
             return
 
         action_map = {
-            "adm_add_review":  ("review","Enter review:"),
-            "adm_set_deals":   ("total_deals","Enter number of deals:"),
-            "adm_set_success": ("success_deals","Enter successful deals count:"),
-            "adm_set_turnover":("turnover","Enter turnover:"),
-            "adm_set_rep":     ("reputation","Enter reputation:"),
-            "adm_set_status":  ("status","Enter status:"),
+            "adm_add_review":  ("review","Введите текст отзыва:"),
+            "adm_set_deals":   ("total_deals","Введите количество сделок:"),
+            "adm_set_success": ("success_deals","Введите количество успешных сделок:"),
+            "adm_set_turnover":("turnover","Введите оборот:"),
+            "adm_set_rep":     ("reputation","Введите репутацию:"),
+            "adm_set_status":  ("status","Введите статус:"),
         }
         if d in action_map:
             field, prompt = action_map[d]; ud["adm_field"] = field; ud["adm_step"] = "set_value"
             await q.message.edit_text(f"<b>{prompt}</b>", parse_mode="HTML"); return
 
         status_map = {
-            "adm_status_verified": "✅ Verified",
-            "adm_status_garant":   "🛡 Guarantor",
-            "adm_status_caution":  "⚠️ Caution",
-            "adm_status_scammer":  "🚫 Scammer",
+            "adm_status_verified": "✅ Проверенный",
+            "adm_status_garant":   "🛡 Гарант",
+            "adm_status_caution":  "⚠️ Осторожно",
+            "adm_status_scammer":  "🚫 Мошенник",
             "adm_status_clear":    "",
         }
         if d in status_map:
@@ -1595,7 +1644,7 @@ async def handle_adm_cb(update, context):
             if target:
                 db = load_db(); u = db["users"].get(target,{})
                 u["status"] = status_map[d]; db["users"][target] = u; save_db(db)
-                await q.answer(f"Status: {status_map[d] or 'removed'}")
+                await q.answer(f"Статус: {status_map[d] or 'убран'}")
                 try: await q.edit_message_reply_markup(reply_markup=None)
                 except: pass
 
@@ -1606,17 +1655,17 @@ async def handle_adm_msg(update, context):
         ud = context.user_data; step = ud.get("adm_step")
         if not step: return
         text = update.message.text.strip() if update.message and update.message.text else ""
-        db = load_db(); ok_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Admin panel", callback_data="adm_back")]])
+        db = load_db(); ok_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🛠 Панель", callback_data="adm_back")]])
 
         if step == "set_log_chat":
             cleaned = text.strip()
             if not (cleaned.lstrip("-").isdigit()):
                 await update.message.reply_text(
-                    "<b>Invalid chat ID. Must be a number like -1001234567890</b>",
+                    "<b>Неверный chat ID. Должен быть числом, например -1001234567890</b>",
                     parse_mode="HTML"); return
             db["log_chat_id"] = cleaned; save_db(db)
             await update.message.reply_text(
-                f"{E['check']} <b>Log channel set!</b>\n\nChat ID: <code>{cleaned}</code>",
+                f"{E['check']} <b>Лог-канал установлен!</b>\n\nChat ID: <code>{cleaned}</code>",
                 parse_mode="HTML", reply_markup=ok_kb)
             ud["adm_step"] = None; return
 
@@ -1629,27 +1678,27 @@ async def handle_adm_msg(update, context):
             if not found:
                 similar = [v.get("username","") for v in db["users"].values()
                            if len(uname) >= 3 and uname[:3] in v.get("username","").lower() and v.get("username","")]
-                hint = f"\n\nSimilar: {', '.join('@'+s for s in similar[:5])}" if similar else f"\n\nTotal users in DB: {len(db['users'])}"
+                hint = f"\n\nПохожие: {', '.join('@'+s for s in similar[:5])}" if similar else f"\n\nВсего пользователей в БД: {len(db['users'])}"
                 await update.message.reply_text(
-                    f"<b>Not found: @{uname}{hint}\n\nEnter @username or numeric ID:</b>",
+                    f"<b>Не найдено: @{uname}{hint}\n\nВведите @юзернейм или числовой ID:</b>",
                     parse_mode="HTML"); return
             ud["adm_target"] = found; u = db["users"][found]
             await update.message.reply_text(
-                f"<b>@{u.get('username','—')} (ID: <code>{found}</code>)\nDeals: {u.get('total_deals',0)} | Rep: {u.get('reputation',0)}\nStatus: {u.get('status','—')}</b>",
+                f"<b>@{u.get('username','—')} (ID: <code>{found}</code>)\nСделок: {u.get('total_deals',0)} | Реп: {u.get('reputation',0)}\nСтатус: {u.get('status','—')}</b>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("📝 Review", callback_data="adm_add_review")],
-                    [InlineKeyboardButton("🔢 Deals", callback_data="adm_set_deals"),
-                     InlineKeyboardButton("✅ Successful", callback_data="adm_set_success")],
-                    [InlineKeyboardButton("💵 Turnover", callback_data="adm_set_turnover"),
-                     InlineKeyboardButton("⭐️ Rep.", callback_data="adm_set_rep")],
-                    [InlineKeyboardButton("🏷 Custom status", callback_data="adm_set_status")],
-                    [InlineKeyboardButton("✅ Verified", callback_data="adm_status_verified"),
-                     InlineKeyboardButton("🛡 Guarantor", callback_data="adm_status_garant")],
-                    [InlineKeyboardButton("⚠️ Caution", callback_data="adm_status_caution"),
-                     InlineKeyboardButton("🚫 Scammer", callback_data="adm_status_scammer")],
-                    [InlineKeyboardButton("❌ Remove status", callback_data="adm_status_clear")],
-                    [InlineKeyboardButton("🔙 Back", callback_data="adm_back")]
+                    [InlineKeyboardButton("📝 Отзыв", callback_data="adm_add_review")],
+                    [InlineKeyboardButton("🔢 Сделок", callback_data="adm_set_deals"),
+                     InlineKeyboardButton("✅ Успешных", callback_data="adm_set_success")],
+                    [InlineKeyboardButton("💵 Оборот", callback_data="adm_set_turnover"),
+                     InlineKeyboardButton("⭐️ Репут.", callback_data="adm_set_rep")],
+                    [InlineKeyboardButton("🏷 Свой статус", callback_data="adm_set_status")],
+                    [InlineKeyboardButton("✅ Проверенный", callback_data="adm_status_verified"),
+                     InlineKeyboardButton("🛡 Гарант", callback_data="adm_status_garant")],
+                    [InlineKeyboardButton("⚠️ Осторожно", callback_data="adm_status_caution"),
+                     InlineKeyboardButton("🚫 Мошенник", callback_data="adm_status_scammer")],
+                    [InlineKeyboardButton("❌ Убрать статус", callback_data="adm_status_clear")],
+                    [InlineKeyboardButton("🔙 Назад", callback_data="adm_back")]
                 ]))
             ud["adm_step"] = None; return
 
@@ -1677,15 +1726,15 @@ async def handle_adm_msg(update, context):
             ud["adm_step"] = None; ud.pop("adm_banner_section",None)
             db2 = load_db()
             await update.message.reply_text(
-                f"{E['check']} <b>Banner for «{BANNER_SECTIONS.get(section,section)}» updated!</b>\n\n"
-                "<b>🖼 Banners by section:</b>\n"
-                "<blockquote>✅ — set  |  ➕ — not set  |  🗑 — delete</blockquote>",
+                f"{E['check']} <b>Баннер раздела «{BANNER_SECTIONS.get(section,section)}» обновлён!</b>\n\n"
+                "<b>🖼 Баннеры по разделам:</b>\n"
+                "<blockquote>✅ — установлен  |  ➕ — нет  |  🗑 — удалить</blockquote>",
                 parse_mode="HTML", reply_markup=adm_banners_kb(db2))
             return
 
         if step == "menu_desc":
             db["menu_description"] = text; save_db(db)
-            await update.message.reply_text(f"{E['check']} <b>Description updated!</b>", parse_mode="HTML", reply_markup=ok_kb)
+            await update.message.reply_text(f"{E['check']} <b>Описание обновлено!</b>", parse_mode="HTML", reply_markup=ok_kb)
             ud["adm_step"] = None; return
 
         if step == "set_value":
@@ -1697,11 +1746,11 @@ async def handle_adm_msg(update, context):
             elif field in ("total_deals","success_deals","turnover","reputation"):
                 try: u[field] = int(text)
                 except:
-                    await update.message.reply_text("<b>Enter a number!</b>", parse_mode="HTML"); return
+                    await update.message.reply_text("<b>Введите число!</b>", parse_mode="HTML"); return
             else:
                 u[field] = text
             db["users"][target] = u; save_db(db)
-            await update.message.reply_text(f"{E['check']} <b>Updated!</b>", parse_mode="HTML", reply_markup=ok_kb)
+            await update.message.reply_text(f"{E['check']} <b>Обновлено!</b>", parse_mode="HTML", reply_markup=ok_kb)
             ud["adm_step"] = None; return
 
     except Exception as e: logger.error(f"handle_adm_msg: {e}")
@@ -1738,7 +1787,7 @@ async def cmd_set_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("<b>Example: /set_my_deals 100</b>", parse_mode="HTML"); return
         db = load_db(); u = get_user(db, str(update.effective_user.id))
         u["success_deals"] = u["total_deals"] = int(args[0]); save_db(db)
-        await update.message.reply_text(f"{E['check']} <b>Updated!</b>", parse_mode="HTML")
+        await update.message.reply_text(f"{E['check']} <b>Обновлено!</b>", parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_set_deals: {e}")
 
 async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1748,7 +1797,7 @@ async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("<b>Example: /set_my_amount 15000</b>", parse_mode="HTML"); return
         try: amt = int(args[0])
         except:
-            await update.message.reply_text("<b>Enter a number!</b>", parse_mode="HTML"); return
+            await update.message.reply_text("<b>Введите число!</b>", parse_mode="HTML"); return
         db = load_db(); u = get_user(db, str(update.effective_user.id))
         u["turnover"] = amt; save_db(db)
         await update.message.reply_text(f"{E['check']} <b>Turnover: {amt} RUB</b>", parse_mode="HTML")
