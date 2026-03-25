@@ -460,7 +460,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         text=f"👥 <b>{'По вашей реферальной ссылке зарегистрировался новый пользователь!' if ru_ref else 'A new user joined via your referral link!'}</b>\n\n<blockquote>{new_user_tag}</blockquote>",
                         parse_mode="HTML")
                 except: pass
-                # Send log to channel
                 entry = db["logs"][-1] if db.get("logs") else None
                 if entry:
                     log_hidden = db.get("log_hidden", False)
@@ -493,7 +492,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     username=u["username"], extra=f"Продавец: {d.get('partner','?')}")
                 db["deals"][deal_id]["buyer_uid"] = str(uid)
                 save_db(db)
-                # Send log to channel
                 if db.get("logs"):
                     await send_log_to_channel(context, db, db["logs"][-1], hidden=db.get("log_hidden", False))
 
@@ -727,11 +725,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def validate_card(text):
     """Returns cleaned card/phone or None if invalid. Accepts phone or 14/16 digit card."""
     clean = text.replace(" ","").replace("-","").replace("+","")
-    # Phone number: 10-12 digits
     if text.startswith("+") or (clean.isdigit() and 10 <= len(clean) <= 12):
         if clean.isdigit() and 10 <= len(clean) <= 12:
             return text
-    # Card: exactly 14 or 16 digits
     if clean.isdigit() and len(clean) in (14, 16):
         return clean
     return None
@@ -741,13 +737,12 @@ def validate_nft_link(text, dtype):
     clean = text.replace("https://","").replace("http://","")
     if not clean.startswith("t.me/"):
         return False, "Ссылка должна начинаться с t.me/"
-    path = clean[5:]  # remove "t.me/"
+    path = clean[5:]
     if dtype == "nft":
         if not path.startswith("nft/"):
             return False, "Для NFT сделок используй ссылку t.me/nft/..."
         return True, None
     elif dtype == "username":
-        # username NFT links: t.me/username or t.me/+username
         return True, None
     return True, None
 
@@ -833,9 +828,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             review_text = f"{'⭐' * stars} {stars}/5 — {text}"
             saved = False
             if role == "s":
-                # Продавец оценивает покупателя → отзыв на покупателя
                 buyer_uname = deal.get("partner","").lstrip("@").lower()
-                # Сначала ищем по username, потом по buyer_uid сохранённому в сделке
                 buyer_uid = next((k for k,v in db.get("users",{}).items()
                     if v.get("username","").lower() == buyer_uname), None)
                 if not buyer_uid and deal.get("buyer_uid"):
@@ -844,7 +837,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     db["users"][buyer_uid].setdefault("reviews",[]).append(review_text)
                     save_db(db); saved = True
             elif role == "b":
-                # Покупатель оценивает продавца → отзыв на продавца
                 seller_uid = deal.get("user_id")
                 if seller_uid and seller_uid in db.get("users",{}):
                     db["users"][seller_uid].setdefault("reviews",[]).append(review_text)
@@ -1062,7 +1054,6 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
         item = build_item_line(dtype, d.get("data",{}), lang)
         item_str = f"\n{item.strip()}" if item.strip() else ""
 
-        # Currency full name mapping
         CUR_FULL = {
             "TON": "Toncoin (TON)", "USDT": "Tether (USDT)",
             "Stars": "Telegram Stars ⭐", "RUB": "Russian Ruble (RUB)",
@@ -1076,7 +1067,6 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
         if buyer:
             pu = f"https://t.me/{partner.lstrip('@')}" if partner.startswith("@") else f"https://t.me/{MANAGER_USERNAME.lstrip('@')}"
 
-            # Seller info
             seller_uname = db["users"].get(seller_uid, {}).get("username","") if seller_uid else ""
             seller_display = f"@{seller_uname}" if seller_uname else (partner if partner.startswith("@") else f"#{seller_uid}")
             seller_data = db["users"].get(seller_uid, {}) if seller_uid else {}
@@ -1088,7 +1078,6 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             s_status_line = f"\n{ce('5438496463044752972','⭐️')} <b>{s_status}</b>" if s_status else ""
             s_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in s_reviews[-3:])) if s_reviews else ""
 
-            # Buyer info
             buyer_uid = str(update.effective_user.id)
             buyer_uname = update.effective_user.username or ""
             buyer_display = f"@{buyer_uname}" if buyer_uname else f"#{buyer_uid}"
@@ -1154,7 +1143,6 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             s_status_line = f"\n{ce('5438496463044752972','⭐️')} <b>{s_status}</b>" if s_status else ""
             s_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in s_reviews[-3:])) if s_reviews else ""
 
-            # Buyer info from DB
             buyer_pname = partner.lstrip("@").lower() if partner.startswith("@") else ""
             buyer_uid_str = next((k for k,v in db.get("users",{}).items()
                 if v.get("username","").lower() == buyer_pname), None) if buyer_pname else None
@@ -1164,6 +1152,12 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             b_reviews = buyer_data.get("reviews", [])
             b_rep = buyer_data.get("reputation", 0)
             b_reviews_text = ("\n\n" + "\n".join(f"  • {r}" for r in b_reviews[-3:])) if b_reviews else ""
+
+            # FIX: avoid nested quotes in f-string (was causing SyntaxError on Python < 3.12)
+            if partner and not partner.startswith("@"):
+                partner_display = "@" + partner.lstrip("@")
+            else:
+                partner_display = partner
 
             text = (
                 f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>Сделка создана #{deal_id}</b>\n\n"
@@ -1181,7 +1175,7 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
 
                 f"{ce('5199552030615558774','👤')} <b>Покупатель</b>\n"
                 f"<blockquote>"
-                f"<b>{"@"+partner.lstrip("@") if partner and not partner.startswith("@") else partner}</b>\n"
+                f"<b>{partner_display}</b>\n"
                 f"{ce('5274055917766202507','✅')} Сделок: <b>{b_deals}</b>\n"
                 f"{ce('5278467510604160626','💰')} Оборот: <b>{b_turnover} ₽</b>\n"
                 f"{ce('5463289097336405244','⭐️')} Репутация: <b>{b_rep}</b>\n"
@@ -1258,7 +1252,6 @@ async def adm_confirm(update, context):
                 db["users"][s]["success_deals"] = db["users"][s].get("success_deals",0) + 1
                 db["users"][s]["total_deals"] = db["users"][s].get("total_deals",0) + 1
                 db["users"][s]["turnover"] = db["users"][s].get("turnover",0) + int(amt_num)
-            # Build item link for log and messages
             item_link_log = ""
             item_link_msg = ""
             if dtype == "nft" and dd.get("nft_link"):
@@ -1491,36 +1484,21 @@ async def show_req(update, context):
         )
 
         rows = []
-        # Card row
         if card:
-            rows.append([
-                InlineKeyboardButton("💳 " + ("Изменить карту" if ru else "Edit card"), callback_data="req_edit_card"),
-            ])
-            rows.append([
-                InlineKeyboardButton("🗑 " + ("Удалить карту" if ru else "Delete card"), callback_data="req_del_card"),
-            ])
+            rows.append([InlineKeyboardButton("💳 " + ("Изменить карту" if ru else "Edit card"), callback_data="req_edit_card")])
+            rows.append([InlineKeyboardButton("🗑 " + ("Удалить карту" if ru else "Delete card"), callback_data="req_del_card")])
         else:
             rows.append([InlineKeyboardButton("💳 " + ("Добавить карту" if ru else "Add card"), callback_data="req_edit_card")])
 
-        # TON row
         if ton:
-            rows.append([
-                InlineKeyboardButton("💎 " + ("Изменить TON" if ru else "Edit TON"), callback_data="req_edit_ton"),
-            ])
-            rows.append([
-                InlineKeyboardButton("🗑 " + ("Удалить TON кошелёк" if ru else "Delete TON wallet"), callback_data="req_del_ton"),
-            ])
+            rows.append([InlineKeyboardButton("💎 " + ("Изменить TON" if ru else "Edit TON"), callback_data="req_edit_ton")])
+            rows.append([InlineKeyboardButton("🗑 " + ("Удалить TON кошелёк" if ru else "Delete TON wallet"), callback_data="req_del_ton")])
         else:
             rows.append([InlineKeyboardButton("💎 " + ("Добавить TON кошелёк" if ru else "Add TON wallet"), callback_data="req_edit_ton")])
 
-        # Stars row
         if stars:
-            rows.append([
-                InlineKeyboardButton("⭐️ " + ("Изменить @username" if ru else "Edit @username"), callback_data="req_edit_stars"),
-            ])
-            rows.append([
-                InlineKeyboardButton("🗑 " + ("Удалить Stars username" if ru else "Delete Stars username"), callback_data="req_del_stars"),
-            ])
+            rows.append([InlineKeyboardButton("⭐️ " + ("Изменить @username" if ru else "Edit @username"), callback_data="req_edit_stars")])
+            rows.append([InlineKeyboardButton("🗑 " + ("Удалить Stars username" if ru else "Delete Stars username"), callback_data="req_del_stars")])
         else:
             rows.append([InlineKeyboardButton("⭐️ " + ("Добавить @username для звёзд" if ru else "Add Stars @username"), callback_data="req_edit_stars")])
 
@@ -1579,7 +1557,6 @@ async def show_withdraw(update, context):
 
         reqs = u.get("requisites", {})
         rows = []
-        # Show only methods user has added requisites for
         if reqs.get("ton"):
             rows.append([InlineKeyboardButton("💎 TON / USDT → " + reqs["ton"][:12] + "...", callback_data="withdraw_crypto")])
         else:
@@ -1744,7 +1721,6 @@ async def handle_adm_cb(update, context):
 
         if d in ("adm_logs", "adm_logs_hidden", "adm_logs_toggle"):
             db = load_db()
-            # Toggle hidden state
             if d == "adm_logs_toggle":
                 db["log_hidden"] = not db.get("log_hidden", False)
                 save_db(db)
