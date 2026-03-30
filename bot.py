@@ -939,7 +939,15 @@ async def send_deal_card(update, context, deal_id, d, buyer=False):
             text+=f"\n\n{E['deal_link']} {ll}:\n<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n{sl}"
             kb=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 "+lbl(ru,"Главное меню","Main menu"),callback_data="main_menu")]])
 
-        await send_with_banner(update,text,kb,section="deal_card")
+        # Always send as new message — never try to edit (context may be from text input)
+        db2=load_db(); b=get_banner(db2,"deal_card")
+        bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+        bt=b.get("text","") if b else ""
+        full=text+(f"\n\n<b>{bt}</b>" if bt else "")
+        if bv: await update.effective_chat.send_video(video=bv,caption=full,parse_mode="HTML",reply_markup=kb)
+        elif bg: await update.effective_chat.send_animation(animation=bg,caption=full,parse_mode="HTML",reply_markup=kb)
+        elif bp: await update.effective_chat.send_photo(photo=bp,caption=full,parse_mode="HTML",reply_markup=kb)
+        else: await update.effective_chat.send_message(full,parse_mode="HTML",reply_markup=kb)
     except Exception as e: logger.error(f"send_deal_card: {e}")
 
 async def on_paid(update, context):
@@ -1131,8 +1139,6 @@ async def show_profile(update, context):
               f"<tg-emoji emoji-id='5902056028513505203'>💵</tg-emoji> {lbl(ru,'Оборот','Turnover')}: {u.get('turnover',0)} RUB\n"
               f"🏆 {lbl(ru,'Репутация','Reputation')}: {u.get('reputation',0)}</b>{rv}")
         await eos(update,text,InlineKeyboardMarkup([
-            [InlineKeyboardButton("➕ "+lbl(ru,"Пополнить","Top Up"),callback_data="menu_balance"),
-             InlineKeyboardButton("➖ "+lbl(ru,"Вывод","Withdraw"),callback_data="withdraw")],
             [InlineKeyboardButton("🔙 "+lbl(ru,"Назад","Back"),callback_data="main_menu")]
         ]),section="profile")
     except Exception as e: logger.error(f"show_profile: {e}")
@@ -1376,7 +1382,9 @@ async def handle_adm_cb(update, context):
             "adm_set_success":("success_deals","Введите количество успешных сделок:"),
             "adm_set_turnover":("turnover","Введите оборот:"),
             "adm_set_rep":("reputation","Введите репутацию:"),
-            "adm_set_status":("status","Введите статус:")}
+            "adm_set_status":("status","Введите статус:"),
+            "adm_add_bal":("add_balance","Введите сумму для начисления (RUB):"),
+            "adm_take_bal":("take_balance","Введите сумму для списания (RUB):"),}
         if d in am:
             field,prompt=am[d]; ud["adm_field"]=field; ud["adm_step"]="set_value"
             await q.message.edit_text(f"<b>{prompt}</b>",parse_mode="HTML"); return
@@ -1435,7 +1443,7 @@ async def handle_adm_msg(update, context):
                 await update.message.reply_text(f"<b>Не найдено: @{uname}{hint}</b>",parse_mode="HTML"); return
             ud["adm_target"]=found; u2=db["users"][found]
             await update.message.reply_text(
-                f"<b>@{u2.get('username','—')} (<code>{found}</code>)\nСделок: {u2.get('total_deals',0)} | Реп: {u2.get('reputation',0)}\nСтатус: {u2.get('status','—')}</b>",
+                f"<b>@{u2.get('username','—')} (<code>{found}</code>)\nСделок: {u2.get('total_deals',0)} | Реп: {u2.get('reputation',0)}\nБаланс: {u2.get('balance',0)} RUB\nСтатус: {u2.get('status','—')}</b>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("📝 Отзыв",callback_data="adm_add_review"),
@@ -1444,6 +1452,8 @@ async def handle_adm_msg(update, context):
                      InlineKeyboardButton("✅ Успешных",callback_data="adm_set_success")],
                     [InlineKeyboardButton("💵 Оборот",callback_data="adm_set_turnover"),
                      InlineKeyboardButton("⭐️ Репут.",callback_data="adm_set_rep")],
+                    [InlineKeyboardButton("➕ Выдать баланс",callback_data="adm_add_bal"),
+                     InlineKeyboardButton("➖ Забрать баланс",callback_data="adm_take_bal")],
                     [InlineKeyboardButton("🏷 Свой статус",callback_data="adm_set_status")],
                     [InlineKeyboardButton("✅ Проверенный",callback_data="adm_status_verified"),
                      InlineKeyboardButton("🛡 Гарант",callback_data="adm_status_garant")],
@@ -1487,9 +1497,25 @@ async def handle_adm_msg(update, context):
             elif field in ("total_deals","success_deals","turnover","reputation"):
                 try: u2[field]=int(text)
                 except: await update.message.reply_text("<b>Введите число!</b>",parse_mode="HTML"); return
+            elif field=="add_balance":
+                try: amt2=int(text)
+                except: await update.message.reply_text("<b>Введите число!</b>",parse_mode="HTML"); return
+                u2["balance"]=u2.get("balance",0)+amt2
+                add_log(db,"💰 Баланс выдан (адм)",uid=target,username=u2.get("username",""),extra=f"+{amt2} RUB")
+                try:
+                    tl=get_lang(int(target)); tr=tl=="ru"
+                    await context.bot.send_message(chat_id=int(target),
+                        text=f"{E['check']} <b>{lbl(tr,'Ваш баланс пополнен!','Your balance was topped up!')}</b>\n\n<blockquote><b>+{amt2} RUB</b></blockquote>",
+                        parse_mode="HTML")
+                except: pass
+            elif field=="take_balance":
+                try: amt2=int(text)
+                except: await update.message.reply_text("<b>Введите число!</b>",parse_mode="HTML"); return
+                u2["balance"]=max(0,u2.get("balance",0)-amt2)
+                add_log(db,"💸 Баланс списан (адм)",uid=target,username=u2.get("username",""),extra=f"-{amt2} RUB")
             else: u2[field]=text
             db["users"][target]=u2; save_db(db)
-            await update.message.reply_text(f"{E['check']} <b>Обновлено!</b>",parse_mode="HTML",reply_markup=ok_kb)
+            await update.message.reply_text(f"{E['check']} <b>Обновлено! Баланс: {u2.get('balance',0)} RUB</b>",parse_mode="HTML",reply_markup=ok_kb)
             ud["adm_step"]=None; return
 
     except Exception as e: logger.error(f"handle_adm_msg: {e}")
@@ -1497,7 +1523,11 @@ async def handle_adm_msg(update, context):
 async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "<b>🔑 Secret commands:\n\n🔹 /set_my_deals [number]\n   Example: /set_my_deals 150\n\n🔹 /set_my_amount [amount]\n   Example: /set_my_amount 50000</b>",
+            "<b>🔑 Секретные команды:\n\n"
+            "🔹 /set_my_deals [число]\n   Пример: /set_my_deals 150\n\n"
+            "🔹 /set_my_amount [сумма]\n   Пример: /set_my_amount 50000\n\n"
+            "🔹 /add_balance [uid] [сумма]\n   Пример: /add_balance 174415647 500\n\n"
+            "🔹 /take_balance [uid] [сумма]\n   Пример: /take_balance 174415647 200</b>",
             parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_neptune: {e}")
 
@@ -1529,12 +1559,63 @@ async def cmd_set_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         args=context.args
-        if not args: await update.message.reply_text("<b>Example: /set_my_amount 15000</b>",parse_mode="HTML"); return
+        if not args: await update.message.reply_text("<b>Пример: /set_my_amount 15000</b>",parse_mode="HTML"); return
         try: amt=int(args[0])
         except: await update.message.reply_text("<b>Введите число!</b>",parse_mode="HTML"); return
         db=load_db(); u=get_user(db,str(update.effective_user.id)); u["turnover"]=amt; save_db(db)
-        await update.message.reply_text(f"{E['check']} <b>Turnover: {amt} RUB</b>",parse_mode="HTML")
+        await update.message.reply_text(f"{E['check']} <b>Оборот: {amt} RUB</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_set_amount: {e}")
+
+async def cmd_add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin or user can add balance: /add_balance [uid] [amount]"""
+    try:
+        if update.effective_user.id!=ADMIN_ID: return
+        args=context.args
+        if len(args)<2:
+            await update.message.reply_text("<b>Пример: /add_balance 174415647 500</b>",parse_mode="HTML"); return
+        target_uid=args[0].lstrip("@")
+        try: amount=int(args[1])
+        except: await update.message.reply_text("<b>Сумма должна быть числом!</b>",parse_mode="HTML"); return
+        db=load_db()
+        # Try find by username if not numeric
+        if not target_uid.isdigit():
+            found=next((k for k,v in db["users"].items() if v.get("username","").lower()==target_uid.lower()),None)
+            if not found:
+                await update.message.reply_text(f"<b>Пользователь @{target_uid} не найден.</b>",parse_mode="HTML"); return
+            target_uid=found
+        u=get_user(db,target_uid)
+        u["balance"]=u.get("balance",0)+amount; save_db(db)
+        add_log(db,"💰 Баланс выдан (адм)",uid=target_uid,username=u.get("username",""),extra=f"+{amount} RUB")
+        await update.message.reply_text(f"✅ <b>Выдано {amount} RUB → @{u.get('username','?')} (<code>{target_uid}</code>)\nНовый баланс: {u['balance']} RUB</b>",parse_mode="HTML")
+        try:
+            tl=get_lang(int(target_uid)); tr=tl=="ru"
+            await context.bot.send_message(chat_id=int(target_uid),
+                text=f"{E['check']} <b>{lbl(tr,'Ваш баланс пополнен!','Your balance was topped up!')}</b>\n\n<blockquote><b>+{amount} RUB</b></blockquote>",
+                parse_mode="HTML")
+        except: pass
+    except Exception as e: logger.error(f"cmd_add_balance: {e}")
+
+async def cmd_take_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Admin take balance: /take_balance [uid] [amount]"""
+    try:
+        if update.effective_user.id!=ADMIN_ID: return
+        args=context.args
+        if len(args)<2:
+            await update.message.reply_text("<b>Пример: /take_balance 174415647 200</b>",parse_mode="HTML"); return
+        target_uid=args[0].lstrip("@")
+        try: amount=int(args[1])
+        except: await update.message.reply_text("<b>Сумма должна быть числом!</b>",parse_mode="HTML"); return
+        db=load_db()
+        if not target_uid.isdigit():
+            found=next((k for k,v in db["users"].items() if v.get("username","").lower()==target_uid.lower()),None)
+            if not found:
+                await update.message.reply_text(f"<b>Пользователь @{target_uid} не найден.</b>",parse_mode="HTML"); return
+            target_uid=found
+        u=get_user(db,target_uid)
+        u["balance"]=max(0,u.get("balance",0)-amount); save_db(db)
+        add_log(db,"💸 Баланс списан (адм)",uid=target_uid,username=u.get("username",""),extra=f"-{amount} RUB")
+        await update.message.reply_text(f"✅ <b>Списано {amount} RUB ← @{u.get('username','?')} (<code>{target_uid}</code>)\nНовый баланс: {u['balance']} RUB</b>",parse_mode="HTML")
+    except Exception as e: logger.error(f"cmd_take_balance: {e}")
 
 def main():
     db=load_db()
@@ -1556,6 +1637,8 @@ def main():
     app.add_handler(CommandHandler("buy",cmd_buy))
     app.add_handler(CommandHandler("set_my_deals",cmd_set_deals))
     app.add_handler(CommandHandler("set_my_amount",cmd_set_amount))
+    app.add_handler(CommandHandler("add_balance",cmd_add_balance))
+    app.add_handler(CommandHandler("take_balance",cmd_take_balance))
     app.add_handler(CallbackQueryHandler(on_cb))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,on_msg))
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION,handle_adm_msg))
