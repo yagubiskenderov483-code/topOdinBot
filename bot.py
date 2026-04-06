@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 from telethon import TelegramClient
 from telethon.tl.functions.payments import GetResaleStarGiftsRequest, GetStarGiftsRequest
 from telethon.errors import FloodWaitError, SessionPasswordNeededError
@@ -29,6 +30,7 @@ tg_client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 stats = {"checks": 0, "found": 0}
 is_searching = False
 NFT_COLLECTIONS = {}
+_debug_logged = False
 
 PRICE_CATEGORIES = {
     "cheap": {"label": "💚 Дешёвые",  "min": 0,     "max": 2000,  "desc": "до 2000 ⭐️"},
@@ -49,6 +51,13 @@ GIRL_NAMES = {
     "angela", "ангелина", "angelina", "карина", "karina",
     "оксана", "oksana", "нина", "nina", "лариса", "larisa", "регина", "regina"
 }
+
+BUY_MESSAGES = [
+    "Привет! Я хочу купить твой NFT\n{nft_link}\nГотов заплатить хорошую цену, напиши мне 🤝",
+    "Привет! Заинтересован в покупке твоего NFT\n{nft_link}\nОбсудим цену? 💎",
+    "Хей! Увидел твой NFT\n{nft_link}\nХочу купить, готов к хорошему офферу 🚀",
+    "Привет! Хочу приобрести твой NFT\n{nft_link}\nНапиши, договоримся 💰",
+]
 
 
 def load_users() -> set:
@@ -90,23 +99,12 @@ def is_girl(user) -> bool:
 
 
 def get_price(gift) -> int | None:
-    """Достаём цену перепродажи из объекта NFT."""
-    # Пробуем стандартные поля Telethon для resale
-    for attr in ['resell_stars', 'resale_stars', 'resale_amount', 'resell_amount']:
+    # Пробуем все известные поля
+    for attr in ['resell_stars', 'resale_stars', 'resale_amount', 'resell_amount',
+                 'convert_stars', 'upgrade_stars', 'first_sale_star_count']:
         v = getattr(gift, attr, None)
-        if v is not None and isinstance(v, int) and v > 0:
+        if v is not None and isinstance(v, int) and 0 < v < 50000000:
             return v
-
-    # Пробуем через to_dict() — иногда Telethon прячет поля там
-    try:
-        d = gift.to_dict()
-        for key in ['resell_stars', 'resale_stars', 'resale_amount', 'resell_amount', 'stars', 'price']:
-            v = d.get(key)
-            if v is not None and isinstance(v, int) and v > 0:
-                return v
-    except Exception:
-        pass
-
     return None
 
 
@@ -191,6 +189,13 @@ def user_nft_kb(username: str, slug: str):
     if username:
         buttons.append([InlineKeyboardButton(text=f"👤 @{username}", url=f"https://t.me/{username}")])
     buttons.append([InlineKeyboardButton(text="🎁 Открыть NFT", url=f"https://t.me/nft/{slug}")])
+    if username:
+        msg = random.choice(BUY_MESSAGES).format(nft_link=f"https://t.me/nft/{slug}")
+        encoded = msg.replace(" ", "%20").replace("\n", "%0A")
+        buttons.append([InlineKeyboardButton(
+            text="✉️ Написать",
+            url=f"https://t.me/{username}?text={encoded}"
+        )])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -209,7 +214,7 @@ async def load_collections():
 
 
 async def fetch_one_collection(gift_id: int, offset: str = "", limit: int = 100):
-    """Получаем NFT одной коллекции с маркета."""
+    global _debug_logged
     try:
         result = await tg_client(GetResaleStarGiftsRequest(
             gift_id=gift_id,
@@ -217,14 +222,20 @@ async def fetch_one_collection(gift_id: int, offset: str = "", limit: int = 100)
             limit=limit,
         ))
 
-        # Логируем структуру один раз
-        if result.gifts and not getattr(fetch_one_collection, '_logged', False):
-            fetch_one_collection._logged = True
+        # Один раз логируем полную структуру объекта
+        if result.gifts and not _debug_logged:
+            _debug_logged = True
+            g = result.gifts[0]
+            logger.info(f"=== TYPE: {type(g).__name__} ===")
+            logger.info(f"=== __dict__: {g.__dict__} ===")
+            # Пробуем to_dict
             try:
-                d = result.gifts[0].to_dict()
-                logger.info(f"=== NFT DICT: {d} ===")
+                logger.info(f"=== to_dict: {g.to_dict()} ===")
             except Exception as e:
-                logger.info(f"=== NFT to_dict failed: {e}, __dict__: {result.gifts[0].__dict__} ===")
+                logger.info(f"=== to_dict failed: {e} ===")
+            # Все атрибуты
+            attrs = {a: getattr(g, a, 'N/A') for a in dir(g) if not a.startswith('_')}
+            logger.info(f"=== ALL ATTRS: {attrs} ===")
 
         items = []
         users_map = {u.id: u for u in (result.users or [])}
@@ -280,8 +291,6 @@ async def search_market(
     if not gift_ids_list:
         if not NFT_COLLECTIONS:
             await load_collections()
-        # Перемешиваем коллекции чтобы каждый раз разные NFT
-        import random
         gift_ids_list = list(NFT_COLLECTIONS.values())
         random.shuffle(gift_ids_list)
 
@@ -316,17 +325,14 @@ async def search_market(
 
                     price = item.get("price")
 
-                    # Фильтр по цене
                     if price_min is not None or price_max is not None:
                         if price is None:
-                            # Цена не определена — пропускаем если фильтр задан
                             continue
                         if price_min is not None and price < price_min:
                             continue
                         if price_max is not None and price > price_max:
                             continue
 
-                    # Фильтр по девушкам
                     if girls_only:
                         owner = item.get("owner")
                         if not owner or not is_girl(owner):
@@ -399,7 +405,6 @@ async def run_nft_search(callback: CallbackQuery, cat_key: str = None, gift_ids_
     if not gift_ids_list:
         if not NFT_COLLECTIONS:
             await load_collections()
-        import random
         gift_ids_list = list(NFT_COLLECTIONS.values())
         random.shuffle(gift_ids_list)
 
@@ -410,11 +415,8 @@ async def run_nft_search(callback: CallbackQuery, cat_key: str = None, gift_ids_
     )
 
     found = await search_market(
-        status,
-        gift_ids_list=gift_ids_list,
-        max_results=100,
-        price_min=price_min,
-        price_max=price_max,
+        status, gift_ids_list=gift_ids_list,
+        max_results=100, price_min=price_min, price_max=price_max,
     )
 
     result_text = (
@@ -450,7 +452,6 @@ async def run_girl_search(callback: CallbackQuery, cat_key: str = None, gift_ids
     if not gift_ids_list:
         if not NFT_COLLECTIONS:
             await load_collections()
-        import random
         gift_ids_list = list(NFT_COLLECTIONS.values())
         random.shuffle(gift_ids_list)
 
@@ -461,12 +462,9 @@ async def run_girl_search(callback: CallbackQuery, cat_key: str = None, gift_ids
     )
 
     found = await search_market(
-        status,
-        gift_ids_list=gift_ids_list,
-        max_results=100,
-        girls_only=True,
-        price_min=price_min,
-        price_max=price_max,
+        status, gift_ids_list=gift_ids_list,
+        max_results=100, girls_only=True,
+        price_min=price_min, price_max=price_max,
     )
 
     result_text = (
@@ -492,7 +490,7 @@ async def cmd_start(message: Message, state: FSMContext):
         pass
     if not authorized:
         if message.from_user.id == ADMIN_ID:
-            await message.answer("⚙️ <b>Первый запуск — нужна авторизация</b>\n\n📱 Введи номер телефона: <code>+79001234567</code>", parse_mode="HTML")
+            await message.answer("⚙️ <b>Первый запуск — нужна авторизация</b>\n\n📱 Введи номер: <code>+79001234567</code>", parse_mode="HTML")
             await state.set_state(Auth.phone)
         else:
             await message.answer("⏳ Бот настраивается. Попробуй позже.")
@@ -785,4 +783,4 @@ async def main():
         await bot.session.close()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main()) 
