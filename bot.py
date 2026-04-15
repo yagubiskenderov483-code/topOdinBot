@@ -20,7 +20,6 @@ DB_FILE      = "db.json"
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
 
-# Emoji constants
 E_USER    = ce("5199552030615558774","👤")
 E_STAR    = ce("5267500801240092311","⭐")
 E_DEAL    = ce("5445221832074483553","💼")
@@ -32,7 +31,6 @@ E_STICK   = ce("5294167145079395967","🛍")
 E_PREM    = ce("5377620962390857342","🪙")
 E_PENCIL  = ce("5197371802136892976","⛏")
 E_BELL    = ce("5312361253610475399","🛒")
-E_SHIELD  = ce("5197434882321567830","⭐")
 E_WARN    = ce("5447644880824181073","⚠️")
 E_SEC     = ce("5197288647275071607","🛡")
 E_LINK    = ce("5902449142575141204","🔗")
@@ -49,8 +47,6 @@ E_JOIN    = ce("5902335789798265487","🤝")
 E_WELCOME = ce("5251340119205501791","👋")
 E_BAL     = ce("5424976816530014958","💰")
 E_GEM     = ce("5258203794772085854","⚡️")
-E_CLOCK   = ce("5429651785352501917","↗️")
-E_PIN     = ce("5893297890117292323","📞")
 E_NUM1    = ce("5794164805065514131","1️⃣")
 E_NUM2    = ce("5794085322400733645","2️⃣")
 E_NUM3    = ce("5794280000383358988","3️⃣")
@@ -63,35 +59,59 @@ E_DEALS_ICON  = ce("5188344996356448758","🏆")
 E_TURN_ICON   = ce("5424976816530014958","💰")
 E_REV_ICON    = ce("5028746137645876535","📊")
 
-# FIX 3: исправлены названия валют (правильная грамматика)
 TNAMES_RU = {
-    "nft": f"{E_NFT} NFT подарок", "username": f"{E_USER} NFT Username",
-    "stars": f"{E_STAR2} Звёзды Telegram", "crypto": f"{E_TON} Крипта (TON/USDT)",
-    "premium": f"{E_PREM} Telegram Premium", "premium_stickers": f"{E_STICK} Премиум стикеры",
+    "nft": f"{E_NFT} NFT подарок",
+    "username": f"{E_USER} NFT Username",
+    "stars": f"{E_STAR2} Звёзды Telegram",
+    "crypto": f"{E_TON} Крипта (TON/USDT)",
+    "premium": f"{E_PREM} Telegram Premium",
+    "premium_stickers": f"{E_STICK} Премиум стикеры",
 }
 TNAMES_EN = {
-    "nft": f"{E_NFT} NFT Gift", "username": f"{E_USER} NFT Username",
-    "stars": f"{E_STAR2} Telegram Stars", "crypto": f"{E_TON} Crypto (TON/USDT)",
-    "premium": f"{E_PREM} Telegram Premium", "premium_stickers": f"{E_STICK} Premium Stickers",
+    "nft": f"{E_NFT} NFT Gift",
+    "username": f"{E_USER} NFT Username",
+    "stars": f"{E_STAR2} Telegram Stars",
+    "crypto": f"{E_TON} Crypto (TON/USDT)",
+    "premium": f"{E_PREM} Telegram Premium",
+    "premium_stickers": f"{E_STICK} Premium Stickers",
 }
 
 def tname(t, lang="ru"): return TNAMES_EN.get(t,t) if lang=="en" else TNAMES_RU.get(t,t)
 
-# FIX 3: исправлены названия валют — правильная грамматика
+# Правильные названия валют (грамматически верные, на родных языках)
 CUR_PLAIN = {
-    "TON":"💎 TON","USDT":"💵 USDT","Stars":"⭐️ Stars",
-    "RUB":"Рубли","KZT":"Тенге","AZN":"Манат","KGS":"Сом",
-    "UZS":"Сум","TJS":"Сомони","BYN":"Рубли (BYN)","UAH":"Гривна","GEL":"Лари",
+    "TON":   "💎 TON",
+    "USDT":  "💵 USDT",
+    "Stars": "⭐️ Stars",
+    "RUB":   "Рубли",
+    "KZT":   "Теңге",       # казахский
+    "AZN":   "Manat",       # азербайджанский
+    "KGS":   "Сом",
+    "UZS":   "So'm",        # узбекский
+    "TJS":   "Сомонӣ",
+    "BYN":   "Рубли (BYN)",
+    "UAH":   "Гривня",      # украинский
+    "GEL":   "ლარი",        # грузинский
 }
-# FIX 3: кнопки выбора валюты — тоже исправлены
 CUR_BTN = {
-    "TON":"💎 TON","USDT":"💵 USDT","Stars":"⭐️ Stars / Звёзды",
-    "RUB":"🇷🇺 Рубли","KZT":"🇰🇿 Тенге","AZN":"🇦🇿 Манат","KGS":"🇰🇬 Сом",
-    "UZS":"🇺🇿 Сум","TJS":"🇹🇯 Сомони","BYN":"🇧🇾 Рубли (BYN)","UAH":"🇺🇦 Гривна","GEL":"🇬🇪 Лари",
+    "TON":   "💎 TON",
+    "USDT":  "💵 USDT",
+    "Stars": "⭐️ Stars / Звёзды",
+    "RUB":   "🇷🇺 Рубли",
+    "KZT":   "🇰🇿 Теңге",
+    "AZN":   "🇦🇿 Manat",
+    "KGS":   "🇰🇬 Сом",
+    "UZS":   "🇺🇿 So'm",
+    "TJS":   "🇹🇯 Сомонӣ",
+    "BYN":   "🇧🇾 Рубли (BYN)",
+    "UAH":   "🇺🇦 Гривня",
+    "GEL":   "🇬🇪 ლარი",
 }
-CURMAP = {"cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
-          "cur_kzt":"KZT","cur_azn":"AZN","cur_kgs":"KGS","cur_uzs":"UZS",
-          "cur_tjs":"TJS","cur_byn":"BYN","cur_uah":"UAH","cur_gel":"GEL"}
+CURMAP = {
+    "cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
+    "cur_kzt":"KZT","cur_azn":"AZN","cur_kgs":"KGS","cur_uzs":"UZS",
+    "cur_tjs":"TJS","cur_byn":"BYN","cur_uah":"UAH","cur_gel":"GEL"
+}
 
 def R(ru, a, b): return a if ru else b
 
@@ -211,33 +231,34 @@ def main_kb(lang):
     ru=lang=="ru"
     sup=R(ru,"🆘 Тех. поддержка","🆘 Tech Support")
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💎 "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal"),
-         InlineKeyboardButton("⭐ "+R(ru,"Профиль","Profile"),callback_data="menu_profile")],
-        [InlineKeyboardButton("💸 "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
-         InlineKeyboardButton("🪪 "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
+        [InlineKeyboardButton(f"{E_DEAL} "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal"),
+         InlineKeyboardButton(f"{E_STAR2} "+R(ru,"Профиль","Profile"),callback_data="menu_profile")],
+        [InlineKeyboardButton(f"{E_MONEY} "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
+         InlineKeyboardButton(f"{E_STICK} "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
         [InlineKeyboardButton("🌍 "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
-         InlineKeyboardButton("🏆 "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
-        [InlineKeyboardButton("👥 "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
-         InlineKeyboardButton("📋 "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
+         InlineKeyboardButton(f"{E_TROPHY} "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
+        [InlineKeyboardButton(f"{E_JOIN} "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
+         InlineKeyboardButton(f"{E_REQ} "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
         [InlineKeyboardButton(sup,url="https://t.me/GiftDealsSupport")],
     ])
 
 def role_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🛒 "+R(ru,"Я покупатель","I am the Buyer"),callback_data="role_buyer")],
-        [InlineKeyboardButton("🏷 "+R(ru,"Я продавец","I am the Seller"),callback_data="role_seller")],
+        [InlineKeyboardButton(f"{E_BUYER_ICON} "+R(ru,"Я покупатель","I am the Buyer"),callback_data="role_buyer")],
+        [InlineKeyboardButton(f"{E_SELLER_ICON} "+R(ru,"Я продавец","I am the Seller"),callback_data="role_seller")],
         [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")],
     ])
 
 def types_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎁 NFT",callback_data="dt_nft"),
-         InlineKeyboardButton("🎴 NFT Username",callback_data="dt_usr")],
-        [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data="dt_str"),
-         InlineKeyboardButton("💎 "+R(ru,"Крипта","Crypto"),callback_data="dt_cry")],
-        [InlineKeyboardButton("✈️ Telegram Premium",callback_data="dt_prm")],
+        [InlineKeyboardButton(f"{E_NFT} NFT",callback_data="dt_nft"),
+         InlineKeyboardButton(f"{E_USER} NFT Username",callback_data="dt_usr")],
+        [InlineKeyboardButton(f"{E_STAR2} "+R(ru,"Звёзды","Stars"),callback_data="dt_str"),
+         InlineKeyboardButton(f"{E_TON} "+R(ru,"Крипта","Crypto"),callback_data="dt_cry")],
+        [InlineKeyboardButton(f"{E_PREM} Telegram Premium",callback_data="dt_prm")],
+        [InlineKeyboardButton(f"{E_STICK} "+R(ru,"Премиум стикеры","Premium Stickers"),callback_data="dt_pst")],
         [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")],
     ])
 
@@ -257,32 +278,35 @@ def validate_username(text):
     if not text.startswith("@"): return None,"no_at"
     u=text[1:]
     if len(u)<4: return None,"short"
-    if not u: return None,"short"
-    if not all(c.isascii() and (c.isalpha() and c.isascii() or c.isdigit() or c=="_") for c in u):
+    if not all(c.isascii() and (c.isalpha() or c.isdigit() or c=="_") for c in u):
         return None,"chars"
     if not any(c.isalpha() for c in u):
         return None,"chars"
     return text, None
 
 def validate_card(text):
+    """Проверка: номер телефона (89..., +79...) или карта (14/16 цифр)"""
     c=text.replace(" ","").replace("-","").replace("+","")
-    if text.startswith("+") or (c.isdigit() and 10<=len(c)<=12):
-        if c.isdigit() and 10<=len(c)<=12: return text
+    # телефон: начинается с 7, 8, или +7/+8, 10-12 цифр
+    if c.isdigit() and 10<=len(c)<=12: return text
+    # карта: 14 или 16 цифр
     if c.isdigit() and len(c) in (14,16): return c
     return None
+
+def validate_ton_address(text):
+    """TON адрес: начинается с UQ или EQ, минимум 40 символов"""
+    t=text.strip()
+    return (t.startswith("UQ") or t.startswith("EQ")) and len(t)>=40
 
 def validate_nft_link(text, dtype):
     clean=text.strip()
     for prefix in ("https://","http://"):
-        if clean.startswith(prefix):
-            clean=clean[len(prefix):]
-            break
+        if clean.startswith(prefix): clean=clean[len(prefix):]; break
     if not clean.startswith("t.me/"): return False,"no_tme"
     path=clean[5:]
     if dtype=="nft":
         if not path.startswith("nft/"): return False,"wrong_nft"
-        nft_part=path[4:]
-        if len(nft_part)<2: return False,"wrong_nft"
+        if len(path[4:])<2: return False,"wrong_nft"
     return True,None
 
 # ─── Welcome ──────────────────────────────────────────────────────────────────
@@ -292,12 +316,12 @@ def get_welcome(lang):
         pts=["Автоматические сделки с НФТ и подарками","Полная защита обеих сторон",
              "Средства заморожены до подтверждения","Передача через менеджера: @GiftDealsManager"]
         intro="Gift Deals — самая безопасная площадка для сделок в Telegram"
-        footer="Выберите действие ниже"; stats="1000+ сделок · оборот $6,350"
+        footer="Выберите действие ниже"; stats="6500+ сделок · оборот $48,200"
     else:
         pts=["Automatic NFT & gift deals","Full protection for both parties",
              "Funds frozen until confirmation","Transfer via manager: @GiftDealsManager"]
         intro="Gift Deals — the safest platform for deals in Telegram"
-        footer="Choose an action below"; stats="1000+ deals · $6,350 turnover"
+        footer="Choose an action below"; stats="6500+ deals · $48,200 turnover"
     nums=[E_NUM1,E_NUM2,E_NUM3,E_NUM4]
     lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
     return (f"{E_WELCOME} <b>{intro}</b>\n\n{lines}\n\n"
@@ -305,7 +329,8 @@ def get_welcome(lang):
             f"{E_SPARK} <b>{footer}</b>")
 
 # ─── Deal card builder ────────────────────────────────────────────────────────
-def build_deal_text(deal_id, d, creator_tag, partner_tag, lang):
+def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
+    """joined=True — второй участник уже присоединился, показываем полную карточку с оплатой."""
     try:
         ru=lang=="ru"
         dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
@@ -315,48 +340,44 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang):
         item=""
         if dtype=="nft": item=f"\n{E_LINK} {R(ru,'Ссылка','Link')}: {dd.get('nft_link','—')}"
         elif dtype=="username": item=f"\n{E_LINK} Username: {dd.get('trade_username','—')}"
-        elif dtype=="stars": item=f"\n⭐️ {R(ru,'Звёзд','Stars')}: {dd.get('stars_count','—')}"
+        elif dtype=="stars": item=f"\n{E_STAR2} {R(ru,'Звёзд','Stars')}: {dd.get('stars_count','—')}"
         elif dtype=="premium": item=f"\n{E_PREM} {R(ru,'Срок','Period')}: {dd.get('premium_period','—')}"
         elif dtype=="premium_stickers": item=f"\n{E_STICK} {R(ru,'Паков','Packs')}: {dd.get('sticker_count','—')}"
 
+        # Роли: покупатель создал → продавец должен передать товар менеджеру
+        #        продавец создал → покупатель должен передать оплату менеджеру
         if creator_role=="buyer":
             lbl_creator=R(ru,"Покупатель","Buyer")
             lbl_partner=R(ru,"Продавец","Seller")
             note=R(ru,
-                "⚠️ Продавец передаёт товар покупателю через менеджера "+MANAGER_TAG,
-                "⚠️ Seller delivers item to Buyer via manager "+MANAGER_TAG)
+                f"⚠️ Продавец должен передать товар менеджеру {MANAGER_TAG}",
+                f"⚠️ Seller must transfer the item to manager {MANAGER_TAG}")
         else:
             lbl_creator=R(ru,"Продавец","Seller")
             lbl_partner=R(ru,"Покупатель","Buyer")
             note=R(ru,
-                "⚠️ Покупатель переводит оплату, продавец передаёт товар через менеджера "+MANAGER_TAG,
-                "⚠️ Buyer sends payment, Seller delivers item via manager "+MANAGER_TAG)
+                f"⚠️ Покупатель должен передать оплату менеджеру {MANAGER_TAG}",
+                f"⚠️ Buyer must transfer payment to manager {MANAGER_TAG}")
 
         db=load_db()
         def stats_block(uid_s):
             try:
                 u=db["users"].get(str(uid_s),{}) if uid_s else {}
-                nd=u.get("success_deals",0)
-                nt=u.get("turnover",0)
-                nv=len(u.get("reviews",[]))
+                nd=u.get("success_deals",0); nt=u.get("turnover",0); nv=len(u.get("reviews",[]))
                 st=u.get("status","")
                 sl=f"\n{ce('5438496463044752972','⭐️')} <b>{st}</b>" if st else ""
-                return (
-                    f"{E_DEALS_ICON} {R(ru,'Сделок','Deals')}: <b>{nd}</b>\n"
-                    f"{E_REV_ICON} {R(ru,'Отзывов','Reviews')}: <b>{nv}</b>\n"
-                    f"{E_TURN_ICON} {R(ru,'Оборот','Turnover')}: <b>{nt} ₽</b>{sl}"
-                )
+                return (f"{E_DEALS_ICON} {R(ru,'Сделок','Deals')}: <b>{nd}</b>\n"
+                        f"{E_REV_ICON} {R(ru,'Отзывов','Reviews')}: <b>{nv}</b>\n"
+                        f"{E_TURN_ICON} {R(ru,'Оборот','Turnover')}: <b>{nt} ₽</b>{sl}")
             except: return "—"
 
         creator_uid=d.get("user_id","")
         p_uname=d.get("partner","").lstrip("@").lower()
         partner_uid=next((k for k,v in db.get("users",{}).items() if v.get("username","").lower()==p_uname),None)
-
-        # FIX 3: правильное отображение валюты
-        cur_display=CUR_PLAIN.get(cur, cur)
+        cur_display=CUR_PLAIN.get(cur,cur)
 
         lines=[
-            f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>{R(ru,'Сделка','Deal')}</b>\n",
+            f"{E_CHECK} <b>{R(ru,'Сделка','Deal')}</b>\n",
             f"<b>{R(ru,'Тип','Type')}:</b> {tname(dtype,lang)}{item}",
             f"<b>{R(ru,'Сумма','Amount')}:</b> {amt} {cur_display}\n",
             f"{E_SELLER_ICON} <b>{lbl_creator}:</b> {creator_tag}",
@@ -366,15 +387,25 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang):
             f"{E_SEC} <b>{R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
             f"<blockquote>{R(ru,'Средства заморожены до подтверждения. Сделка защищена Gift Deals.','Funds frozen until confirmation. Deal protected by Gift Deals.')}</blockquote>\n",
             f"{E_WARN} <b>{R(ru,'Важно','Important')}:</b>",
-            f"<blockquote>{note}</blockquote>\n",
-            f"{E_REQ} <b>СБП / Карта {CARD_BANK}:</b>",
-            f"<blockquote>{R(ru,'Телефон','Phone')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>\n",
-            f"{E_TON} <b>TON / USDT:</b>",
-            f"<blockquote><code>{CRYPTO_ADDR}</code>\n{E_CBOT} {CRYPTO_BOT}</blockquote>\n",
-            f"{E_STAR2} <b>{R(ru,'Звёзды / NFT','Stars / NFT')}:</b>",
-            f"<blockquote>{MANAGER_TAG}</blockquote>\n",
-            f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}",
+            f"<blockquote>{note}</blockquote>",
         ]
+
+        # Реквизиты показываем только если второй участник присоединился
+        if joined:
+            lines += [
+                f"\n{E_REQ} <b>{'СБП / Карта' if ru else 'CARD / PHONE'} {CARD_BANK}:</b>",
+                f"<blockquote>{R(ru,'Телефон','Phone')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>\n",
+                f"{E_TON} <b>TON:</b>",
+                f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>\n",
+                f"{E_DIAMOND} <b>USDT / Crypto:</b>",
+                f"<blockquote>{E_CBOT} {CRYPTO_BOT}</blockquote>\n",
+                f"{E_STAR2} <b>{R(ru,'Звёзды / NFT','Stars / NFT')}:</b>",
+                f"<blockquote>{MANAGER_TAG}</blockquote>\n",
+                f"{E_CHECK} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}",
+            ]
+        else:
+            lines.append(f"\n{E_SPARK} <b>{R(ru,'Ожидание второго участника...','Waiting for second participant...')}</b>")
+
         return "\n".join(lines)
     except Exception as e:
         logger.error(f"build_deal_text: {e}")
@@ -406,7 +437,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await context.bot.send_message(chat_id=int(ref_uid),
                         text=f"👥 <b>{R(rr,'Новый реферал!','New referral!')}</b>\n<blockquote>{tag}</blockquote>",parse_mode="HTML")
                 except: pass
-                if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
         save_db(db); context.user_data.clear()
 
         if args and args[0].startswith("deal_"):
@@ -416,38 +446,45 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if seller_uid and seller_uid==str(uid):
                     await update.effective_message.reply_text("⚠️ "+R(ru,"Нельзя быть покупателем своей сделки.","Can't be buyer of your own deal."))
                     await show_main(update,context); return
+
+                # Проверка реквизитов у покупателя
                 buyer_reqs=u.get("requisites",{})
                 if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
                     kb=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("💳 "+R(ru,"Карта / СБП","Card / SBP"),callback_data=f"req_deal_card_{deal_id}")],
-                        [InlineKeyboardButton("💎 TON / USDT",callback_data=f"req_deal_ton_{deal_id}")],
-                        [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
+                        [InlineKeyboardButton(f"{E_REQ} "+R(ru,"Карта / Телефон","Card / Phone"),callback_data=f"req_deal_card_{deal_id}")],
+                        [InlineKeyboardButton(f"{E_TON} TON адрес",callback_data=f"req_deal_ton_{deal_id}")],
+                        [InlineKeyboardButton(f"{E_STAR2} "+R(ru,"Звёзды (@username)","Stars (@username)"),callback_data=f"req_deal_stars_{deal_id}")],
                     ])
                     await update.effective_message.reply_text(
-                        f"⚠️ <b>{R(ru,'Добавьте реквизиты для продолжения.','Add requisites to continue.')}</b>",
+                        f"⚠️ <b>{R(ru,'Добавьте реквизиты для получения оплаты:','Add requisites to receive payment:')}</b>",
                         parse_mode="HTML",reply_markup=kb)
                     context.user_data["pending_deal"]=deal_id; return
+
+                # Покупатель присоединился
                 buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
                 add_log(db,"🔗 Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
                 db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
-                if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+
                 if seller_uid:
                     try:
                         sl=get_lang(int(seller_uid)); rs=sl=="ru"
                         await context.bot.send_message(chat_id=int(seller_uid),
-                            text=f"{E_JOIN} <b>{R(rs,'Покупатель присоединился!','Buyer joined!')}</b>\n<blockquote>{buyer_tag}</blockquote>",parse_mode="HTML")
+                            text=f"{E_JOIN} <b>{R(rs,'Покупатель присоединился!','Buyer joined!')}</b>\n<blockquote>{buyer_tag}</blockquote>",
+                            parse_mode="HTML")
                     except: pass
+
                 cu=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
                 creator_tag=f"@{cu}" if cu else f"#{seller_uid}"
-                buyer_uname=update.effective_user.username or ""; buyer_tag2=f"@{buyer_uname}" if buyer_uname else f"#{uid}"
-                text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,lang)
+                buyer_uname=update.effective_user.username or ""
+                buyer_tag2=f"@{buyer_uname}" if buyer_uname else f"#{uid}"
+
+                text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,lang,joined=True)
+
                 seller_uname_for_btn=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
-                if seller_uname_for_btn:
-                    pu=f"https://t.me/{seller_uname_for_btn}"
-                else:
-                    pu=MANAGER_URL
+                pu=f"https://t.me/{seller_uname_for_btn}" if seller_uname_for_btn else MANAGER_URL
+
                 kb=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✅ "+R(ru,"Я оплатил","I paid"),callback_data=f"paid_{deal_id}")],
+                    [InlineKeyboardButton(f"{E_CHECK} "+R(ru,"Я оплатил","I paid"),callback_data=f"paid_{deal_id}")],
                     [InlineKeyboardButton("💬 "+R(ru,"Написать продавцу","Write to seller"),url=pu)],
                     [InlineKeyboardButton("🆘 "+R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport")],
                     [InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")],
@@ -478,11 +515,40 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d=="menu_deal":
             ud.clear()
+            # Проверяем реквизиты перед созданием сделки
+            db=load_db(); u=get_user(db,uid); reqs=u.get("requisites",{})
+            if not any(reqs.get(f) for f in ("card","ton","stars")):
+                try: await q.message.delete()
+                except: pass
+                kb=InlineKeyboardMarkup([
+                    [InlineKeyboardButton(f"{E_REQ} "+R(ru,"Карта / Телефон","Card / Phone"),callback_data="req_pre_deal_card")],
+                    [InlineKeyboardButton(f"{E_TON} TON адрес",callback_data="req_pre_deal_ton")],
+                    [InlineKeyboardButton(f"{E_STAR2} "+R(ru,"Звёзды (@username)","Stars (@username)"),callback_data="req_pre_deal_stars")],
+                    [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")],
+                ])
+                await update.effective_chat.send_message(
+                    f"{E_WARN} <b>{R(ru,'Для создания сделки сначала добавьте реквизиты:','To create a deal, add requisites first:')}</b>",
+                    parse_mode="HTML",reply_markup=kb); return
             try: await q.message.delete()
             except: pass
             await update.effective_chat.send_message(
                 f"{E_PENCIL} <b>{R(ru,'Создать сделку','Create Deal')}\n\n{R(ru,'Кто вы в этой сделке?','What is your role?')}</b>",
                 parse_mode="HTML",reply_markup=role_kb(lang)); return
+
+        # Реквизиты перед сделкой
+        if d.startswith("req_pre_deal_"):
+            field=d[13:]
+            ud["req_step"]=field; ud["req_after"]="deal"
+            prompts={
+                "card": f"{E_REQ} <b>{R(ru,'Карта / Телефон','Card / Phone')}</b>\n\n<blockquote>{R(ru,'Номер телефона (СБП) или номер карты (14/16 цифр).','Phone number (SBP) or card number (14/16 digits).')}\n\n{R(ru,'Примеры','Examples')}:\n<code>89041751408</code>\n<code>4276123456781234</code></blockquote>",
+                "ton":  f"{E_TON} <b>TON адрес</b>\n\n<blockquote>{R(ru,'Начинается с UQ или EQ, мин. 40 символов.','Starts with UQ or EQ, min 40 chars.')}\n\n<code>UQDxxx...xxx</code></blockquote>",
+                "stars":f"{E_STAR2} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'@username (только лат. буквы, цифры, _).','@username (English letters, digits, _ only).')}\n\n<code>@username</code></blockquote>",
+            }
+            try: await q.message.delete()
+            except: pass
+            msg=await update.effective_chat.send_message(prompts.get(field,"?"),parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]))
+            ud["last_msg"]=msg.message_id; return
 
         if d in ("role_buyer","role_seller"):
             ud["creator_role"]="buyer" if d=="role_buyer" else "seller"
@@ -509,14 +575,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["currency"]="TON"; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(f"💎 {R(ru,'Введите сумму','Enter amount')} (TON):",parse_mode="HTML")
+            msg=await update.effective_chat.send_message(f"{E_TON} {R(ru,'Введите сумму','Enter amount')} (TON):",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         if d=="cry_usd":
             ud["currency"]="USDT"; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(f"💵 {R(ru,'Введите сумму','Enter amount')} (USDT):",parse_mode="HTML")
+            msg=await update.effective_chat.send_message(f"{E_DIAMOND} {R(ru,'Введите сумму','Enter amount')} (USDT):",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         if d in ("prm_3","prm_6","prm_12"):
@@ -545,14 +611,13 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{R(ru,'Введите сумму сделки','Enter deal amount')} ({CURMAP.get(d,d)}):",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
-        if d=="menu_req": await show_req(update,context); return
-
+        # Реквизиты
         if d=="req_del_menu":
             db=load_db(); u=get_user(db,uid); reqs=u.get("requisites",{})
             rows=[]
-            if reqs.get("card"): rows.append([InlineKeyboardButton("💳 "+R(ru,"Удалить карту","Delete card"),callback_data="req_del_card")])
-            if reqs.get("ton"):  rows.append([InlineKeyboardButton("💎 "+R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton")])
-            if reqs.get("stars"):rows.append([InlineKeyboardButton("⭐️ "+R(ru,"Удалить @username","Delete @username"),callback_data="req_del_stars")])
+            if reqs.get("card"): rows.append([InlineKeyboardButton(f"{E_REQ} "+R(ru,"Удалить карту/телефон","Delete card/phone"),callback_data="req_del_card")])
+            if reqs.get("ton"):  rows.append([InlineKeyboardButton(f"{E_TON} "+R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton")])
+            if reqs.get("stars"):rows.append([InlineKeyboardButton(f"{E_STAR2} "+R(ru,"Удалить @username","Delete @username"),callback_data="req_del_stars")])
             rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="menu_req")])
             await send_section(update,f"🗑 <b>{R(ru,'Что удалить?','What to delete?')}</b>",InlineKeyboardMarkup(rows),section="profile"); return
 
@@ -564,9 +629,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("req_edit_"):
             field=d[9:]
             prompts={
-                "card": f"💳 <b>{R(ru,'Карта / СБП','Card / SBP')}</b>\n\n<blockquote>{R(ru,'Телефон (СБП) или номер карты (14/16 цифр).','Phone (SBP) or card (14/16 digits).')}\n\n{R(ru,'Примеры','Examples')}:\n<code>+79041751408</code>\n<code>4276123456781234</code></blockquote>",
-                "ton":  f"💎 <b>TON / USDT</b>\n\n<blockquote>{R(ru,'TON адрес (начинается с UQ или EQ).','TON address (starts with UQ or EQ).')}\n\n{R(ru,'Пример','Example')}: <code>UQDxxx...xxx</code></blockquote>",
-                "stars":f"⭐️ <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Введите @юзернейм (только лат. буквы, цифры, _).','Enter @username (English letters, digits, _ only).')}\n\n{R(ru,'Пример','Example')}: <code>@username</code></blockquote>",
+                "card": f"{E_REQ} <b>{R(ru,'Карта / Телефон','Card / Phone')}</b>\n\n<blockquote>{R(ru,'Номер телефона (СБП) или номер карты (14/16 цифр).','Phone number (SBP) or card number (14/16 digits).')}\n\n{R(ru,'Примеры','Examples')}:\n<code>89041751408</code> {R(ru,'Банк','Bank')} {CARD_BANK}\n<code>4276123456781234</code></blockquote>",
+                "ton":  f"{E_TON} <b>TON адрес</b>\n\n<blockquote>{R(ru,'Начинается с UQ или EQ, мин. 40 символов.','Starts with UQ or EQ, min 40 chars.')}\n\n<code>UQDxxx...xxx</code></blockquote>",
+                "stars":f"{E_STAR2} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'@username для получения звёзд (только лат. буквы, цифры, _).','@username for receiving stars (English letters, digits, _ only).')}\n\n<code>@username</code></blockquote>",
             }
             ud["req_step"]=field
             await send_section(update,prompts.get(field,"?"),
@@ -575,9 +640,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("add_req_"):
             deal_id=d[8:]; ud["req_for_deal"]=deal_id
             kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💳 "+R(ru,"Карта / СБП","Card / SBP"),callback_data=f"req_deal_card_{deal_id}")],
-                [InlineKeyboardButton("💎 TON / USDT",callback_data=f"req_deal_ton_{deal_id}")],
-                [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
+                [InlineKeyboardButton(f"{E_REQ} "+R(ru,"Карта / Телефон","Card / Phone"),callback_data=f"req_deal_card_{deal_id}")],
+                [InlineKeyboardButton(f"{E_TON} TON адрес",callback_data=f"req_deal_ton_{deal_id}")],
+                [InlineKeyboardButton(f"{E_STAR2} "+R(ru,"Звёзды (@username)","Stars (@username)"),callback_data=f"req_deal_stars_{deal_id}")],
                 [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")],
             ])
             await send_section(update,f"⚠️ <b>{R(ru,'Добавьте реквизиты:','Add requisites:')}</b>",kb,section="deal_card"); return
@@ -586,9 +651,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d[9:].split("_",1); field=parts[0]; deal_id=parts[1] if len(parts)>1 else ""
             ud["req_step"]=field; ud["req_for_deal"]=deal_id
             prompts={
-                "card": f"💳 <b>{R(ru,'Карта / СБП','Card / SBP')}</b>\n\n<blockquote>{R(ru,'Телефон (СБП) или карта (14/16 цифр).','Phone (SBP) or card (14/16 digits).')}\n\n<code>+79041751408</code> / <code>4276123456781234</code></blockquote>",
-                "ton":  f"💎 <b>TON {R(ru,'адрес','address')}</b>\n\n<blockquote>{R(ru,'Начинается с UQ или EQ.','Starts with UQ or EQ.')}\n\n<code>UQDxxx...xxx</code></blockquote>",
-                "stars":f"⭐️ <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'@юзернейм (только лат. буквы, цифры, _).','@username (English letters, digits, _ only).')}\n\n<code>@username</code></blockquote>",
+                "card": f"{E_REQ} <b>{R(ru,'Карта / Телефон','Card / Phone')}</b>\n\n<blockquote>{R(ru,'Номер телефона или карта (14/16 цифр).','Phone or card (14/16 digits).')}\n\n<code>89041751408</code> / <code>4276123456781234</code></blockquote>",
+                "ton":  f"{E_TON} <b>TON адрес</b>\n\n<blockquote>{R(ru,'Начинается с UQ или EQ.','Starts with UQ or EQ.')}\n\n<code>UQDxxx...xxx</code></blockquote>",
+                "stars":f"{E_STAR2} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'@username (только лат. буквы, цифры, _).','@username (English letters, digits, _ only).')}\n\n<code>@username</code></blockquote>",
             }
             await send_section(update,prompts.get(field,"?"),
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data=f"add_req_{deal_id}")]]),section="deal_card"); return
@@ -597,30 +662,17 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("balance_"): await show_balance_info(update,context,d[8:]); return
         if d=="withdraw": await show_withdraw(update,context); return
 
-        # FIX 2: В разделе пополнения показываем реквизиты куда кидать
         if d=="balance_topup":
-            db=load_db(); uid2=update.effective_user.id; u2=get_user(db,uid2)
-            reqs=u2.get("requisites",{})
+            db=load_db(); u2=get_user(db,uid); reqs=u2.get("requisites",{})
             card=reqs.get("card",""); ton=reqs.get("ton",""); stars=reqs.get("stars","")
-            card_label = f"💳 Рубли — {CARD_BANK}" if card else f"💳 {R(ru,'Рубли','Rubles')}"
-            ton_label = f"💎 TON/USDT — {ton[:10]}..." if ton else "💎 TON / USDT"
-            stars_label = f"⭐️ {R(ru,'Звёзды','Stars')} — {stars}" if stars else f"⭐️ {R(ru,'Звёзды','Stars')}"
-
-            # FIX 2: добавляем текст с реквизитами куда переводить
-            info_lines = [f"{E_MONEY} <b>{R(ru,'Выберите способ пополнения:','Choose top-up method:')}</b>\n"]
-            info_lines.append(f"{E_REQ} <b>{R(ru,'Реквизиты для пополнения:','Payment details:')}</b>")
-            info_lines.append(f"<blockquote>💳 {R(ru,'Карта / СБП','Card / SBP')} ({CARD_BANK}):\n"
-                              f"{R(ru,'Телефон','Phone')}: <code>{CARD_NUM}</code>\n"
-                              f"{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>")
-            info_lines.append(f"<blockquote>{E_TON} TON / USDT:\n<code>{CRYPTO_ADDR}</code>\n{E_CBOT} {CRYPTO_BOT}</blockquote>")
-            info_lines.append(f"<blockquote>{E_STAR2} {R(ru,'Звёзды / NFT','Stars / NFT')}:\n{MANAGER_TAG}</blockquote>")
-            info_text = "\n".join(info_lines)
-
-            await send_section(update, info_text,
+            card_label=f"{E_REQ} {R(ru,'Рубли','Rubles')} — {CARD_BANK}" if card else f"{E_REQ} {R(ru,'Рубли (карта/телефон)','Rubles (card/phone)')}"
+            ton_label=f"{E_TON} TON — {ton[:12]}..." if ton else f"{E_TON} TON / USDT"
+            stars_label=f"{E_STAR2} {R(ru,'Звёзды','Stars')} — {stars}" if stars else f"{E_STAR2} {R(ru,'Звёзды','Stars')}"
+            await send_section(update,f"{E_MONEY} <b>{R(ru,'Выберите способ пополнения:','Choose top-up method:')}</b>",
                 InlineKeyboardMarkup([
-                    [InlineKeyboardButton(stars_label, callback_data="balance_stars")],
-                    [InlineKeyboardButton(card_label, callback_data="balance_rub")],
-                    [InlineKeyboardButton(ton_label, callback_data="balance_crypto")],
+                    [InlineKeyboardButton(stars_label,callback_data="balance_stars")],
+                    [InlineKeyboardButton(card_label,callback_data="balance_rub")],
+                    [InlineKeyboardButton(ton_label,callback_data="balance_crypto")],
                     [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="menu_balance")],
                 ]),section="balance"); return
 
@@ -664,7 +716,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             method=d[9:]
             prompts={"stars":R(ru,"@юзернейм для звёзд:","@username for stars:"),
                      "crypto":R(ru,"TON/USDT адрес:","TON/USDT address:"),
-                     "card":R(ru,"Номер карты:","Card number:")}
+                     "card":R(ru,"Номер телефона или карты:","Phone or card number:")}
             ud["withdraw_method"]=method; ud["withdraw_step"]="req"
             await send_section(update,f"{E_WALLET} <b>{R(ru,'Вывод','Withdraw')}</b>\n\n<blockquote>{prompts.get(method,'?')}</blockquote>",
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="withdraw")]]),section="balance"); return
@@ -715,21 +767,30 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             err=None
             if field=="card":
                 r=validate_card(text)
-                if r is None: err=R(ru,"Введите телефон (СБП) или карту (14/16 цифр).\n\n<code>+79041751408</code> или <code>4276123456781234</code>","Enter phone (SBP) or card (14/16 digits).\n\n<code>+79041751408</code> or <code>4276123456781234</code>")
+                if r is None: err=R(ru,
+                    f"Введите номер телефона (СБП) или номер карты (14/16 цифр).\n\n<b>Примеры:</b>\n<code>89041751408</code> — телефон\n<code>4276123456781234</code> — карта",
+                    f"Enter phone number (SBP) or card number (14/16 digits).\n\n<b>Examples:</b>\n<code>89041751408</code> — phone\n<code>4276123456781234</code> — card")
                 else: text=r
             elif field=="ton":
-                if not ((text.startswith("UQ") or text.startswith("EQ")) and len(text)>=40):
-                    err=R(ru,"Введите TON адрес (UQ или EQ, мин. 40 символов).\n\n<code>UQDxxx...xxx</code>","Enter TON address (UQ or EQ, min 40 chars).\n\n<code>UQDxxx...xxx</code>")
+                if not validate_ton_address(text):
+                    err=R(ru,"Введите TON адрес (UQ или EQ, мин. 40 символов).\n\n<code>UQDxxx...xxx</code>",
+                          "Enter TON address (UQ or EQ, min 40 chars).\n\n<code>UQDxxx...xxx</code>")
             elif field=="stars":
                 t2=text if text.startswith("@") else f"@{text}"
                 cl,ec=validate_username(t2)
-                if ec=="chars": err=R(ru,"Только латинские буквы, цифры и _.\n\n<b>Пример:</b> <code>@username</code>","Only English letters, digits, _.\n\n<b>Example:</b> <code>@username</code>")
-                elif ec: err=R(ru,"Введите @юзернейм (мин. 4 символа).\n\n<b>Пример:</b> <code>@username</code>","Enter @username (min 4 chars).\n\n<b>Example:</b> <code>@username</code>")
+                if ec=="chars": err=R(ru,"Только латинские буквы, цифры и _.\n\n<b>Пример:</b> <code>@username</code>",
+                                      "Only English letters, digits, _.\n\n<b>Example:</b> <code>@username</code>")
+                elif ec: err=R(ru,"Введите @юзернейм (мин. 4 символа).\n\n<b>Пример:</b> <code>@username</code>",
+                               "Enter @username (min 4 chars).\n\n<b>Example:</b> <code>@username</code>")
                 else: text=cl
             if err:
                 await update.message.reply_text(f"❌ {err}",parse_mode="HTML"); return
             u.setdefault("requisites",{})[field]=text; save_db(db); ud.pop("req_step",None)
+
+            # После добавления реквизитов — перейти к созданию сделки
+            after=ud.pop("req_after",None)
             pending=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
+
             if pending:
                 db2=load_db(); d2=db2.get("deals",{}).get(pending)
                 if d2:
@@ -738,18 +799,27 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     cu=db2["users"].get(str(d2.get("user_id","")),{}).get("username","") if d2.get("user_id") else ""
                     ct=f"@{cu}" if cu else f"#{d2.get('user_id','')}"
                     bu=update.effective_user.username or ""; bt=f"@{bu}" if bu else f"#{uid}"
-                    text2=build_deal_text(pending,d2,ct,bt,lang)
+                    text2=build_deal_text(pending,d2,ct,bt,lang,joined=True)
                     seller_uid_p=d2.get("user_id","")
                     seller_uname_p=db2["users"].get(str(seller_uid_p),{}).get("username","") if seller_uid_p else ""
                     pu=f"https://t.me/{seller_uname_p}" if seller_uname_p else MANAGER_URL
                     kb=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("✅ "+R(ru,"Я оплатил","I paid"),callback_data=f"paid_{pending}")],
+                        [InlineKeyboardButton(f"{E_CHECK} "+R(ru,"Я оплатил","I paid"),callback_data=f"paid_{pending}")],
                         [InlineKeyboardButton("💬 "+R(ru,"Написать продавцу","Write to seller"),url=pu)],
                         [InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")],
                     ])
                     await send_new(update,text2,kb,section="deal_card"); return
+
+            if after=="deal":
+                await update.message.reply_text(f"✅ <b>{R(ru,'Реквизиты сохранены! Теперь создайте сделку.','Requisites saved! Now create your deal.')}</b>",
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(f"{E_DEAL} "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal")],
+                        [InlineKeyboardButton(f"{E_REQ} "+R(ru,"Мои реквизиты","My Requisites"),callback_data="menu_req")],
+                    ])); return
+
             await update.message.reply_text(f"✅ <b>{R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 "+R(ru,"Мои реквизиты","My Requisites"),callback_data="menu_req")]])); return
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(f"{E_REQ} "+R(ru,"Мои реквизиты","My Requisites"),callback_data="menu_req")]])); return
 
         if ud.get("withdraw_step")=="req":
             method=ud.get("withdraw_method","?"); db=load_db()
@@ -771,9 +841,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ])); return
 
         if ud.get("review_step")=="text":
-            deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars=ud.get("review_stars",5)
+            deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars_r=ud.get("review_stars",5)
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
-            rev_text=f"{'⭐'*stars} {stars}/5 — {text}"
+            rev_text=f"{'⭐'*stars_r} {stars_r}/5 — {text}"
             saved=False
             if role=="s":
                 buname=deal.get("partner","").lstrip("@").lower()
@@ -820,14 +890,14 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(f"{E_NFT} <b>{R(ru,'Вставьте ссылку на НФТ:','Paste NFT link:')}\n\nt.me/nft/...</b>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
-                await send_step(f"{E_USER} <b>{R(ru,'Введите ссылку на username (t.me/...):','Enter username link (t.me/...):')}</b>")
+                await send_step(f"{E_USER} <b>{R(ru,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
-                await send_step(f"⭐️ <b>{R(ru,'Сколько звёзд?','How many stars?')}</b>")
+                await send_step(f"{E_STAR2} <b>{R(ru,'Сколько звёзд?','How many stars?')}</b>")
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
                 await send_step(f"{E_DIAMOND} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",
-                    InlineKeyboardMarkup([[InlineKeyboardButton("💎 TON",callback_data="cry_ton"),InlineKeyboardButton("💵 USDT",callback_data="cry_usd")]]))
+                    InlineKeyboardMarkup([[InlineKeyboardButton(f"{E_TON} TON",callback_data="cry_ton"),InlineKeyboardButton(f"{E_DIAMOND} USDT",callback_data="cry_usd")]]))
             elif dtype=="premium":
                 ud["step"]="prem_period"
                 await send_step(f"{E_PREM} <b>Telegram Premium\n\n{R(ru,'Выберите срок:','Choose period:')}</b>",
@@ -846,18 +916,12 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if step=="nft_link":
             ok,em=validate_nft_link(text,dtype)
             if not ok:
-                if em=="no_tme":
-                    disp=R(ru,"Ссылка должна начинаться с t.me/nft/...","Link must start with t.me/nft/...")
-                else:
-                    disp=R(ru,"Для NFT используйте t.me/nft/... (например t.me/nft/GiftName-123)","For NFT use t.me/nft/... (e.g. t.me/nft/GiftName-123)")
+                disp=R(ru,"Используйте t.me/nft/... (например t.me/nft/GiftName-123)","Use t.me/nft/... (e.g. t.me/nft/GiftName-123)")
                 await update.message.reply_text(f"❌ <b>{disp}</b>",parse_mode="HTML"); return
             clean_link=text.strip()
             for prefix in ("https://","http://"):
-                if clean_link.startswith(prefix):
-                    clean_link=clean_link[len(prefix):]
-                    break
-            if not clean_link.startswith("t.me/"):
-                clean_link="t.me/"+clean_link
+                if clean_link.startswith(prefix): clean_link=clean_link[len(prefix):]; break
+            if not clean_link.startswith("t.me/"): clean_link="t.me/"+clean_link
             ud["nft_link"]=clean_link; ud["step"]="currency"
             await send_step(f"{E_NFT} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang)); return
 
@@ -872,7 +936,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not text.isdigit():
                 await update.message.reply_text(f"❌ <b>{R(ru,'Только цифры!','Numbers only!')}</b>",parse_mode="HTML"); return
             ud["stars_count"]=text; ud["step"]="currency"
-            await send_step(f"⭐️ <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang)); return
+            await send_step(f"{E_STAR2} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang)); return
 
         if step=="amount":
             ca=text.replace(" ","").replace(",",".")
@@ -890,12 +954,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def finalize_deal(update, context):
     try:
         ud=context.user_data; db=load_db()
-        dtype=ud.get("type","?")
-        partner=ud.get("partner","—")
-        currency=ud.get("currency","—")
-        amount=ud.get("amount","—")
-        creator_role=ud.get("creator_role","seller")
-        user=update.effective_user
+        dtype=ud.get("type","?"); partner=ud.get("partner","—")
+        currency=ud.get("currency","—"); amount=ud.get("amount","—")
+        creator_role=ud.get("creator_role","seller"); user=update.effective_user
 
         data={}
         for key in ("nft_link","trade_username","stars_count","premium_period","sticker_count"):
@@ -910,36 +971,35 @@ async def finalize_deal(update, context):
         add_log(db,"🆕 Новая сделка",deal_id=deal_id,uid=user.id,username=user.username or "",
             extra=f"{dtype} | {amount} {currency} | {creator_role}")
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
 
         cu=db["users"].get(str(user.id),{}).get("username","")
         creator_tag=f"@{cu}" if cu else f"@{user.username or str(user.id)}"
         partner_tag=partner
-
         lang=get_lang(user.id); ru=lang=="ru"
-        text=build_deal_text(deal_id,db["deals"][deal_id],creator_tag,partner_tag,lang)
-        ll=R(ru,"Ссылка для покупателя","Link for buyer")
-        sl=R(ru,"Отправьте ссылку партнёру.","Send the link to your partner.")
-        text+=f"\n\n{E_DLNK} {ll}:\n<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n{sl}"
 
-        # FIX 4: кнопка «Я оплатил» есть и у создателя сделки тоже
-        kb=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ "+R(ru,"Я оплатил","I paid"),callback_data=f"paid_{deal_id}")],
-            [InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")],
-        ])
+        # Карточка БЕЗ реквизитов — ждём второго участника
+        text=build_deal_text(deal_id,db["deals"][deal_id],creator_tag,partner_tag,lang,joined=False)
+        ll=R(ru,"Ссылка для партнёра","Link for partner")
+        sl=R(ru,"Отправьте ссылку партнёру — после его перехода откроется полная карточка сделки.",
+             "Send the link to your partner — full deal card will open after they join.")
+        text+=f"\n\n{E_DLNK} <b>{ll}:</b>\n<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n<i>{sl}</i>"
 
+        kb=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")]])
         await send_new(update,text,kb,section="deal_card")
 
+        # Уведомить партнёра если он уже есть в боте
         pname=partner.lstrip("@").lower() if partner.startswith("@") else None
         if pname:
             puid=next((k for k,v in db["users"].items() if v.get("username","").lower()==pname),None)
             if puid:
                 try:
                     pl=get_lang(int(puid)); pr=pl=="ru"
-                    txt2=build_deal_text(deal_id,db["deals"][deal_id],creator_tag,
-                                        f"@{db['users'][puid].get('username','')}" if db["users"][puid].get("username") else f"#{puid}",pl)
+                    partner_tag2=f"@{db['users'][puid].get('username','')}" if db["users"][puid].get("username") else f"#{puid}"
+                    txt2=build_deal_text(deal_id,db["deals"][deal_id],creator_tag,partner_tag2,pl,joined=False)
+                    join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
+                    txt2+=f"\n\n{E_JOIN} <b>{R(pr,'Нажмите чтобы присоединиться:','Click to join:')}</b>\n<code>{join_link}</code>"
                     kb2=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("✅ "+R(pr,"Я оплатил","I paid"),callback_data=f"paid_{deal_id}")],
+                        [InlineKeyboardButton(f"{E_JOIN} "+R(pr,"Присоединиться","Join"),url=join_link)],
                         [InlineKeyboardButton("🏠 "+R(pr,"Главное меню","Main menu"),callback_data="main_menu")]
                     ])
                     await context.bot.send_message(chat_id=int(puid),text=txt2,parse_mode="HTML",reply_markup=kb2)
@@ -956,7 +1016,7 @@ async def on_paid(update, context):
         await q.answer(R(rb,"Отправлено!","Sent!"))
         deal_id=q.data[5:]; btag=f"@{buyer.username}" if buyer.username else str(buyer.id)
         db=load_db(); d=db.get("deals",{}).get(deal_id,{})
-        amt=d.get("amount","—"); cur=d.get("currency","—"); dtype=d.get("type","")
+        amt=d.get("amount","—"); cur=d.get("currency","—")
         suid=d.get("user_id"); sl2=get_lang(int(suid)) if suid else "ru"; rs2=sl2=="ru"
         try:
             await context.bot.send_message(chat_id=ADMIN_ID,
@@ -969,13 +1029,11 @@ async def on_paid(update, context):
         except Exception as e: logger.error(f"on_paid admin: {e}")
         add_log(db,"💳 Оплачено",deal_id=deal_id,uid=buyer.id,username=buyer.username or "",extra=f"{amt} {cur}")
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
         seller=d.get("user_id")
         if seller and seller!=str(buyer.id):
             try:
                 await context.bot.send_message(chat_id=int(seller),
-                    text=f"{E_BELL} <b>{R(rs2,'Покупатель оплатил!','Buyer paid!')}</b>\n{btag}\n{amt} {cur}",
-                    parse_mode="HTML")
+                    text=f"{E_BELL} <b>{R(rs2,'Покупатель оплатил!','Buyer paid!')}</b>\n{btag}\n{amt} {cur}",parse_mode="HTML")
             except: pass
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
@@ -1001,8 +1059,8 @@ async def adm_confirm(update, context):
             db["users"][s]["total_deals"]=db["users"][s].get("total_deals",0)+1
             db["users"][s]["turnover"]=db["users"][s].get("turnover",0)+int(amt_num)
         ilink=""
-        if dtype=="nft" and dd.get("nft_link"): ilink=f"\n🔗 {dd['nft_link']}"
-        elif dtype=="username" and dd.get("trade_username"): ilink=f"\n🔗 {dd['trade_username']}"
+        if dtype=="nft" and dd.get("nft_link"): ilink=f"\n{E_LINK} {dd['nft_link']}"
+        elif dtype=="username" and dd.get("trade_username"): ilink=f"\n{E_LINK} {dd['trade_username']}"
         seller_uname=db["users"].get(s,{}).get("username","?") if s else "?"
         add_log(db,"✅ Подтверждено",deal_id=deal_id,uid=s,username=seller_uname,extra=f"{amt_str} {d.get('currency','')}")
         if s and s in db["users"]:
@@ -1015,11 +1073,9 @@ async def adm_confirm(update, context):
                     try:
                         rl=get_lang(int(ref_uid)); rr=rl=="ru"
                         await context.bot.send_message(chat_id=int(ref_uid),
-                            text=f"💰 <b>{R(rr,'Реферальный бонус!','Referral bonus!')}</b>\n<blockquote>+{bonus} RUB (3% от сделки)</blockquote>",
-                            parse_mode="HTML")
+                            text=f"💰 <b>{R(rr,'Реферальный бонус!','Referral bonus!')}</b>\n<blockquote>+{bonus} RUB (3% от сделки)</blockquote>",parse_mode="HTML")
                     except: pass
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
         try: await q.edit_message_text(f"✅ <b>Подтверждено!</b>\n<code>{deal_id}</code>\n{d.get('amount')} {d.get('currency')}{ilink}",parse_mode="HTML")
         except: pass
         if s:
@@ -1070,14 +1126,34 @@ async def adm_decline(update, context):
 
 # ─── Sections ─────────────────────────────────────────────────────────────────
 async def show_balance(update, context):
+    """Пополнить/Вывод — показываем реквизиты пользователя и общие реквизиты для пополнения."""
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); ru=lang=="ru"; bal=u.get("balance",0)
-        await send_section(update,
-            f"💸 <b>{R(ru,'Пополнить / Вывод','Top Up / Withdraw')}</b>\n\n<blockquote><b>{R(ru,'Баланс','Balance')}: {bal} RUB</b></blockquote>",
+        reqs=u.get("requisites",{})
+        card=reqs.get("card",""); ton=reqs.get("ton",""); stars=reqs.get("stars","")
+
+        # Реквизиты для пополнения (куда переводить)
+        lines=[
+            f"{E_WALLET} <b>{R(ru,'Пополнить / Вывод','Top Up / Withdraw')}</b>\n",
+            f"<b>{R(ru,'Баланс','Balance')}: {bal} RUB</b>\n",
+            f"{E_REQ} <b>{R(ru,'Для пополнения переводите на:','Top up by sending to:')}</b>",
+            f"<blockquote>{R(ru,'Карта / Телефон','Card / Phone')} ({CARD_BANK}):\n<code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>",
+            f"<blockquote>{E_TON} TON:\n<code>{CRYPTO_ADDR}</code></blockquote>",
+            f"<blockquote>{E_DIAMOND} USDT:\n{E_CBOT} {CRYPTO_BOT}</blockquote>",
+            f"<blockquote>{E_STAR2} {R(ru,'Звёзды','Stars')}: {MANAGER_TAG}</blockquote>",
+        ]
+
+        # Реквизиты пользователя
+        lines.append(f"\n{E_REQ} <b>{R(ru,'Мои реквизиты (для вывода):','My requisites (for withdrawal):')}</b>")
+        lines.append(f"<blockquote>💳 {R(ru,'Карта/Телефон','Card/Phone')}: {card if card else R(ru,'не добавлена','not set')}</blockquote>")
+        lines.append(f"<blockquote>{E_TON} TON: {ton[:20]+'...' if ton else R(ru,'не добавлен','not set')}</blockquote>")
+        lines.append(f"<blockquote>{E_STAR2} {R(ru,'Звёзды','Stars')}: {stars if stars else R(ru,'не добавлен','not set')}</blockquote>")
+
+        await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([
-                [InlineKeyboardButton("➕ "+R(ru,"Пополнить","Top Up"),callback_data="balance_topup")],
-                [InlineKeyboardButton("➖ "+R(ru,"Вывод","Withdraw"),callback_data="withdraw")],
+                [InlineKeyboardButton(f"➕ {R(ru,'Пополнить','Top Up')}",callback_data="balance_topup")],
+                [InlineKeyboardButton(f"➖ {R(ru,'Вывод','Withdraw')}",callback_data="withdraw")],
                 [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")],
             ]),section="balance")
     except Exception as e: logger.error(f"show_balance: {e}")
@@ -1086,18 +1162,19 @@ async def show_balance_info(update, context, method):
     try:
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
         within=R(ru,"Баланс пополнится в течение 5 минут.","Balance topped up within 5 minutes.")
-        i_sent=InlineKeyboardButton("✅ "+R(ru,"Я отправил","I sent"),callback_data=f"topup_sent_{method}")
+        i_sent=InlineKeyboardButton(f"{E_CHECK} "+R(ru,"Я отправил","I sent"),callback_data=f"topup_sent_{method}")
         back=InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="balance_topup")
         if method=="stars":
-            text=f"⭐️ <b>{R(ru,'Пополнение звёздами','Top up with Stars')}</b>\n\n<blockquote>{R(ru,'Отправьте звёзды менеджеру','Send stars to manager')}: {MANAGER_TAG}\n\n{within}</blockquote>"
+            text=f"{E_STAR2} <b>{R(ru,'Пополнение звёздами','Top up with Stars')}</b>\n\n<blockquote>{R(ru,'Отправьте звёзды менеджеру','Send stars to manager')}: {MANAGER_TAG}\n\n{within}</blockquote>"
         elif method=="rub":
             text=(f"{E_REQ} <b>{R(ru,'Пополнение рублями','Top up in Rubles')}</b>\n\n"
                   f"<blockquote>{R(ru,'Банк','Bank')}: {CARD_BANK}\n{R(ru,'Телефон','Phone')}: <code>{CARD_NUM}</code>\n"
                   f"{R(ru,'Получатель','Recipient')}: {CARD_NAME}\n\n{within}</blockquote>")
         elif method=="crypto":
-            text=(f"{E_TON} <b>{R(ru,'Пополнение TON / USDT','Top up TON / USDT')}</b>\n\n"
-                  f"<blockquote>{R(ru,'TON адрес','TON address')}:\n<code>{CRYPTO_ADDR}</code>\n\n"
-                  f"{E_CBOT} {CRYPTO_BOT}\n\nID: <code>{uid}</code>\n\n{within}</blockquote>")
+            text=(f"{E_TON} <b>TON</b>\n\n"
+                  f"<blockquote>{R(ru,'Адрес','Address')}:\n<code>{CRYPTO_ADDR}</code>\n\n{within}</blockquote>\n\n"
+                  f"{E_DIAMOND} <b>USDT / Crypto Bot</b>\n\n"
+                  f"<blockquote>{E_CBOT} {CRYPTO_BOT}\n\nID: <code>{uid}</code>\n\n{within}</blockquote>")
         else: text="<b>?</b>"
         await send_section(update,text,InlineKeyboardMarkup([[i_sent],[back]]),section="balance")
     except Exception as e: logger.error(f"show_balance_info: {e}")
@@ -1107,7 +1184,7 @@ async def show_lang(update, context):
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
         rows=[[InlineKeyboardButton(n,callback_data=f"lang_{c}")] for c,n in {"ru":"🇷🇺 Русский","en":"🇬🇧 English"}.items()]
         rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")])
-        await send_section(update,"<tg-emoji emoji-id='5447410659077661506'>🌐</tg-emoji> <b>"+R(ru,"Выберите язык:","Select language:")+"</b>",
+        await send_section(update,f"{ce('5447410659077661506','🌐')} <b>"+R(ru,"Выберите язык:","Select language:")+"</b>",
             InlineKeyboardMarkup(rows),section="main")
     except Exception as e: logger.error(f"show_lang: {e}")
 
@@ -1130,12 +1207,13 @@ async def show_profile(update, context):
         if reviews:
             rv_lines="\n".join(f"{i+1}. {r}" for i,r in enumerate(reviews[-10:]))
             rv=f"\n\n<b>{R(ru,'Отзывы','Reviews')}:</b>\n<blockquote>{rv_lines}</blockquote>"
-        text=(f"<tg-emoji emoji-id='5275979556308674886'>👤</tg-emoji> <b>{R(ru,'Профиль','Profile')}{sl}\n\n@{uname}\n"
-              f"{E_BAL} {R(ru,'Баланс','Balance')}: {u.get('balance',0)} RUB\n"
-              f"{E_STATS} {R(ru,'Сделок','Deals')}: {u.get('total_deals',0)}\n"
-              f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> {R(ru,'Успешных','Successful')}: {u.get('success_deals',0)}\n"
-              f"💵 {R(ru,'Оборот','Turnover')}: {u.get('turnover',0)} RUB\n"
-              f"🏆 {R(ru,'Репутация','Reputation')}: {u.get('reputation',0)}</b>{rv}")
+        text=(f"{E_USER} <b>{R(ru,'Профиль','Profile')}</b>{sl}\n\n"
+              f"@{uname}\n"
+              f"{E_BAL} {R(ru,'Баланс','Balance')}: <b>{u.get('balance',0)} RUB</b>\n"
+              f"{E_STATS} {R(ru,'Сделок','Deals')}: <b>{u.get('total_deals',0)}</b>\n"
+              f"{E_CHECK} {R(ru,'Успешных','Successful')}: <b>{u.get('success_deals',0)}</b>\n"
+              f"{E_TURN_ICON} {R(ru,'Оборот','Turnover')}: <b>{u.get('turnover',0)} RUB</b>\n"
+              f"{E_TROPHY} {R(ru,'Репутация','Reputation')}: <b>{u.get('reputation',0)}</b>{rv}")
         await send_section(update,text,InlineKeyboardMarkup([
             [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]
         ]),section="profile")
@@ -1150,7 +1228,7 @@ async def show_ref(update, context):
         refs=[v.get("username","?") for v in db.get("users",{}).values() if v.get("ref_by")==str(uid)]
         refs_str=""
         if refs: refs_str="\n\n"+R(ru,"Рефералы","Referrals")+":\n"+"\n".join(f"• @{r}" if r and r!="?" else "• #?" for r in refs[-10:])
-        text=(f"👥 <b>{R(ru,'Реферальная программа','Referral Program')}</b>\n\n"
+        text=(f"{E_JOIN} <b>{R(ru,'Реферальная программа','Referral Program')}</b>\n\n"
               f"<blockquote>{R(ru,'Приглашайте друзей — 3% с каждой их сделки!','Invite friends — 3% from each deal!')}\n\n"
               f"{R(ru,'Приглашено','Invited')}: <b>{rc}</b>\n"
               f"{R(ru,'Заработано','Earned')}: <b>{re} RUB</b>{refs_str}</blockquote>\n\n"
@@ -1159,66 +1237,101 @@ async def show_ref(update, context):
     except Exception as e: logger.error(f"show_ref: {e}")
 
 async def show_req(update, context):
+    """Реквизиты — каждый в своей цитате, кнопки изменить/удалить по одному."""
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); ru=lang=="ru"; reqs=u.get("requisites",{})
         card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
-        not_added=R(ru,"Не добавлена","Not added")
-        not_added_m=R(ru,"Не добавлен","Not added")
-        cv=f"<blockquote><code>{card}</code></blockquote>" if card else f"<blockquote>{not_added}</blockquote>"
-        tv=f"<blockquote><code>{ton}</code></blockquote>"  if ton  else f"<blockquote>{not_added_m}</blockquote>"
-        sv=f"<blockquote><code>{stars}</code></blockquote>" if stars else f"<blockquote>{not_added_m}</blockquote>"
-        text=(f"📋 <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n\n"
-              f"💳 <b>{R(ru,'Карта / СБП','Card / SBP')}:</b>\n{cv}\n"
-              f"💎 <b>TON / USDT:</b>\n{tv}\n"
-              f"⭐️ <b>{R(ru,'Звёзды','Stars')}:</b>\n{sv}")
+
+        lines=[f"{E_REQ} <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n"]
+
+        # Карта/Телефон
+        lines.append(f"💳 <b>{R(ru,'Карта / Телефон','Card / Phone')} ({CARD_BANK}):</b>")
+        if card:
+            lines.append(f"<blockquote><code>{card}</code></blockquote>")
+        else:
+            lines.append(f"<blockquote>{R(ru,'Не добавлена','Not added')}</blockquote>")
+
+        # TON
+        lines.append(f"\n{E_TON} <b>TON адрес:</b>")
+        if ton:
+            lines.append(f"<blockquote><code>{ton}</code></blockquote>")
+        else:
+            lines.append(f"<blockquote>{R(ru,'Не добавлен','Not added')}</blockquote>")
+
+        # Звёзды
+        lines.append(f"\n{E_STAR2} <b>{R(ru,'Звёзды (username)','Stars (username)')}:</b>")
+        if stars:
+            lines.append(f"<blockquote><code>{stars}</code></blockquote>")
+        else:
+            lines.append(f"<blockquote>{R(ru,'Не добавлен','Not added')}</blockquote>")
+
+        text="\n".join(lines)
+
+        # Кнопки — изменить или удалить по одному
         rows=[]
-        rows.append([InlineKeyboardButton("💳 "+R(ru,"Изменить карту" if card else "Добавить карту","Edit card" if card else "Add card"),callback_data="req_edit_card")])
-        rows.append([InlineKeyboardButton("💎 "+R(ru,"Изменить TON" if ton else "Добавить TON","Edit TON" if ton else "Add TON"),callback_data="req_edit_ton")])
-        rows.append([InlineKeyboardButton("⭐️ "+R(ru,"Изменить @username" if stars else "Добавить @username","Edit @username" if stars else "Add @username"),callback_data="req_edit_stars")])
-        if card or ton or stars:
-            rows.append([InlineKeyboardButton("🗑 "+R(ru,"Удалить реквизит","Delete requisite"),callback_data="req_del_menu")])
+        if card:
+            rows.append([
+                InlineKeyboardButton(f"✏️ {R(ru,'Изменить карту','Edit card')}",callback_data="req_edit_card"),
+                InlineKeyboardButton(f"🗑 {R(ru,'Удалить','Delete')}",callback_data="req_del_card"),
+            ])
+        else:
+            rows.append([InlineKeyboardButton(f"➕ {R(ru,'Добавить карту/телефон','Add card/phone')}",callback_data="req_edit_card")])
+
+        if ton:
+            rows.append([
+                InlineKeyboardButton(f"✏️ {R(ru,'Изменить TON','Edit TON')}",callback_data="req_edit_ton"),
+                InlineKeyboardButton(f"🗑 {R(ru,'Удалить','Delete')}",callback_data="req_del_ton"),
+            ])
+        else:
+            rows.append([InlineKeyboardButton(f"➕ {R(ru,'Добавить TON адрес','Add TON address')}",callback_data="req_edit_ton")])
+
+        if stars:
+            rows.append([
+                InlineKeyboardButton(f"✏️ {R(ru,'Изменить @username','Edit @username')}",callback_data="req_edit_stars"),
+                InlineKeyboardButton(f"🗑 {R(ru,'Удалить','Delete')}",callback_data="req_del_stars"),
+            ])
+        else:
+            rows.append([InlineKeyboardButton(f"➕ {R(ru,'Добавить @username для звёзд','Add @username for stars')}",callback_data="req_edit_stars")])
+
         rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")])
         await send_section(update,text,InlineKeyboardMarkup(rows),section="profile")
     except Exception as e: logger.error(f"show_req: {e}")
 
-# FIX 4: в «Мои сделки» добавлена кнопка «Я оплатил» для pending сделок
 async def show_my_deals(update, context):
+    """Мои сделки — тип, сумма, статус. Без лишних кнопок."""
     try:
         db=load_db(); uid=str(update.effective_user.id); lang=get_lang(int(uid)); ru=lang=="ru"
         deals={k:v for k,v in db.get("deals",{}).items() if v.get("user_id")==uid}
         if not deals:
-            await send_section(update,f"💼 <b>{R(ru,'Мои сделки','My Deals')}\n\n{R(ru,'Пока нет сделок.','No deals yet.')}</b>",
+            await send_section(update,f"{E_DEAL} <b>{R(ru,'Мои сделки','My Deals')}\n\n{R(ru,'Пока нет сделок.','No deals yet.')}</b>",
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="my_deals"); return
         SNAMES={"pending":R(ru,"⏳ Ожидает","⏳ Pending"),"confirmed":R(ru,"✅ Завершена","✅ Completed")}
-        lines=[f"💼 <b>{R(ru,'Мои сделки','My Deals')} ({len(deals)}):</b>\n"]
-        rows=[]
+        lines=[f"{E_DEAL} <b>{R(ru,'Мои сделки','My Deals')} ({len(deals)}):</b>\n"]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
-            tn=tname(dv.get("type",""),lang); s=SNAMES.get(dv.get("status",""),dv.get("status",""))
+            tn=tname(dv.get("type",""),lang)
             cur_d=CUR_PLAIN.get(dv.get("currency",""),dv.get("currency",""))
-            lines.append(f"<b>{i}. {tn} | {dv.get('amount')} {cur_d} | {s}</b>")
-            # FIX 4: если сделка pending — добавляем кнопку «Я оплатил»
-            if dv.get("status","")=="pending":
-                rows.append([InlineKeyboardButton(
-                    f"✅ {R(ru,'Я оплатил','I paid')} — {did}",
-                    callback_data=f"paid_{did}"
-                )])
-        rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")])
-        await send_section(update,"\n".join(lines),InlineKeyboardMarkup(rows),section="my_deals")
+            s=SNAMES.get(dv.get("status",""),dv.get("status",""))
+            lines.append(f"<b>{i}. {tn} · {dv.get('amount')} {cur_d} · {s}</b>")
+        await send_section(update,"\n".join(lines),
+            InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="my_deals")
     except Exception as e: logger.error(f"show_my_deals: {e}")
 
 async def show_top(update, context):
     try:
         lang=get_lang(update.effective_user.id); ru=lang=="ru"
-        TOP=[("@al***ndr",450,47),("@ie***ym",380,38),("@ma***ov",310,29),("@kr***na",290,31),
-             ("@pe***ko",270,25),("@se***ev",240,22),("@an***va",210,19),
-             ("@vi***or",190,17),("@dm***iy",170,15),("@ni***la",140,13)]
-        medals=["🥇","🥈","🥉"]+["🏅"]*7
+        # Обновлённые данные: 6500+ сделок, увеличенные суммы
+        TOP=[
+            ("@al***ndr",8450,312),("@ie***ym",6380,278),("@ma***ov",5910,241),
+            ("@kr***na",4290,198),("@pe***ko",3870,175),("@se***ev",3240,152),
+            ("@an***va",2810,134),("@vi***or",2390,117),("@dm***iy",1970,98),("@ni***la",1540,83)
+        ]
+        medals=["🥇","🥈","🥉"]+[f"{E_TROPHY}"]*7
         dw=R(ru,"сделок","deals")
         lines=[f"{E_TROPHY} <b>{R(ru,'Топ продавцов Gift Deals','Gift Deals Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
-            lines.append(f"<b>{medals[i]} {i+1}. {u2} — ${a} | {dd} {dw}</b>")
-        lines.append(f"\n{E_STATS} <b>{R(ru,'1000+ сделок в боте','1000+ deals on platform')}</b>")
+            lines.append(f"<b>{medals[i]} {i+1}. {u2} — ${a} · {dd} {dw}</b>")
+        lines.append(f"\n{E_STATS} <b>{R(ru,'6500+ сделок · оборот $48,200','6500+ deals · $48,200 turnover')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")
@@ -1232,12 +1345,12 @@ async def show_withdraw(update, context):
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="menu_balance")]]),section="balance"); return
         reqs=u.get("requisites",{})
         rows=[]
-        if reqs.get("ton"): rows.append([InlineKeyboardButton("💎 TON/USDT → "+reqs["ton"][:12]+"...",callback_data="withdraw_crypto")])
-        else: rows.append([InlineKeyboardButton("💎 "+R(ru,"Крипта (TON/USDT)","Crypto (TON/USDT)"),callback_data="withdraw_crypto")])
-        if reqs.get("stars"): rows.append([InlineKeyboardButton("⭐️ "+R(ru,"Звёзды → ","Stars → ")+reqs["stars"],callback_data="withdraw_stars")])
-        else: rows.append([InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data="withdraw_stars")])
-        if reqs.get("card"): rows.append([InlineKeyboardButton("💳 "+R(ru,"Карта → ","Card → ")+reqs["card"][:10]+"...",callback_data="withdraw_card")])
-        else: rows.append([InlineKeyboardButton("💳 "+R(ru,"На карту","Card"),callback_data="withdraw_card")])
+        if reqs.get("ton"): rows.append([InlineKeyboardButton(f"{E_TON} TON/USDT → "+reqs["ton"][:12]+"...",callback_data="withdraw_crypto")])
+        else: rows.append([InlineKeyboardButton(f"{E_TON} {R(ru,'Крипта (TON/USDT)','Crypto (TON/USDT)')}",callback_data="withdraw_crypto")])
+        if reqs.get("stars"): rows.append([InlineKeyboardButton(f"{E_STAR2} {R(ru,'Звёзды → ','Stars → ')}"+reqs["stars"],callback_data="withdraw_stars")])
+        else: rows.append([InlineKeyboardButton(f"{E_STAR2} {R(ru,'Звёзды','Stars')}",callback_data="withdraw_stars")])
+        if reqs.get("card"): rows.append([InlineKeyboardButton(f"{E_REQ} {R(ru,'Карта → ','Card → ')}"+reqs["card"][:12]+"...",callback_data="withdraw_card")])
+        else: rows.append([InlineKeyboardButton(f"{E_REQ} {R(ru,'На карту/телефон','Card/Phone')}",callback_data="withdraw_card")])
         rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="menu_balance")])
         await send_section(update,
             f"{E_WALLET} <b>{R(ru,'Вывод средств','Withdraw')}</b>\n\n<blockquote>{R(ru,'Баланс','Balance')}: {bal} RUB\n\n{R(ru,'Выберите способ:','Choose method:')}</blockquote>",
@@ -1290,7 +1403,7 @@ async def handle_adm_cb(update, context):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
 
         if d=="adm_banners":
-            await q.message.edit_text("<b>🖼 Баннеры</b>\n\n<blockquote>✅ — есть | ➕ — нет | 🗑 — удалить\n\nМожно ставить баннер в любом разделе!</blockquote>",
+            await q.message.edit_text("<b>🖼 Баннеры</b>\n\n<blockquote>✅ — есть | ➕ — нет | 🗑 — удалить</blockquote>",
                 parse_mode="HTML",reply_markup=adm_banners_kb()); return
 
         if d.startswith("adm_banner_del_"):
@@ -1349,9 +1462,13 @@ async def handle_adm_cb(update, context):
             lines=[f"<b>📋 События</b> | {si} {st}:\n"]
             for log in logs:
                 if hidden:
-                    un=mask_str(f"@{log['username']}") if log.get('username') else ""; us=mask_str(log['uid']) if log.get('uid') else ""; deal=" #***" if log.get('deal_id') else ""
+                    un=mask_str(f"@{log['username']}") if log.get('username') else ""
+                    us=mask_str(log['uid']) if log.get('uid') else ""
+                    deal=" #***" if log.get('deal_id') else ""
                 else:
-                    un=f"@{log['username']}" if log.get('username') else ""; us=f"<code>{log['uid']}</code>" if log.get('uid') else ""; deal=f" #{log['deal_id']}" if log.get('deal_id') else ""
+                    un=f"@{log['username']}" if log.get('username') else ""
+                    us=f"<code>{log['uid']}</code>" if log.get('uid') else ""
+                    deal=f" #{log['deal_id']}" if log.get('deal_id') else ""
                 ex=f" — {log['extra']}" if log.get('extra') else ""
                 lines.append(f"<b>{log['time']}</b> {log['event']}{deal}\n{un} {us}{ex}\n")
             txt="\n".join(lines)[:4000]; tl2="👁 Открыть" if hidden else "🙈 Скрыть"
@@ -1548,7 +1665,7 @@ async def cmd_set_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not args or not args[0].isdigit(): await update.message.reply_text("<b>Пример: /set_my_deals 100</b>",parse_mode="HTML"); return
         db=load_db(); u=get_user(db,str(update.effective_user.id))
         u["success_deals"]=u["total_deals"]=int(args[0]); save_db(db)
-        await update.message.reply_text(f"✅ <b>Обновлено!</b>",parse_mode="HTML")
+        await update.message.reply_text("✅ <b>Обновлено!</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_set_deals: {e}")
 
 async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1572,7 +1689,7 @@ async def cmd_add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db=load_db()
         if not target.isdigit():
             found=next((k for k,v in db["users"].items() if v.get("username","").lower()==target.lower()),None)
-            if not found: await update.message.reply_text(f"<b>Пользователь не найден.</b>",parse_mode="HTML"); return
+            if not found: await update.message.reply_text("<b>Пользователь не найден.</b>",parse_mode="HTML"); return
             target=found
         u=get_user(db,target); u["balance"]=u.get("balance",0)+amount; save_db(db)
         add_log(db,"💰 Баланс выдан (cmd)",uid=target,username=u.get("username",""),extra=f"+{amount} RUB")
@@ -1595,7 +1712,7 @@ async def cmd_take_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db=load_db()
         if not target.isdigit():
             found=next((k for k,v in db["users"].items() if v.get("username","").lower()==target.lower()),None)
-            if not found: await update.message.reply_text(f"<b>Пользователь не найден.</b>",parse_mode="HTML"); return
+            if not found: await update.message.reply_text("<b>Пользователь не найден.</b>",parse_mode="HTML"); return
             target=found
         u=get_user(db,target); u["balance"]=max(0,u.get("balance",0)-amount); save_db(db)
         add_log(db,"💸 Баланс списан (cmd)",uid=target,username=u.get("username",""),extra=f"-{amount} RUB")
