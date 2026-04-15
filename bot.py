@@ -57,13 +57,13 @@ E_NUM3    = ce("5794280000383358988","3️⃣")
 E_NUM4    = ce("5794241397217304511","4️⃣")
 CM        = ce("5278467510604160626","💰")
 
-# FIX: unique premium emojis for deal card roles/stats
-E_SELLER_ICON = ce("5377620962390857342","🪙")    # seller - coin
-E_BUYER_ICON  = ce("5294167145079395967","🛍")    # buyer - bag
-E_DEALS_ICON  = ce("5188344996356448758","🏆")    # deals - trophy
-E_TURN_ICON   = ce("5424976816530014958","💰")    # turnover - money
-E_REV_ICON    = ce("5028746137645876535","📊")    # reviews - chart
+E_SELLER_ICON = ce("5377620962390857342","🪙")
+E_BUYER_ICON  = ce("5294167145079395967","🛍")
+E_DEALS_ICON  = ce("5188344996356448758","🏆")
+E_TURN_ICON   = ce("5424976816530014958","💰")
+E_REV_ICON    = ce("5028746137645876535","📊")
 
+# FIX 3: исправлены названия валют (правильная грамматика)
 TNAMES_RU = {
     "nft": f"{E_NFT} NFT подарок", "username": f"{E_USER} NFT Username",
     "stars": f"{E_STAR2} Звёзды Telegram", "crypto": f"{E_TON} Крипта (TON/USDT)",
@@ -77,17 +77,17 @@ TNAMES_EN = {
 
 def tname(t, lang="ru"): return TNAMES_EN.get(t,t) if lang=="en" else TNAMES_RU.get(t,t)
 
-# Currency: plain name for display (no flags)
+# FIX 3: исправлены названия валют — правильная грамматика
 CUR_PLAIN = {
     "TON":"💎 TON","USDT":"💵 USDT","Stars":"⭐️ Stars",
-    "RUB":"Рубли","KZT":"Теңге","AZN":"Manat","KGS":"Сом",
-    "UZS":"So'm","TJS":"Сомонӣ","BYN":"Рубли","UAH":"Гривня","GEL":"ლარი",
+    "RUB":"Рубли","KZT":"Тенге","AZN":"Манат","KGS":"Сом",
+    "UZS":"Сум","TJS":"Сомони","BYN":"Рубли (BYN)","UAH":"Гривна","GEL":"Лари",
 }
-# Currency with flags for buttons
+# FIX 3: кнопки выбора валюты — тоже исправлены
 CUR_BTN = {
     "TON":"💎 TON","USDT":"💵 USDT","Stars":"⭐️ Stars / Звёзды",
-    "RUB":"🇷🇺 Рубли","KZT":"🇰🇿 Теңге","AZN":"🇦🇿 Manat","KGS":"🇰🇬 Сом",
-    "UZS":"🇺🇿 So'm","TJS":"🇹🇯 Сомонӣ","BYN":"🇧🇾 Рубли","UAH":"🇺🇦 Гривня","GEL":"🇬🇪 ლარი",
+    "RUB":"🇷🇺 Рубли","KZT":"🇰🇿 Тенге","AZN":"🇦🇿 Манат","KGS":"🇰🇬 Сом",
+    "UZS":"🇺🇿 Сум","TJS":"🇹🇯 Сомони","BYN":"🇧🇾 Рубли (BYN)","UAH":"🇺🇦 Гривна","GEL":"🇬🇪 Лари",
 }
 CURMAP = {"cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
           "cur_kzt":"KZT","cur_azn":"AZN","cur_kgs":"KGS","cur_uzs":"UZS",
@@ -254,15 +254,12 @@ def cur_kb(lang):
 
 # ─── Validation ───────────────────────────────────────────────────────────────
 def validate_username(text):
-    """Only English letters, digits, underscore. Min 5 chars total (@ + 4)."""
     if not text.startswith("@"): return None,"no_at"
     u=text[1:]
     if len(u)<4: return None,"short"
     if not u: return None,"short"
-    # FIX: strictly only ASCII letters/digits/underscore, no cyrillic or other chars
     if not all(c.isascii() and (c.isalpha() and c.isascii() or c.isdigit() or c=="_") for c in u):
         return None,"chars"
-    # FIX: must contain at least one letter (not just @)
     if not any(c.isalpha() for c in u):
         return None,"chars"
     return text, None
@@ -275,19 +272,16 @@ def validate_card(text):
     return None
 
 def validate_nft_link(text, dtype):
-    """Accept t.me/nft/... links — strip https:// prefix first."""
     clean=text.strip()
-    # Strip protocol
     for prefix in ("https://","http://"):
         if clean.startswith(prefix):
             clean=clean[len(prefix):]
             break
     if not clean.startswith("t.me/"): return False,"no_tme"
-    path=clean[5:]  # after "t.me/"
+    path=clean[5:]
     if dtype=="nft":
-        # FIX: must be t.me/nft/something with actual content after nft/
         if not path.startswith("nft/"): return False,"wrong_nft"
-        nft_part=path[4:]  # after "nft/"
+        nft_part=path[4:]
         if len(nft_part)<2: return False,"wrong_nft"
     return True,None
 
@@ -312,14 +306,12 @@ def get_welcome(lang):
 
 # ─── Deal card builder ────────────────────────────────────────────────────────
 def build_deal_text(deal_id, d, creator_tag, partner_tag, lang):
-    """Build compact deal card. Safe, never raises."""
     try:
         ru=lang=="ru"
         dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
         dd=d.get("data",{})
         creator_role=d.get("creator_role","seller")
 
-        # Item line
         item=""
         if dtype=="nft": item=f"\n{E_LINK} {R(ru,'Ссылка','Link')}: {dd.get('nft_link','—')}"
         elif dtype=="username": item=f"\n{E_LINK} Username: {dd.get('trade_username','—')}"
@@ -327,21 +319,19 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang):
         elif dtype=="premium": item=f"\n{E_PREM} {R(ru,'Срок','Period')}: {dd.get('premium_period','—')}"
         elif dtype=="premium_stickers": item=f"\n{E_STICK} {R(ru,'Паков','Packs')}: {dd.get('sticker_count','—')}"
 
-        # FIX: Roles — buyer created → seller delivers; seller created → buyer pays/transfers first
         if creator_role=="buyer":
             lbl_creator=R(ru,"Покупатель","Buyer")
             lbl_partner=R(ru,"Продавец","Seller")
             note=R(ru,
                 "⚠️ Продавец передаёт товар покупателю через менеджера "+MANAGER_TAG,
                 "⚠️ Seller delivers item to Buyer via manager "+MANAGER_TAG)
-        else:  # seller created
+        else:
             lbl_creator=R(ru,"Продавец","Seller")
             lbl_partner=R(ru,"Покупатель","Buyer")
             note=R(ru,
                 "⚠️ Покупатель переводит оплату, продавец передаёт товар через менеджера "+MANAGER_TAG,
                 "⚠️ Buyer sends payment, Seller delivers item via manager "+MANAGER_TAG)
 
-        # FIX: stats block — each stat on its own line, no duplicate emojis
         db=load_db()
         def stats_block(uid_s):
             try:
@@ -362,10 +352,13 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang):
         p_uname=d.get("partner","").lstrip("@").lower()
         partner_uid=next((k for k,v in db.get("users",{}).items() if v.get("username","").lower()==p_uname),None)
 
+        # FIX 3: правильное отображение валюты
+        cur_display=CUR_PLAIN.get(cur, cur)
+
         lines=[
             f"<tg-emoji emoji-id='5206607081334906820'>✅</tg-emoji> <b>{R(ru,'Сделка','Deal')}</b>\n",
             f"<b>{R(ru,'Тип','Type')}:</b> {tname(dtype,lang)}{item}",
-            f"<b>{R(ru,'Сумма','Amount')}:</b> {amt} {CUR_PLAIN.get(cur,cur)}\n",
+            f"<b>{R(ru,'Сумма','Amount')}:</b> {amt} {cur_display}\n",
             f"{E_SELLER_ICON} <b>{lbl_creator}:</b> {creator_tag}",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
             f"{E_BUYER_ICON} <b>{lbl_partner}:</b> {partner_tag}",
@@ -444,12 +437,10 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         await context.bot.send_message(chat_id=int(seller_uid),
                             text=f"{E_JOIN} <b>{R(rs,'Покупатель присоединился!','Buyer joined!')}</b>\n<blockquote>{buyer_tag}</blockquote>",parse_mode="HTML")
                     except: pass
-                # Build buyer card
                 cu=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
                 creator_tag=f"@{cu}" if cu else f"#{seller_uid}"
                 buyer_uname=update.effective_user.username or ""; buyer_tag2=f"@{buyer_uname}" if buyer_uname else f"#{uid}"
                 text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,lang)
-                # FIX: "написать продавцу" uses seller's actual username, not the item being sold
                 seller_uname_for_btn=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
                 if seller_uname_for_btn:
                     pu=f"https://t.me/{seller_uname_for_btn}"
@@ -472,7 +463,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud=context.user_data; uid=update.effective_user.id
         lang=get_lang(uid); ru=lang=="ru"
 
-        # ── Navigation ──
         if d=="main_menu":
             ud.clear(); await show_main(update,context); return
         if d=="menu_profile": await show_profile(update,context); return
@@ -486,7 +476,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="menu_ref": await show_ref(update,context); return
         if d=="menu_req": await show_req(update,context); return
 
-        # ── Deal creation ──
         if d=="menu_deal":
             ud.clear()
             try: await q.message.delete()
@@ -556,7 +545,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{R(ru,'Введите сумму сделки','Enter deal amount')} ({CURMAP.get(d,d)}):",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
-        # ── Requisites ──
         if d=="menu_req": await show_req(update,context); return
 
         if d=="req_del_menu":
@@ -605,23 +593,34 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_section(update,prompts.get(field,"?"),
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data=f"add_req_{deal_id}")]]),section="deal_card"); return
 
-        # ── Balance ──
         if d.startswith("lang_"): await set_lang(update,context,d[5:]); return
         if d.startswith("balance_"): await show_balance_info(update,context,d[8:]); return
         if d=="withdraw": await show_withdraw(update,context); return
+
+        # FIX 2: В разделе пополнения показываем реквизиты куда кидать
         if d=="balance_topup":
             db=load_db(); uid2=update.effective_user.id; u2=get_user(db,uid2)
             reqs=u2.get("requisites",{})
-            # FIX: show requisites info in top-up buttons
             card=reqs.get("card",""); ton=reqs.get("ton",""); stars=reqs.get("stars","")
-            card_label = f"💰 Рубли — {CARD_BANK}" if card else f"💰 {R(ru,'Рубли','Rubles')}"
+            card_label = f"💳 Рубли — {CARD_BANK}" if card else f"💳 {R(ru,'Рубли','Rubles')}"
             ton_label = f"💎 TON/USDT — {ton[:10]}..." if ton else "💎 TON / USDT"
             stars_label = f"⭐️ {R(ru,'Звёзды','Stars')} — {stars}" if stars else f"⭐️ {R(ru,'Звёзды','Stars')}"
-            await send_section(update,f"{E_MONEY} <b>{R(ru,'Выберите способ пополнения:','Choose top-up method:')}</b>",
+
+            # FIX 2: добавляем текст с реквизитами куда переводить
+            info_lines = [f"{E_MONEY} <b>{R(ru,'Выберите способ пополнения:','Choose top-up method:')}</b>\n"]
+            info_lines.append(f"{E_REQ} <b>{R(ru,'Реквизиты для пополнения:','Payment details:')}</b>")
+            info_lines.append(f"<blockquote>💳 {R(ru,'Карта / СБП','Card / SBP')} ({CARD_BANK}):\n"
+                              f"{R(ru,'Телефон','Phone')}: <code>{CARD_NUM}</code>\n"
+                              f"{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>")
+            info_lines.append(f"<blockquote>{E_TON} TON / USDT:\n<code>{CRYPTO_ADDR}</code>\n{E_CBOT} {CRYPTO_BOT}</blockquote>")
+            info_lines.append(f"<blockquote>{E_STAR2} {R(ru,'Звёзды / NFT','Stars / NFT')}:\n{MANAGER_TAG}</blockquote>")
+            info_text = "\n".join(info_lines)
+
+            await send_section(update, info_text,
                 InlineKeyboardMarkup([
-                    [InlineKeyboardButton(stars_label,callback_data="balance_stars")],
-                    [InlineKeyboardButton(card_label,callback_data="balance_rub")],
-                    [InlineKeyboardButton(ton_label,callback_data="balance_crypto")],
+                    [InlineKeyboardButton(stars_label, callback_data="balance_stars")],
+                    [InlineKeyboardButton(card_label, callback_data="balance_rub")],
+                    [InlineKeyboardButton(ton_label, callback_data="balance_crypto")],
                     [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="menu_balance")],
                 ]),section="balance"); return
 
@@ -670,13 +669,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_section(update,f"{E_WALLET} <b>{R(ru,'Вывод','Withdraw')}</b>\n\n<blockquote>{prompts.get(method,'?')}</blockquote>",
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="withdraw")]]),section="balance"); return
 
-        # ── Reviews ──
         if d.startswith("rev_"):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars=int(parts[3])
             ud["review_deal"]=deal_id; ud["review_role"]=role; ud["review_stars"]=stars; ud["review_step"]="text"
             await q.edit_message_text(f"{'⭐'*stars} {R(ru,'Оценка','Rating')}: {stars}/5\n\n{R(ru,'Напишите комментарий:','Write a comment:')}",parse_mode="HTML"); return
 
-        # ── Admin delete review ──
         if d.startswith("adm_del_rev_"):
             parts=d[12:].split("_",1); target_uid=parts[0]; ridx=int(parts[1]) if len(parts)>1 else -1
             db=load_db()
@@ -713,7 +710,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=update.message.text.strip() if update.message.text else ""
         if uid==ADMIN_ID and ud.get("adm_step"): await handle_adm_msg(update,context); return
 
-        # Requisites input
         if ud.get("req_step") in ("card","ton","stars"):
             field=ud["req_step"]; db=load_db(); u=get_user(db,uid)
             err=None
@@ -743,7 +739,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ct=f"@{cu}" if cu else f"#{d2.get('user_id','')}"
                     bu=update.effective_user.username or ""; bt=f"@{bu}" if bu else f"#{uid}"
                     text2=build_deal_text(pending,d2,ct,bt,lang)
-                    # FIX: correct seller URL
                     seller_uid_p=d2.get("user_id","")
                     seller_uname_p=db2["users"].get(str(seller_uid_p),{}).get("username","") if seller_uid_p else ""
                     pu=f"https://t.me/{seller_uname_p}" if seller_uname_p else MANAGER_URL
@@ -756,7 +751,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"✅ <b>{R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📋 "+R(ru,"Мои реквизиты","My Requisites"),callback_data="menu_req")]])); return
 
-        # Withdraw input
         if ud.get("withdraw_step")=="req":
             method=ud.get("withdraw_method","?"); db=load_db()
             u=get_user(db,uid); bal=u.get("balance",0); uname3=update.effective_user.username or str(uid)
@@ -776,7 +770,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")],
                 ])); return
 
-        # Review input
         if ud.get("review_step")=="text":
             deal_id=ud.get("review_deal"); role=ud.get("review_role"); stars=ud.get("review_stars",5)
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
@@ -795,7 +788,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for k in ("review_step","review_deal","review_role","review_stars"): ud.pop(k,None)
             await update.message.reply_text(f"✅ <b>{R(ru,'Отзыв сохранён!' if saved else 'Принят!','Review saved!' if saved else 'Received!')}</b>",parse_mode="HTML"); return
 
-        # Deal creation steps
         dtype=ud.get("type"); step=ud.get("step")
         if not dtype or not step: return
 
@@ -859,7 +851,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     disp=R(ru,"Для NFT используйте t.me/nft/... (например t.me/nft/GiftName-123)","For NFT use t.me/nft/... (e.g. t.me/nft/GiftName-123)")
                 await update.message.reply_text(f"❌ <b>{disp}</b>",parse_mode="HTML"); return
-            # FIX: normalize link — always store without https://
             clean_link=text.strip()
             for prefix in ("https://","http://"):
                 if clean_link.startswith(prefix):
@@ -906,7 +897,6 @@ async def finalize_deal(update, context):
         creator_role=ud.get("creator_role","seller")
         user=update.effective_user
 
-        # Collect item data
         data={}
         for key in ("nft_link","trade_username","stars_count","premium_period","sticker_count"):
             if ud.get(key) is not None: data[key]=ud[key]
@@ -922,7 +912,6 @@ async def finalize_deal(update, context):
         save_db(db)
         if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
 
-        # Creator display
         cu=db["users"].get(str(user.id),{}).get("username","")
         creator_tag=f"@{cu}" if cu else f"@{user.username or str(user.id)}"
         partner_tag=partner
@@ -931,13 +920,16 @@ async def finalize_deal(update, context):
         text=build_deal_text(deal_id,db["deals"][deal_id],creator_tag,partner_tag,lang)
         ll=R(ru,"Ссылка для покупателя","Link for buyer")
         sl=R(ru,"Отправьте ссылку партнёру.","Send the link to your partner.")
-        # FIX: don't show deal_id in the user-facing message, just the link
         text+=f"\n\n{E_DLNK} {ll}:\n<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>\n\n{sl}"
-        kb=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")]])
+
+        # FIX 4: кнопка «Я оплатил» есть и у создателя сделки тоже
+        kb=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ "+R(ru,"Я оплатил","I paid"),callback_data=f"paid_{deal_id}")],
+            [InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")],
+        ])
 
         await send_new(update,text,kb,section="deal_card")
 
-        # Notify partner if in DB
         pname=partner.lstrip("@").lower() if partner.startswith("@") else None
         if pname:
             puid=next((k for k,v in db["users"].items() if v.get("username","").lower()==pname),None)
@@ -1167,17 +1159,14 @@ async def show_ref(update, context):
     except Exception as e: logger.error(f"show_ref: {e}")
 
 async def show_req(update, context):
-    """FIX: each requisite in its own blockquote, 'not added' also in blockquote, no @username label for stars."""
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); ru=lang=="ru"; reqs=u.get("requisites",{})
         card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
         not_added=R(ru,"Не добавлена","Not added")
         not_added_m=R(ru,"Не добавлен","Not added")
-        # FIX: each item in own blockquote, not added also in blockquote
         cv=f"<blockquote><code>{card}</code></blockquote>" if card else f"<blockquote>{not_added}</blockquote>"
         tv=f"<blockquote><code>{ton}</code></blockquote>"  if ton  else f"<blockquote>{not_added_m}</blockquote>"
-        # FIX: no "@username" label next to stars, just the value or not-added
         sv=f"<blockquote><code>{stars}</code></blockquote>" if stars else f"<blockquote>{not_added_m}</blockquote>"
         text=(f"📋 <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n\n"
               f"💳 <b>{R(ru,'Карта / СБП','Card / SBP')}:</b>\n{cv}\n"
@@ -1193,6 +1182,7 @@ async def show_req(update, context):
         await send_section(update,text,InlineKeyboardMarkup(rows),section="profile")
     except Exception as e: logger.error(f"show_req: {e}")
 
+# FIX 4: в «Мои сделки» добавлена кнопка «Я оплатил» для pending сделок
 async def show_my_deals(update, context):
     try:
         db=load_db(); uid=str(update.effective_user.id); lang=get_lang(int(uid)); ru=lang=="ru"
@@ -1202,11 +1192,19 @@ async def show_my_deals(update, context):
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="my_deals"); return
         SNAMES={"pending":R(ru,"⏳ Ожидает","⏳ Pending"),"confirmed":R(ru,"✅ Завершена","✅ Completed")}
         lines=[f"💼 <b>{R(ru,'Мои сделки','My Deals')} ({len(deals)}):</b>\n"]
+        rows=[]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
             tn=tname(dv.get("type",""),lang); s=SNAMES.get(dv.get("status",""),dv.get("status",""))
-            lines.append(f"<b>{i}. {tn} | {dv.get('amount')} {CUR_PLAIN.get(dv.get('currency',''),dv.get('currency',''))} | {s}</b>")
-        await send_section(update,"\n".join(lines),
-            InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="my_deals")
+            cur_d=CUR_PLAIN.get(dv.get("currency",""),dv.get("currency",""))
+            lines.append(f"<b>{i}. {tn} | {dv.get('amount')} {cur_d} | {s}</b>")
+            # FIX 4: если сделка pending — добавляем кнопку «Я оплатил»
+            if dv.get("status","")=="pending":
+                rows.append([InlineKeyboardButton(
+                    f"✅ {R(ru,'Я оплатил','I paid')} — {did}",
+                    callback_data=f"paid_{did}"
+                )])
+        rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")])
+        await send_section(update,"\n".join(lines),InlineKeyboardMarkup(rows),section="my_deals")
     except Exception as e: logger.error(f"show_my_deals: {e}")
 
 async def show_top(update, context):
