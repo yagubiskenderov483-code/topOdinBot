@@ -481,7 +481,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
                     ])
                     await update.effective_message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Упс, вы похоже не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:','Oops, looks like you haven't added requisites 😅\n\nAdd requisites to receive payment:')}</b>",
+                        f"{Ewrn} <b>{R(ru,'Упс, вы похоже не добавили реквизиты\n\nДобавьте реквизиты для получения оплаты:','Oops, looks like you haven't added requisites \n\nAdd requisites to receive payment:')}</b>",
                         parse_mode="HTML",reply_markup=kb)
                     context.user_data["pending_deal"]=deal_id; return
 
