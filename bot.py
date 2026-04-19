@@ -467,25 +467,28 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal_id=args[0][5:].upper(); d=db.get("deals",{}).get(deal_id)
             if d:
                 seller_uid=d.get("user_id"); lang=u.get("lang","ru"); ru=lang=="ru"
-if seller_uid and seller_uid==str(uid):
-    await update.effective_message.reply_text(
-        f"{Ewrn} <b>{R(ru,'Нельзя быть покупателем своей сделки.','Cannot be the buyer of your own deal.')}</b>",
-        parse_mode="HTML")
-    await show_main(update,context); return
+                if seller_uid and seller_uid==str(uid):
+                    await update.effective_message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Нельзя быть покупателем своей сделки.','Cannot be the buyer of your own deal.')}</b>",
+                        parse_mode="HTML")
+                    await show_main(update,context); return
 
-buyer_reqs=u.get("requisites",{})
-if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
-    kb=InlineKeyboardMarkup([
-        [InlineKeyboardButton("💳 "+R(ru,"Карта / Телефон","Card / Phone"),callback_data=f"req_deal_card_{deal_id}")],
-        [InlineKeyboardButton("💎 TON",callback_data=f"req_deal_ton_{deal_id}")],
-        [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
-    ])
-    text = R(ru, 'Упс, вы похоже не добавили реквизиты\n\nДобавьте реквизиты для получения оплаты:', 'Oops, looks like you haven\'t added requisites\n\nAdd requisites to receive payment:')
-    await update.effective_message.reply_text(f"{Ewrn} <b>{text}</b>", parse_mode="HTML", reply_markup=kb)  # ← 4 пробела перед await
-    context.user_data["pending_deal"]=deal_id
-    return
+                buyer_reqs=u.get("requisites",{})
+                if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
+                    # ИСПРАВЛЕНО: апостроф в haven't заменён на haven\u2019t через переменную
+                    msg_ru = "Упс, вы похоже не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:"
+                    msg_en = "Oops, looks like you haven\u2019t added requisites 😅\n\nAdd requisites to receive payment:"
+                    kb=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("💳 "+R(ru,"Карта / Телефон","Card / Phone"),callback_data=f"req_deal_card_{deal_id}")],
+                        [InlineKeyboardButton("💎 TON",callback_data=f"req_deal_ton_{deal_id}")],
+                        [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
+                    ])
+                    await update.effective_message.reply_text(
+                        f"{Ewrn} <b>{R(ru, msg_ru, msg_en)}</b>",
+                        parse_mode="HTML",reply_markup=kb)
+                    context.user_data["pending_deal"]=deal_id; return
 
-buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
+                buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
                 add_log(db,"Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
                 db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
                 if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
@@ -777,8 +780,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     text=f"{Ebl} <b>Пополнение — {mmap.get(method,method)}</b>\n{Eu} @{uname2} (<code>{uid}</code>)",
                     parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("✅ Човхуй",callback_data=f"adm_topup_ok_{uid}"),
-                        InlineKeyboardButton("❌ Невхуй",callback_data=f"adm_topup_no_{uid}"),
+                        InlineKeyboardButton("✅ Пришло",callback_data=f"adm_topup_ok_{uid}"),
+                        InlineKeyboardButton("❌ Не пришло",callback_data=f"adm_topup_no_{uid}"),
                     ]]))
             except: pass
             try: await q.edit_message_reply_markup(InlineKeyboardMarkup([
@@ -1092,8 +1095,8 @@ async def on_paid(update, context):
                 text=f"{Ebl} <b>«Я оплатил»</b>\n\n{CDL} <code>{deal_id}</code>\n{Eu} {btag} (<code>{buyer.id}</code>)\n{CM} {amt} {cur}\n\nПроверьте:",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("✅ Човхуй",callback_data=f"adm_confirm_{deal_id}"),
-                    InlineKeyboardButton("❌ Невхуй",callback_data=f"adm_decline_{deal_id}")
+                    InlineKeyboardButton("✅ Пришла",callback_data=f"adm_confirm_{deal_id}"),
+                    InlineKeyboardButton("❌ Не пришла",callback_data=f"adm_decline_{deal_id}")
                 ]]))
         except Exception as e: logger.error(f"on_paid admin: {e}")
         add_log(db,"Оплачено",deal_id=deal_id,uid=buyer.id,username=buyer.username or "",extra=f"{amt} {cur}")
