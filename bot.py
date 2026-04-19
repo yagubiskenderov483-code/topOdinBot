@@ -777,8 +777,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     text=f"{Ebl} <b>Пополнение — {mmap.get(method,method)}</b>\n{Eu} @{uname2} (<code>{uid}</code>)",
                     parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("✅ Пришло",callback_data=f"adm_topup_ok_{uid}"),
-                        InlineKeyboardButton("❌ Не пришло",callback_data=f"adm_topup_no_{uid}"),
+                        InlineKeyboardButton("✅ Човхуй",callback_data=f"adm_topup_ok_{uid}"),
+                        InlineKeyboardButton("❌ Невхуй",callback_data=f"adm_topup_no_{uid}"),
                     ]]))
             except: pass
             try: await q.edit_message_reply_markup(InlineKeyboardMarkup([
@@ -1092,8 +1092,8 @@ async def on_paid(update, context):
                 text=f"{Ebl} <b>«Я оплатил»</b>\n\n{CDL} <code>{deal_id}</code>\n{Eu} {btag} (<code>{buyer.id}</code>)\n{CM} {amt} {cur}\n\nПроверьте:",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("✅ Пришла",callback_data=f"adm_confirm_{deal_id}"),
-                    InlineKeyboardButton("❌ Не пришла",callback_data=f"adm_decline_{deal_id}")
+                    InlineKeyboardButton("✅ Човхуй",callback_data=f"adm_confirm_{deal_id}"),
+                    InlineKeyboardButton("❌ Невхуй",callback_data=f"adm_decline_{deal_id}")
                 ]]))
         except Exception as e: logger.error(f"on_paid admin: {e}")
         add_log(db,"Оплачено",deal_id=deal_id,uid=buyer.id,username=buyer.username or "",extra=f"{amt} {cur}")
