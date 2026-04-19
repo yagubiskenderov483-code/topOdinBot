@@ -467,24 +467,25 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal_id=args[0][5:].upper(); d=db.get("deals",{}).get(deal_id)
             if d:
                 seller_uid=d.get("user_id"); lang=u.get("lang","ru"); ru=lang=="ru"
-                if seller_uid and seller_uid==str(uid):
-                    await update.effective_message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Нельзя быть покупателем своей сделки.','Cannot be the buyer of your own deal.')}</b>",
-                        parse_mode="HTML")
-                    await show_main(update,context); return
+if seller_uid and seller_uid==str(uid):
+    await update.effective_message.reply_text(
+        f"{Ewrn} <b>{R(ru,'Нельзя быть покупателем своей сделки.','Cannot be the buyer of your own deal.')}</b>",
+        parse_mode="HTML")
+    await show_main(update,context); return
 
-                buyer_reqs=u.get("requisites",{})
-                if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
-                    kb=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("💳 "+R(ru,"Карта / Телефон","Card / Phone"),callback_data=f"req_deal_card_{deal_id}")],
-                        [InlineKeyboardButton("💎 TON",callback_data=f"req_deal_ton_{deal_id}")],
-                        [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
-                    ])
-                    text = R(ru, 'Упс, вы похоже не добавили реквизиты\n\nДобавьте реквизиты для получения оплаты:', 'Oops, looks like you haven\'t added requisites\n\nAdd requisites to receive payment:')
-await update.effective_message.reply_text(f"{Ewrn} <b>{text}</b>", parse_mode="HTML", reply_markup=kb)
-                    context.user_data["pending_deal"]=deal_id; return
+buyer_reqs=u.get("requisites",{})
+if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
+    kb=InlineKeyboardMarkup([
+        [InlineKeyboardButton("💳 "+R(ru,"Карта / Телефон","Card / Phone"),callback_data=f"req_deal_card_{deal_id}")],
+        [InlineKeyboardButton("💎 TON",callback_data=f"req_deal_ton_{deal_id}")],
+        [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
+    ])
+    text = R(ru, 'Упс, вы похоже не добавили реквизиты\n\nДобавьте реквизиты для получения оплаты:', 'Oops, looks like you haven\'t added requisites\n\nAdd requisites to receive payment:')
+    await update.effective_message.reply_text(f"{Ewrn} <b>{text}</b>", parse_mode="HTML", reply_markup=kb)  # ← 4 пробела перед await
+    context.user_data["pending_deal"]=deal_id
+    return
 
-                buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
+buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
                 add_log(db,"Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
                 db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
                 if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
