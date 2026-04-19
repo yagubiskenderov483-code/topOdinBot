@@ -1266,7 +1266,7 @@ async def show_ref(update, context):
         rc=u.get("ref_count",0); re=u.get("ref_earned",0)
         refs=[v.get("username","?") for v in db.get("users",{}).values() if v.get("ref_by")==str(uid)]
         refs_str=""
-        if refs: refs_str="\n\n"+R(ru,"Рефералы","Referrals")+":\n"+"\n".join(f"• @{r}" if r and r!="?" else "• #?" for r in refs[-10:])
+        if refs: refs_str="\n\n"+R(ru,"Рефералы","Referrals")+":\n"+"\n".join(f"{Esrk} @{r}" if r and r!="?" else f"{Esrk} #?" for r in refs[-10:])
         text=(f"{Ejn} <b>{R(ru,'Реферальная программа','Referral Program')}</b>\n\n"
               f"<blockquote>{Epct} {R(ru,'Приглашайте друзей — 3% с каждой их сделки!','Invite friends — 3% from each deal!')}\n\n"
               f"{Eu} {R(ru,'Приглашено','Invited')}: <b>{rc}</b>\n"
@@ -1340,7 +1340,7 @@ async def show_top(update, context):
             ("@kr***na",4290,198),("@pe***ko",3870,175),("@se***ev",3240,152),
             ("@an***va",2810,134),("@vi***or",2390,117),("@dm***iy",1970,98),("@ni***la",1540,83)
         ]
-        medals=["🥇","🥈","🥉"]+["🏅"]*7
+        medals=[ce("5188344996356448758","🏆"), ce("5463289097336405244","⭐️"), ce("5332455502917949981","🏦")] + [ce("5445221832074483553","💼")]*7
         dw=R(ru,"сделок","deals")
         lines=[f"{Ecwn} <b>{R(ru,'Топ продавцов Gift Deals','Gift Deals Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
