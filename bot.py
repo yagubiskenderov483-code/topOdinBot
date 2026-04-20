@@ -466,19 +466,15 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal_id=args[0][5:].upper(); d=db.get("deals",{}).get(deal_id)
             if d:
                 seller_uid=d.get("user_id"); lang=u.get("lang","ru"); ru=lang=="ru"
-                if seller_uid and seller_uid==str(uid):
-                    id; return
 
-                buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
-                add_log(db,"Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
-                db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
-                if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
-
+                # Проверка: нельзя быть покупателем своей сделки
                 if seller_uid and seller_uid==str(uid):
                     await update.effective_message.reply_text(
                         f"{Ewrn} <b>{R(ru,'Нельзя быть покупателем своей сделки.','Cannot be the buyer of your own deal.')}</b>",
                         parse_mode="HTML")
                     await show_main(update,context); return
+
+                # Проверка реквизитов покупателя
                 buyer_reqs=u.get("requisites",{})
                 if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
                     kb=InlineKeyboardMarkup([
@@ -486,14 +482,25 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton("💎 TON",callback_data=f"req_deal_ton_{deal_id}")],
                         [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
                     ])
-                    ru_text = 'Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:'
-                    en_text = 'Oops, you have not added requisites 😅\n\nAdd requisites to receive payment:'
+                    no_req_text = R(
+                        ru,
+                        "Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:",
+                        "Oops, you have not added requisites 😅\n\nAdd requisites to receive payment:"
+                    )
                     await update.effective_message.reply_text(
-                        f"{Ewrn} <b>{R(ru, ru_text, en_text)}</b>",
+                        f"{Ewrn} <b>{no_req_text}</b>",
                         parse_mode="HTML",
                         reply_markup=kb
                     )
-                    context.user_data["pending_deal"]=deal_id; return
+                    context.user_data["pending_deal"] = deal_id
+                    return
+
+                buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
+                add_log(db,"Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
+                db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
+                if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+
+                if seller_uid:
                     try:
                         sl=get_lang(int(seller_uid)); rs=sl=="ru"
                         await context.bot.send_message(chat_id=int(seller_uid),
@@ -591,7 +598,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d=="menu_deal":
             ud.clear()
-            db=load_db(); u=get_user(db,uid)
             try: await q.message.delete()
             except: pass
             await update.effective_chat.send_message(
@@ -600,7 +606,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d in ("role_buyer","role_seller"):
             role="buyer" if d=="role_buyer" else "seller"
-            # If buyer - check requisites first
             if role=="buyer":
                 db=load_db(); u=get_user(db,uid); reqs=u.get("requisites",{})
                 if not any(reqs.get(f) for f in ("card","ton","stars")):
@@ -611,8 +616,13 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer")],
                         [InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="menu_deal")],
                     ])
+                    no_req_text = R(
+                        ru,
+                        "Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты, чтобы получить оплату после сделки:",
+                        "Oops, you have not added requisites 😅\n\nAdd requisites to receive payment after the deal:"
+                    )
                     await update.effective_chat.send_message(
-                        f"{Ewrn} <b>{R(ru,'Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты, чтобы получить оплату после сделки:','Oops, you have not added requisites 😅\n\nAdd requisites to receive payment after the deal:')}</b>",
+                        f"{Ewrn} <b>{no_req_text}</b>",
                         parse_mode="HTML",reply_markup=kb)
                     ud["creator_role"]=role; return
             ud["creator_role"]=role
@@ -683,7 +693,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("req_edit_"):
             raw=d[9:]
-            # Handle buyer flow: req_edit_card_buyer etc
             if raw.endswith("_buyer"):
                 field=raw[:-6]
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
@@ -728,7 +737,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("lang_"): await set_lang(update,context,d[5:]); return
 
-        # ── Баланс ──
         if d in ("menu_balance","show_balance"):
             try: await q.message.delete()
             except: pass
@@ -919,7 +927,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             u.setdefault("requisites",{})[field]=text
             save_db(db); ud.pop("req_step",None)
 
-            # After adding requisites during buyer deal creation - continue to deal type
             if ud.pop("req_after_buyer_deal",None):
                 await update.message.reply_text(f"{Ech} <b>{R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML")
                 await update.effective_chat.send_message(
@@ -944,7 +951,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton("💬 "+R(ru,"Написать продавцу","Write to seller"),url=pu)],
                         [InlineKeyboardButton("🏠 "+R(ru,"Главное меню","Main menu"),callback_data="main_menu")],
                     ])
-                    # Notify seller
                     if seller_uid_p:
                         try:
                             sl2=get_lang(int(seller_uid_p)); rs2=sl2=="ru"
@@ -1158,10 +1164,6 @@ async def on_paid(update, context):
                 await context.bot.send_message(chat_id=int(seller),
                     text=f"{Ebl} <b>{R(rs2,'Покупатель оплатил!','Buyer paid!')}</b>\n{btag}\n{amt} {cur}",parse_mode="HTML")
             except: pass
-        buyer_uid=d.get("buyer_uid")
-        if not buyer_uid:
-            for u_,ud_ in db.get("users",{}).items():
-                if ud_.get("username","").lower()==d.get("partner","").lstrip("@").lower(): buyer_uid=u_; break
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
                 [InlineKeyboardButton("⏳ "+R(rb,"Ожидание подтверждения...","Waiting for confirmation..."),callback_data="noop")],
@@ -1208,7 +1210,7 @@ async def adm_confirm(update, context):
         except: pass
         if s:
             try:
-                sl=get_lang(int(s)); rs=sl=="ru"; bt2=d.get("partner","—")
+                sl=get_lang(int(s)); rs=sl=="ru"
                 await context.bot.send_message(chat_id=int(s),
                     text=f"{Ech} <b>{R(rs,'Сделка завершена!','Deal completed!')}</b>{ilink}",
                     parse_mode="HTML")
@@ -1523,7 +1525,8 @@ async def handle_adm_cb(update, context):
             db=load_db(); db["log_hidden"]=not db.get("log_hidden",False); save_db(db)
             await q.answer("Скрыто" if db["log_hidden"] else "Открыто")
             try: await q.message.edit_text(f"{Edl} <b>Панель администратора</b>",parse_mode="HTML",reply_markup=adm_kb())
-            except: pass; return
+            except: pass
+            return
 
         if d in ("adm_logs","adm_logs_toggle"):
             db=load_db()
