@@ -467,11 +467,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if d:
                 seller_uid=d.get("user_id"); lang=u.get("lang","ru"); ru=lang=="ru"
                 if seller_uid and seller_uid==str(uid):
+                    id; return
+
+                buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
+                add_log(db,"Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
+                db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
+                if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+
+                if seller_uid and seller_uid==str(uid):
                     await update.effective_message.reply_text(
                         f"{Ewrn} <b>{R(ru,'Нельзя быть покупателем своей сделки.','Cannot be the buyer of your own deal.')}</b>",
                         parse_mode="HTML")
                     await show_main(update,context); return
-
                 buyer_reqs=u.get("requisites",{})
                 if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
                     kb=InlineKeyboardMarkup([
@@ -479,21 +486,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton("💎 TON",callback_data=f"req_deal_ton_{deal_id}")],
                         [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
                     ])
-                ru_text = 'Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:'
-en_text = 'Oops, you have not added requisites 😅\n\nAdd requisites to receive payment:'
-
-await update.effective_message.reply_text(
-    f"{Ewrn} <b>{R(ru, ru_text, en_text)}</b>",
-    parse_mode="HTML",
-    reply_markup=kb
-)                context.user_data["pending_deal"]=deal_id; return
-
-                buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
-                add_log(db,"Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
-                db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
-                if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
-
-                if seller_uid:
+                    ru_text = 'Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:'
+                    en_text = 'Oops, you have not added requisites 😅\n\nAdd requisites to receive payment:'
+                    await update.effective_message.reply_text(
+                        f"{Ewrn} <b>{R(ru, ru_text, en_text)}</b>",
+                        parse_mode="HTML",
+                        reply_markup=kb
+                    )
+                    context.user_data["pending_deal"]=deal_id; return
                     try:
                         sl=get_lang(int(seller_uid)); rs=sl=="ru"
                         await context.bot.send_message(chat_id=int(seller_uid),
