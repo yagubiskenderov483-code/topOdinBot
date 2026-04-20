@@ -479,10 +479,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton("💎 TON",callback_data=f"req_deal_ton_{deal_id}")],
                         [InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}")],
                     ])
-                await update.effective_message.reply_text(
-    f"{Ewrn} <b>{R(ru, 'Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:', 'Oops, you have not added requisites 😅\n\nAdd requisites to receive payment:')}</b>",
+                ru_text = 'Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты для получения оплаты:'
+en_text = 'Oops, you have not added requisites 😅\n\nAdd requisites to receive payment:'
+
+await update.effective_message.reply_text(
+    f"{Ewrn} <b>{R(ru, ru_text, en_text)}</b>",
     parse_mode="HTML",
     reply_markup=kb
+)
 )
                     context.user_data["pending_deal"]=deal_id; return
 
