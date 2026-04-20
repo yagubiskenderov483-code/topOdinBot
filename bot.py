@@ -486,8 +486,6 @@ await update.effective_message.reply_text(
     f"{Ewrn} <b>{R(ru, ru_text, en_text)}</b>",
     parse_mode="HTML",
     reply_markup=kb
-)
-)
                     context.user_data["pending_deal"]=deal_id; return
 
                 buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
