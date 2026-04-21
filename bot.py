@@ -303,7 +303,7 @@ def main_kb(lang):
          InlineKeyboardButton("⭐ "+R(ru,"Профиль","Profile"),callback_data="menu_profile")],
         [InlineKeyboardButton("💸 "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
          InlineKeyboardButton("🪪 "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
-        [InlineKeyboardButton("🌍 "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
+        [InlineKeyboardButton("🗺 "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
          InlineKeyboardButton("🏆 "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
         [InlineKeyboardButton("👥 "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
          InlineKeyboardButton("📋 "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
@@ -342,13 +342,14 @@ def cur_kb(lang):
 
 # ─── Validation ───────────────────────────────────────────────────────────────
 def validate_username(text):
-    if not text.startswith("@"): return None,"no_at"
-    u=text[1:]
-    if len(u)<4: return None,"short"
-    if not all(c.isascii() and (c.isalpha() or c.isdigit() or c=="_") for c in u):
-        return None,"chars"
-    if not any(c.isalpha() for c in u): return None,"chars"
-    return text, None
+    import re
+    t = text.strip()
+    if not t.startswith("@"): t = "@" + t
+    u = t[1:]
+    if len(u) < 4: return None, "short"
+    if not re.fullmatch(r"[a-zA-Z0-9_]+", u): return None, "chars"
+    if not re.search(r"[a-zA-Z]", u): return None, "chars"
+    return t, None
 
 def validate_card(text):
     c=text.replace(" ","").replace("-","").replace("+","")
@@ -361,6 +362,7 @@ def validate_ton_address(text):
     return (t.startswith("UQ") or t.startswith("EQ")) and len(t)>=40
 
 def validate_nft_link(text, dtype):
+    import re
     clean=text.strip()
     for prefix in ("https://","http://"):
         if clean.startswith(prefix): clean=clean[len(prefix):]; break
@@ -368,7 +370,13 @@ def validate_nft_link(text, dtype):
     path=clean[5:]
     if dtype=="nft":
         if not path.startswith("nft/"): return False,"wrong_nft"
-        if len(path[4:])<2: return False,"wrong_nft"
+        slug=path[4:].strip("/")
+        if len(slug)<2 or not re.search(r"[a-zA-Z0-9]", slug): return False,"wrong_nft"
+    elif dtype=="username":
+        # t.me/username — должен быть хотя бы 4 символа после t.me/
+        uname=path.strip("/")
+        if len(uname)<4: return False,"wrong_usr"
+        if not re.fullmatch(r"[a-zA-Z0-9_]+", uname): return False,"wrong_usr"
     return True,None
 
 # ─── Welcome ──────────────────────────────────────────────────────────────────
@@ -397,24 +405,22 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
         dd=d.get("data",{}); creator_role=d.get("creator_role","seller")
 
-        item=""
-        if dtype=="nft":       item=f"\n🔗 {R(ru,'Ссылка','Link')}: {dd.get('nft_link','—')}"
-        elif dtype=="username": item=f"\n🔗 Username: {dd.get('trade_username','—')}"
-        elif dtype=="stars":    item=f"\n⭐ {R(ru,'Звёзд','Stars')}: {dd.get('stars_count','—')}"
-        elif dtype=="premium":  item=f"\n✈️ {R(ru,'Срок','Period')}: {dd.get('premium_period','—')}"
+        # Инфо о товаре
+        if dtype=="nft":
+            item=f"\n{Eln} {R(ru,'Ссылка','Link')}: {dd.get('nft_link','—')}"
+        elif dtype=="username":
+            item=f"\n{Eu} Username: {dd.get('trade_username','—')}"
+        elif dtype=="stars":
+            item=f"\n{Est} {R(ru,'Звёзд','Stars')}: {dd.get('stars_count','—')}"
+        elif dtype=="premium":
+            item=f"\n{Egm} {R(ru,'Срок','Period')}: {dd.get('premium_period','—')}"
+        else:
+            item=""
 
         if creator_role=="buyer":
-            lbl_creator=R(ru,"Покупатель","Buyer")
-            lbl_partner=R(ru,"Продавец","Seller")
-            note=R(ru,
-                f"Продавец должен передать товар менеджеру {MANAGER_TAG}",
-                f"Seller must transfer the item to manager {MANAGER_TAG}")
+            lbl_creator=R(ru,"Покупатель","Buyer"); lbl_partner=R(ru,"Продавец","Seller")
         else:
-            lbl_creator=R(ru,"Продавец","Seller")
-            lbl_partner=R(ru,"Покупатель","Buyer")
-            note=R(ru,
-                f"Покупатель должен перевести оплату менеджеру {MANAGER_TAG}",
-                f"Buyer must send payment to manager {MANAGER_TAG}")
+            lbl_creator=R(ru,"Продавец","Seller"); lbl_partner=R(ru,"Покупатель","Buyer")
 
         db=load_db()
         def stats_block(uid_s):
@@ -422,7 +428,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
                 u=db["users"].get(str(uid_s),{}) if uid_s else {}
                 nd=u.get("success_deals",0); nt=u.get("turnover",0); nv=len(u.get("reviews",[]))
                 st=u.get("status","")
-                sl=f"\n🥇 <b>{st}</b>" if st else ""
+                sl=f"\n{Emdl} <b>{st}</b>" if st else ""
                 return (f"{Etph} {R(ru,'Сделок','Deals')}: <b>{nd}</b>\n"
                         f"{Estr} {R(ru,'Отзывов','Reviews')}: <b>{nv}</b>\n"
                         f"{Emn} {R(ru,'Оборот','Turnover')}: <b>{nt} ₽</b>{sl}")
@@ -432,35 +438,62 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         p_uname=d.get("partner","").lstrip("@").lower()
         partner_uid=next((k for k,v in db.get("users",{}).items() if v.get("username","").lower()==p_uname),None)
 
-        # Сумма: флаг + название жирным
         amt_label = cur_amount_label(cur, lang)
 
         lines=[
-            f"<b>✅ {R(ru,'Сделка','Deal')} #{deal_id}</b>\n",
-            f"<b>🤝 {R(ru,'Тип','Type')}:</b> <b>{tname(dtype,lang)}</b>{item}",
-            f"<b>💰 {R(ru,'Сумма','Amount')}:</b> <b>{amt}</b> {amt_label}\n",
-            f"<b>✈️ {lbl_creator}:</b> <b>{creator_tag}</b>",
+            f"<b>{Ech} {R(ru,'Сделка','Deal')} #{deal_id}</b>\n",
+            f"<b>{Edl} {R(ru,'Тип','Type')}:</b> <b>{tname(dtype,lang)}</b>{item}",
+            f"<b>{Emn} {R(ru,'Сумма','Amount')}:</b> <b>{amt}</b> {amt_label}\n",
+            f"<b>{Eu} {lbl_creator}:</b> <b>{creator_tag}</b>",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
-            f"<b>🛍 {lbl_partner}:</b> <b>{partner_tag}</b>",
+            f"<b>{Eu} {lbl_partner}:</b> <b>{partner_tag}</b>",
             f"<blockquote>{stats_block(partner_uid)}</blockquote>\n",
-            f"<b>🔰 {R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
+            f"<b>{Esec} {R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
         ]
 
         if joined:
+            # Реквизиты только для выбранной валюты
+            lines.append(f"\n<b>{Ecrd} {R(ru,'Реквизиты для оплаты','Payment details')}:</b>\n")
+
+            if cur in ("RUB","KZT","AZN","KGS","UZS","TJS","BYN","UAH","GEL"):
+                bank=card_bank(lang)
+                lines += [
+                    f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
+                    f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>",
+                ]
+            elif cur=="TON":
+                lines += [
+                    f"<b>{Ecbt} TON — Crypto Bot:</b>",
+                    f"<blockquote><a href='{CRYPTO_BOT}'>{R(ru,'Перейти в Crypto Bot','Open Crypto Bot')}</a></blockquote>",
+                    f"<b>{Edm} TON — {R(ru,'адрес кошелька','wallet address')}:</b>",
+                    f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>",
+                ]
+            elif cur=="USDT":
+                lines += [
+                    f"<b>{Ecbt} USDT — Crypto Bot:</b>",
+                    f"<blockquote><a href='{CRYPTO_BOT}'>{R(ru,'Перейти в Crypto Bot','Open Crypto Bot')}</a></blockquote>",
+                    f"<b>{Ebnk2} USDT — {R(ru,'адрес кошелька','wallet address')}:</b>",
+                    f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>",
+                ]
+            elif cur=="Stars":
+                lines += [
+                    f"<b>{Est} {R(ru,'Звёзды','Stars')}:</b>",
+                    f"<blockquote>{MANAGER_TAG}</blockquote>",
+                ]
+            else:
+                # Для остальных валют — карта как дефолт
+                bank=card_bank(lang)
+                lines += [
+                    f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
+                    f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>",
+                ]
+
             lines += [
-                f"\n<b>💳 {R(ru,'Реквизиты для оплаты','Payment details')}:</b>",
-                f"\n<b>📞 {'СБП / Карта' if ru else 'Card / Phone'} {card_bank(lang)}:</b>",
-                f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>\n",
-                f"<b>🤖 TON / USDT — Crypto Bot:</b>",
-                f"<blockquote><a href='{CRYPTO_BOT}'>Перейти в Crypto Bot</a></blockquote>\n",
-                f"<b>💎 TON — {R(ru,'адрес кошелька','wallet address')}:</b>",
-                f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>\n",
-                f"<b>⭐ {R(ru,'Звёзды / NFT','Stars / NFT')}:</b>",
-                f"<blockquote>{MANAGER_TAG}</blockquote>\n",
-                f"<b>✅ {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>",
+                "",
+                f"<b>{Ech} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>",
             ]
         else:
-            lines.append(f"\n<b>✨ {R(ru,'Ожидание второго участника...','Waiting for second participant...')}</b>")
+            lines.append(f"\n<b>{Esrk} {R(ru,'Ожидание второго участника...','Waiting for second participant...')}</b>")
 
         return "\n".join(lines)
     except Exception as e:
@@ -1051,9 +1084,16 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["last_msg"]=msg.message_id
 
         if step=="partner":
-            # Убрана проверка обязательного @ — просто нормализуем
-            if not text.startswith("@"): text="@"+text
-            ud["partner"]=text
+            # Нормализуем и валидируем username партнёра
+            t_raw = text.strip()
+            if not t_raw.startswith("@"): t_raw = "@" + t_raw
+            cl_p, ec_p = validate_username(t_raw)
+            if ec_p:
+                err_msg = R(ru,
+                    "Некорректный @username. Минимум 4 символа, только латиница/цифры/подчёркивание.",
+                    "Invalid @username. Min 4 chars, only latin/digits/underscore.")
+                await update.message.reply_text(f"{Ewrn} <b>{err_msg}</b>\n\n<b>{R(ru,'Пример','Example')}:</b> <code>@username</code>",parse_mode="HTML"); return
+            ud["partner"]=cl_p
             if dtype=="nft":
                 ud["step"]="nft_link"
                 await send_step(f"{Enft} <b>{R(ru,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
@@ -1079,7 +1119,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if step=="nft_link":
             ok,em=validate_nft_link(text,dtype)
             if not ok:
-                await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Используйте t.me/nft/...','Use t.me/nft/...')}</b>",parse_mode="HTML"); return
+                await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Некорректная ссылка. Формат: t.me/nft/НазваниеНФТ','Invalid link. Format: t.me/nft/NFTName')}</b>",parse_mode="HTML"); return
             clean_link=text.strip()
             for prefix in ("https://","http://"):
                 if clean_link.startswith(prefix): clean_link=clean_link[len(prefix):]; break
@@ -1088,11 +1128,22 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_step(f"{Enft} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang)); return
 
         if step=="trade_usr":
-            cl=text.replace("https://","").replace("http://","")
-            if not cl.startswith("t.me/") and not text.startswith("@"):
-                await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Введите t.me/... или @username.','Enter t.me/... or @username.')}</b>",parse_mode="HTML"); return
-            ud["trade_username"]=text; ud["step"]="currency"
-            await send_step(f"👤 <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang)); return
+            cl=text.strip().replace("https://","").replace("http://","")
+            # Валидация: либо t.me/username (мин 4 символа), либо @username
+            import re as _re
+            ok_link = cl.startswith("t.me/") and len(cl[5:].strip("/"))>=4 and _re.fullmatch(r"[a-zA-Z0-9_]+", cl[5:].strip("/"))
+            ok_at   = text.strip().startswith("@") and len(text.strip()[1:])>=4 and _re.fullmatch(r"[a-zA-Z0-9_]+", text.strip()[1:])
+            if not ok_link and not ok_at:
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{R(ru,'Введите корректную ссылку t.me/username или @username (мин. 4 символа).','Enter valid t.me/username or @username (min 4 chars).')}</b>",
+                    parse_mode="HTML"); return
+            val_ok, val_err = validate_nft_link(text.strip(), "username")
+            if not val_ok and ok_link:
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{R(ru,'Некорректная ссылка. Пример: t.me/username','Invalid link. Example: t.me/username')}</b>",
+                    parse_mode="HTML"); return
+            ud["trade_username"]=text.strip(); ud["step"]="currency"
+            await send_step(f"{Eu} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang)); return
 
         if step=="stars_cnt":
             if not text.isdigit():
@@ -1313,7 +1364,7 @@ async def show_lang(update, context):
         rows=[[InlineKeyboardButton(n,callback_data=f"lang_{c}")] for c,n in {"ru":"🇷🇺 Русский","en":"🇬🇧 English"}.items()]
         rows.append([InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")])
         await send_section(update,
-            f"{E['globe']} <b>{R(ru,'Выберите язык:','Select language:')}</b>",
+            f"🗺 <b>{R(ru,'Выберите язык:','Select language:')}</b>",
             InlineKeyboardMarkup(rows),section="main")
     except Exception as e: logger.error(f"show_lang: {e}")
 
