@@ -1409,8 +1409,8 @@ async def show_my_deals(update, context):
                 f"{Edl} <b>{R(ru,'Мои сделки','My Deals')}\n\n{R(ru,'Пока нет сделок.','No deals yet.')}</b>",
                 InlineKeyboardMarkup([[InlineKeyboardButton("🔙 "+R(ru,"Назад","Back"),callback_data="main_menu")]]),section="my_deals"); return
         SNAMES={
-            "pending":   R(ru,ff"{Esrk} Ожидает",  ff"{Esrk} Pending"),
-            "confirmed": R(ru,ff"{Ech} Завершена",  ff"{Ech} Completed"),
+            "pending":   R(ru,f"{Esrk} Ожидает",  f"{Esrk} Pending"),
+            "confirmed": R(ru,f"{Ech} Завершена",  f"{Ech} Completed"),
         }
         lines=[f"{Edl} <b>{R(ru,'Мои сделки','My Deals')} ({len(deals)}):</b>\n"]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
