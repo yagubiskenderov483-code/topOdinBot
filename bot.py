@@ -6,7 +6,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN    = '8767675859:AAEYrMnVMAZjI7rBEc1QLNpHs7rVlUIv-0Q'
+BOT_TOKEN    = '8767675859:AAHgTnEcp63a7AcpM_hOIUA380wZ6HFZuJc'
 ADMIN_ID     = 8726084830
 BOT_USERNAME = "GiftDeals_Robot"
 MANAGER_URL  = "https://t.me/GiftDealsManager"
@@ -298,26 +298,17 @@ async def send_new(update, text, kb=None, section="main"):
 # ─── Keyboards ────────────────────────────────────────────────────────────────
 def ce_btn(eid, fb): return f"{fb}"  # fallback text
 
-BTN_DEAL    = "5260687681733533075"
-BTN_PROFILE = "5258011929993026890"
-BTN_BALANCE = "5258043150110301407"
-BTN_MYDEALS = "5258476306152038031"
-BTN_LANG    = "5258115571848846212"
-BTN_TOP     = "5258204546391351475"
-BTN_REF     = "5258362837411045098"
-BTN_REQ     = "5260730055880876557"
-
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"{ce('5260687681733533075','🤝')} "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal",icon_custom_emoji_id=BTN_DEAL),
-         InlineKeyboardButton(f"{ce('5258011929993026890','👤')} "+R(ru,"Профиль","Profile"),callback_data="menu_profile",icon_custom_emoji_id=BTN_PROFILE)],
-        [InlineKeyboardButton(f"{ce('5258043150110301407','💰')} "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance",icon_custom_emoji_id=BTN_BALANCE),
-         InlineKeyboardButton(f"{ce('5258476306152038031','📋')} "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id=BTN_MYDEALS)],
-        [InlineKeyboardButton(f"{ce('5258115571848846212','🌐')} "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang",icon_custom_emoji_id=BTN_LANG),
-         InlineKeyboardButton(f"{ce('5258204546391351475','🏆')} "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top",icon_custom_emoji_id=BTN_TOP)],
-        [InlineKeyboardButton(f"{ce('5258362837411045098','👥')} "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref",icon_custom_emoji_id=BTN_REF),
-         InlineKeyboardButton(f"{ce('5260730055880876557','🗂')} "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req",icon_custom_emoji_id=BTN_REQ)],
+        [InlineKeyboardButton(ce("5260687681733533075","🤝")+" "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal"),
+         InlineKeyboardButton(ce("5258011929993026890","👤")+" "+R(ru,"Профиль","Profile"),callback_data="menu_profile")],
+        [InlineKeyboardButton(ce("5258043150110301407","💰")+" "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
+         InlineKeyboardButton(ce("5258476306152038031","📋")+" "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
+        [InlineKeyboardButton(ce("5258115571848846212","🌐")+" "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
+         InlineKeyboardButton(ce("5258204546391351475","🏆")+" "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
+        [InlineKeyboardButton(ce("5258362837411045098","👥")+" "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
+         InlineKeyboardButton(ce("5260730055880876557","🗂")+" "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
         [InlineKeyboardButton("🆘 "+R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport")],
     ])
 
