@@ -301,14 +301,14 @@ def ce_btn(eid, fb): return f"{fb}"  # fallback text
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🤝 "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
-         InlineKeyboardButton("👤 "+R(ru,"Профиль","Profile"),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
-        [InlineKeyboardButton("💰 "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
-         InlineKeyboardButton("📋 "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
-        [InlineKeyboardButton("🌐 "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212"),
-         InlineKeyboardButton("🏆 "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
-        [InlineKeyboardButton("👥 "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
-         InlineKeyboardButton("🗂 "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
+         InlineKeyboardButton(R(ru,"Профиль","Profile"),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
+        [InlineKeyboardButton(R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
+         InlineKeyboardButton(R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+        [InlineKeyboardButton(R(ru,"Язык / Lang","Language"),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212"),
+         InlineKeyboardButton(R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
+        [InlineKeyboardButton(R(ru,"Рефералы","Referrals"),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
+         InlineKeyboardButton(R(ru,"Реквизиты","Requisites"),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
         [InlineKeyboardButton("🆘 "+R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport")],
     ])
 
