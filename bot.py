@@ -301,14 +301,14 @@ def ce_btn(eid, fb): return f"{fb}"  # fallback text
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(ce("5260687681733533075","🤝")+" "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal"),
-         InlineKeyboardButton(ce("5258011929993026890","👤")+" "+R(ru,"Профиль","Profile"),callback_data="menu_profile")],
-        [InlineKeyboardButton(ce("5258043150110301407","💰")+" "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
-         InlineKeyboardButton(ce("5258476306152038031","📋")+" "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
-        [InlineKeyboardButton(ce("5258115571848846212","🌐")+" "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
-         InlineKeyboardButton(ce("5258204546391351475","🏆")+" "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
-        [InlineKeyboardButton(ce("5258362837411045098","👥")+" "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
-         InlineKeyboardButton(ce("5260730055880876557","🗂")+" "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
+        [InlineKeyboardButton("<tg-emoji emoji-id='5260687681733533075'>🤝</tg-emoji> "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal"),
+         InlineKeyboardButton("<tg-emoji emoji-id='5258011929993026890'>👤</tg-emoji> "+R(ru,"Профиль","Profile"),callback_data="menu_profile")],
+        [InlineKeyboardButton("<tg-emoji emoji-id='5258043150110301407'>💰</tg-emoji> "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
+         InlineKeyboardButton("<tg-emoji emoji-id='5258476306152038031'>📋</tg-emoji> "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
+        [InlineKeyboardButton("<tg-emoji emoji-id='5258115571848846212'>🌐</tg-emoji> "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
+         InlineKeyboardButton("<tg-emoji emoji-id='5258204546391351475'>🏆</tg-emoji> "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
+        [InlineKeyboardButton("<tg-emoji emoji-id='5258362837411045098'>👥</tg-emoji> "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
+         InlineKeyboardButton("<tg-emoji emoji-id='5260730055880876557'>🗂</tg-emoji> "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
         [InlineKeyboardButton("🆘 "+R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport")],
     ])
 
