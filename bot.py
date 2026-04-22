@@ -298,17 +298,26 @@ async def send_new(update, text, kb=None, section="main"):
 # ─── Keyboards ────────────────────────────────────────────────────────────────
 def ce_btn(eid, fb): return f"{fb}"  # fallback text
 
+def make_btn(text, emoji_id, fallback, callback_data=None, url=None):
+    """Кнопка с кастомным эмодзи через text_entities"""
+    full_text = fallback + " " + text
+    entity = {"type": "custom_emoji", "offset": 0, "length": len(fallback), "custom_emoji_id": str(emoji_id)}
+    kwargs = {"text": full_text, "text_entities": [entity]}
+    if callback_data: kwargs["callback_data"] = callback_data
+    if url: kwargs["url"] = url
+    return InlineKeyboardButton(**kwargs)
+
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("<tg-emoji emoji-id='5260687681733533075'>🤝</tg-emoji> "+R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal"),
-         InlineKeyboardButton("<tg-emoji emoji-id='5258011929993026890'>👤</tg-emoji> "+R(ru,"Профиль","Profile"),callback_data="menu_profile")],
-        [InlineKeyboardButton("<tg-emoji emoji-id='5258043150110301407'>💰</tg-emoji> "+R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
-         InlineKeyboardButton("<tg-emoji emoji-id='5258476306152038031'>📋</tg-emoji> "+R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
-        [InlineKeyboardButton("<tg-emoji emoji-id='5258115571848846212'>🌐</tg-emoji> "+R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
-         InlineKeyboardButton("<tg-emoji emoji-id='5258204546391351475'>🏆</tg-emoji> "+R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
-        [InlineKeyboardButton("<tg-emoji emoji-id='5258362837411045098'>👥</tg-emoji> "+R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
-         InlineKeyboardButton("<tg-emoji emoji-id='5260730055880876557'>🗂</tg-emoji> "+R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
+        [make_btn(R(ru,"Создать сделку","Create Deal"), 5260687681733533075, "🤝", callback_data="menu_deal"),
+         make_btn(R(ru,"Профиль","Profile"), 5258011929993026890, "👤", callback_data="menu_profile")],
+        [make_btn(R(ru,"Пополнить/Вывод","Top Up/Withdraw"), 5258043150110301407, "💰", callback_data="menu_balance"),
+         make_btn(R(ru,"Мои сделки","My Deals"), 5258476306152038031, "📋", callback_data="menu_my_deals")],
+        [make_btn(R(ru,"Язык / Lang","Language"), 5258115571848846212, "🌐", callback_data="menu_lang"),
+         make_btn(R(ru,"Топ продавцов","Top Sellers"), 5258204546391351475, "🏆", callback_data="menu_top")],
+        [make_btn(R(ru,"Рефералы","Referrals"), 5258362837411045098, "👥", callback_data="menu_ref"),
+         make_btn(R(ru,"Реквизиты","Requisites"), 5260730055880876557, "🗂", callback_data="menu_req")],
         [InlineKeyboardButton("🆘 "+R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport")],
     ])
 
