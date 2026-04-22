@@ -681,7 +681,16 @@ async def cmd_addrep(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not args or not args[0].lstrip("-").isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Пример: /addrep 100','Example: /addrep 100')}</b>",parse_mode="HTML"); return
         amt=int(args[0]); u["reputation"]=u.get("reputation",0)+amt; save_db(db)
-        await update.message.reply_text(f"{Ech} <b>{R(ru,f'Репутация +{amt}!',f'Reputation +{amt}!')}</b>\n{Etph} <b>{R(ru,'Репутация','Reputation')}: {u["reputation"]}</b>",parse_mode="HTML")
+        await update.message.reply_text(
+    "{} <b>{}</b>\n{} <b>{}: {}</b>".format(
+        Ech,
+        R(ru, f'Репутация +{amt}!', f'Reputation +{amt}!'),
+        Etph,
+        R(ru, 'Репутация', 'Reputation'),
+        u["reputation"]
+    ),
+    parse_mode="HTML"
+)
     except Exception as e: logger.error(f"cmd_addrep: {e}")
 
 async def cmd_setdeals(update: Update, context: ContextTypes.DEFAULT_TYPE):
