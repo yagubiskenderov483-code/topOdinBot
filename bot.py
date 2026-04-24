@@ -137,7 +137,7 @@ CUR_PLAIN_EN = {
 CUR_BTN = {
     "TON":   "💎 TON",
     "USDT":  "💵 USDT",
-    "Stars": "⭐️ Stars / Звёзды",
+    "Stars": "​" + "⭐️ Stars / Звёзды",
     "RUB":   "🇷🇺 Рубли",
     "KZT":   "🇰🇿 Теңге",
     "AZN":   "🇦🇿 Manat",
@@ -250,8 +250,8 @@ async def send_log_msg(context, db, entry):
             tmpl=log_templates[event_key]
             text=tmpl.replace("{user}",ud or uid_d).replace("{deal}",deal.strip()).replace("{extra}",entry.get("extra","")).replace("{time}",entry["time"])
         else:
-            deal_str=f"\n🔖 Сделка #{entry['deal_id']}" if entry.get("deal_id") else ""
-            text=f"🕐 <b>{entry['time']}</b>\n📌 {entry['event']}{deal_str}\n{ud} {uid_d}{ex}"
+            deal_str=f"\n{ce('5931409969613116639','🔖')} <b>Сделка #{entry['deal_id']}</b>" if entry.get("deal_id") else ""
+            text=f"{ce('5776213190387961618','🕐')} <b>{entry['time']}</b>\n{ce('5931409969613116639','📌')} <b>{entry['event']}</b>{deal_str}\n<b>{ud} {uid_d}</b>{ex}"
         # Баннер для события
         b=log_banners.get(event_key,{})
         bp=b.get("photo"); bv=b.get("video"); bg=b.get("gif")
@@ -344,17 +344,18 @@ def types_kb(lang):
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(R(ru,"NFT подарок","NFT Gift"),callback_data="dt_nft",icon_custom_emoji_id="5906716471756593520"),
          InlineKeyboardButton("NFT Username",callback_data="dt_usr",icon_custom_emoji_id="5906976471896824396")],
-        [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="dt_str",icon_custom_emoji_id="5893034681636491040"),
+        [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="dt_str",icon_custom_emoji_id="5906478942885255780"),
          InlineKeyboardButton(R(ru,"Крипта","Crypto"),callback_data="dt_cry",icon_custom_emoji_id="5904576890848419790")],
-        [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5258011929993026890")],
-        [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5316815985099946114")],
+        [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5906715307820456633")],
+        [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5906851011607140828")],
     ])
 
 def cur_kb(lang):
     def n(c): return CUR_BTN.get(c,c)
+    stars_label=ce("5226513232549664618","⭐")+" Stars / Звёзды"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(n("TON"),callback_data="cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="cur_usdt")],
-        [InlineKeyboardButton(n("RUB"),callback_data="cur_rub"),InlineKeyboardButton(n("Stars"),callback_data="cur_stars")],
+        [InlineKeyboardButton(n("TON"),callback_data="cur_ton",icon_custom_emoji_id="6039802097916974085"),InlineKeyboardButton(n("USDT"),callback_data="cur_usdt",icon_custom_emoji_id="6039641775377748623")],
+        [InlineKeyboardButton(n("RUB"),callback_data="cur_rub",icon_custom_emoji_id="5902056028513505203"),InlineKeyboardButton(stars_label,callback_data="cur_stars",icon_custom_emoji_id="5226513232549664618")],
         [InlineKeyboardButton(n("KZT"),callback_data="cur_kzt"),InlineKeyboardButton(n("AZN"),callback_data="cur_azn")],
         [InlineKeyboardButton(n("KGS"),callback_data="cur_kgs"),InlineKeyboardButton(n("UZS"),callback_data="cur_uzs")],
         [InlineKeyboardButton(n("TJS"),callback_data="cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="cur_byn")],
@@ -595,6 +596,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         f"{Ewrn} <b>{R(ru,'Эта сделка предназначена для другого пользователя.','This deal is intended for another user.')}</b>",
                         parse_mode="HTML")
                     await show_main(update,context); return
+                # Проверка: нельзя зайти повторно
+                if d.get("buyer_uid") and d.get("buyer_uid")!=str(uid):
+                    await update.effective_message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'В эту сделку уже присоединился другой участник.','Another participant has already joined this deal.')}</b>",
+                        parse_mode="HTML")
+                    await show_main(update,context); return
 
                 buyer_reqs=u.get("requisites",{})
                 if not any(buyer_reqs.get(f) for f in ("card","ton","stars")):
@@ -621,17 +628,24 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
                 if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
 
-                if seller_uid:
-                    try:
-                        sl=get_lang(int(seller_uid)); rs=sl=="ru"
-                        await context.bot.send_message(chat_id=int(seller_uid),
-                            text=f"{Ejn} <b>{R(rs,'Покупатель присоединился!','Buyer joined!')}</b>\n<blockquote>{buyer_tag}</blockquote>",parse_mode="HTML")
-                    except: pass
-
                 cu=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
                 creator_tag=f"@{cu}" if cu else f"#{seller_uid}"
                 buyer_uname=update.effective_user.username or ""
                 buyer_tag2=f"@{buyer_uname}" if buyer_uname else f"#{uid}"
+
+                if seller_uid:
+                    try:
+                        sl=get_lang(int(seller_uid)); rs=sl=="ru"
+                        # Отправляем продавцу карточку сделки с joined=True
+                        seller_deal_text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,sl,joined=True)
+                        seller_deal_text=f"{Ejn} <b>{R(rs,'Покупатель присоединился!','Buyer joined!')}</b>\n\n"+seller_deal_text
+                        seller_kb=InlineKeyboardMarkup([
+                            [InlineKeyboardButton(R(rs,"Написать покупателю","Write to buyer"),url=f"https://t.me/{buyer_uname}" if buyer_uname else MANAGER_URL,icon_custom_emoji_id="5316600120043649556")],
+                            [InlineKeyboardButton(R(rs,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
+                        ])
+                        await context.bot.send_message(chat_id=int(seller_uid),text=seller_deal_text,parse_mode="HTML",reply_markup=seller_kb)
+                    except Exception as e: logger.error(f"notify seller: {e}")
+
                 text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,lang,joined=True)
 
                 seller_uname_for_btn=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
@@ -836,7 +850,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"{pp}\n\n<b>{R(ru,'Пример','Example')}:</b> <code>@username</code>",
+                f"<b>{pp}</b>\n\n<b>{R(ru,'Пример','Example')}:</b> <code>@username</code>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_deal")]]))
             ud["last_msg"]=msg.message_id; return
@@ -1405,7 +1419,7 @@ async def finalize_deal(update, context):
                     txt2+=f"\n\n🤝 <b>{R(pr,'Нажмите чтобы присоединиться:','Click to join:')}</b>\n<code>{join_link}</code>"
                     kb2=InlineKeyboardMarkup([
                         [InlineKeyboardButton(R(pr,"Присоединиться","Join"),url=join_link,icon_custom_emoji_id="5893431652578758294")],
-                        [InlineKeyboardButton(R(pr,"Главное меню","Main menu",icon_custom_emoji_id="5316887736823591263"),callback_data="main_menu")]
+                        [InlineKeyboardButton(R(pr,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]
                     ])
                     await context.bot.send_message(chat_id=int(puid),text=txt2,parse_mode="HTML",reply_markup=kb2)
                 except Exception as e: logger.error(f"notify partner: {e}")
@@ -1431,11 +1445,7 @@ async def on_paid(update, context):
         try:
             await context.bot.send_message(chat_id=ADMIN_ID,text=paid_text,parse_mode="HTML",reply_markup=paid_kb)
         except Exception as e: logger.error(f"on_paid admin: {e}")
-        try:
-            log_chat=db.get("log_chat_id")
-            if log_chat:
-                await context.bot.send_message(chat_id=int(log_chat),text=paid_text,parse_mode="HTML",reply_markup=paid_kb)
-        except Exception as e: logger.error(f"on_paid group: {e}")
+        # Уведомление только в лс администратору
         add_log(db,"Оплачено",deal_id=deal_id,uid=buyer.id,username=buyer.username or "",extra=f"{amt} {cur}")
         save_db(db)
         if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
@@ -1522,13 +1532,13 @@ async def adm_confirm(update, context):
                 if creator_role=="seller":
                     # Создатель продавец — уведомляем его что покупатель оплатил
                     msg_seller=R(rs,
-                        f"{Ech} <b>Сделка завершена!</b>\n<blockquote>Покупатель {buyer_tag} передаст вам товар через менеджера @GiftDealsManager.\nВы можете передать товар менеджеру после получения оплаты.</blockquote>",
-                        f"{Ech} <b>Deal completed!</b>\n<blockquote>Buyer {buyer_tag} will transfer the item via manager @GiftDealsManager.\nYou can transfer the item after receiving payment.</blockquote>")
+                        f"{Ech} <b>Сделка завершена!</b>",
+                        f"{Ech} <b>Deal completed!</b>")
                 else:
                     # Создатель покупатель — уведомляем продавца передать товар
                     msg_seller=R(rs,
-                        f"{Ech} <b>Сделка завершена!</b>\n<blockquote>Передайте товар менеджеру @GiftDealsManager — покупатель уже оплатил.\nВы можете передать товар менеджеру сейчас.</blockquote>",
-                        f"{Ech} <b>Deal completed!</b>\n<blockquote>Transfer the item to manager @GiftDealsManager — buyer has already paid.\nYou can transfer the item to the manager now.</blockquote>")
+                        f"{Ech} <b>Сделка завершена!</b>",
+                        f"{Ech} <b>Deal completed!</b>")
                 await context.bot.send_message(chat_id=int(s),text=msg_seller,parse_mode="HTML")
             except: pass
         buyer_uid=d.get("buyer_uid")
@@ -1542,12 +1552,12 @@ async def adm_confirm(update, context):
                 seller_tag=f"@{db['users'].get(s,{}).get('username','')}" if s else ""
                 if creator_role=="seller":
                     msg_buyer=R(rb2,
-                        f"{Ech} <b>Оплата подтверждена!</b>\n<blockquote>Продавец {seller_tag} передаст вам товар через менеджера @GiftDealsManager.\nОжидайте получения товара.</blockquote>",
-                        f"{Ech} <b>Payment confirmed!</b>\n<blockquote>Seller {seller_tag} will transfer the item to you via manager @GiftDealsManager.\nWait for item delivery.</blockquote>")
+                        f"{Ech} <b>Оплата подтверждена!</b>",
+                        f"{Ech} <b>Payment confirmed!</b>")
                 else:
                     msg_buyer=R(rb2,
-                        f"{Ech} <b>Сделка подтверждена!</b>\n<blockquote>Вы можете передать товар продавцу {seller_tag} через менеджера @GiftDealsManager.</blockquote>",
-                        f"{Ech} <b>Deal confirmed!</b>\n<blockquote>You can transfer the item to seller {seller_tag} via manager @GiftDealsManager.</blockquote>")
+                        f"{Ech} <b>Сделка подтверждена!</b>",
+                        f"{Ech} <b>Deal confirmed!</b>")
                 await context.bot.send_message(chat_id=int(buyer_uid),text=msg_buyer,parse_mode="HTML")
             except: pass
     except Exception as e: logger.error(f"adm_confirm: {e}")
@@ -1640,7 +1650,7 @@ async def show_profile(update, context):
                 rv_lines.append(f"{star_str} {r}")
             rv=f"\n\n{Estr} <b>{R(ru,f'Отзывы ({len(reviews)})',f'Reviews ({len(reviews)})')}</b>\n<blockquote>"+'\n'.join(rv_lines)+'</blockquote>'
         text=(f"{Ecwn} <b>{R(ru,'Профиль','Profile')}</b>{sl}\n\n"
-              f"{Eu} @{uname}\n"
+              f"{ce('5258011929993026890','👤')} @{uname}\n"
               f"{Ebal} {R(ru,'Баланс','Balance')}: <b>{u.get('balance',0)} RUB</b>\n"
               f"{Estr} {R(ru,'Сделок','Deals')}: <b>{u.get('total_deals',0)}</b>\n"
               f"{Ech} {R(ru,'Успешных','Successful')}: <b>{u.get('success_deals',0)}</b>\n"
