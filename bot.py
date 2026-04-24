@@ -682,7 +682,8 @@ async def cmd_sendbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not args or not args[0].replace(".","",1).isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Пример: /sendbalance 500','Example: /sendbalance 500')}</b>",parse_mode="HTML"); return
         amt=int(float(args[0])); u["balance"]=u.get("balance",0)+amt; save_db(db)
-        await update.message.reply_text(f"{Ech} <b>{R(ru,f'Баланс пополнен на {amt} RUB!',f'Balance topped up by {amt} RUB!')}</b>\n{Ebal} <b>{R(ru,'Баланс','Balance')}: {u["balance"]} RUB</b>",parse_mode="HTML")
+        bal_new=u["balance"]
+        await update.message.reply_text(f"{Ech} <b>{R(ru,f'Баланс пополнен на {amt} RUB!',f'Balance topped up by {amt} RUB!')}</b>\n{Ebal} <b>{R(ru,'Баланс','Balance')}: {bal_new} RUB</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_sendbalance: {e}")
 
 async def cmd_addrep(update: Update, context: ContextTypes.DEFAULT_TYPE):
