@@ -75,7 +75,6 @@ E = {
     "cryptobot":  ce("5242606681166220600", "🤖"),
     "welcome":    ce("5251340119205501791", "👋"),
     "balance_e":  ce("5424976816530014958", "💰"),
-    "ton_addr":   ce("5397829221605191505", "💎"),
 }
 
 CD  = ce("5264713049637409446", "💎")
@@ -103,7 +102,7 @@ Egft = E["gift"];       Erkt = E["crystal"];    Epct = E["handshake"]
 Ecrd = E["card"];       Ephn = E["pin"];        Emdl = E["medal"]
 Ecwn = E["safe"];       Ebnk = E["bank"];       Ebnk2= E["banknote"]
 Ecrss= E["cross"];      Eshne= E["shine"];      Echart=E["chart"]
-Etgt = E["target"];     Estck= E["sticker"];    Etonadr = E["ton_addr"]
+Etgt = E["target"];     Estck= E["sticker"]
 
 # ─── Типы сделок ──────────────────────────────────────────────────────────────
 TNAMES_RU = {
@@ -134,10 +133,11 @@ CUR_PLAIN_EN = {
     "RUB":"Rubles","KZT":"Tenge","AZN":"Manat","KGS":"Som",
     "UZS":"So'm","TJS":"Somoni","BYN":"Rubles (BYN)","UAH":"Hryvnia","GEL":"Lari",
 }
+# Кнопки выбора валюты — только флаг + название, без стран
 CUR_BTN = {
-    "TON":   "TON",
-    "USDT":  "USDT",
-    "Stars": "Stars / Звёзды",
+    "TON":   "💎 TON",
+    "USDT":  "💵 USDT",
+    "Stars": "⭐️ Stars / Звёзды",
     "RUB":   "🇷🇺 Рубли",
     "KZT":   "🇰🇿 Теңге",
     "AZN":   "🇦🇿 Manat",
@@ -154,6 +154,7 @@ CURMAP = {
     "cur_tjs":"TJS","cur_byn":"BYN","cur_uah":"UAH","cur_gel":"GEL"
 }
 
+# Флаги валют для отображения суммы (жирный флаг + название)
 CUR_FLAG = {
     "TON":   "💎",
     "USDT":  "💵",
@@ -174,6 +175,7 @@ def cur_plain(code, lang="ru"):
     return CUR_PLAIN_RU.get(code, code)
 
 def cur_amount_label(code, lang="ru"):
+    """Флаг + название валюты жирным для строки суммы"""
     flag = CUR_FLAG.get(code, "")
     name = cur_plain(code, lang)
     return f"{flag} <b>{name}</b>"
@@ -194,7 +196,7 @@ def load_db():
         with open(DB_FILE,"r",encoding="utf-8") as f: return json.load(f)
     return {"users":{},"deals":{},"banner":None,"banner_photo":None,"banner_video":None,
             "banner_gif":None,"menu_description":None,"deal_counter":1,"banners":{},
-            "logs":[],"log_chat_id":None,"log_hidden":False}
+            "logs":[],"log_chat_id":None,"log_hidden":False,"log_templates":{},"log_banners":{}}
 
 def save_db(db):
     with open(DB_FILE,"w",encoding="utf-8") as f: json.dump(db, f, ensure_ascii=False, indent=2)
@@ -230,38 +232,37 @@ def mask_str(t):
     if t.isdigit(): return t[:3]+"***"+t[-2:]
     return t[:2]+"***"
 
-# ─── FIX 1: ЛОГИ — надёжная отправка ──────────────────────────────────────────
 async def send_log_msg(context, db, entry):
-    """Отправляет лог-запись в лог-канал. Исправлено: правильное приведение типов и обработка ошибок."""
-    chat_id = db.get("log_chat_id")
-    if not chat_id:
-        return
+    chat_id=db.get("log_chat_id")
+    if not chat_id: return
+    hidden=db.get("log_hidden",False)
     try:
-        chat_id_int = int(str(chat_id).strip())
-    except (ValueError, TypeError):
-        logger.error(f"send_log_msg: некорректный log_chat_id={chat_id!r}")
-        return
-    hidden = db.get("log_hidden", False)
-    try:
-        u   = entry.get("username", "")
-        us  = entry.get("uid", "")
-        deal = f" #{entry['deal_id']}" if entry.get("deal_id") else ""
-        ex   = f"\n{entry['extra']}" if entry.get("extra") else ""
-        if hidden:
-            ud = mask_str(f"@{u}") if u else ""
-            uid_d = mask_str(us) if us else ""
+        u=entry.get("username",""); us=entry.get("uid","")
+        deal=f" #{entry['deal_id']}" if entry.get("deal_id") else ""
+        ex=f"\n{entry['extra']}" if entry.get("extra") else ""
+        ud=mask_str(f"@{u}") if hidden and u else (f"@{u}" if u else "")
+        uid_d=mask_str(us) if hidden and us else (f"<code>{us}</code>" if us else "")
+        # Кастомный шаблон для этого события
+        event_key=entry.get("event","")
+        log_templates=db.get("log_templates",{})
+        log_banners=db.get("log_banners",{})
+        if event_key in log_templates and log_templates[event_key]:
+            tmpl=log_templates[event_key]
+            text=tmpl.replace("{user}",ud or uid_d).replace("{deal}",deal.strip()).replace("{extra}",entry.get("extra","")).replace("{time}",entry["time"])
         else:
-            ud = f"@{u}" if u else ""
-            uid_d = f"<code>{us}</code>" if us else ""
-        text = f"<b>{entry['time']}</b> {entry['event']}{deal}\n{ud} {uid_d}{ex}"
-        await context.bot.send_message(
-            chat_id=chat_id_int,
-            text=text,
-            parse_mode="HTML"
-        )
-        logger.info(f"send_log_msg: отправлено в {chat_id_int}: {entry['event']}")
-    except Exception as e:
-        logger.error(f"send_log_msg: ошибка при отправке в {chat_id_int}: {e}")
+            text=f"<b>{entry['time']}</b> {entry['event']}{deal}\n{ud} {uid_d}{ex}"
+        # Баннер для события
+        b=log_banners.get(event_key,{})
+        bp=b.get("photo"); bv=b.get("video"); bg=b.get("gif")
+        if bv:
+            await context.bot.send_video(chat_id=int(chat_id),video=bv,caption=text,parse_mode="HTML")
+        elif bg:
+            await context.bot.send_animation(chat_id=int(chat_id),animation=bg,caption=text,parse_mode="HTML")
+        elif bp:
+            await context.bot.send_photo(chat_id=int(chat_id),photo=bp,caption=text,parse_mode="HTML")
+        else:
+            await context.bot.send_message(chat_id=int(chat_id),text=text,parse_mode="HTML")
+    except Exception as e: logger.error(f"send_log_msg: {e}")
 
 # ─── Banner ───────────────────────────────────────────────────────────────────
 def get_banner(db, section="main"):
@@ -313,6 +314,8 @@ async def send_new(update, text, kb=None, section="main"):
         except: pass
 
 # ─── Keyboards ────────────────────────────────────────────────────────────────
+def ce_btn(eid, fb): return f"{fb}"  # fallback text
+
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
@@ -357,20 +360,6 @@ def cur_kb(lang):
         [InlineKeyboardButton(n("UAH"),callback_data="cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
     ])
 
-# ─── FIX 2: ПОПОЛНЕНИЕ — клавиатура выбора метода для пополнения ──────────────
-def topup_method_kb(lang):
-    """Клавиатура выбора метода пополнения (показывается ПЕРВОЙ)."""
-    ru = lang == "ru"
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,"Звёзды","Stars"), callback_data="topup_method_stars", icon_custom_emoji_id="5893034681636491040")],
-        [InlineKeyboardButton(R(ru,"Карта / Телефон","Card / Phone"), callback_data="topup_method_rub", icon_custom_emoji_id="5902056028513505203")],
-        [InlineKeyboardButton("TON — Tonkeeper", callback_data="topup_method_ton_tonkeeper", icon_custom_emoji_id="6039802097916974085")],
-        [InlineKeyboardButton("TON — Crypto Bot", callback_data="topup_method_ton_only", icon_custom_emoji_id="6039802097916974085")],
-        [InlineKeyboardButton("USDT — Tonkeeper", callback_data="topup_method_usdt_tonkeeper", icon_custom_emoji_id="6039641775377748623")],
-        [InlineKeyboardButton("USDT — Crypto Bot", callback_data="topup_method_usdt_only", icon_custom_emoji_id="6039641775377748623")],
-        [InlineKeyboardButton(R(ru,"Назад","Back"), icon_custom_emoji_id="5316815985099946114", callback_data="menu_balance")],
-    ])
-
 # ─── Validation ───────────────────────────────────────────────────────────────
 def validate_username(text):
     import re
@@ -404,6 +393,7 @@ def validate_nft_link(text, dtype):
         slug=path[4:].strip("/")
         if len(slug)<2 or not re.search(r"[a-zA-Z0-9]", slug): return False,"wrong_nft"
     elif dtype=="username":
+        # t.me/username — должен быть хотя бы 4 символа после t.me/
         uname=path.strip("/")
         if len(uname)<4: return False,"wrong_usr"
         if not re.fullmatch(r"[a-zA-Z0-9_]+", uname): return False,"wrong_usr"
@@ -435,6 +425,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         dtype=d.get("type",""); cur=d.get("currency","—"); amt=d.get("amount","—")
         dd=d.get("data",{}); creator_role=d.get("creator_role","seller")
 
+        # Инфо о товаре
         if dtype=="nft":
             item=f"\n{Eln} {R(ru,'Ссылка','Link')}: {dd.get('nft_link','—')}"
         elif dtype=="username":
@@ -481,16 +472,20 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
         ]
 
         if joined:
+            # Инструкция для присоединившегося участника
             if creator_role=="seller":
+                # Присоединился покупатель — должен оплатить
                 joined_instr=R(ru,
                     f"Сначала переведите оплату покупатель переводит первым по реквизитам ниже, затем нажмите «Я оплатил». После подтверждения продавец {partner_tag} передаст товар менеджеру {MANAGER_TAG}.",
                     f"Buyer pays first — send payment using the details below, then press «I paid». After confirmation seller {partner_tag} will transfer the item to manager {MANAGER_TAG}.")
             else:
+                # Присоединился продавец — должен передать товар
                 joined_instr=R(ru,
                     f"Передайте товар менеджеру {MANAGER_TAG}. После подтверждения оплаты от покупателя {partner_tag} сделка будет завершена.",
                     f"Transfer the item to manager {MANAGER_TAG}. After payment confirmation from buyer {partner_tag} the deal will be completed.")
             lines.append(f"\n<blockquote>{joined_instr}</blockquote>")
 
+            # Реквизиты только для выбранной валюты
             lines.append(f"\n<b>{Ecrd} {R(ru,'Реквизиты для оплаты','Payment details')}:</b>\n")
 
             if cur in ("RUB","KZT","AZN","KGS","UZS","TJS","BYN","UAH","GEL"):
@@ -503,7 +498,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
                 lines += [
                     f"<b>{Ecbt} TON — Crypto Bot:</b>",
                     f"<blockquote><a href='{CRYPTO_BOT}'>{R(ru,'Перейти в Crypto Bot','Open Crypto Bot')}</a></blockquote>",
-                    f"<b>💎 TON — {R(ru,'адрес кошелька','wallet address')}:</b>",
+                    f"<b>{Edm} TON — {R(ru,'адрес кошелька','wallet address')}:</b>",
                     f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>",
                 ]
             elif cur=="USDT":
@@ -519,6 +514,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
                     f"<blockquote>{MANAGER_TAG}</blockquote>",
                 ]
             else:
+                # Для остальных валют — карта как дефолт
                 bank=card_bank(lang)
                 lines += [
                     f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
@@ -530,14 +526,17 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False):
                 f"<b>{Ech} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>",
             ]
         else:
+            # Инструкция — кто что должен сделать
             if creator_role=="seller":
+                # Создатель продавец → ждёт покупателя который должен оплатить
                 instr=R(ru,
                     f"Отправьте ссылку покупателю. После того как он перейдёт по ней и оплатит — вы получите уведомление.",
                     f"Send the link to the buyer. Once they follow it and pay — you will get a notification.")
             else:
+                # Создатель покупатель → ждёт продавца который должен передать товар
                 instr=R(ru,
-                    f"Отправьте ссылку продавцу. После того как он перейдёт по ней и передаст товар менеджеру {MANAGER_TAG} — сделка будет завершена.",
-                    f"Send the link to the seller. Once they follow it and transfer the item to manager {MANAGER_TAG} — the deal will be completed.")
+                    f"Отправьте ссылку продавцу — он должен перейти по ней и передать товар менеджеру {MANAGER_TAG}.",
+                    f"Send the link to the seller — they must follow it and transfer the item to manager {MANAGER_TAG}.")
             lines += [
                 f"\n<b>{Esrk} {R(ru,'Ожидание второго участника...','Waiting for second participant...')}</b>",
                 f"<blockquote>{instr}</blockquote>",
@@ -587,6 +586,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         parse_mode="HTML")
                     await show_main(update,context); return
 
+                # Проверка: только указанный партнёр может зайти в сделку
                 partner_uname=d.get("partner","").lstrip("@").lower()
                 my_uname=(update.effective_user.username or "").lower()
                 if partner_uname and my_uname and my_uname!=partner_uname:
@@ -646,7 +646,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_main(update,context)
     except Exception as e: logger.error(f"cmd_start: {e}")
 
-# ─── /neptunteam ──────────────────────────────────────────────────────────────
+# ─── /neptunteam — видна всем, команды не показываются ───────────────────────
 async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message: return
@@ -682,7 +682,7 @@ async def cmd_sendbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not args or not args[0].replace(".","",1).isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Пример: /sendbalance 500','Example: /sendbalance 500')}</b>",parse_mode="HTML"); return
         amt=int(float(args[0])); u["balance"]=u.get("balance",0)+amt; save_db(db)
-        await update.message.reply_text(f"{Ech} <b>{R(ru,f'Баланс пополнен на {amt} RUB!',f'Balance topped up by {amt} RUB!')}</b>\n{Ebal} <b>{R(ru,'Баланс','Balance')}: {u['balance']} RUB</b>",parse_mode="HTML")
+        await update.message.reply_text(f"{Ech} <b>{R(ru,f'Баланс пополнен на {amt} RUB!',f'Balance topped up by {amt} RUB!')}</b>\n{Ebal} <b>{R(ru,'Баланс','Balance')}: {u["balance"]} RUB</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_sendbalance: {e}")
 
 async def cmd_addrep(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -693,7 +693,7 @@ async def cmd_addrep(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not args or not args[0].lstrip("-").isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Пример: /addrep 100','Example: /addrep 100')}</b>",parse_mode="HTML"); return
         amt=int(args[0]); u["reputation"]=u.get("reputation",0)+amt; save_db(db)
-        await update.message.reply_text(f"{Ech} <b>{R(ru,f'Репутация +{amt}!',f'Reputation +{amt}!')}</b>\n{Etph} <b>{R(ru,'Репутация','Reputation')}: {u['reputation']}</b>",parse_mode="HTML")
+        await update.message.reply_text(f"{Ech} <b>{R(ru,f'Репутация +{amt}!',f'Reputation +{amt}!')}</b>\n{Etph} <b>{R(ru,'Репутация','Reputation')}: {u["reputation"]}</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_addrep: {e}")
 
 async def cmd_setdeals(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -724,8 +724,12 @@ async def cmd_add_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ru=u.get("lang","ru")=="ru"; args=context.args
         if not args:
             await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Укажите текст: /add_review Текст','Usage: /add_review Text')}</b>",parse_mode="HTML"); return
-        u.setdefault("reviews",[]).append(" ".join(args)); save_db(db)
-        await update.message.reply_text(f"{Ech} <b>{R(ru,'Отзыв добавлен!','Review added!')}</b>",parse_mode="HTML")
+        rev_text=" ".join(args); u.setdefault("reviews",[]).append(rev_text); save_db(db)
+        revs=u["reviews"]
+        lines=[f"{Ech} <b>{R(ru,'Отзыв добавлен!','Review added!')}</b>\n"]
+        for i,r in enumerate(revs,1): lines.append(f"<b>{i}.</b> {r}")
+        lines.append(f"\n<i>{R(ru,'Удалить: /del_review [номер]','Delete: /del_review [number]')}</i>")
+        await update.message.reply_text("\n".join(lines),parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_add_review: {e}")
 
 async def cmd_del_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -780,8 +784,17 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{Epen} <b>{R(ru,'Создать сделку','Create Deal')}\n\n{R(ru,'Кто вы в этой сделке?','What is your role?')}</b>",
                 parse_mode="HTML",reply_markup=role_kb(lang)); return
 
+        if d=="role_buyer_skip":
+            ud["creator_role"]="buyer"
+            try: await q.message.delete()
+            except: pass
+            await update.effective_chat.send_message(
+                f"{Epen} <b>{R(ru,'Выберите тип сделки:','Choose deal type:')}</b>",
+                parse_mode="HTML",reply_markup=types_kb(lang)); return
+
         if d in ("role_buyer","role_seller"):
             role="buyer" if d=="role_buyer" else "seller"
+            # Только покупатель обязан иметь реквизиты (продавец пропускает)
             if role=="buyer":
                 db=load_db(); u=get_user(db,uid); reqs=u.get("requisites",{})
                 if not any(reqs.get(f) for f in ("card","ton","stars")):
@@ -790,16 +803,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
                         [InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="6039709013090768335")],
                         [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
+                        [InlineKeyboardButton(R(ru,"Пропустить","Skip"),callback_data="role_buyer_skip",icon_custom_emoji_id="5316815985099946114")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_deal")],
                     ])
-                    no_req_text = R(
-                        ru,
-                        "Упс, вы не добавили реквизиты 😅\n\nДобавьте реквизиты, чтобы получить оплату после сделки:",
-                        "Oops, you have not added requisites 😅\n\nAdd requisites to receive payment after the deal:"
-                    )
+                    no_req_text=R(ru,
+                        "Добавьте реквизиты для получения оплаты после сделки:\n(или пропустите)",
+                        "Add requisites to receive payment after the deal:\n(or skip)")
                     await update.effective_chat.send_message(
-                        f"{Ewrn} <b>{no_req_text}</b>",
-                        parse_mode="HTML",reply_markup=kb)
+                        f"{Ewrn} <b>{no_req_text}</b>",parse_mode="HTML",reply_markup=kb)
                     ud["creator_role"]=role; return
             ud["creator_role"]=role
             try: await q.message.delete()
@@ -878,7 +889,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 bank=card_bank(lang)
                 prompts={
                     "card": f"💳 <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
-                    "ton":  f"💎 <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
+                    "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                     "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
                 }
                 await send_section(update,prompts.get(field,"?"),
@@ -886,7 +897,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             field=raw; bank=card_bank(lang)
             prompts={
                 "card": f"💳 <b>{R(ru,f'Карта / Номер телефона {bank}',f'Card / Phone Number {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
-                "ton":  f"💎 <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
+                "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                 "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
             }
             ud["req_step"]=field
@@ -908,7 +919,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["req_step"]=field; ud["req_for_deal"]=deal_id; bank=card_bank(lang)
             prompts={
                 "card": f"💳 <b>{R(ru,f'Карта / Телефон {bank}',f'Card / Phone {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>+79041751408</code></blockquote>",
-                "ton":  f"💎 <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
+                "ton":  f"{Edm} <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                 "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
             }
             await send_section(update,prompts.get(field,"?"),
@@ -921,76 +932,72 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except: pass
             await show_balance(update,context); return
 
-        # ─── FIX 2: ПОПОЛНЕНИЕ — сначала метод, потом сумма ───────────────────
         if d=="balance_topup":
-            # Сначала показываем выбор метода
             await send_section(update,
-                f"{Emn} <b>{R(ru,'Выберите способ пополнения:','Choose top-up method:')}</b>",
-                topup_method_kb(lang),
-                section="balance")
-            return
-
-        # После выбора метода — просим ввести сумму
-        if d.startswith("topup_method_"):
-            method = d[13:]  # stars, rub, ton_tonkeeper, ton_only, usdt_tonkeeper, usdt_only
-            ud["topup_method"] = method
-            ud["topup_step"] = "amount"
-            method_names = {
-                "stars":           R(ru,"Звёзды","Stars"),
-                "rub":             R(ru,f"Карта / Телефон {card_bank(lang)}",f"Card / Phone {card_bank(lang)}"),
-                "ton_tonkeeper":   "TON — Tonkeeper",
-                "ton_only":        "TON — Crypto Bot",
-                "usdt_tonkeeper":  "USDT — Tonkeeper",
-                "usdt_only":       "USDT — Crypto Bot",
-            }
-            mname = method_names.get(method, method)
-            await send_section(update,
-                f"{Emn} <b>{R(ru,'Способ','Method')}: {mname}\n\n{R(ru,'Введите сумму пополнения:','Enter top-up amount:')}</b>\n\n<blockquote>{R(ru,'Пример: 500','Example: 500')}</blockquote>",
+                f"{Emn} <b>{R(ru,'Выберите валюту пополнения:','Choose top-up currency:')}</b>",
                 InlineKeyboardMarkup([
-                    [InlineKeyboardButton(R(ru,"Назад","Back"), icon_custom_emoji_id="5316815985099946114", callback_data="balance_topup")],
-                ]),
-                section="balance")
-            return
+                    [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="topup_cur_stars",icon_custom_emoji_id="5893034681636491040")],
+                    [InlineKeyboardButton(R(ru,"Карта / Телефон","Card / Phone"),callback_data="topup_cur_rub",icon_custom_emoji_id="5902056028513505203")],
+                    [InlineKeyboardButton("TON — Tonkeeper",callback_data="topup_cur_ton_tonkeeper",icon_custom_emoji_id="6039802097916974085")],
+                    [InlineKeyboardButton("TON — Crypto Bot",callback_data="topup_cur_ton_only",icon_custom_emoji_id="6039802097916974085")],
+                    [InlineKeyboardButton("USDT — Tonkeeper",callback_data="topup_cur_usdt_tonkeeper",icon_custom_emoji_id="6039641775377748623")],
+                    [InlineKeyboardButton("USDT — Crypto Bot",callback_data="topup_cur_usdt_only",icon_custom_emoji_id="6039641775377748623")],
+                    [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_balance")],
+                ]),section="balance"); return
 
+        if d.startswith("topup_cur_"):
+            method=d[10:]
+            ud["topup_method"]=method; ud["topup_step"]="amount"
+            await send_section(update,
+                f"{Emn} <b>{R(ru,'Введите сумму:','Enter amount:')}</b>\n\n<blockquote>{R(ru,'Пример: 500','Example: 500')}</blockquote>",
+                InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="balance_topup")]]),
+                section="balance"); return
+        
         if d=="balance_choose_method":
             await send_section(update,
                 f"{Emn} <b>{R(ru,'Выберите способ пополнения:','Choose top-up method:')}</b>",
-                topup_method_kb(lang),
-                section="balance"); return
+                InlineKeyboardMarkup([
+                    [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="balance_stars",icon_custom_emoji_id="5893034681636491040")],
+                    [InlineKeyboardButton(R(ru,"Карта / Телефон","Card / Phone"),callback_data="balance_rub",icon_custom_emoji_id="5902056028513505203")],
+                    [InlineKeyboardButton("TON — Tonkeeper",callback_data="balance_ton_tonkeeper",icon_custom_emoji_id="6039802097916974085")],
+                    [InlineKeyboardButton("TON — Crypto Bot",callback_data="balance_ton_only",icon_custom_emoji_id="6039802097916974085")],
+                    [InlineKeyboardButton("USDT — Tonkeeper",callback_data="balance_usdt_tonkeeper",icon_custom_emoji_id="6039641775377748623")],
+                    [InlineKeyboardButton("USDT — Crypto Bot",callback_data="balance_usdt_only",icon_custom_emoji_id="6039641775377748623")],
+                    [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_balance")],
+                ]),section="balance"); return
 
-        # Прямые переходы к деталям оплаты (из старых кнопок / balance_info)
         if d=="balance_ton_tonkeeper":
             within=R(ru,"Баланс пополнится в течение 5 минут.","Balance topped up within 5 minutes.")
-            text2=(f"💎 <b>TON — Tonkeeper</b>\n\n"
+            text=(f"{Edm} <b>TON — Tonkeeper</b>\n\n"
                   f"<blockquote>{R(ru,'Адрес','Address')}:\n<code>{CRYPTO_ADDR}</code>\n\n{within}</blockquote>")
-            await send_section(update,text2,InlineKeyboardMarkup([
+            await send_section(update,text,InlineKeyboardMarkup([
                 [InlineKeyboardButton(R(ru,"Я отправил","I sent"),callback_data="topup_sent_ton_tonkeeper",icon_custom_emoji_id="5316827280863934685")],
                 [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="balance_topup")],
             ]),section="balance"); return
 
         if d=="balance_ton_only":
             within=R(ru,"Баланс пополнится в течение 5 минут.","Balance topped up within 5 minutes.")
-            text2=(f"{Ecbt} <b>TON — Crypto Bot</b>\n\n"
+            text=(f"{Ecbt} <b>TON — Crypto Bot</b>\n\n"
                   f"<blockquote>{CRYPTO_BOT}\n\nID: <code>{uid}</code>\n\n{within}</blockquote>")
-            await send_section(update,text2,InlineKeyboardMarkup([
+            await send_section(update,text,InlineKeyboardMarkup([
                 [InlineKeyboardButton(R(ru,"Я отправил","I sent"),callback_data="topup_sent_ton_only",icon_custom_emoji_id="5316827280863934685")],
                 [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="balance_topup")],
             ]),section="balance"); return
 
         if d=="balance_usdt_tonkeeper":
             within=R(ru,"Баланс пополнится в течение 5 минут.","Balance topped up within 5 minutes.")
-            text2=(f"{Ebnk2} <b>USDT — Tonkeeper</b>\n\n"
+            text=(f"{Ebnk2} <b>USDT — Tonkeeper</b>\n\n"
                   f"<blockquote>{R(ru,'Адрес','Address')}:\n<code>{CRYPTO_ADDR}</code>\n\n{within}</blockquote>")
-            await send_section(update,text2,InlineKeyboardMarkup([
+            await send_section(update,text,InlineKeyboardMarkup([
                 [InlineKeyboardButton(R(ru,"Я отправил","I sent"),callback_data="topup_sent_usdt_tonkeeper",icon_custom_emoji_id="5316827280863934685")],
                 [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="balance_topup")],
             ]),section="balance"); return
 
         if d=="balance_usdt_only":
             within=R(ru,"Баланс пополнится в течение 5 минут.","Balance topped up within 5 minutes.")
-            text2=(f"{Ecbt} <b>USDT — Crypto Bot</b>\n\n"
+            text=(f"{Ecbt} <b>USDT — Crypto Bot</b>\n\n"
                   f"<blockquote>{CRYPTO_BOT}\n\nID: <code>{uid}</code>\n\n{within}</blockquote>")
-            await send_section(update,text2,InlineKeyboardMarkup([
+            await send_section(update,text,InlineKeyboardMarkup([
                 [InlineKeyboardButton(R(ru,"Я отправил","I sent"),callback_data="topup_sent_usdt_only",icon_custom_emoji_id="5316827280863934685")],
                 [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="balance_topup")],
             ]),section="balance"); return
@@ -1022,10 +1029,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "usdt_only":"USDT — Crypto Bot",
                 "usdt_tonkeeper":"USDT — Tonkeeper",
             }
-            topup_amt = ud.get("topup_amount", "?")
             try:
                 await context.bot.send_message(chat_id=ADMIN_ID,
-                    text=f"{Ebl} <b>Пополнение — {mmap.get(method,method)}</b>\n👤 @{uname2} (<code>{uid}</code>)\n💰 {topup_amt}",
+                    text=f"{Ebl} <b>Пополнение — {mmap.get(method,method)}</b>\n👤 @{uname2} (<code>{uid}</code>)",
                     parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup([[
                         InlineKeyboardButton("✅ Пришло",callback_data=f"adm_topup_ok_{uid}"),
@@ -1168,7 +1174,6 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"{Ech} <b>{R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Мои реквизиты","My Requisites"),callback_data="menu_req",icon_custom_emoji_id="5316827280863934685")]])); return
 
-        # ─── FIX 2: Ввод суммы после выбора метода пополнения ─────────────────
         if ud.get("topup_step")=="amount":
             ud.pop("topup_step",None)
             ca=text.replace(" ","").replace(",",".")
@@ -1176,53 +1181,22 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 v2=float(ca)
                 if v2<=0: raise ValueError
             except:
-                ud["topup_step"]="amount"
+                ud["topup_step"]="amount"  # сбросить шаг чтоб следующий ввод снова попал сюда
                 await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Введите число больше 0. Пример: 500','Enter number. Example: 500')}</b>",parse_mode="HTML"); return
             ud["topup_amount"]=ca
-            method = ud.get("topup_method","")
             lang2=get_lang(uid); ru2=lang2=="ru"
-            bank=card_bank(lang2)
-            within=R(ru2,"Баланс пополнится в течение 5 минут.","Balance topped up within 5 minutes.")
-            back_kb_row = [InlineKeyboardButton(R(ru2,"Назад","Back"), icon_custom_emoji_id="5316815985099946114", callback_data="balance_topup")]
-
-            if method=="stars":
-                text3=(f"{Est} <b>{R(ru2,'Пополнение звёздами','Top up with Stars')}</b>\n\n"
-                      f"<blockquote>{R(ru2,'Сумма','Amount')}: <b>{ca}</b>\n\n"
-                      f"{R(ru2,'Отправьте звёзды менеджеру','Send stars to manager')}: {MANAGER_TAG}\n\n{within}</blockquote>")
-                kb2=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru2,"Я отправил","I sent"),callback_data="topup_sent_stars",icon_custom_emoji_id="5316827280863934685")],[back_kb_row[0]]])
-            elif method=="rub":
-                text3=(f"💳 <b>{R(ru2,f'Пополнение — Карта / Телефон {bank}',f'Top up — Card / Phone {bank}')}</b>\n\n"
-                      f"<blockquote>{R(ru2,'Сумма','Amount')}: <b>{ca}</b>\n\n"
-                      f"📞 {R(ru2,'Номер','Number')}: <code>{CARD_NUM}</code>\n"
-                      f"{R(ru2,'Получатель','Recipient')}: {CARD_NAME}\n\n{within}</blockquote>")
-                kb2=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru2,"Я отправил","I sent"),callback_data="topup_sent_rub",icon_custom_emoji_id="5316827280863934685")],[back_kb_row[0]]])
-            elif method=="ton_tonkeeper":
-                text3=(f"💎 <b>TON — Tonkeeper</b>\n\n"
-                      f"<blockquote>{R(ru2,'Сумма','Amount')}: <b>{ca} TON</b>\n\n"
-                      f"{R(ru2,'Адрес','Address')}:\n<code>{CRYPTO_ADDR}</code>\n\n{within}</blockquote>")
-                kb2=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru2,"Я отправил","I sent"),callback_data="topup_sent_ton_tonkeeper",icon_custom_emoji_id="5316827280863934685")],[back_kb_row[0]]])
-            elif method=="ton_only":
-                text3=(f"{Ecbt} <b>TON — Crypto Bot</b>\n\n"
-                      f"<blockquote>{R(ru2,'Сумма','Amount')}: <b>{ca} TON</b>\n\n"
-                      f"{CRYPTO_BOT}\n\nID: <code>{uid}</code>\n\n{within}</blockquote>")
-                kb2=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru2,"Я отправил","I sent"),callback_data="topup_sent_ton_only",icon_custom_emoji_id="5316827280863934685")],[back_kb_row[0]]])
-            elif method=="usdt_tonkeeper":
-                text3=(f"{Ebnk2} <b>USDT — Tonkeeper</b>\n\n"
-                      f"<blockquote>{R(ru2,'Сумма','Amount')}: <b>{ca} USDT</b>\n\n"
-                      f"{R(ru2,'Адрес','Address')}:\n<code>{CRYPTO_ADDR}</code>\n\n{within}</blockquote>")
-                kb2=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru2,"Я отправил","I sent"),callback_data="topup_sent_usdt_tonkeeper",icon_custom_emoji_id="5316827280863934685")],[back_kb_row[0]]])
-            elif method=="usdt_only":
-                text3=(f"{Ecbt} <b>USDT — Crypto Bot</b>\n\n"
-                      f"<blockquote>{R(ru2,'Сумма','Amount')}: <b>{ca} USDT</b>\n\n"
-                      f"{CRYPTO_BOT}\n\nID: <code>{uid}</code>\n\n{within}</blockquote>")
-                kb2=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru2,"Я отправил","I sent"),callback_data="topup_sent_usdt_only",icon_custom_emoji_id="5316827280863934685")],[back_kb_row[0]]])
-            else:
-                # fallback
-                text3=f"{Emn} <b>{R(ru2,'Сумма: ','Amount: ')}<code>{ca}</code></b>"
-                kb2=InlineKeyboardMarkup([back_kb_row])
-
-            await update.effective_chat.send_message(text3, parse_mode="HTML", reply_markup=kb2)
-            return
+            await update.effective_chat.send_message(
+                f"{Emn} <b>{R(ru2,'Сумма: ','Amount: ')}<code>{ca}</code> RUB\n\n{R(ru2,'Выберите способ пополнения:','Choose top-up method:')}</b>",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton(R(ru2,"Звёзды","Stars"),callback_data="balance_stars",icon_custom_emoji_id="5893034681636491040")],
+                    [InlineKeyboardButton(R(ru2,"Карта / Телефон","Card / Phone"),callback_data="balance_rub",icon_custom_emoji_id="5902056028513505203")],
+                    [InlineKeyboardButton("TON — Tonkeeper",callback_data="balance_ton_tonkeeper",icon_custom_emoji_id="6039802097916974085")],
+                    [InlineKeyboardButton("TON — Crypto Bot",callback_data="balance_ton_only",icon_custom_emoji_id="6039802097916974085")],
+                    [InlineKeyboardButton("USDT — Tonkeeper",callback_data="balance_usdt_tonkeeper",icon_custom_emoji_id="6039641775377748623")],
+                    [InlineKeyboardButton("USDT — Crypto Bot",callback_data="balance_usdt_only",icon_custom_emoji_id="6039641775377748623")],
+                    [InlineKeyboardButton(R(ru2,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="menu_balance")],
+                ])); return
 
         if ud.get("withdraw_step")=="req":
             method=ud.get("withdraw_method","?"); db=load_db()
@@ -1277,6 +1251,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["last_msg"]=msg.message_id
 
         if step=="partner":
+            # Нормализуем и валидируем username партнёра
             t_raw = text.strip()
             if not t_raw.startswith("@"): t_raw = "@" + t_raw
             cl_p, ec_p = validate_username(t_raw)
@@ -1294,12 +1269,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(f"👤 <b>{R(ru,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
-                cr_role=ud.get("creator_role","seller")
-                stars_q=R(ru,
-                    "Сколько звёзд продаёте?" if cr_role=="seller" else "Сколько звёзд покупаете?",
-                    "How many stars are you selling?" if cr_role=="seller" else "How many stars are you buying?"
-                )
-                await send_step(f"{Est} <b>{stars_q}</b>")
+                await send_step(f"{Est} <b>{R(ru,'Введите сумму звёзд:','Enter stars amount:')}</b>")
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
                 await send_step(f"{Edm} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",
@@ -1329,6 +1299,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if step=="trade_usr":
             cl=text.strip().replace("https://","").replace("http://","")
+            # Валидация: либо t.me/username (мин 4 символа), либо @username
             import re as _re
             ok_link = cl.startswith("t.me/") and len(cl[5:].strip("/"))>=4 and _re.fullmatch(r"[a-zA-Z0-9_]+", cl[5:].strip("/"))
             ok_at   = text.strip().startswith("@") and len(text.strip()[1:])>=4 and _re.fullmatch(r"[a-zA-Z0-9_]+", text.strip()[1:])
@@ -1357,7 +1328,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if v<=0: raise ValueError
             except:
                 await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Введите число больше 0. Пример: 500','Enter number greater than 0. Example: 500')}</b>",parse_mode="HTML")
-                return
+                return  # шаг остаётся "amount" — следующее сообщение снова обработается
             ud["amount"]=ca
             await del_prev()
             await finalize_deal(update,context)
@@ -1412,7 +1383,7 @@ async def finalize_deal(update, context):
                     txt2+=f"\n\n🤝 <b>{R(pr,'Нажмите чтобы присоединиться:','Click to join:')}</b>\n<code>{join_link}</code>"
                     kb2=InlineKeyboardMarkup([
                         [InlineKeyboardButton(R(pr,"Присоединиться","Join"),url=join_link,icon_custom_emoji_id="5893431652578758294")],
-                        [InlineKeyboardButton(R(pr,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]
+                        [InlineKeyboardButton(R(pr,"Главное меню","Main menu",icon_custom_emoji_id="5316887736823591263"),callback_data="main_menu")]
                     ])
                     await context.bot.send_message(chat_id=int(puid),text=txt2,parse_mode="HTML",reply_markup=kb2)
                 except Exception as e: logger.error(f"notify partner: {e}")
@@ -1441,7 +1412,7 @@ async def on_paid(update, context):
         try:
             log_chat=db.get("log_chat_id")
             if log_chat:
-                await context.bot.send_message(chat_id=int(str(log_chat).strip()),text=paid_text,parse_mode="HTML",reply_markup=paid_kb)
+                await context.bot.send_message(chat_id=int(log_chat),text=paid_text,parse_mode="HTML",reply_markup=paid_kb)
         except Exception as e: logger.error(f"on_paid group: {e}")
         add_log(db,"Оплачено",deal_id=deal_id,uid=buyer.id,username=buyer.username or "",extra=f"{amt} {cur}")
         save_db(db)
@@ -1494,6 +1465,7 @@ async def adm_confirm(update, context):
                     except: pass
         save_db(db)
         if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        # Пост в группу "новый мамонтёнок"
         try:
             log_chat=db.get("log_chat_id")
             if log_chat:
@@ -1512,7 +1484,7 @@ async def adm_confirm(update, context):
                     f"{Emn} {amt_str} {d.get('currency','')}"
                     f"{link_str}"
                 )
-                await context.bot.send_message(chat_id=int(str(log_chat).strip()),text=post_text,parse_mode="HTML")
+                await context.bot.send_message(chat_id=int(log_chat),text=post_text,parse_mode="HTML")
         except Exception as e: logger.error(f"confirm group post: {e}")
         try: await q.edit_message_text(f"{Ech} <b>Подтверждено!</b>\n{d.get('amount')} {d.get('currency')}{ilink}",parse_mode="HTML")
         except: pass
@@ -1526,10 +1498,12 @@ async def adm_confirm(update, context):
                         if ud_.get("username","").lower()==d.get("partner","").lstrip("@").lower(): buyer_uid=u_; break
                 buyer_tag=f"@{db['users'].get(buyer_uid,{}).get('username','')}" if buyer_uid else d.get("partner","")
                 if creator_role=="seller":
+                    # Создатель продавец — уведомляем его что покупатель оплатил
                     msg_seller=R(rs,
                         f"{Ech} <b>Сделка завершена!</b>\n<blockquote>Покупатель {buyer_tag} передаст вам товар через менеджера @GiftDealsManager.\nВы можете передать товар менеджеру после получения оплаты.</blockquote>",
                         f"{Ech} <b>Deal completed!</b>\n<blockquote>Buyer {buyer_tag} will transfer the item via manager @GiftDealsManager.\nYou can transfer the item after receiving payment.</blockquote>")
                 else:
+                    # Создатель покупатель — уведомляем продавца передать товар
                     msg_seller=R(rs,
                         f"{Ech} <b>Сделка завершена!</b>\n<blockquote>Передайте товар менеджеру @GiftDealsManager — покупатель уже оплатил.\nВы можете передать товар менеджеру сейчас.</blockquote>",
                         f"{Ech} <b>Deal completed!</b>\n<blockquote>Transfer the item to manager @GiftDealsManager — buyer has already paid.\nYou can transfer the item to the manager now.</blockquote>")
@@ -1634,15 +1608,21 @@ async def show_profile(update, context):
         reviews=u.get("reviews",[])
         rv=""
         if reviews:
-            rv_lines="\n".join(f"{i+1}. {r}" for i,r in enumerate(reviews[-10:]))
-            rv=f"\n\n📊 <b>{R(ru,'Отзывы','Reviews')}:</b>\n<blockquote>{rv_lines}</blockquote>"
+            rv_lines=[]
+            for r in reviews[-10:]:
+                # Парсим звёзды из отзыва (формат "⭐ N/5 — текст")
+                import re as _re2
+                m=_re2.search(r'(\d)/5',r)
+                stars_num=int(m.group(1)) if m else 5
+                star_str=ce("5321485469249198987","⭐")*stars_num
+                rv_lines.append(f"{star_str} {r}")
+            rv=f"\n\n{Estr} <b>{R(ru,f'Отзывы ({len(reviews)})',f'Reviews ({len(reviews)})')}</b>\n<blockquote>"+'\n'.join(rv_lines)+'</blockquote>'
         text=(f"{Ecwn} <b>{R(ru,'Профиль','Profile')}</b>{sl}\n\n"
               f"{Eu} @{uname}\n"
               f"{Ebal} {R(ru,'Баланс','Balance')}: <b>{u.get('balance',0)} RUB</b>\n"
               f"{Estr} {R(ru,'Сделок','Deals')}: <b>{u.get('total_deals',0)}</b>\n"
               f"{Ech} {R(ru,'Успешных','Successful')}: <b>{u.get('success_deals',0)}</b>\n"
-              f"{Emn} {R(ru,'Оборот','Turnover')}: <b>{u.get('turnover',0)} RUB</b>\n"
-              f"{Etph} {R(ru,'Репутация','Reputation')}: <b>{u.get('reputation',0)}</b>{rv}")
+              f"{Emn} {R(ru,'Оборот','Turnover')}: <b>{u.get('turnover',0)} RUB</b>{rv}")
         await send_section(update,text,InlineKeyboardMarkup([
             [InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="main_menu")]
         ]),section="profile")
@@ -1665,7 +1645,6 @@ async def show_ref(update, context):
         await send_section(update,text,InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),icon_custom_emoji_id="5316815985099946114",callback_data="main_menu")]]),section="ref")
     except Exception as e: logger.error(f"show_ref: {e}")
 
-# ─── FIX 3: РЕКВИЗИТЫ — TON адрес с правильным эмодзи 💎 ────────────────────
 async def show_req(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
@@ -1679,10 +1658,9 @@ async def show_req(update, context):
             lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card}</code>\n{R(ru,'Банк','Bank')}: {bank}</blockquote>")
         else:
             lines.append(f"<blockquote>{R(ru,'Не добавлена','Not added')}</blockquote>")
-        # FIX: используем 💎 вместо эмодзи рукопожатия для TON адреса
-        lines.append(f"\n💎 <b>TON {R(ru,'адрес','address')}:</b>")
+        lines.append(f"\n{Eton} <b>TON:</b>")
         lines.append(f"<blockquote><code>{ton}</code></blockquote>" if ton else f"<blockquote>{R(ru,'Не добавлен','Not added')}</blockquote>")
-        lines.append(f"\n{Est} <b>{R(ru,'Звёзды','Stars')} (@username):</b>")
+        lines.append(f"\n{Est} <b>{R(ru,'Звёзды','Stars')}:</b>")
         lines.append(f"<blockquote><code>{stars}</code></blockquote>" if stars else f"<blockquote>{R(ru,'Не добавлен','Not added')}</blockquote>")
 
         rows=[]
@@ -1777,7 +1755,7 @@ def adm_kb():
         [InlineKeyboardButton("Описание меню",callback_data="adm_menu_desc")],
         [InlineKeyboardButton("Список сделок",callback_data="adm_deals")],
         [InlineKeyboardButton("Логи",callback_data="adm_logs"),InlineKeyboardButton(tl,callback_data="adm_toggle_hidden")],
-        [InlineKeyboardButton("Лог-канал",callback_data="adm_log_channel")],
+        [InlineKeyboardButton("Лог-канал",callback_data="adm_log_channel"),InlineKeyboardButton("Шаблоны логов",callback_data="adm_log_templates")],
     ])
 
 def adm_banners_kb(db=None):
@@ -1897,6 +1875,36 @@ async def handle_adm_cb(update, context):
             await q.message.edit_text("<b>Введите новое описание меню:</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Отмена",callback_data="adm_back")]])); return
 
+        if d=="adm_log_templates":
+            db=load_db(); lt=db.get("log_templates",{})
+            rows=[]
+            events=["Новая сделка","Покупатель открыл сделку","Оплачено","Подтверждено","Новый реферал","Баланс выдан"]
+            for ev in events:
+                has="✅" if lt.get(ev) else "—"
+                rows.append([
+                    InlineKeyboardButton(f"{has} {ev}",callback_data=f"adm_lt_edit_{ev}"),
+                    InlineKeyboardButton("🖼",callback_data=f"adm_lt_banner_{ev}"),
+                ])
+            rows.append([InlineKeyboardButton("Назад",callback_data="adm_back")])
+            await q.message.edit_text(
+                "<b>Шаблоны логов</b>\n\n<blockquote>Переменные: {user} {deal} {extra} {time}</blockquote>\n✅ = задан  — = нет шаблона  🖼 = баннер",
+                parse_mode="HTML",reply_markup=InlineKeyboardMarkup(rows)); return
+
+        if d.startswith("adm_lt_edit_"):
+            event_name=d[12:]
+            ud["adm_step"]="lt_edit"; ud["adm_lt_event"]=event_name
+            db=load_db(); cur_tmpl=db.get("log_templates",{}).get(event_name,"")
+            await q.message.edit_text(
+                f"<b>Шаблон для: {event_name}</b>\n\n<blockquote>Текущий:\n{cur_tmpl or 'стандартный'}</blockquote>\n\nВведите новый шаблон или <code>off</code> для сброса:\n<code>Переменные: {{user}} {{deal}} {{extra}} {{time}}</code>",
+                parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Отмена",callback_data="adm_log_templates")]])); return
+
+        if d.startswith("adm_lt_banner_"):
+            event_name=d[14:]
+            ud["adm_step"]="lt_banner"; ud["adm_lt_event"]=event_name
+            await q.message.edit_text(
+                f"<b>Баннер для лога: {event_name}</b>\n\nОтправьте фото/видео/GIF или <code>off</code> для удаления",
+                parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Отмена",callback_data="adm_log_templates")]])); return
+
         if d=="adm_deals":
             db=load_db(); deals=db.get("deals",{})
             if not deals:
@@ -2014,6 +2022,35 @@ async def handle_adm_msg(update, context):
         if step=="menu_desc":
             db["menu_description"]=text; save_db(db)
             await update.message.reply_text(f"{Ech} <b>Описание обновлено!</b>",parse_mode="HTML",reply_markup=ok_kb)
+            ud["adm_step"]=None; return
+
+        if step=="lt_edit":
+            event_name=ud.get("adm_lt_event","")
+            if not db.get("log_templates"): db["log_templates"]={}
+            if text.lower()=="off":
+                db["log_templates"].pop(event_name,None)
+            else:
+                db["log_templates"][event_name]=text
+            save_db(db)
+            await update.message.reply_text(f"{Ech} <b>Шаблон обновлён!</b>",parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад к шаблонам",callback_data="adm_log_templates")]]))
+            ud["adm_step"]=None; return
+
+        if step=="lt_banner":
+            event_name=ud.get("adm_lt_event","")
+            if not db.get("log_banners"): db["log_banners"]={}
+            cap=update.message.caption or "" if update.message else ""
+            if update.message and update.message.photo:
+                db["log_banners"][event_name]={"photo":update.message.photo[-1].file_id,"video":None,"gif":None}
+            elif update.message and update.message.animation:
+                db["log_banners"][event_name]={"photo":None,"video":None,"gif":update.message.animation.file_id}
+            elif update.message and update.message.video:
+                db["log_banners"][event_name]={"photo":None,"video":update.message.video.file_id,"gif":None}
+            elif text.lower()=="off":
+                db["log_banners"].pop(event_name,None)
+            save_db(db)
+            await update.message.reply_text(f"{Ech} <b>Баннер лога обновлён!</b>",parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад к шаблонам",callback_data="adm_log_templates")]]))
             ud["adm_step"]=None; return
 
         if step=="set_value":
@@ -2135,6 +2172,7 @@ def main():
 
     app=Application.builder().token(BOT_TOKEN).build()
     async def post_init(application):
+        # Только /start в публичном меню — остальные команды скрыты
         await application.bot.set_my_commands([BotCommand("start","Главное меню")])
     app.post_init=post_init
 
