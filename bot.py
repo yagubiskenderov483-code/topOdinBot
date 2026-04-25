@@ -6,18 +6,18 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(**name**)
 
-BOT_TOKEN = "8767675859:AAEYrMnVMAZjI7rBEc1QLNpHs7rVlUIv-0Q"
-ADMIN_ID = 8726084830
-BOT_USERNAME = "GiftDeals_Robot"
-MANAGER_URL = "https://t.me/GiftDealsManager"
-MANAGER_TAG = "@GiftDealsManager"
-CRYPTO_ADDR = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
-CRYPTO_BOT = "https://t.me/send?start=IVbfPL7Tk4XA"
-CARD_NUM = "+79041751408"
-CARD_NAME    = Александр Ф.
-CARD_BANK_RU = ВТБ
-CARD_BANK_EN = VTB
-DB_FILE      = db.json
+BOT_TOKEN    = ‘8767675859:AAEYrMnVMAZjI7rBEc1QLNpHs7rVlUIv-0Q’
+ADMIN_ID     = 8726084830
+BOT_USERNAME = “GiftDeals_Robot”
+MANAGER_URL  = “https://t.me/GiftDealsManager”
+MANAGER_TAG  = “@GiftDealsManager”
+CRYPTO_ADDR  = “UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd”
+CRYPTO_BOT   = “https://t.me/send?start=IVbfPL7Tk4XA”
+CARD_NUM     = “+79041751408”
+CARD_NAME    = “Александр Ф.”
+CARD_BANK_RU = “ВТБ”
+CARD_BANK_EN = “VTB”
+DB_FILE      = “db.json”
 
 def ce(eid, fb): return f”<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>”
 
