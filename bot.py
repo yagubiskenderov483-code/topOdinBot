@@ -242,34 +242,37 @@ async def send_log_msg(context, db, entry):
         ex=f"\n{entry['extra']}" if entry.get("extra") else ""
         ud=mask_str(f"@{u}") if hidden and u else (f"@{u}" if u else "")
         uid_d=mask_str(us) if hidden and us else (f"<code>{us}</code>" if us else "")
-        # Кастомный шаблон для этого события
         event_key=entry.get("event","")
         log_templates=db.get("log_templates",{})
         log_banners=db.get("log_banners",{})
+        # Иконки событий (всегда добавляются)
+        ev_icons={
+            "Новая сделка":            f"<tg-emoji emoji-id='5906716471756593520'>🎁</tg-emoji>",
+            "Покупатель открыл сделку":f"<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji>",
+            "Оплачено":                f"<tg-emoji emoji-id='5807499888245612254'>💰</tg-emoji>",
+            "Подтверждено":            f"<tg-emoji emoji-id='5274055917766202507'>✅</tg-emoji>",
+            "Новый реферал":           f"<tg-emoji emoji-id='5902335789798265487'>🤝</tg-emoji>",
+            "Баланс выдан":            f"<tg-emoji emoji-id='5258043150110301407'>💰</tg-emoji>",
+        }
+        time_ico=f"<tg-emoji emoji-id='5776213190387961618'>🕐</tg-emoji>"
+        pin_ico=f"<tg-emoji emoji-id='5931409969613116639'>🔖</tg-emoji>"
+        ev_ico=ev_icons.get(event_key,f"<b>{event_key}</b>")
+        deal_str=f"\n{pin_ico} <b>#{entry['deal_id']}</b>" if entry.get("deal_id") else ""
+        header=f"{time_ico} <b>{entry['time']}</b>\n{ev_ico}"
         if event_key in log_templates and log_templates[event_key]:
             tmpl=log_templates[event_key]
-            text=tmpl.replace("{user}",ud or uid_d).replace("{deal}",deal.strip()).replace("{extra}",entry.get("extra","")).replace("{time}",entry["time"])
+            body=tmpl.replace("{user}",ud or uid_d).replace("{deal}",deal.strip()).replace("{extra}",entry.get("extra","")).replace("{time}",entry["time"])
+            text=f"{header} {body}{deal_str}"
         else:
-            ev_labels={
-                "Новая сделка": f"{ce('5906716471756593520','🎁')} <b>Новая сделка создана</b>",
-                "Покупатель открыл сделку": f"{ce('5879770735999717115','👤')} <b>Покупатель зашёл в сделку</b>",
-                "Оплачено": f"{ce('5807499888245612254','💰')} <b>Покупатель оплатил</b>",
-                "Подтверждено": f"{ce('5274055917766202507','✅')} <b>Сделка подтверждена</b>",
-                "Новый реферал": f"{ce('5902335789798265487','🤝')} <b>Новый реферал</b>",
-                "Баланс выдан": f"{ce('5258043150110301407','💰')} <b>Баланс выдан</b>",
-            }
-            ev_label=ev_labels.get(event_key,f"<b>{event_key}</b>")
-            deal_str=f"\n{ce('5931409969613116639','🔖')} <b>#{entry['deal_id']}</b>" if entry.get("deal_id") else ""
             text=(
-                f"{ce('5776213190387961618','🕐')} <b>{entry['time']}</b>\n"
-                f"{ev_label}{deal_str}\n"
-                f"{ce('5879770735999717115','👤')} <b>{ud}</b> {uid_d}\n"
+                f"{header}{deal_str}\n"
+                f"<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji> <b>{ud}</b> {uid_d}\n"
                 f"{ex}"
             )
         # Кнопка "Хочешь такие же профиты?"
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
-                f"{ce('5877465816030515018','🔥')} Хочешь такие же профиты? Тебе к нам!",
+                "🔥 Хочешь такие же профиты? Тебе к нам!",
                 url="https://t.me/NeptunTeamBack_Robot"
             )
         ]])
@@ -889,14 +892,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["currency"]="TON"; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(f"💎 {R(ru,'Введите сумму','Enter amount')} (TON):",parse_mode="HTML")
+            msg=await update.effective_chat.send_message(f"{ce('6039802097916974085','💎')} <b>{R(ru,'Введите сумму','Enter amount')} (TON):</b>",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         if d=="cry_usd":
             ud["currency"]="USDT"; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(f"💵 {R(ru,'Введите сумму','Enter amount')} (USDT):",parse_mode="HTML")
+            msg=await update.effective_chat.send_message(f"{ce('5974217466270716579','💵')} <b>{R(ru,'Введите сумму','Enter amount')} (USDT):</b>",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         if d in ("prm_3","prm_6","prm_12"):
@@ -916,7 +919,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"{R(ru,'Введите сумму сделки','Enter deal amount')} {flag} <b>{name}</b>:",parse_mode="HTML")
+                f"<b>{R(ru,'Введите сумму сделки','Enter deal amount')} {flag} {name}:</b>",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         # ── Реквизиты ──
