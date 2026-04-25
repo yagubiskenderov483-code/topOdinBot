@@ -555,7 +555,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                     ]
                 lines += [
                     "",
-                    f"<b>{ce('5825794181183836432','📅')} {R(ru,'После перевода нажмите "Я оплатил"','After payment press "I paid"')}</b>"
+                    text_ru = 'После перевода нажмите "Я оплатил"'
+text_en = 'After payment press "I paid"'
+f"<b>{ce('5825794181183836432','📅')} {R(ru, text_ru, text_en)}</b>"
                 ]
         else:
             # Инструкция - кто что должен сделать
