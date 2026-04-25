@@ -509,8 +509,8 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                 # Партнёр видит что ему делать
                 if creator_role=="seller":
                     joined_instr=R(ru,
-                        f'Переведите оплату по реквизитам ниже и нажмите «Я оплатил».',
-                        f'Send payment using the details below and press «I paid».')
+                        f'Переведите оплату по реквизитам ниже и нажмите "Я оплатил".',
+                        f'Send payment using the details below and press "I paid".')
                 else:
                     joined_instr=R(ru,
                         f"Передайте товар менеджеру {MANAGER_TAG}.",
@@ -548,17 +548,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                         f"<blockquote>{MANAGER_TAG}</blockquote>",
                     ]
                 else:
-                     bank = card_bank(lang)
-lines
-    f" {Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
-    f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}\n{R(ru,'Банк','Bank')}: {bank}</blockquote>",
-
-text_ru = 'После перевод нажмите "Я оплатил"'
-text_en = 'After payment press "I paid"'
-lines += [
-    "",
-    f"<b>{ce('5825794181183836432','📅')} {R(ru, text_ru, text_en)}</b>"
-]
+                    bank=card_bank(lang)
+                    lines += [
+                        f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
+                        f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}\n{R(ru,'Банк','Bank')}: {bank}</blockquote>",
+                    ]
+                lines += [
+                    "",
+                    f"<b>{ce('5825794181183836432','📅')} {R(ru,'После перевода нажмите "Я оплатил"','After payment press "I paid"')}</b>",
+                ]
         else:
             # Инструкция - кто что должен сделать
             if creator_role=="seller":
@@ -1877,7 +1875,7 @@ async def handle_adm_cb(update, context):
             section=d[11:]
             if section in BANNER_SECTIONS:
                 ud["adm_step"]="banner"; ud["adm_banner_section"]=section
-                await q.message.edit_text(f"<b>Баннер «{BANNER_SECTIONS[section]}»\n\nОтправьте фото/видео/GIF/текст. off — удалить.</b>",
+                await q.message.edit_text(f"<b>Баннер {BANNER_SECTIONS[section]}\n\nОтправьте фото/видео/GIF/текст. off - удалить.</b>",
                     parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Отмена",callback_data="adm_banners")]])); return
 
         if d=="adm_log_channel":
@@ -2086,7 +2084,7 @@ async def handle_adm_msg(update, context):
             else:
                 db["banners"][section]={"photo":None,"video":None,"gif":None,"text":text}; save_db(db)
             ud["adm_step"]=None; ud.pop("adm_banner_section",None)
-            await update.message.reply_text(f"{Ech} <b>Баннер «{BANNER_SECTIONS.get(section,section)}» обновлён!</b>",
+            await update.message.reply_text(f"{Ech} <b>Баннер {BANNER_SECTIONS.get(section,section)} обновлён!</b>",
                 parse_mode="HTML",reply_markup=adm_banners_kb(load_db())); return
 
         if step=="menu_desc":
