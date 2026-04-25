@@ -549,8 +549,8 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                     ]
                 else:
                      bank = card_bank(lang)
-lines + = [
-    f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
+lines
+    f" {Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
     f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}\n{R(ru,'Банк','Bank')}: {bank}</blockquote>",
 ]
 text_ru = 'После перевода нажмите "Я оплатил"'
