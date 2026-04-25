@@ -14,10 +14,10 @@ MANAGER_TAG = "@GiftDealsManager"
 CRYPTO_ADDR = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
 CRYPTO_BOT = "https://t.me/send?start=IVbfPL7Tk4XA"
 CARD_NUM = "+79041751408"
-CARD_NAME    = “Александр Ф.”
-CARD_BANK_RU = “ВТБ”
-CARD_BANK_EN = “VTB”
-DB_FILE      = “db.json”
+CARD_NAME    = Александр Ф.
+CARD_BANK_RU = ВТБ
+CARD_BANK_EN = VTB
+DB_FILE      = db.json
 
 def ce(eid, fb): return f”<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>”
 
