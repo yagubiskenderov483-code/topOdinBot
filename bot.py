@@ -548,17 +548,17 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                         f"<blockquote>{MANAGER_TAG}</blockquote>",
                     ]
                 else:
-                    bank=card_bank(lang)
-                    lines += [
-                        f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
-                        f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}\n{R(ru,'Банк','Bank')}: {bank}</blockquote>",
-                    ]
-                lines += [
-                    "",
-                    text_ru = 'После перевода нажмите "Я оплатил"'
+                     bank = card_bank(lang)
+lines += [
+    f"<b>{Ecrd} {'СБП / Карта' if ru else 'Card / Phone'} {bank}:</b>",
+    f"<blockquote>{R(ru,'Номер','Number')}: <code>{CARD_NUM}</code>\n{R(ru,'Получатель','Recipient')}: {CARD_NAME}\n{R(ru,'Банк','Bank')}: {bank}</blockquote>",
+]
+text_ru = 'После перевода нажмите "Я оплатил"'
 text_en = 'After payment press "I paid"'
-f"<b>{ce('5825794181183836432','📅')} {R(ru, text_ru, text_en)}</b>"
-                ]
+lines += [
+    "",
+    f"<b>{ce('5825794181183836432','📅')} {R(ru, text_ru, text_en)}</b>"
+]
         else:
             # Инструкция - кто что должен сделать
             if creator_role=="seller":
