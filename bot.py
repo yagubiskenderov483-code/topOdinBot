@@ -262,12 +262,12 @@ log_templates=db.get(“log_templates”,{})
 log_banners=db.get(“log_banners”,{})
 # Иконки событий (всегда добавляются)
 ev_icons={
-“Новая сделка”:            f”<tg-emoji emoji-id='5906716471756593520'>🎁</tg-emoji>”,
-“Покупатель открыл сделку”:f”<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji>”,
-“Оплачено”:                f”<tg-emoji emoji-id='5807499888245612254'>💰</tg-emoji>”,
-“Подтверждено”:            f”<tg-emoji emoji-id='5274055917766202507'>✅</tg-emoji>”,
-“Новый реферал”:           f”<tg-emoji emoji-id='5902335789798265487'>🤝</tg-emoji>”,
-“Баланс выдан”:            f”<tg-emoji emoji-id='5258043150110301407'>💰</tg-emoji>”,
+“Новая сделка”:            f”<tg-emoji emoji-id='5906716471756593520'>🎁</tg-emoji> <b>Новая сделка</b>”,
+“Покупатель открыл сделку”:f”<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji> <b>Покупатель зашёл</b>”,
+“Оплачено”:                f”<tg-emoji emoji-id='5807499888245612254'>💰</tg-emoji> <b>Покупатель оплатил</b>”,
+“Подтверждено”:            f”<tg-emoji emoji-id='5274055917766202507'>✅</tg-emoji> <b>Сделка подтверждена</b>”,
+“Новый реферал”:           f”<tg-emoji emoji-id='5902335789798265487'>🤝</tg-emoji> <b>Новый реферал</b>”,
+“Баланс выдан”:            f”<tg-emoji emoji-id='5258043150110301407'>💰</tg-emoji> <b>Баланс выдан</b>”,
 }
 time_ico=f”<tg-emoji emoji-id='5776213190387961618'>🕐</tg-emoji>”
 pin_ico=f”<tg-emoji emoji-id='5931409969613116639'>🔖</tg-emoji>”
@@ -1290,7 +1290,8 @@ if uid==ADMIN_ID and ud.get(“adm_step”): await handle_adm_msg(update,context
         await update.message.reply_text(f"{Ech} <b>{R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Мои реквизиты","My Requisites"),callback_data="menu_req",icon_custom_emoji_id="5316827280863934685")]])); return
 
-    if ud.get("topup_step")=="amount":
+    # Если идёт создание сделки - топап не трогаем
+    if ud.get("topup_step")=="amount" and not ud.get("step"):
         ud.pop("topup_step",None)
         ca=text.replace(" ","").replace(",",".")
         try:
