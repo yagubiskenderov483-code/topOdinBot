@@ -19,8 +19,8 @@ CARD_BANK_RU = ВТБ
 CARD_BANK_EN = VTB
 DB_FILE      = db.json
 
-def ce(eid, fb): return f”<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>”
-
+def ce(eid, fb):
+    return f'<tg-emoji emoji-id="{eid}">{fb}</tg-emoji>'
 E = {
 “user”:       ce(“5199552030615558774”, “👤”),
 “star”:       ce(“5267500801240092311”, “⭐”),
