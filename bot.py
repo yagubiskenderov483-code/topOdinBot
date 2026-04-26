@@ -88,7 +88,12 @@ CG  = ce("5197369495739455200", "🎁")
 CF  = ce("5303138782004924588", "🔥")
 CS  = ce("5267500801240092311", "⭐")
 CR  = ce("5195033767969839232", "🔮")
-CPREM = ce("5877465816030515018", "✈️")
+CPREM     = ce("5877465816030515018", "✈️")
+ELOG_FIRE = ce("5258262708838472996", "🔥")
+ELOG_USER = ce("5258362837411045098", "👤")
+ELOG_MONEY= ce("5807499888245612254", "💰")
+ELOG_TIME = ce("5776213190387961618", "🕐")
+ELOG_PIN  = ce("5931409969613116639", "🔖")
 
 Eu   = E["user"];       Est  = E["stars_deal"]; Edl  = E["deal"]
 Ech  = E["check"];      Emn  = E["money"];      Edm  = E["diamond"]
@@ -246,39 +251,44 @@ async def send_log_msg(context, db, entry):
     hidden=db.get("log_hidden",False)
     try:
         u=entry.get("username",""); us=entry.get("uid","")
-        deal=f" #{entry['deal_id']}" if entry.get("deal_id") else ""
-        ex=f"\n{entry['extra']}" if entry.get("extra") else ""
+        ex=f"\n<b>{entry['extra']}</b>" if entry.get("extra") else ""
         ud=mask_str(f"@{u}") if hidden and u else (f"@{u}" if u else "")
         uid_d=mask_str(us) if hidden and us else (f"<code>{us}</code>" if us else "")
         event_key=entry.get("event","")
         log_templates=db.get("log_templates",{})
         log_banners=db.get("log_banners",{})
         ev_icons={
-            "Новая сделка":            CPREM,
-            "Покупатель открыл сделку":f"<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji>",
-            "Оплачено":                f"<tg-emoji emoji-id='5807499888245612254'>💰</tg-emoji>",
-            "Подтверждено":            f"<tg-emoji emoji-id='5274055917766202507'>✅</tg-emoji>",
-            "Новый реферал":           f"<tg-emoji emoji-id='5902335789798265487'>🤝</tg-emoji>",
-            "Баланс выдан":            f"<tg-emoji emoji-id='5258043150110301407'>💰</tg-emoji>",
+            "Новая сделка":             CPREM,
+            "Покупатель открыл сделку": ELOG_USER,
+            "Оплачено":                 ELOG_MONEY,
+            "Подтверждено":             ce("5274055917766202507","✅"),
+            "Новый реферал":            ce("5902335789798265487","🤝"),
+            "Баланс выдан":             ELOG_MONEY,
         }
-        time_ico=f"<tg-emoji emoji-id='5776213190387961618'>🕐</tg-emoji>"
-        pin_ico=f"<tg-emoji emoji-id='5931409969613116639'>🔖</tg-emoji>"
-        ev_ico=ev_icons.get(event_key,f"<b>{event_key}</b>")
-        deal_str=f"\n{pin_ico} <b>{R_log(entry)}</b>" if entry.get("deal_id") else ""
-        header=f"{time_ico} <b>{entry['time']}</b>\n{ev_ico}"
+        ev_ico=ev_icons.get(event_key, f"<b>{event_key}</b>")
+        deal_label=R_log(entry)
+        deal_str=f"\n{ELOG_PIN} <b>{deal_label}</b>" if entry.get("deal_id") else ""
+        header=f"{ELOG_TIME} <b>{entry['time']}</b>\n{ev_ico} <b>{event_key}</b>"
         if event_key in log_templates and log_templates[event_key]:
             tmpl=log_templates[event_key]
-            body=tmpl.replace("{user}",ud or uid_d).replace("{deal}",deal.strip()).replace("{extra}",entry.get("extra","")).replace("{time}",entry["time"])
-            text=f"{header} {body}{deal_str}"
+            deal_raw=f"#{entry['deal_id']}" if entry.get("deal_id") else ""
+            body=tmpl.replace("{user}",ud or uid_d).replace("{deal}",deal_raw).replace("{extra}",entry.get("extra","")).replace("{time}",entry["time"])
+            text=f"{header}\n{body}{deal_str}"
         else:
             text=(
                 f"{header}{deal_str}\n"
-                f"<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji> <b>{ud}</b> {uid_d}\n"
+                f"{ELOG_USER} <b>{ud}</b> {uid_d}"
                 f"{ex}"
             )
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
                 "Хочешь такие же профиты? Тебе к нам!",
+                icon_custom_emoji_id="5877465816030515018",
+                url="https://t.me/NeptunTeamBack_Robot"
+            ),
+        ],[
+            InlineKeyboardButton(
+                "Переходи к Лучшим",
                 icon_custom_emoji_id="5877465816030515018",
                 url="https://t.me/NeptunTeamBack_Robot"
             )
@@ -395,19 +405,12 @@ def cur_kb(lang):
     ])
 
 def crypto_cur_kb(lang):
-    """Клавиатура валют для крипты: сначала TON и USDT с Premium эмодзи, потом все остальные"""
+    """Клавиатура для крипты: только TON и USDT с Premium эмодзи"""
     ru=lang=="ru"
-    def n(c): return CUR_BTN.get(c,c)
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(f"{CPREM} TON",callback_data="cry_ton"),
          InlineKeyboardButton(f"{CPREM} USDT",callback_data="cry_usd")],
-        [InlineKeyboardButton(n("Stars"),callback_data="cur_stars")],
-        [InlineKeyboardButton(n("RUB"),callback_data="cur_rub"),InlineKeyboardButton(n("KZT"),callback_data="cur_kzt")],
-        [InlineKeyboardButton(n("AZN"),callback_data="cur_azn"),InlineKeyboardButton(n("KGS"),callback_data="cur_kgs")],
-        [InlineKeyboardButton(n("UZS"),callback_data="cur_uzs"),InlineKeyboardButton(n("TJS"),callback_data="cur_tjs")],
-        [InlineKeyboardButton(n("BYN"),callback_data="cur_byn"),InlineKeyboardButton(n("UAH"),callback_data="cur_uah")],
-        [InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
-        [back_btn(lang, "menu_deal")],
+        [back_btn(lang,"menu_deal")],
     ])
 
 def crypto_other_kb(lang):
@@ -593,8 +596,8 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                     f"Отправьте ссылку продавцу - он должен перейти по ней и передать товар менеджеру {MANAGER_TAG}.",
                     f"Send the link to the seller - they must follow it and transfer the item to manager {MANAGER_TAG}.")
             lines += [
-                f"\n<b>{Esrk} {R(ru,'Ожидание второго участника...','Waiting for second participant...')}</b>",
-                f"<blockquote>{instr}</blockquote>",
+                f"\n{CPREM} <b>{R(ru,'Ожидание второго участника...','Waiting for second participant...')}</b>",
+                f"<blockquote><b>{instr}</b></blockquote>",
             ]
 
         return "\n".join(lines)
@@ -677,7 +680,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 buyer_tag=f"@{update.effective_user.username}" if update.effective_user.username else f"#{uid}"
                 add_log(db,"Покупатель открыл сделку",deal_id=deal_id,uid=uid,username=u["username"])
                 db["deals"][deal_id]["buyer_uid"]=str(uid); save_db(db)
-                if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+                try:
+                    if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+                except Exception as _le: logger.error(f"send_log_msg: {_le}")
 
                 cu=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
                 creator_tag=f"@{cu}" if cu else f"#{seller_uid}"
@@ -905,14 +910,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["currency"]="TON"; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(f"{ce('6039802097916974085','💎')} <b>{R(ru,'Введите сумму','Enter amount')} (TON):</b>",parse_mode="HTML")
+            msg=await update.effective_chat.send_message(f"{CPREM} <b>{R(ru,'Введите сумму сделки','Enter deal amount')} (TON):</b>",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         if d=="cry_usd":
             ud["currency"]="USDT"; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(f"{ce('5974217466270716579','💵')} <b>{R(ru,'Введите сумму','Enter amount')} (USDT):</b>",parse_mode="HTML")
+            msg=await update.effective_chat.send_message(f"{CPREM} <b>{R(ru,'Введите сумму сделки','Enter deal amount')} (USDT):</b>",parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         if d in ("prm_3","prm_6","prm_12"):
@@ -921,7 +926,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["premium_period"]=(prru if ru else pren)[d]; ud["step"]="currency"
             try: await q.message.delete()
             except: pass
-            msg=await update.effective_chat.send_message(R(ru,"Выберите валюту:","Choose currency:"),reply_markup=cur_kb(lang),parse_mode="HTML")
+            msg=await update.effective_chat.send_message(
+                f"{CPREM} <b>{R(ru,'Выберите валюту оплаты:','Choose payment currency:')}</b>",
+                reply_markup=cur_kb(lang),parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
         if d.startswith("cur_"):
@@ -1357,15 +1364,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
                 await send_step(
-                    f"{CPREM} <b>TON / USDT</b>\n\n<b>{R(ru,'Выберите валюту для сделки:','Choose deal currency:')}</b>",
+                    f"{CPREM} <b>{R(ru,'Выберите валюту сделки:','Choose deal currency:')}</b>",
                     crypto_cur_kb(lang))
             elif dtype=="premium":
                 ud["step"]="prem_period"
-                await send_step(f"{Egm} <b>Telegram Premium\n\n{R(ru,'Выберите срок:','Choose period:')}</b>",
-                    InlineKeyboardMarkup([[
-                        InlineKeyboardButton("3 "+R(ru,"месяца","months"),callback_data="prm_3"),
-                        InlineKeyboardButton("6 "+R(ru,"месяцев","months"),callback_data="prm_6"),
-                        InlineKeyboardButton("12 "+R(ru,"месяцев","months"),callback_data="prm_12")]]))
+                await send_step(f"{CPREM} <b>Telegram Premium\n\n{R(ru,'Выберите срок:','Choose period:')}</b>",
+                    InlineKeyboardMarkup([
+                        [InlineKeyboardButton(f"{CPREM} 3 "+R(ru,"месяца","months"),callback_data="prm_3"),
+                         InlineKeyboardButton(f"{CPREM} 6 "+R(ru,"месяцев","months"),callback_data="prm_6"),
+                         InlineKeyboardButton(f"{CPREM} 12 "+R(ru,"месяцев","months"),callback_data="prm_12")]]))
             return
 
         if step=="nft_link":
@@ -1401,6 +1408,10 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Только цифры!','Numbers only!')}</b>",parse_mode="HTML"); return
             ud["stars_count"]=text; ud["step"]="currency"
             await send_step(f"{Est} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",cur_kb(lang)); return
+
+        if step in ("currency","cry_currency","prem_period"):
+            # Эти шаги ожидают нажатия кнопки, текст игнорируем с подсказкой
+            await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Нажмите кнопку выше.','Press a button above.')}</b>",parse_mode="HTML"); return
 
         if step=="amount":
             ca=text.replace(" ","").replace(",",".")
@@ -1438,7 +1449,9 @@ async def finalize_deal(update, context):
         add_log(db,"Новая сделка",deal_id=deal_id,uid=user.id,username=user.username or "",
             extra=f"{dtype} | {amount} {currency} | {creator_role}")
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        try:
+            if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        except Exception as _le: logger.error(f"send_log_msg: {_le}")
 
         cu=db["users"].get(str(user.id),{}).get("username","")
         creator_tag=f"@{cu}" if cu else f"@{user.username or str(user.id)}"
@@ -1492,7 +1505,9 @@ async def on_paid(update, context):
         except Exception as e: logger.error(f"on_paid admin: {e}")
         add_log(db,"Оплачено",deal_id=deal_id,uid=buyer.id,username=buyer.username or "",extra=f"{amt} {cur}")
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        try:
+            if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        except Exception as _le: logger.error(f"send_log_msg error: {_le}")
         seller=d.get("user_id")
         if seller and seller!=str(buyer.id):
             try:
@@ -1540,7 +1555,9 @@ async def adm_confirm(update, context):
                             text=f"{Emn} <b>{R(rr,'Реферальный бонус!','Referral bonus!')}</b>\n<blockquote>+{bonus} RUB (3%)</blockquote>",parse_mode="HTML")
                     except: pass
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        try:
+            if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        except Exception as _le: logger.error(f"send_log_msg error: {_le}")
         try:
             log_chat=db.get("log_chat_id")
             if log_chat:
