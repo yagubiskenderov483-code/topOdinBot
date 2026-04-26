@@ -8,7 +8,7 @@ logger = logging.getLogger(**name**)
 
 BOT_TOKEN    = '8767675859:AAEYrMnVMAZjI7rBEc1QLNpHs7rVlUIv-0Q'
 ADMIN_ID     = 8726084830
-BOT_USERNAME = “GiftDeals_Robot”
+BOT_USERNAME = GiftDeals_Robot
 MANAGER_URL  = “https://t.me/GiftDealsManager”
 MANAGER_TAG  = “@GiftDealsManager”
 CRYPTO_ADDR  = “UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd”
