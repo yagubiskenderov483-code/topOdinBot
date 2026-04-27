@@ -1508,14 +1508,16 @@ async def adm_confirm(update, context):
             if ref_uid and ref_uid in db["users"] and amt_num>0:
                 bonus=int(amt_num*0.03)
                 if bonus>0:
+                    if bonus>0:
                     db["users"][ref_uid]["ref_earned"]=db["users"][ref_uid].get("ref_earned",0)+bonus
                     db["users"][ref_uid]["balance"]=db["users"][ref_uid].get("balance",0)+bonus
                     try:
-                        rl=get_lang(int(ref_uid));
-                       rr=rl=="ru"
+                        rl = get_lang(int(ref_uid))
+                        rr = rl == "ru"
                         await context.bot.send_message(chat_id=int(ref_uid),
                             text=f"{Emn} <b>{R(rr,'Реферальный бонус!','Referral bonus!')}</b>\n<blockquote>+{bonus} RUB (3%)</blockquote>",parse_mode="HTML")
-                    except: pass
+                    except: 
+                        pass
         save_db(db)
         if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
         try:
