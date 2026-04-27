@@ -1505,39 +1505,35 @@ async def adm_confirm(update, context):
         add_log(db,"Подтверждено",deal_id=deal_id,uid=s,username=seller_uname,extra=f"{amt_str} {d.get('currency','')}")
         if s and s in db["users"]:
             ref_uid=db["users"][s].get("ref_by")
-            if ref_uid and ref_uid in db["users"] and amt_num>0:
-                bonus=int(amt_num*0.03)
-                if bonus>0:
-                    if bonus>0:
-                    db["users"][ref_uid]["ref_earned"]=db["users"][ref_uid].get("ref_earned",0)+bonus
-                    db["users"][ref_uid]["balance"]=db["users"][ref_uid].get("balance",0)+bonus
-                    try:
-                        rl = get_lang(int(ref_uid))
-                        rr = rl == "ru"
-                        await context.bot.send_message(chat_id=int(ref_uid),
-                            text=f"{Emn} <b>{R(rr,'Реферальный бонус!','Referral bonus!')}</b>\n<blockquote>+{bonus} RUB (3%)</blockquote>",parse_mode="HTML")
-                    except: 
-                        pass
-        save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+            ref_uid = db["users"][s].get("ref_by")
+if ref_uid and ref_uid in db["users"]:
+    bonus = int(amt_num * 0.03)
+    if bonus > 0:
+        db["users"][ref_uid]["ref_earned"] = db["users"][ref_uid].get("ref_earned", 0) + bonus
+        db["users"][ref_uid]["balance"] = db["users"][ref_uid].get("balance", 0) + bonus
         try:
-            log_chat=db.get("log_chat_id")
-            if log_chat:
-                buyer_uid_post=d.get("buyer_uid")
-                if not buyer_uid_post:
-                    for u_p,ud_p in db.get("users",{}).items():
-                        if ud_p.get("username","").lower()==d.get("partner","").lstrip("@").lower():
-                            buyer_uid_post=u_p; break
-                buyer_uname_post=db["users"].get(buyer_uid_post,{}).get("username","") if buyer_uid_post else ""
-                buyer_link_post=f"@{buyer_uname_post}" if buyer_uname_post else d.get("partner","?")
-                nft_link_post=dd.get("nft_link","") if dtype=="nft" else dd.get("trade_username","") if dtype=="username" else ""
-                link_str=f"\n{Eln} {nft_link_post}" if nft_link_post else ""
-                post_text=(
-                    f"{ce('5258262708838472996','🔥')} <b>Новый мамонтёнок!</b>\n\n"
-                    f"{ce('5258362837411045098','👤')} {buyer_link_post}\n"
-                    f"{ce('5807499888245612254','💰')} <b>{amt_str} {d.get('currency','')}</b>"
-                    f"{link_str}"
-                )
+            rl = get_lang(int(ref_uid))
+            rr = (rl == "ru")
+            await context.bot.send_message(
+                chat_id=int(ref_uid),
+                text=f"{Emn} <b>{R(rr, 'Реферальный бонус!', 'Referral bonus!')}</b>\n<blockquote>+{bonus} RUB (3%)</blockquote>",
+                parse_mode="HTML"
+            )
+        except:
+            pass
+        save_db(db)
+
+if db.get("logs"):
+    await send_log_msg(context.bot, log_chat=db.get("log_chat_id"))
+
+try:
+    log_chat = db.get("log_chat_id")
+    if log_chat:
+        buyer_uid_post = d.get("buyer_uid")
+        if not buyer_uid_post:
+            buyers = []
+            for u_p, ud_p in db.get("users").items():
+                buyers.append(u_p)
                 await context.bot.send_message(chat_id=int(log_chat),text=post_text,parse_mode="HTML")
                 extra_grp=db.get("extra_group_id")
                 if extra_grp:
