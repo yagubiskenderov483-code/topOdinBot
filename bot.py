@@ -1499,18 +1499,25 @@ async def adm_confirm(update, context):
             db["users"][s]["total_deals"]=db["users"][s].get("total_deals",0)+1
             db["users"][s]["turnover"] = db["users"][s].get("turnover", 0) + int(amt_num)
 ilink = ""
+
 if dtype == "nft" and dd.get("nft_link"):
     ilink = f"\n🔗 {dd['nft_link']}"
 elif dtype == "username" and dd.get("trade_username"):
-    ilink = f"\n🔗 {dd['trade_username']}"
-seller_uname = db["users"].get(s, {}).get("username", "?") if s else "?"
-add_log(db, "Подтверждено", deal_id=deal_id, uid=s, username=seller_uname, extra=f"{amt_str} {d.get('currency', '')}")
+    ilink = f"\n🔗 {dd['trade_username']}"   # или что там у тебя
+
+seller_uname = db["users"].get(s, {})
+
+add_log(db, "Подтверждено", deal_id)
+
 if s and s in db["users"]:
-    ref_uid = db["users"][s].get("ref_by")
+    ref_uid = db["users"][s].get("ref_uid")   # или как там у тебя
+
     if ref_uid and ref_uid in db["users"]:
         bonus = int(amt_num * 0.03)
+        
         if bonus > 0:
-            # остальной код бонуса
+            # твой код бонуса сюда
+            pass
         db["users"][ref_uid]["ref_earned"] = db["users"][ref_uid].get("ref_earned", 0) + bonus
         db["users"][ref_uid]["balance"] = db["users"][ref_uid].get("balance", 0) + bonus
         try:
