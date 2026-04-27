@@ -1498,7 +1498,7 @@ async def adm_confirm(update, context):
             db["users"][s]["success_deals"]=db["users"][s].get("success_deals",0)+1
             db["users"][s]["total_deals"]=db["users"][s].get("total_deals",0)+1
             db["users"][s]["turnover"] = db["users"][s].get("turnover", 0) + int(amt_num)
-ilink = ""
+ilink = 
 
 if dtype == "nft" and dd.get("nft_link"):
     ilink = f"\n🔗 {dd['nft_link']}"
