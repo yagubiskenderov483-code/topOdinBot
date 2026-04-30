@@ -350,38 +350,37 @@ async def send_new(update, text, kb=None, section="main"):
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal"),
-         InlineKeyboardButton(R(ru,"Профиль","Profile"),callback_data="menu_profile")],
-        [InlineKeyboardButton(R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance"),
-         InlineKeyboardButton(R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals")],
-        [InlineKeyboardButton(R(ru,"Язык / Lang","Language"),callback_data="menu_lang"),
-         InlineKeyboardButton(R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top")],
-        [InlineKeyboardButton(R(ru,"Рефералы","Referrals"),callback_data="menu_ref"),
-         InlineKeyboardButton(R(ru,"Реквизиты","Requisites"),callback_data="menu_req")],
-        [InlineKeyboardButton(R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport")],
+        [InlineKeyboardButton(f"{ce('5260687681733533075','🤝')} {R(ru,'Создать сделку','Create Deal')}",callback_data="menu_deal"),
+         InlineKeyboardButton(f"{ce('5258011929993026890','👤')} {R(ru,'Профиль','Profile')}",callback_data="menu_profile")],
+        [InlineKeyboardButton(f"{ce('5258043150110301407','💰')} {R(ru,'Пополнить/Вывод','Top Up/Withdraw')}",callback_data="menu_balance"),
+         InlineKeyboardButton(f"{ce('5258476306152038031','📋')} {R(ru,'Мои сделки','My Deals')}",callback_data="menu_my_deals")],
+        [InlineKeyboardButton(f"{ce('5258115571848846212','🌍')} {R(ru,'Язык / Lang','Language')}",callback_data="menu_lang"),
+         InlineKeyboardButton(f"{ce('5258204546391351475','🏆')} {R(ru,'Топ продавцов','Top Sellers')}",callback_data="menu_top")],
+        [InlineKeyboardButton(f"{ce('5258362837411045098','🤝')} {R(ru,'Рефералы','Referrals')}",callback_data="menu_ref"),
+         InlineKeyboardButton(f"{ce('5260730055880876557','📋')} {R(ru,'Реквизиты','Requisites')}",callback_data="menu_req")],
+        [InlineKeyboardButton(f"{ce('5258260149037965799','🛟')} {R(ru,'Тех. поддержка','Tech Support')}",url="https://t.me/GiftDealsSupport")],
     ])
 
 def role_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,"Я покупатель","I am the Buyer"),callback_data="role_buyer")],
-        [InlineKeyboardButton(R(ru,"Я продавец","I am the Seller"),callback_data="role_seller")],
-        [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu")],
+        [InlineKeyboardButton(f"{ce('5893431652578758294','🛒')} {R(ru,'Я покупатель','I am the Buyer')}",callback_data="role_buyer")],
+        [InlineKeyboardButton(f"{ce('5893168654551355607','🏪')} {R(ru,'Я продавец','I am the Seller')}",callback_data="role_seller")],
+        [InlineKeyboardButton(f"◀️ {R(ru,'Назад','Back')}",callback_data="main_menu")],
     ])
 
 def types_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,"NFT подарок","NFT Gift"),callback_data="dt_nft"),
-         InlineKeyboardButton("NFT Username",callback_data="dt_usr")],
-        [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="dt_str"),
-         InlineKeyboardButton(R(ru,"Крипта","Crypto"),callback_data="dt_cry")],
-        [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm")],
-        [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu")],
+        [InlineKeyboardButton(f"{ce('5906716471756593520','🎁')} {R(ru,'NFT подарок','NFT Gift')}",callback_data="dt_nft"),
+         InlineKeyboardButton(f"{ce('5906976471896824396','👤')} NFT Username",callback_data="dt_usr")],
+        [InlineKeyboardButton(f"{ce('5906478942885255780','⭐')} {R(ru,'Звёзды','Stars')}",callback_data="dt_str"),
+         InlineKeyboardButton(f"{ce('5904576890848419790','💎')} {R(ru,'Крипта','Crypto')}",callback_data="dt_cry")],
+        [InlineKeyboardButton(f"{ce('5906715307820456633','✈️')} Telegram Premium",callback_data="dt_prm")],
+        [InlineKeyboardButton(f"◀️ {R(ru,'Назад','Back')}",callback_data="main_menu")],
     ])
 
 def pay_cur_kb(lang):
-    """Клавиатура выбора валюты ОПЛАТЫ"""
     def n(c): return CUR_BTN.get(c,c)
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(n("TON"),callback_data="pay_cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="pay_cur_usdt")],
@@ -391,6 +390,9 @@ def pay_cur_kb(lang):
         [InlineKeyboardButton(n("TJS"),callback_data="pay_cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="pay_cur_byn")],
         [InlineKeyboardButton(n("UAH"),callback_data="pay_cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="pay_cur_gel")],
     ])
+
+def cur_kb(lang):
+    def n(c): return CUR_BTN.get(c,c)
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(n("TON"),callback_data="cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="cur_usdt")],
         [InlineKeyboardButton(n("RUB"),callback_data="cur_rub"),InlineKeyboardButton(n("Stars"),callback_data="cur_stars")],
@@ -1190,7 +1192,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if d.startswith("adm_"): await handle_adm_cb(update,context); return
 
-    except Exception as e: logger.error(f"on_cb: {e}")
+    except Exception as e: logger.error(f"on_cb ERROR d={q.data if 'q' in dir() else '?'}: {e}", exc_info=True)
 
 # ─── Messages ─────────────────────────────────────────────────────────────────
 async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1430,7 +1432,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud["last_msg"]=msg.message_id
             return
 
-    except Exception as e: logger.error(f"on_msg: {e}")
+    except Exception as e: logger.error(f"on_msg ERROR: {e}", exc_info=True)
 
 # ─── Finalize deal ────────────────────────────────────────────────────────────
 async def finalize_deal(update, context):
