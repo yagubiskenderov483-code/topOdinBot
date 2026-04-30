@@ -376,7 +376,7 @@ def types_kb(lang):
         [InlineKeyboardButton(f"{ce('5906478942885255780','⭐')} {R(ru,'Звёзды','Stars')}",callback_data="dt_str"),
          InlineKeyboardButton(f"{ce('5904576890848419790','💎')} {R(ru,'Крипта','Crypto')}",callback_data="dt_cry")],
         [InlineKeyboardButton(f"{ce('5906715307820456633','✈️')} Telegram Premium",callback_data="dt_prm")],
-        [InlineKeyboardButton(f"{ce('5906851011607140828','◀️')} {R(ru,'Назад','Back')}",callback_data="main_menu")],
+        [InlineKeyboardButton(f"{ce('5877629862306385808','◀️')} {R(ru,'Назад','Back')}",callback_data="main_menu")],
     ])
 
 def pay_cur_kb(lang):
@@ -516,12 +516,12 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         amt_label = cur_amount_label(cur, lang)
 
         lines=[
-            f"<b>{ce('5826590281577381583','🤝')} <b>{R(ru,'Гарантированная сделка','Guaranteed Deal')}</b></b>\n",
+            f"<b>🤝 <b>{R(ru,'Гарантированная сделка','Guaranteed Deal')}</b></b>\n",
             f"<b>{Edl} {R(ru,'Тип','Type')}:</b> <b>{tname(dtype,lang)}</b>{item}",
             f"<b>{Emn} {R(ru,'Сумма','Amount')}:</b> <b>{amt}</b> {amt_label}\n",
-            f"<b>{ce('5879770735999717115','👤')} {lbl_creator}:</b> <b>{creator_tag}</b>",
+            f"<b>👤 {lbl_creator}:</b> <b>{creator_tag}</b>",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
-            f"<b>{ce('5879770735999717115','👤')} {lbl_partner}:</b> <b>{partner_tag}</b>",
+            f"<b>👤 {lbl_partner}:</b> <b>{partner_tag}</b>",
             f"<blockquote>{stats_block(partner_uid)}</blockquote>\n",
             f"<b>{Esec} {R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
         ]
@@ -573,7 +573,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                     ]
                 elif cur=="Stars":
                     lines += [
-                        f"<b>{ce('5906478942885255780','⭐')} {R(ru,'Звёзды','Stars')}:</b>",
+                        f"<b>⭐ {R(ru,'Звёзды','Stars')}:</b>",
                         f"<blockquote>{MANAGER_TAG}</blockquote>",
                     ]
                 else:
@@ -584,7 +584,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                     ]
                 lines += [
                     "",
-                    f"<b>{ce('5825794181183836432','📅')} {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>",
+                    f"<b>📅 {R(ru,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>",
                 ]
         else:
             if creator_role=="seller":
@@ -1549,8 +1549,8 @@ async def adm_confirm(update, context):
                 link_str=f"\n{Eln} {nft_link_post}" if nft_link_post else ""
                 post_text=(
                     f"{ce('5258262708838472996','🔥')} <b>Новый мамонтёнок!</b>\n\n"
-                    f"{ce('5258362837411045098','👤')} {buyer_link_post}\n"
-                    f"{ce('5807499888245612254','💰')} <b>{amt_str} {d.get('currency','')}</b>"
+                    f"👤 {buyer_link_post}\n"
+                    f"💰 <b>{amt_str} {d.get('currency','')}</b>"
                     f"{link_str}"
                 )
                 await context.bot.send_message(chat_id=int(log_chat),text=post_text,parse_mode="HTML")
@@ -1646,7 +1646,7 @@ async def show_profile(update, context):
                 rv_lines.append(f"{star_str} {r}")
             rv=f"\n\n{Estr} <b>{R(ru,f'Отзывы ({len(reviews)})',f'Reviews ({len(reviews)})')}</b>\n<blockquote>"+'\n'.join(rv_lines)+'</blockquote>'
         text=(f"{Ecwn} <b>{R(ru,'Профиль','Profile')}</b>{sl}\n\n"
-              f"{ce('5258011929993026890','👤')} @{uname}\n"
+              f"👤 @{uname}\n"
               f"{Ebal} {R(ru,'Баланс','Balance')}: <b>{u.get('balance',0)} RUB</b>\n"
               f"{Estr} {R(ru,'Сделок','Deals')}: <b>{u.get('total_deals',0)}</b>\n"
               f"{Ech} {R(ru,'Успешных','Successful')}: <b>{u.get('success_deals',0)}</b>\n"
