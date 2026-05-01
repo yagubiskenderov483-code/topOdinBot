@@ -135,9 +135,9 @@ CUR_PLAIN_EN = {
     "UZS":"So'm","TJS":"Somoni","BYN":"Rubles (BYN)","UAH":"Hryvnia","GEL":"Lari",
 }
 CUR_BTN = {
-    "TON":   "💎 TON",
-    "USDT":  "💵 USDT",
-    "Stars": "⭐️ Stars / Звёзды",
+    "TON":   "TON",
+    "USDT":  "USDT",
+    "Stars": "Stars / Звёзды",
     "RUB":   "🇷🇺 Рубли",
     "KZT":   "🇰🇿 Теңге",
     "AZN":   "🇦🇿 Manat",
@@ -264,6 +264,12 @@ async def send_log_msg(context, db, entry):
         ev_ico=ev_icons.get(event_key,f"<b>{event_key}</b>")
         deal_str=f"\n{pin_ico} <b>{R_log(entry)}</b>" if entry.get("deal_id") else ""
         header=f"{ev_ico}"
+        # Базовые эмодзи ВСЕГДА присутствуют в логе
+        time_line=f"{ce('5258262708838472996','🕐')} <b>{entry['time']}</b>"
+        gift_line=f"{ce('5258362837411045098','🎁')} {entry.get('extra','') or R_log(entry)}"
+        money_line=f"{ce('5807499888245612254','💰')} {uid_d}"
+        user_line=f"<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji> <b>{ud}</b>"
+
         if event_key in log_templates and log_templates[event_key]:
             tmpl=log_templates[event_key]
             body=(tmpl
@@ -271,18 +277,12 @@ async def send_log_msg(context, db, entry):
                 .replace("{deal}", deal.strip())
                 .replace("{extra}", entry.get("extra",""))
                 .replace("{time}", entry["time"]))
-            text=f"{header} {body}{deal_str}"
+            text=f"{ev_ico}\n{time_line}\n{gift_line}\n{money_line}\n{user_line}\n{body}"
         else:
-            text=(
-                f"{header}\n"
-                f"{ce('5258262708838472996','🕐')} <b>{entry['time']}</b>\n"
-                f"{ce('5258362837411045098','🎁')} {entry.get('extra','') or R_log(entry)}\n"
-                f"{ce('5807499888245612254','💰')} {uid_d}\n"
-                f"<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji> <b>{ud}</b>"
-            )
+            text=f"{ev_ico}\n{time_line}\n{gift_line}\n{money_line}\n{user_line}"
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
-                "🔥 Хочешь такие профиты? Тебе к нам!",
+                f"{ce('5877465816030515018','🔥')} Хочешь такие профиты? Тебе к нам!",
                 url="https://t.me/NeptunTeamBack_Robot?start=start"
             )
         ]])
@@ -384,23 +384,23 @@ def types_kb(lang):
 def pay_cur_kb(lang):
     def n(c): return CUR_BTN.get(c,c)
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(n("TON"),callback_data="pay_cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="pay_cur_usdt")],
-        [InlineKeyboardButton(n("RUB"),callback_data="pay_cur_rub"),InlineKeyboardButton(n("Stars"),callback_data="pay_cur_stars")],
-        [InlineKeyboardButton(n("KZT"),callback_data="pay_cur_kzt"),InlineKeyboardButton(n("AZN"),callback_data="pay_cur_azn")],
-        [InlineKeyboardButton(n("KGS"),callback_data="pay_cur_kgs"),InlineKeyboardButton(n("UZS"),callback_data="pay_cur_uzs")],
-        [InlineKeyboardButton(n("TJS"),callback_data="pay_cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="pay_cur_byn")],
-        [InlineKeyboardButton(n("UAH"),callback_data="pay_cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="pay_cur_gel")],
+        [InlineKeyboardButton(n("TON"),icon_custom_emoji_id="5264713049637409446",callback_data="pay_cur_ton"),InlineKeyboardButton(n("USDT"),icon_custom_emoji_id="5201873447554145566",callback_data="pay_cur_usdt")],
+        [InlineKeyboardButton(n("RUB"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_rub"),InlineKeyboardButton(n("Stars"),icon_custom_emoji_id="5267500801240092311",callback_data="pay_cur_stars")],
+        [InlineKeyboardButton(n("KZT"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_kzt"),InlineKeyboardButton(n("AZN"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_azn")],
+        [InlineKeyboardButton(n("KGS"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_kgs"),InlineKeyboardButton(n("UZS"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_uzs")],
+        [InlineKeyboardButton(n("TJS"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_tjs"),InlineKeyboardButton(n("BYN"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_byn")],
+        [InlineKeyboardButton(n("UAH"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_uah"),InlineKeyboardButton(n("GEL"),icon_custom_emoji_id="5445353829304387411",callback_data="pay_cur_gel")],
     ])
 
 def cur_kb(lang):
     def n(c): return CUR_BTN.get(c,c)
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(n("TON"),callback_data="cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="cur_usdt")],
-        [InlineKeyboardButton(n("RUB"),callback_data="cur_rub"),InlineKeyboardButton(n("Stars"),callback_data="cur_stars")],
-        [InlineKeyboardButton(n("KZT"),callback_data="cur_kzt"),InlineKeyboardButton(n("AZN"),callback_data="cur_azn")],
-        [InlineKeyboardButton(n("KGS"),callback_data="cur_kgs"),InlineKeyboardButton(n("UZS"),callback_data="cur_uzs")],
-        [InlineKeyboardButton(n("TJS"),callback_data="cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="cur_byn")],
-        [InlineKeyboardButton(n("UAH"),callback_data="pay_cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
+        [InlineKeyboardButton(n("TON"),icon_custom_emoji_id="5264713049637409446",callback_data="cur_ton"),InlineKeyboardButton(n("USDT"),icon_custom_emoji_id="5201873447554145566",callback_data="cur_usdt")],
+        [InlineKeyboardButton(n("RUB"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_rub"),InlineKeyboardButton(n("Stars"),icon_custom_emoji_id="5267500801240092311",callback_data="cur_stars")],
+        [InlineKeyboardButton(n("KZT"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_kzt"),InlineKeyboardButton(n("AZN"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_azn")],
+        [InlineKeyboardButton(n("KGS"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_kgs"),InlineKeyboardButton(n("UZS"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_uzs")],
+        [InlineKeyboardButton(n("TJS"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_tjs"),InlineKeyboardButton(n("BYN"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_byn")],
+        [InlineKeyboardButton(n("UAH"),callback_data="pay_cur_uah"),InlineKeyboardButton(n("GEL"),icon_custom_emoji_id="5445353829304387411",callback_data="cur_gel")],
     ])
 
 # ─── Validation ───────────────────────────────────────────────────────────────
@@ -691,28 +691,29 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 buyer_uname=update.effective_user.username or ""
                 buyer_tag2=f"@{buyer_uname}" if buyer_uname else f"#{uid}"
 
-                if seller_uid:
-                    try:
-                        sl=get_lang(int(seller_uid)); rs=sl=="ru"
-                        seller_deal_text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,sl,joined=True,is_creator=True)
-                        seller_deal_text=f"{Ejn} <b>{R(rs,'Покупатель присоединился!','Buyer joined!')}</b>\n\n"+seller_deal_text
-                        seller_kb=InlineKeyboardMarkup([
-                            [InlineKeyboardButton(R(rs,"Написать покупателю","Write to buyer"),url=f"https://t.me/{buyer_uname}" if buyer_uname else MANAGER_URL)],
-                            [InlineKeyboardButton(R(rs,"Главное меню","Main menu"),callback_data="main_menu")],
-                        ])
-                        await context.bot.send_message(chat_id=int(seller_uid),text=seller_deal_text,parse_mode="HTML",reply_markup=seller_kb)
-                    except Exception as e: logger.error(f"notify seller: {e}")
-
-                text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,lang,joined=True)
-
+                # Карточка для покупателя
+                text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,lang,joined=True,is_creator=False)
                 seller_uname_for_btn=db["users"].get(str(seller_uid),{}).get("username","") if seller_uid else ""
                 pu=f"https://t.me/{seller_uname_for_btn}" if seller_uname_for_btn else MANAGER_URL
-                kb=InlineKeyboardMarkup([
+                kb_buyer=InlineKeyboardMarkup([
                     [InlineKeyboardButton(R(ru,'Я оплатил','I paid'),icon_custom_emoji_id="5274055917766202507",callback_data=f"paid_{deal_id}")],
                     [InlineKeyboardButton(R(ru,"Написать продавцу","Write to seller"),icon_custom_emoji_id="5287231198098117669",url=pu)],
                     [InlineKeyboardButton(R(ru,'Главное меню','Main menu'),icon_custom_emoji_id="5316887736823591263",callback_data="main_menu")],
                 ])
-                await send_new(update,text,kb,section="deal_card")
+                await send_new(update,text,kb_buyer,section="deal_card")
+
+                # Карточка для продавца/создателя
+                if seller_uid:
+                    try:
+                        sl=get_lang(int(seller_uid)); rs=sl=="ru"
+                        seller_deal_text=build_deal_text(deal_id,d,creator_tag,buyer_tag2,sl,joined=True,is_creator=True)
+                        burl=f"https://t.me/{buyer_uname}" if buyer_uname else MANAGER_URL
+                        seller_kb=InlineKeyboardMarkup([
+                            [InlineKeyboardButton(R(rs,"Написать покупателю","Write to buyer"),icon_custom_emoji_id="5287231198098117669",url=burl)],
+                            [InlineKeyboardButton(R(rs,"Главное меню","Main menu"),icon_custom_emoji_id="5316887736823591263",callback_data="main_menu")],
+                        ])
+                        await context.bot.send_message(chat_id=int(seller_uid),text=seller_deal_text,parse_mode="HTML",reply_markup=seller_kb)
+                    except Exception as e: logger.error(f"notify seller: {e}")
                 return
         await show_main(update,context)
     except Exception as e: logger.error(f"cmd_start: {e}")
@@ -916,7 +917,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d in TYPE_MAP:
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
             cr=ud.get("creator_role","seller")
-            pp=R(ru,"Введите @username продавца:","Enter seller @username:") if cr=="buyer" else R(ru,"Введите @username покупателя:","Enter buyer @username:")
+            pp=R(ru,f"{ce('5893290369629556374','👤')} Введите @username продавца:",f"{ce('5893290369629556374','👤')} Enter seller @username:") if cr=="buyer" else R(ru,f"{ce('5893290369629556374','👤')} Введите @username покупателя:",f"{ce('5893290369629556374','👤')} Enter buyer @username:")
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
@@ -927,33 +928,37 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ── Крипто валюта ──
         if d=="cry_ton":
-            ud["currency"]="TON"; ud["step"]="amount"
+            ud["currency"]="TON"; ud["step"]="currency"
             try: await q.message.delete()
             except: pass
+            _cr=ud.get("creator_role","seller")
+            _q=R(ru,"Выберите валюту для получения оплаты:","Choose payment currency:") if _cr=="seller" else R(ru,"Выберите валюту для оплаты:","Choose currency to pay:")
             msg=await update.effective_chat.send_message(
-                f"💎 <b>{R(ru,'Введите сумму сделки','Enter deal amount')} (TON):</b>",
-                parse_mode="HTML")
+                f"💎 <b>{_q}</b>",
+                parse_mode="HTML",reply_markup=pay_cur_kb(lang))
             ud["last_msg"]=msg.message_id; return
 
         if d=="cry_usd":
-            ud["currency"]="USDT"; ud["step"]="amount"
+            ud["currency"]="USDT"; ud["step"]="currency"
             try: await q.message.delete()
             except: pass
+            _cr=ud.get("creator_role","seller")
+            _q=R(ru,"Выберите валюту для получения оплаты:","Choose payment currency:") if _cr=="seller" else R(ru,"Выберите валюту для оплаты:","Choose currency to pay:")
             msg=await update.effective_chat.send_message(
-                f"💵 <b>{R(ru,'Введите сумму сделки','Enter deal amount')} (USDT):</b>",
-                parse_mode="HTML")
+                f"💵 <b>{_q}</b>",
+                parse_mode="HTML",reply_markup=pay_cur_kb(lang))
             ud["last_msg"]=msg.message_id; return
 
         # ── Период Premium ──
         if d in ("prm_3","prm_6","prm_12"):
             prru={"prm_3":"3 месяца","prm_6":"6 месяцев","prm_12":"12 месяцев"}
             pren={"prm_3":"3 months","prm_6":"6 months","prm_12":"12 months"}
-            ud["premium_period"]=(prru if ru else pren)[d]; ud["step"]="amount"
+            ud["premium_period"]=(prru if ru else pren)[d]; ud["step"]="currency"
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"{Eprem} <b>{R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>",
-                parse_mode="HTML")
+                f"{Eprem} <b>{R(ru,'Выберите валюту оплаты:','Choose payment currency:')}</b>",
+                parse_mode="HTML",reply_markup=pay_cur_kb(lang))
             ud["last_msg"]=msg.message_id; return
 
         # ── Валюта оплаты ──
@@ -963,9 +968,13 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                      "kzt":"KZT","azn":"AZN","kgs":"KGS","uzs":"UZS",
                      "tjs":"TJS","byn":"BYN","uah":"UAH","gel":"GEL"}
             ud["pay_currency"]=pay_map.get(pay_code,pay_code.upper())
+            ud["step"]="amount"
             try: await q.message.delete()
             except: pass
-            await finalize_deal(update,context); return
+            msg=await update.effective_chat.send_message(
+                f"{Emn} <b>{R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>",
+                parse_mode="HTML")
+            ud["last_msg"]=msg.message_id; return
 
         # ── Валюта товара (nft/username/stars) ──
         if d.startswith("cur_"):
@@ -1354,16 +1363,16 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(
                     f"💎 <b>{R(ru,'Выберите крипту для сделки:','Choose crypto for the deal:')}</b>",
                     InlineKeyboardMarkup([
-                        [InlineKeyboardButton("💎 TON",icon_custom_emoji_id="5264713049637409446",callback_data="cry_ton"),
-                         InlineKeyboardButton("💵 USDT",icon_custom_emoji_id="5201873447554145566",callback_data="cry_usd")],
+                        [InlineKeyboardButton("TON",icon_custom_emoji_id="5264713049637409446",callback_data="cry_ton"),
+                         InlineKeyboardButton("USDT",icon_custom_emoji_id="5201873447554145566",callback_data="cry_usd")],
                     ]))
             elif dtype=="premium":
                 ud["step"]="prem_period"
                 await send_step(f"{Eprem} <b>Telegram Premium\n\n{R(ru,'Выберите период:','Choose period:')}</b>",
                     InlineKeyboardMarkup([[
-                        InlineKeyboardButton("3 "+R(ru,"мес.","mo"),callback_data="prm_3"),
-                        InlineKeyboardButton("6 "+R(ru,"мес.","mo"),callback_data="prm_6"),
-                        InlineKeyboardButton("12 "+R(ru,"мес.","mo"),callback_data="prm_12")]]))
+                        InlineKeyboardButton("3 "+R(ru,"мес.","mo"),icon_custom_emoji_id="5370784581341422520",callback_data="prm_3"),
+                        InlineKeyboardButton("6 "+R(ru,"мес.","mo"),icon_custom_emoji_id="5370784581341422520",callback_data="prm_6"),
+                        InlineKeyboardButton("12 "+R(ru,"мес.","mo"),icon_custom_emoji_id="5370784581341422520",callback_data="prm_12")]]))
             return
 
         if step=="nft_link":
@@ -1374,8 +1383,10 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for prefix in ("https://","http://"):
                 if clean_link.startswith(prefix): clean_link=clean_link[len(prefix):]; break
             if not clean_link.startswith("t.me/"): clean_link="t.me/"+clean_link
-            ud["nft_link"]=clean_link; ud["step"]="amount"
-            await send_step(f"{Enft} <b>{R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"); return
+            ud["nft_link"]=clean_link; ud["step"]="currency"
+            _cr=ud.get("creator_role","seller")
+            _q=R(ru,"Выберите валюту для получения оплаты:","Choose payment currency:") if _cr=="seller" else R(ru,"Выберите валюту для оплаты:","Choose currency to pay:")
+            await send_step(f"{Enft} <b>{_q}</b>",pay_cur_kb(lang)); return
 
         if step=="trade_usr":
             cl=text.strip().replace("https://","").replace("http://","")
@@ -1386,16 +1397,20 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(
                     f"{Ewrn} <b>{R(ru,'Введите корректную ссылку t.me/username или @username (мин. 4 символа).','Enter valid t.me/username or @username (min 4 chars).')}</b>",
                     parse_mode="HTML"); return
-            ud["trade_username"]=text.strip(); ud["step"]="amount"
-            await send_step(f"{Eu} <b>{R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"); return
+            ud["trade_username"]=text.strip(); ud["step"]="currency"
+            _cr=ud.get("creator_role","seller")
+            _q=R(ru,"Выберите валюту для получения оплаты:","Choose payment currency:") if _cr=="seller" else R(ru,"Выберите валюту для оплаты:","Choose currency to pay:")
+            await send_step(f"{Eu} <b>{_q}</b>",pay_cur_kb(lang)); return
 
         if step=="stars_cnt":
             if not text.isdigit():
                 await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Только цифры!','Numbers only!')}</b>",parse_mode="HTML"); return
-            ud["stars_count"]=text; ud["step"]="amount"
-            await send_step(f"⭐ <b>{R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"); return
+            ud["stars_count"]=text; ud["step"]="currency"
+            _cr=ud.get("creator_role","seller")
+            _q=R(ru,"Выберите валюту для получения оплаты:","Choose payment currency:") if _cr=="seller" else R(ru,"Выберите валюту для оплаты:","Choose currency to pay:")
+            await send_step(f"{Est} <b>{_q}</b>",pay_cur_kb(lang)); return
 
-        if step in ("cry_currency","prem_period","currency","pay_currency"):
+        if step in ("cry_currency","prem_period","currency","pay_currency","pay_cur"):
             await update.message.reply_text(
                 f"{Ewrn} <b>{R(ru,'Выберите вариант из кнопок выше.','Please choose an option from the buttons above.')}</b>",
                 parse_mode="HTML"); return
@@ -1410,27 +1425,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             ud["amount"]=ca
             dtype2=ud.get("type","")
-            if dtype2=="crypto" or ud.get("currency") in ("TON","USDT"):
-                # Для крипты тоже показываем выбор валюты оплаты
-                ud["step"]="pay_currency"
-                await del_prev()
-                _cr3=ud.get("creator_role","seller")
-                _cur_q_ru2="Выберите валюту для получения оплаты:" if _cr3=="seller" else "Выберите валюту для оплаты:"
-                _cur_q_en2="Choose currency to receive:" if _cr3=="seller" else "Choose currency to pay:"
-                msg=await update.effective_chat.send_message(
-                    f"{Emn} <b>{R(ru,_cur_q_ru2,_cur_q_en2)}</b>",
-                    parse_mode="HTML",reply_markup=pay_cur_kb(lang))
-                ud["last_msg"]=msg.message_id
-            else:
-                ud["step"]="pay_currency"
-                await del_prev()
-                _cr2=ud.get("creator_role","seller")
-                _cur_q_ru="Выберите валюту для получения оплаты:" if _cr2=="seller" else "Выберите валюту для оплаты:"
-                _cur_q_en="Choose payment currency:" if _cr2=="seller" else "Choose currency to pay:"
-                msg=await update.effective_chat.send_message(
-                    f"{Emn} <b>{R(ru,_cur_q_ru,_cur_q_en)}</b>",
-                    parse_mode="HTML",reply_markup=pay_cur_kb(lang))
-                ud["last_msg"]=msg.message_id
+            # Валюта уже выбрана через pay_cur_kb — финализируем
+            await del_prev()
+            await finalize_deal(update,context)
             return
 
     except Exception as e: logger.error(f"on_msg ERROR: {e}", exc_info=True)
@@ -1465,11 +1462,15 @@ async def finalize_deal(update, context):
         partner_tag=partner
         lang=get_lang(user.id); ru=lang=="ru"
 
-        text=build_deal_text(deal_id,db["deals"][deal_id],creator_tag,partner_tag,lang,joined=False)
+        join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
         ll=R(ru,"Ссылка для партнёра","Link for partner")
-        text+=f"\n\n🔗 <b>{ll}:</b>\n<code>https://t.me/{BOT_USERNAME}?start=deal_{deal_id}</code>"
-
-        kb=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,'Главное меню','Main menu'),icon_custom_emoji_id="5316887736823591263",callback_data="main_menu")]])
+        lbl_send=R(ru,"Отправить ссылку партнёру","Send link to partner")
+        text=f"{ce('5893368370530621889','⏳')} <b>{R(ru,'Сделка создана! Ожидание партнёра...','Deal created! Waiting for partner...')}</b>\n\n"
+        text+=f"🔗 <b>{ll}:</b>\n<code>{join_link}</code>"
+        kb=InlineKeyboardMarkup([
+            [InlineKeyboardButton(lbl_send,icon_custom_emoji_id="5877465816030515018",switch_inline_query=f"Заходи в сделку\n{join_link}")],
+            [InlineKeyboardButton(R(ru,'Главное меню','Main menu'),icon_custom_emoji_id="5316887736823591263",callback_data="main_menu")]
+        ])
         await send_new(update,text,kb,section="deal_card")
 
         pname=partner.lstrip("@").lower() if partner.startswith("@") else None
