@@ -30,11 +30,10 @@ logger = logging.getLogger(__name__)
 DB_FILE = os.getenv("DB_FILE", "db.json")
 
 # SECURITY: do not hardcode token in repo
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-if not BOT_TOKEN:
+BOT_TOKEN = '8767675859:AAGLXINsiVGd1wYg5EEhH98Vhv1AWgHRYRU'
     logger.warning("BOT_TOKEN is empty. Set BOT_TOKEN env var before запуск.")
 
-BOT_USERNAME = os.getenv("BOT_USERNAME", "GiftDeals_Robot").strip("@")
+BOT_USERNAME = giftdealsrobot
 
 MANAGER_URL = os.getenv("MANAGER_URL", "https://t.me/GiftDealsManager")
 MANAGER_TAG = os.getenv("MANAGER_TAG", "@GiftDealsManager")
