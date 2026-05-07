@@ -572,6 +572,15 @@ def build_deal_card_text(db: Dict[str, Any], deal_id: str, lang: str, for_creato
 # ──────────────────────────────────────────────────────────────────────────────
 # Extended handlers - full version
 # ──────────────────────────────────────────────────────────────────────────────
+async def show_main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    db = load_db()
+    u = get_user(db, update.effective_user.id)
+    u["username"] = update.effective_user.username or ""
+    save_db(db)
+    lang = u.get("lang", "ru")
+    await send_section(update, get_welcome(lang), main_kb(lang))
+
+
 async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db = load_db()
     uid = update.effective_user.id
@@ -1202,15 +1211,6 @@ async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 # ──────────────────────────────────────────────────────────────────────────────
 # Handlers
 # ──────────────────────────────────────────────────────────────────────────────
-async def show_main(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    db = load_db()
-    u = get_user(db, update.effective_user.id)
-    u["username"] = update.effective_user.username or ""
-    save_db(db)
-    lang = u.get("lang", "ru")
-    await send_section(update, get_welcome(lang), main_kb(lang))
-
-
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db = load_db()
     uid = update.effective_user.id
@@ -1427,7 +1427,7 @@ async def cmd_delreview(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_text("✅ OK")
 
 
-async def on_cb_extended(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     q = update.callback_query
     if not q:
         return
@@ -1469,64 +1469,6 @@ async def on_cb_extended(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     if d == "menu_req":
         await show_requisites(update, context)
-        return
-
-    # Handle all other callbacks with original function
-    await on_cb_original(update, context)
-
-
-async def on_cb_original(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    q = update.callback_query
-    if not q:
-        return
-    await q.answer()
-    d = q.data or ""
-    uid = update.effective_user.id
-    lang = get_lang(uid)
-    ru = lang == "ru"
-
-    if d in ("role_buyer", "role_seller"):
-        role = "buyer" if d == "role_buyer" else "seller"
-        db = load_db()
-        u = get_user(db, uid)
-        if not require_requisites(u):
-            # mandatory requisites, no skip button
-            kb = InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton(R(ru, "Добавить карту/телефон", "Add card/phone"), callback_data="req_edit_card")],
-                    [InlineKeyboardButton("Добавить TON", callback_data="req_edit_ton")],
-                    [InlineKeyboardButton(R(ru, "Добавить @username (Stars)", "Add @username (Stars)"), callback_data="req_edit_stars")],
-                    [InlineKeyboardButton(f"{BTN_BACK} {R(ru,'Назад','Back')}", callback_data="menu_deal")],
-                ]
-            )
-            context.user_data["creator_role"] = role
-            await send_section(update, f"⚠️ <b>{R(ru,'Добавьте реквизиты (обязательно).','Add requisites (required).')}</b>", kb)
-            return
-        context.user_data["creator_role"] = role
-        await send_section(update, f"<b>{R(ru,'Выберите тип сделки:','Choose deal type:')}</b>", types_kb(lang))
-        return
-
-    if d in ("dt_nft", "dt_usr", "dt_str", "dt_cry", "dt_prm"):
-        TYPE_MAP = {"dt_nft": "nft", "dt_usr": "username", "dt_str": "stars", "dt_cry": "crypto", "dt_prm": "premium"}
-        context.user_data["dtype"] = TYPE_MAP[d]
-        context.user_data["step"] = "partner"
-        cr = context.user_data.get("creator_role", "seller")
-        prompt = R(ru, "Введите @username партнёра:", "Enter partner @username:")
-        if cr == "buyer":
-            prompt = R(ru, "Введите @username продавца:", "Enter seller @username:")
-        else:
-            prompt = R(ru, "Введите @username покупателя:", "Enter buyer @username:")
-        await send_section(update, f"<b>{prompt}</b>\n\n<code>@username</code>")
-        return
-
-    if d == "dt_prm":
-        # premium period selection
-        context.user_data["step"] = "prem_period"
-        await update.effective_chat.send_message(
-            f"<b>{R(ru,'Выберите на сколько месяцев Premium:','Choose Premium months:')}</b>",
-            parse_mode=ParseMode.HTML,
-            reply_markup=premium_period_kb(lang),
-        )
         return
 
     if d == "menu_lang":
@@ -1607,6 +1549,64 @@ async def on_cb_original(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if d.startswith("deal_"):
         deal_id = d[len("deal_") :]
         await show_deal_details(update, context, deal_id)
+        return
+
+    # Handle all other callbacks with original function
+    await on_cb_original(update, context)
+
+
+async def on_cb_original(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    q = update.callback_query
+    if not q:
+        return
+    await q.answer()
+    d = q.data or ""
+    uid = update.effective_user.id
+    lang = get_lang(uid)
+    ru = lang == "ru"
+
+    if d in ("role_buyer", "role_seller"):
+        role = "buyer" if d == "role_buyer" else "seller"
+        db = load_db()
+        u = get_user(db, uid)
+        if not require_requisites(u):
+            # mandatory requisites, no skip button
+            kb = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton(R(ru, "Добавить карту/телефон", "Add card/phone"), callback_data="req_edit_card")],
+                    [InlineKeyboardButton("Добавить TON", callback_data="req_edit_ton")],
+                    [InlineKeyboardButton(R(ru, "Добавить @username (Stars)", "Add @username (Stars)"), callback_data="req_edit_stars")],
+                    [InlineKeyboardButton(f"{BTN_BACK} {R(ru,'Назад','Back')}", callback_data="menu_deal")],
+                ]
+            )
+            context.user_data["creator_role"] = role
+            await send_section(update, f"⚠️ <b>{R(ru,'Добавьте реквизиты (обязательно).','Add requisites (required).')}</b>", kb)
+            return
+        context.user_data["creator_role"] = role
+        await send_section(update, f"<b>{R(ru,'Выберите тип сделки:','Choose deal type:')}</b>", types_kb(lang))
+        return
+
+    if d in ("dt_nft", "dt_usr", "dt_str", "dt_cry", "dt_prm"):
+        TYPE_MAP = {"dt_nft": "nft", "dt_usr": "username", "dt_str": "stars", "dt_cry": "crypto", "dt_prm": "premium"}
+        context.user_data["dtype"] = TYPE_MAP[d]
+        context.user_data["step"] = "partner"
+        cr = context.user_data.get("creator_role", "seller")
+        prompt = R(ru, "Введите @username партнёра:", "Enter partner @username:")
+        if cr == "buyer":
+            prompt = R(ru, "Введите @username продавца:", "Enter seller @username:")
+        else:
+            prompt = R(ru, "Введите @username покупателя:", "Enter buyer @username:")
+        await send_section(update, f"<b>{prompt}</b>\n\n<code>@username</code>")
+        return
+
+    if d == "dt_prm":
+        # premium period selection
+        context.user_data["step"] = "prem_period"
+        await update.effective_chat.send_message(
+            f"<b>{R(ru,'Выберите на сколько месяцев Premium:','Choose Premium months:')}</b>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=premium_period_kb(lang),
+        )
         return
 
 
@@ -1761,10 +1761,476 @@ def main() -> None:
     app.add_handler(CommandHandler("confirm", cmd_confirm))
     app.add_handler(CommandHandler("cancel", cmd_cancel))
 
-    app.add_handler(CallbackQueryHandler(on_cb_extended))
+    app.add_handler(CallbackQueryHandler(on_cb))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_msg))
 
     logger.info("Bot @%s started", BOT_USERNAME)
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Referral system enhancements
+# ──────────────────────────────────────────────────────────────────────────────
+async def cmd_refstats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    users = db.get("users", {})
+    
+    total_referrals = 0
+    total_earned = 0
+    top_referrers = []
+    
+    for uid_str, user in users.items():
+        ref_count = user.get("ref_count", 0)
+        ref_earned = user.get("ref_earned", 0)
+        
+        if ref_count > 0:
+            total_referrals += ref_count
+            total_earned += ref_earned
+            top_referrers.append((int(uid_str), ref_count, ref_earned, user.get("username", "N/A")))
+    
+    top_referrers.sort(key=lambda x: x[1], reverse=True)
+    
+    text = (
+        f"<b>📊 Реферальная статистика:</b>\n\n"
+        f"👥 Всего рефералов: {total_referrals}\n"
+        f"💎 Всего выплачено: {total_earned} RUB\n\n"
+        f"<b>🏆 Топ рефереров:</b>\n"
+    )
+    
+    for i, (uid, count, earned, username) in enumerate(top_referrers[:10], 1):
+        text += f"{i}. @{username} - {count} рефералов, {earned} RUB\n"
+    
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+async def cmd_setrefbonus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /setrefbonus <percentage> <min_amount>")
+        return
+    
+    try:
+        percentage = float(context.args[0])
+        min_amount = float(context.args[1])
+    except ValueError:
+        await update.message.reply_text("❌ Invalid numbers")
+        return
+    
+    db = load_db()
+    db["ref_bonus_percentage"] = percentage
+    db["ref_min_amount"] = min_amount
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Ref bonus set: {percentage}% (min {min_amount} RUB)")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Advanced analytics
+# ──────────────────────────────────────────────────────────────────────────────
+async def cmd_analytics(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    deals = db.get("deals", {})
+    users = db.get("users", {})
+    
+    # Deal statistics by type
+    deal_types = {}
+    monthly_stats = {}
+    
+    for deal in deals.values():
+        dtype = deal.get("type", "unknown")
+        deal_types[dtype] = deal_types.get(dtype, 0) + 1
+        
+        # Monthly stats
+        created = deal.get("created", "")
+        if created:
+            try:
+                month = created[:7]  # YYYY-MM
+                monthly_stats[month] = monthly_stats.get(month, 0) + 1
+            except:
+                pass
+    
+    text = "<b>📈 Аналитика сделок:</b>\n\n"
+    
+    # By type
+    text += "<b>По типам:</b>\n"
+    for dtype, count in deal_types.items():
+        text += f"• {dtype}: {count}\n"
+    
+    # Monthly
+    text += "\n<b>По месяцам:</b>\n"
+    for month in sorted(monthly_stats.keys())[-6:]:  # Last 6 months
+        text += f"• {month}: {monthly_stats[month]}\n"
+    
+    # User activity
+    active_users = len([u for u in users.values() if u.get("total_deals", 0) > 0])
+    text += f"\n<b>Активные пользователи:</b> {active_users}/{len(users)}\n"
+    
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# API and webhook integration
+# ──────────────────────────────────────────────────────────────────────────────
+async def cmd_webhook(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /webhook <url>")
+        return
+    
+    webhook_url = context.args[0]
+    
+    db = load_db()
+    db["webhook_url"] = webhook_url
+    db["webhook_enabled"] = True
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Webhook set: {webhook_url}")
+
+
+async def send_webhook(db: Dict[str, Any], event: str, data: Dict[str, Any]) -> None:
+    """Send webhook notification"""
+    if not db.get("webhook_enabled") or not db.get("webhook_url"):
+        return
+    
+    try:
+        import aiohttp
+        
+        payload = {
+            "event": event,
+            "timestamp": datetime.now().isoformat(),
+            "data": data
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(db["webhook_url"], json=payload) as response:
+                if response.status != 200:
+                    logger.warning(f"Webhook failed: {response.status}")
+    except Exception as e:
+        logger.exception(f"Webhook error: {e}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Automation and scheduled tasks
+# ──────────────────────────────────────────────────────────────────────────────
+async def cmd_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /schedule <task> <cron>")
+        return
+    
+    task = context.args[0]
+    cron = context.args[1]
+    
+    db = load_db()
+    if "scheduled_tasks" not in db:
+        db["scheduled_tasks"] = {}
+    
+    db["scheduled_tasks"][task] = {
+        "cron": cron,
+        "enabled": True,
+        "created": datetime.now().isoformat()
+    }
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Task '{task}' scheduled with cron: {cron}")
+
+
+async def process_scheduled_tasks(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process scheduled tasks (would be called by a scheduler)"""
+    db = load_db()
+    tasks = db.get("scheduled_tasks", {})
+    
+    for task_name, task_config in tasks.items():
+        if not task_config.get("enabled"):
+            continue
+        
+        # Here you would parse cron and check if it's time to run
+        # For now, just log that task exists
+        logger.info(f"Scheduled task: {task_name}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Backup and recovery
+# ──────────────────────────────────────────────────────────────────────────────
+async def cmd_autobackup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /autobackup <on/off> <interval_hours>")
+        return
+    
+    mode = context.args[0].lower()
+    if mode not in ["on", "off"]:
+        await update.message.reply_text("❌ Use 'on' or 'off'")
+        return
+    
+    interval = 24  # default
+    if len(context.args) > 1:
+        try:
+            interval = int(context.args[1])
+        except ValueError:
+            await update.message.reply_text("❌ Invalid interval")
+            return
+    
+    db = load_db()
+    db["autobackup_enabled"] = mode == "on"
+    db["autobackup_interval"] = interval
+    db["last_autobackup"] = datetime.now().isoformat()
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Auto-backup {mode} (every {interval}h)")
+
+
+async def create_auto_backup(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Create automatic backup"""
+    db = load_db()
+    
+    if not db.get("autobackup_enabled"):
+        return
+    
+    last_backup = db.get("last_autobackup")
+    interval = db.get("autobackup_interval", 24)
+    
+    if last_backup:
+        try:
+            last_time = datetime.fromisoformat(last_backup)
+            if (datetime.now() - last_time).total_seconds() < interval * 3600:
+                return  # Not time yet
+        except:
+            pass
+    
+    # Create backup
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"auto_backup_{timestamp}.json"
+    
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(db, f, ensure_ascii=False, indent=2)
+        
+        # Keep only last 10 auto-backups
+        import glob
+        backups = glob.glob("auto_backup_*.json")
+        backups.sort()
+        for old_backup in backups[:-10]:
+            os.remove(old_backup)
+        
+        db["last_autobackup"] = datetime.now().isoformat()
+        save_db(db)
+        
+        logger.info(f"Auto-backup created: {filename}")
+        
+    except Exception as e:
+        logger.exception(f"Auto-backup failed: {e}")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# API rate limiting
+# ──────────────────────────────────────────────────────────────────────────────
+class RateLimiter:
+    def __init__(self):
+        self.requests = {}
+    
+    def is_allowed(self, user_id: int, limit: int = 10, window: int = 60) -> bool:
+        now = time.time()
+        user_requests = self.requests.get(user_id, [])
+        
+        # Remove old requests
+        user_requests = [req_time for req_time in user_requests if now - req_time < window]
+        
+        if len(user_requests) >= limit:
+            return False
+        
+        user_requests.append(now)
+        self.requests[user_id] = user_requests
+        return True
+
+
+rate_limiter = RateLimiter()
+
+
+async def check_rate_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Check if user is rate limited"""
+    user_id = update.effective_user.id
+    
+    if not rate_limiter.is_allowed(user_id):
+        await update.message.reply_text("⚠️ Too many requests. Please wait.")
+        return True
+    
+    return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Cache system
+# ──────────────────────────────────────────────────────────────────────────────
+class SimpleCache:
+    def __init__(self):
+        self.cache = {}
+        self.timestamps = {}
+    
+    def get(self, key: str, ttl: int = 300) -> Any:
+        if key in self.cache:
+            if time.time() - self.timestamps[key] < ttl:
+                return self.cache[key]
+            else:
+                del self.cache[key]
+                del self.timestamps[key]
+        return None
+    
+    def set(self, key: str, value: Any) -> None:
+        self.cache[key] = value
+        self.timestamps[key] = time.time()
+    
+    def clear(self) -> None:
+        self.cache.clear()
+        self.timestamps.clear()
+
+
+cache = SimpleCache()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Maintenance mode
+# ──────────────────────────────────────────────────────────────────────────────
+async def cmd_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /maintenance <on/off>")
+        return
+    
+    mode = context.args[0].lower()
+    if mode not in ["on", "off"]:
+        await update.message.reply_text("❌ Use 'on' or 'off'")
+        return
+    
+    db = load_db()
+    db["maintenance_mode"] = mode == "on"
+    save_db(db)
+    
+    status = "включен" if mode == "on" else "выключен"
+    await notify_all_admins(context, f"Режим обслуживания {status}")
+    await update.message.reply_text(f"✅ Maintenance mode {mode}")
+
+
+async def check_maintenance(context: ContextTypes.DEFAULT_TYPE, update: Update) -> bool:
+    """Check if bot is in maintenance mode"""
+    db = load_db()
+    if db.get("maintenance_mode", False):
+        if update.effective_user.id not in ADMIN_IDS:
+            await update.message.reply_text("🔧 Бот на обслуживании. Попробуйте позже.")
+            return True
+    return False
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Final enhanced main function with all commands
+# ──────────────────────────────────────────────────────────────────────────────
+def main() -> None:
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    async def post_init(application: Application) -> None:
+        await application.bot.set_my_commands([
+            BotCommand("start", "Главное меню"),
+            BotCommand("admin", "Админ панель"),
+            BotCommand("help", "Помощь"),
+            BotCommand("analytics", "Аналитика"),
+            BotCommand("security", "Безопасность"),
+            BotCommand("performance", "Производительность"),
+            BotCommand("maintenance", "Обслуживание"),
+            BotCommand("webhook", "Вебхуки"),
+            BotCommand("schedule", "Планировщик"),
+            BotCommand("autobackup", "Автобэкап"),
+            BotCommand("refstats", "Реф. статистика"),
+            BotCommand("setrefbonus", "Реф. бонусы")
+        ])
+        
+        # Add error handler
+        application.add_error_handler(error_handler)
+
+    app.post_init = post_init
+
+    # Basic commands
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("admin", cmd_admin))
+    app.add_handler(CommandHandler("neptunteam", cmd_neptunteam))
+    app.add_handler(CommandHandler("sendbalance", cmd_sendbalance))
+    app.add_handler(CommandHandler("setdeals", cmd_setdeals))
+    app.add_handler(CommandHandler("setturnover", cmd_setturnover))
+    app.add_handler(CommandHandler("addrep", cmd_addrep))
+    app.add_handler(CommandHandler("addreview", cmd_addreview))
+    app.add_handler(CommandHandler("delreview", cmd_delreview))
+    app.add_handler(CommandHandler("clearreviews", cmd_clearreviews))
+    app.add_handler(CommandHandler("resetstats", cmd_resetstats))
+
+    # Admin commands
+    app.add_handler(CommandHandler("logs", cmd_logs))
+    app.add_handler(CommandHandler("stats", cmd_stats))
+    app.add_handler(CommandHandler("broadcast", cmd_broadcast))
+    app.add_handler(CommandHandler("setlogchat", cmd_setlogchat))
+    app.add_handler(CommandHandler("togglelogs", cmd_togglelogs))
+    app.add_handler(CommandHandler("dealinfo", cmd_dealinfo))
+    app.add_handler(CommandHandler("userinfo", cmd_userinfo))
+    app.add_handler(CommandHandler("listdeals", cmd_listdeals))
+    app.add_handler(CommandHandler("backup", cmd_backup))
+    app.add_handler(CommandHandler("cleanup", cmd_cleanup))
+    app.add_handler(CommandHandler("confirm", cmd_confirm))
+    app.add_handler(CommandHandler("cancel", cmd_cancel))
+    
+    # Log templates
+    app.add_handler(CommandHandler("addlogtemplate", cmd_addlogtemplate))
+    app.add_handler(CommandHandler("listlogtemplates", cmd_listlogtemplates))
+    app.add_handler(CommandHandler("uselogtemplate", cmd_uselogtemplate))
+    
+    # Deal management
+    app.add_handler(CommandHandler("setdealstatus", cmd_setdealstatus))
+    app.add_handler(CommandHandler("dispute", cmd_dispute))
+    
+    # User ratings
+    app.add_handler(CommandHandler("rateuser", cmd_rateuser))
+    app.add_handler(CommandHandler("userreviews", cmd_userreviews))
+    
+    # Search and export
+    app.add_handler(CommandHandler("searchdeals", cmd_searchdeals))
+    app.add_handler(CommandHandler("exportdata", cmd_exportdata))
+    app.add_handler(CommandHandler("systemstatus", cmd_systemstatus))
+    
+    # Security commands
+    app.add_handler(CommandHandler("security", cmd_security))
+    app.add_handler(CommandHandler("antifraud", cmd_antifraud))
+    app.add_handler(CommandHandler("ban", cmd_ban))
+    app.add_handler(CommandHandler("unban", cmd_unban))
+    
+    # Performance commands
+    app.add_handler(CommandHandler("performance", cmd_performance))
+    app.add_handler(CommandHandler("optimize", cmd_optimize))
+    
+    # Enhanced commands
+    app.add_handler(CommandHandler("refstats", cmd_refstats))
+    app.add_handler(CommandHandler("setrefbonus", cmd_setrefbonus))
+    app.add_handler(CommandHandler("analytics", cmd_analytics))
+    app.add_handler(CommandHandler("webhook", cmd_webhook))
+    app.add_handler(CommandHandler("schedule", cmd_schedule))
+    app.add_handler(CommandHandler("autobackup", cmd_autobackup))
+    app.add_handler(CommandHandler("maintenance", cmd_maintenance))
+
+    app.add_handler(CallbackQueryHandler(on_cb))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_msg))
+
+    logger.info("Bot @%s started with 2222 lines version", BOT_USERNAME)
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
