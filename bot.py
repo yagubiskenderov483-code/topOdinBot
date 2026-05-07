@@ -83,7 +83,7 @@ BTN_STARS = "⭐️"
 BTN_CRYPTO = "💎"
 BTN_PREMIUM = "✨"  # requested: premium emoji in buttons should be normal unicode
 
-BTN_LOG_PROMO = tg_emoji("5258362837411045099", "✨")  # inline promo button in logs with tg-emoji
+BTN_LOG_PROMO = "✨"  # inline promo button in logs (no tg-emoji)
 
 
 RU_BANKS = [
@@ -2471,6 +2471,732 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if step == "pay_currency":
         await update.message.reply_text(f"⚠️ {R(ru,'Выберите валюту кнопкой.','Choose currency via buttons.')}")
         return
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Missing functions - add all required command handlers
+# ──────────────────────────────────────────────────────────────────────────────
+async def cmd_addlogtemplate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /addlogtemplate <name> <template>")
+        return
+    
+    template_name = context.args[0]
+    template_text = " ".join(context.args[1:])
+    
+    db = load_db()
+    if "log_templates" not in db:
+        db["log_templates"] = {}
+    
+    db["log_templates"][template_name] = template_text
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Log template '{template_name}' added")
+
+
+async def cmd_listlogtemplates(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    templates = db.get("log_templates", {})
+    
+    if not templates:
+        await update.message.reply_text("No log templates found")
+        return
+    
+    lines = ["<b>Log Templates:</b>\n"]
+    for name, template in templates.items():
+        lines.append(f"• {name}: {template}")
+    
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+
+
+async def cmd_uselogtemplate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /uselogtemplate <template_name> <deal_id>")
+        return
+    
+    template_name = context.args[0]
+    deal_id = context.args[1].upper()
+    
+    db = load_db()
+    templates = db.get("log_templates", {})
+    
+    if template_name not in templates:
+        await update.message.reply_text(f"❌ Template '{template_name}' not found")
+        return
+    
+    template_text = templates[template_name]
+    entry = add_log(
+        db, 
+        template_text, 
+        deal_id=deal_id, 
+        uid=update.effective_user.id, 
+        username=update.effective_user.username or ""
+    )
+    save_db(db)
+    await send_log_msg(context, db, entry)
+    
+    await update.message.reply_text(f"✅ Applied template '{template_name}' to deal {deal_id}")
+
+
+async def cmd_setdealstatus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /setdealstatus <deal_id> <status>")
+        return
+    
+    deal_id = context.args[0].upper()
+    new_status = context.args[1].lower()
+    
+    valid_statuses = ["pending", "paid", "completed", "cancelled", "disputed"]
+    if new_status not in valid_statuses:
+        await update.message.reply_text(f"❌ Invalid status. Valid: {', '.join(valid_statuses)}")
+        return
+    
+    db = load_db()
+    deal = db.get("deals", {}).get(deal_id)
+    
+    if not deal:
+        await update.message.reply_text(f"❌ Deal {deal_id} not found")
+        return
+    
+    old_status = deal.get("status")
+    deal["status"] = new_status
+    deal["status_updated_at"] = datetime.now().isoformat()
+    deal["status_updated_by"] = update.effective_user.id
+    db["deals"][deal_id] = deal
+    
+    entry = add_log(
+        db, 
+        f"Status changed: {old_status} → {new_status}", 
+        deal_id=deal_id, 
+        uid=update.effective_user.id, 
+        username=update.effective_user.username or ""
+    )
+    save_db(db)
+    await send_log_msg(context, db, entry)
+    
+    await update.message.reply_text(f"✅ Deal {deal_id} status set to {new_status}")
+
+
+async def cmd_dispute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        await update.message.reply_text("Usage: /dispute <deal_id> <reason>")
+        return
+    
+    deal_id = context.args[0].upper()
+    reason = " ".join(context.args[1:]) if len(context.args) > 1 else "No reason provided"
+    
+    db = load_db()
+    deal = db.get("deals", {}).get(deal_id)
+    
+    if not deal:
+        await update.message.reply_text(f"❌ Deal {deal_id} not found")
+        return
+    
+    uid = update.effective_user.id
+    creator_uid = int(deal.get("creator_uid"))
+    buyer_uid = int(deal.get("buyer_uid"))
+    
+    if uid not in [creator_uid, buyer_uid]:
+        await update.message.reply_text("❌ Only deal participants can open disputes")
+        return
+    
+    deal["status"] = "disputed"
+    deal["disputed_at"] = datetime.now().isoformat()
+    deal["disputed_by"] = uid
+    deal["dispute_reason"] = reason
+    db["deals"][deal_id] = deal
+    
+    entry = add_log(
+        db, 
+        f"Dispute opened by {uid}", 
+        deal_id=deal_id, 
+        uid=uid, 
+        username=update.effective_user.username or "",
+        extra=reason
+    )
+    save_db(db)
+    await send_log_msg(context, db, entry)
+    
+    await update.message.reply_text(f"✅ Dispute opened for deal {deal_id}")
+
+
+async def cmd_rateuser(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if len(context.args) < 3:
+        await update.message.reply_text("Usage: /rateuser <user_id> <deal_id> <rating_1-5>")
+        return
+    
+    try:
+        target_user_id = int(context.args[0])
+        deal_id = context.args[1].upper()
+        rating = int(context.args[2])
+        
+        if rating < 1 or rating > 5:
+            raise ValueError("Rating must be 1-5")
+    except ValueError:
+        await update.message.reply_text("❌ Invalid rating. Must be 1-5")
+        return
+    
+    db = load_db()
+    deal = db.get("deals", {}).get(deal_id)
+    
+    if not deal:
+        await update.message.reply_text(f"❌ Deal {deal_id} not found")
+        return
+    
+    uid = update.effective_user.id
+    creator_uid = int(deal.get("creator_uid"))
+    buyer_uid = int(deal.get("buyer_uid"))
+    
+    if uid not in [creator_uid, buyer_uid]:
+        await update.message.reply_text("❌ You were not a participant in this deal")
+        return
+    
+    if uid == target_user_id:
+        await update.message.reply_text("❌ You cannot rate yourself")
+        return
+    
+    if target_user_id not in [creator_uid, buyer_uid]:
+        await update.message.reply_text("❌ Target user was not a participant in this deal")
+        return
+    
+    target_user = get_user(db, target_user_id)
+    if "ratings" not in target_user:
+        target_user["ratings"] = []
+    
+    for existing_rating in target_user["ratings"]:
+        if existing_rating.get("deal_id") == deal_id and existing_rating.get("rater_id") == uid:
+            await update.message.reply_text("❌ You have already rated this user for this deal")
+            return
+    
+    target_user["ratings"].append({
+        "deal_id": deal_id,
+        "rater_id": uid,
+        "rating": rating,
+        "rated_at": datetime.now().isoformat()
+    })
+    
+    reputation_bonus = rating - 3
+    target_user["reputation"] = target_user.get("reputation", 0) + reputation_bonus
+    
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Rated user {target_user_id} with {rating}/5 for deal {deal_id}")
+
+
+async def cmd_userreviews(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        await update.message.reply_text("Usage: /userreviews <user_id>")
+        return
+    
+    try:
+        user_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID")
+        return
+    
+    db = load_db()
+    user = get_user(db, user_id)
+    
+    reviews = user.get("reviews", [])
+    ratings = user.get("ratings", [])
+    
+    avg_rating = 0
+    if ratings:
+        avg_rating = sum(r["rating"] for r in ratings) / len(ratings)
+    
+    text = (
+        f"<b>Reviews for User {user_id}:</b>\n\n"
+        f"👤 Username: @{user.get('username', 'N/A')}\n"
+        f"⭐ Average Rating: {avg_rating:.1f}/5 ({len(ratings)} ratings)\n"
+        f"📝 Text Reviews: {len(reviews)}\n\n"
+    )
+    
+    if reviews:
+        text += "<b>Text Reviews:</b>\n"
+        for i, review in enumerate(reviews[-5:], 1):
+            text += f"{i}. {review}\n"
+    else:
+        text += "No text reviews yet."
+    
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+async def cmd_searchdeals(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /searchdeals <query>")
+        return
+    
+    query = " ".join(context.args).lower()
+    db = load_db()
+    deals = db.get("deals", {})
+    
+    matching_deals = []
+    for deal_id, deal in deals.items():
+        if (query in deal_id.lower() or 
+            query in deal.get("type", "").lower() or 
+            query in deal.get("status", "").lower()):
+            matching_deals.append((deal_id, deal))
+            continue
+        
+        if (query in str(deal.get("creator_uid", "")) or 
+            query in str(deal.get("buyer_uid", ""))):
+            matching_deals.append((deal_id, deal))
+    
+    if not matching_deals:
+        await update.message.reply_text(f"No deals found matching: {query}")
+        return
+    
+    lines = [f"<b>Deals matching '{query}':</b>\n"]
+    for deal_id, deal in matching_deals[:20]:
+        creator = deal.get("creator_uid", "N/A")
+        buyer = deal.get("buyer_uid", "N/A")
+        dtype = deal.get("type", "N/A")
+        status = deal.get("status", "N/A")
+        
+        lines.append(f"• {deal_id}: {dtype} - {status}")
+        lines.append(f"  Creator: {creator}, Buyer: {buyer}")
+    
+    if len(matching_deals) > 20:
+        lines.append(f"\n... and {len(matching_deals) - 20} more")
+    
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
+
+
+async def cmd_exportdata(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    
+    export_data = {
+        "export_timestamp": datetime.now().isoformat(),
+        "users_count": len(db.get("users", {})),
+        "deals_count": len(db.get("deals", {})),
+        "logs_count": len(db.get("logs", [])),
+        "users": db.get("users", {}),
+        "deals": db.get("deals", {}),
+        "logs": db.get("logs", [])[-100:]
+    }
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"bot_export_{timestamp}.json"
+    
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(export_data, f, ensure_ascii=False, indent=2)
+        
+        await update.message.reply_document(
+            document=open(filename, "rb"),
+            caption=f"📊 Bot data export - {timestamp}"
+        )
+        
+        os.remove(filename)
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Export failed: {str(e)}")
+
+
+async def cmd_systemstatus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    try:
+        import psutil
+        import sys
+        
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('.')
+        
+        status_text = (
+            f"<b>🖥️ System Status:</b>\n\n"
+            f"💻 CPU Usage: {cpu_percent}%\n"
+            f"🧠 Memory: {memory.percent}% ({memory.used // 1024 // 1024}MB / {memory.total // 1024 // 1024}MB)\n"
+            f"💾 Disk: {disk.percent}% ({disk.used // 1024 // 1024}MB / {disk.total // 1024 // 1024}MB)\n"
+            f"🐍 Python: {sys.version.split()[0]}\n"
+            f"📅 Uptime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        )
+        
+        db = load_db()
+        active_deals = len([d for d in db.get("deals", {}).values() if d.get("status") == "pending"])
+        total_users = len(db.get("users", {}))
+        
+        status_text += (
+            f"\n<b>🤖 Bot Status:</b>\n"
+            f"📊 Active Deals: {active_deals}\n"
+            f"👥 Total Users: {total_users}\n"
+            f"📝 Logs: {len(db.get('logs', []))}\n"
+        )
+        
+        await update.message.reply_text(status_text, parse_mode=ParseMode.HTML)
+        
+    except ImportError:
+        await update.message.reply_text("❌ psutil not installed. Install with: pip install psutil")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Status check failed: {str(e)}")
+
+
+async def cmd_security(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    
+    suspicious_users = []
+    for uid_str, user in db.get("users", {}).items():
+        if user.get("total_deals", 0) > 100 and user.get("success_deals", 0) == 0:
+            suspicious_users.append((uid_str, user.get("username", "N/A")))
+    
+    text = "<b>🔒 Security Report:</b>\n\n"
+    
+    if suspicious_users:
+        text += "<b>⚠️ Suspicious users:</b>\n"
+        for uid, username in suspicious_users[:10]:
+            text += f"• {uid} - @{username}\n"
+    else:
+        text += "✅ No suspicious activity detected\n"
+    
+    text += f"\n<b>🖥️ System Health:</b>\n"
+    text += f"Database size: {os.path.getsize(DB_FILE) / 1024 / 1024:.1f} MB\n"
+    text += f"Total users: {len(db.get('users', {}))}\n"
+    text += f"Total deals: {len(db.get('deals', {}))}\n"
+    
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+async def cmd_antifraud(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /antifraud <on/off>")
+        return
+    
+    mode = context.args[0].lower()
+    if mode not in ["on", "off"]:
+        await update.message.reply_text("❌ Use 'on' or 'off'")
+        return
+    
+    db = load_db()
+    db["antifraud_enabled"] = mode == "on"
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Anti-fraud {mode}")
+
+
+async def cmd_ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /ban <user_id>")
+        return
+    
+    try:
+        user_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID")
+        return
+    
+    db = load_db()
+    user = get_user(db, user_id)
+    user["banned"] = True
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ User {user_id} banned")
+
+
+async def cmd_unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /unban <user_id>")
+        return
+    
+    try:
+        user_id = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Invalid user ID")
+        return
+    
+    db = load_db()
+    user = get_user(db, user_id)
+    user["banned"] = False
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ User {user_id} unbanned")
+
+
+async def cmd_performance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    import time
+    import psutil
+    
+    start_time = time.time()
+    db = load_db()
+    users_count = len(db.get("users", {}))
+    deals_count = len(db.get("deals", {}))
+    db_load_time = time.time() - start_time
+    
+    process = psutil.Process()
+    memory_info = process.memory_info()
+    
+    text = (
+        f"<b>⚡ Performance Metrics:</b>\n\n"
+        f"🗄️ Database load time: {db_load_time:.3f}s\n"
+        f"👥 Users in memory: {users_count}\n"
+        f"🤝 Deals in memory: {deals_count}\n"
+        f"💾 Memory usage: {memory_info.rss / 1024 / 1024:.1f} MB\n"
+        f"🖥️ CPU usage: {psutil.cpu_percent()}%\n"
+    )
+    
+    if os.path.exists(DB_FILE):
+        file_size = os.path.getsize(DB_FILE) / 1024 / 1024
+        text += f"📁 Database file: {file_size:.1f} MB\n"
+    
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+async def cmd_optimize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    
+    original_logs = len(db.get("logs", []))
+    if len(db["logs"]) > 1000:
+        db["logs"] = db["logs"][-1000:]
+    
+    thirty_days_ago = datetime.now().timestamp() - (30 * 24 * 3600)
+    original_deals = len(db.get("deals", {}))
+    
+    for deal_id, deal in list(db.get("deals", {}).items()):
+        if deal.get("status") in ["completed", "cancelled"]:
+            try:
+                created_time = datetime.fromisoformat(deal.get("created", "")).timestamp()
+                if created_time < thirty_days_ago:
+                    del db["deals"][deal_id]
+            except:
+                pass
+    
+    save_db(db)
+    
+    cleaned_logs = original_logs - len(db.get("logs", []))
+    cleaned_deals = original_deals - len(db.get("deals", {}))
+    
+    await update.message.reply_text(
+        f"✅ Database optimized:\n"
+        f"📝 Logs cleaned: {cleaned_logs}\n"
+        f"🤝 Deals cleaned: {cleaned_deals}"
+    )
+
+
+async def cmd_refstats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    users = db.get("users", {})
+    
+    total_referrals = 0
+    total_earned = 0
+    top_referrers = []
+    
+    for uid_str, user in users.items():
+        ref_count = user.get("ref_count", 0)
+        ref_earned = user.get("ref_earned", 0)
+        
+        if ref_count > 0:
+            total_referrals += ref_count
+            total_earned += ref_earned
+            top_referrers.append((int(uid_str), ref_count, ref_earned, user.get("username", "N/A")))
+    
+    top_referrers.sort(key=lambda x: x[1], reverse=True)
+    
+    text = (
+        f"<b>📊 Реферальная статистика:</b>\n\n"
+        f"👥 Всего рефералов: {total_referrals}\n"
+        f"💎 Всего выплачено: {total_earned} RUB\n\n"
+        f"<b>🏆 Топ рефереров:</b>\n"
+    )
+    
+    for i, (uid, count, earned, username) in enumerate(top_referrers[:10], 1):
+        text += f"{i}. @{username} - {count} рефералов, {earned} RUB\n"
+    
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+async def cmd_setrefbonus(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /setrefbonus <percentage> <min_amount>")
+        return
+    
+    try:
+        percentage = float(context.args[0])
+        min_amount = float(context.args[1])
+    except ValueError:
+        await update.message.reply_text("❌ Invalid numbers")
+        return
+    
+    db = load_db()
+    db["ref_bonus_percentage"] = percentage
+    db["ref_min_amount"] = min_amount
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Ref bonus set: {percentage}% (min {min_amount} RUB)")
+
+
+async def cmd_analytics(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    db = load_db()
+    deals = db.get("deals", {})
+    users = db.get("users", {})
+    
+    deal_types = {}
+    monthly_stats = {}
+    
+    for deal in deals.values():
+        dtype = deal.get("type", "unknown")
+        deal_types[dtype] = deal_types.get(dtype, 0) + 1
+        
+        created = deal.get("created", "")
+        if created:
+            try:
+                month = created[:7]
+                monthly_stats[month] = monthly_stats.get(month, 0) + 1
+            except:
+                pass
+    
+    text = "<b>📈 Аналитика сделок:</b>\n\n"
+    
+    text += "<b>По типам:</b>\n"
+    for dtype, count in deal_types.items():
+        text += f"• {dtype}: {count}\n"
+    
+    text += "\n<b>По месяцам:</b>\n"
+    for month in sorted(monthly_stats.keys())[-6:]:
+        text += f"• {month}: {monthly_stats[month]}\n"
+    
+    active_users = len([u for u in users.values() if u.get("total_deals", 0) > 0])
+    text += f"\n<b>Активные пользователи:</b> {active_users}/{len(users)}\n"
+    
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+
+async def cmd_webhook(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /webhook <url>")
+        return
+    
+    webhook_url = context.args[0]
+    
+    db = load_db()
+    db["webhook_url"] = webhook_url
+    db["webhook_enabled"] = True
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Webhook set: {webhook_url}")
+
+
+async def cmd_schedule(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /schedule <task> <cron>")
+        return
+    
+    task = context.args[0]
+    cron = context.args[1]
+    
+    db = load_db()
+    if "scheduled_tasks" not in db:
+        db["scheduled_tasks"] = {}
+    
+    db["scheduled_tasks"][task] = {
+        "cron": cron,
+        "enabled": True,
+        "created": datetime.now().isoformat()
+    }
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Task '{task}' scheduled with cron: {cron}")
+
+
+async def cmd_autobackup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /autobackup <on/off> <interval_hours>")
+        return
+    
+    mode = context.args[0].lower()
+    if mode not in ["on", "off"]:
+        await update.message.reply_text("❌ Use 'on' or 'off'")
+        return
+    
+    interval = 24
+    if len(context.args) > 1:
+        try:
+            interval = int(context.args[1])
+        except ValueError:
+            await update.message.reply_text("❌ Invalid interval")
+            return
+    
+    db = load_db()
+    db["autobackup_enabled"] = mode == "on"
+    db["autobackup_interval"] = interval
+    db["last_autobackup"] = datetime.now().isoformat()
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Auto-backup {mode} (every {interval}h)")
+
+
+async def cmd_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /maintenance <on/off>")
+        return
+    
+    mode = context.args[0].lower()
+    if mode not in ["on", "off"]:
+        await update.message.reply_text("❌ Use 'on' or 'off'")
+        return
+    
+    db = load_db()
+    db["maintenance_mode"] = mode == "on"
+    save_db(db)
+    
+    await update.message.reply_text(f"✅ Maintenance mode {mode}")
 
 
 def main() -> None:
