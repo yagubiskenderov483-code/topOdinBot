@@ -349,56 +349,58 @@ async def send_new(update, text, kb=None, section="main"):
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal",icon_custom_emoji_id="5287231198098117669"),
-         InlineKeyboardButton(R(ru,"Профиль","Profile"),callback_data="menu_profile",icon_custom_emoji_id="5199552030615558774")],
-        [InlineKeyboardButton(R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance",icon_custom_emoji_id="5278467510604160626"),
-         InlineKeyboardButton(R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5445221832074483553")],
-        [InlineKeyboardButton(R(ru,"Язык / Lang","Language"),callback_data="menu_lang",icon_custom_emoji_id="5377746319601324795"),
-         InlineKeyboardButton(R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top",icon_custom_emoji_id="5332455502917949981")],
-        [InlineKeyboardButton(R(ru,"Рефералы","Referrals"),callback_data="menu_ref",icon_custom_emoji_id="5287231198098117669"),
-         InlineKeyboardButton(R(ru,"Реквизиты","Requisites"),callback_data="menu_req",icon_custom_emoji_id="5242631901214171852")],
-        [InlineKeyboardButton(R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport",icon_custom_emoji_id="5197434882321567830")],
+        [InlineKeyboardButton(R(ru,"Создать сделку","Create Deal"),callback_data="menu_deal",icon_custom_emoji_id="5316600120043649556"),
+         InlineKeyboardButton(R(ru,"Профиль","Profile"),callback_data="menu_profile",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(R(ru,"Пополнить/Вывод","Top Up/Withdraw"),callback_data="menu_balance",icon_custom_emoji_id="5810051751654460532"),
+         InlineKeyboardButton(R(ru,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(R(ru,"Язык / Lang","Language"),callback_data="menu_lang",icon_custom_emoji_id="5316887736823591263"),
+         InlineKeyboardButton(R(ru,"Топ продавцов","Top Sellers"),callback_data="menu_top",icon_custom_emoji_id="5893431652578758294")],
+        [InlineKeyboardButton(R(ru,"Рефералы","Referrals"),callback_data="menu_ref",icon_custom_emoji_id="5893431652578758294"),
+         InlineKeyboardButton(R(ru,"Реквизиты","Requisites"),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(R(ru,"Тех. поддержка","Tech Support"),url="https://t.me/GiftDealsSupport",icon_custom_emoji_id="5258260149037965799")],
     ])
 
 def role_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,"Я покупатель","I am the Buyer"),callback_data="role_buyer",icon_custom_emoji_id="5278467510604160626")],
-        [InlineKeyboardButton(R(ru,"Я продавец","I am the Seller"),callback_data="role_seller",icon_custom_emoji_id="4988289890769699938")],
+        [InlineKeyboardButton(R(ru,"Я покупатель","I am the Buyer"),callback_data="role_buyer",icon_custom_emoji_id="5810051751654460532")],
+        [InlineKeyboardButton(R(ru,"Я продавец","I am the Seller"),callback_data="role_seller",icon_custom_emoji_id="5807626765874499116")],
         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
     ])
 
 def types_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,"NFT подарок","NFT Gift"),callback_data="dt_nft",icon_custom_emoji_id="5197369495739455200"),
-         InlineKeyboardButton("NFT Username",callback_data="dt_usr",icon_custom_emoji_id="5199552030615558774")],
-        [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="dt_str",icon_custom_emoji_id="5267500801240092311"),
-         InlineKeyboardButton(R(ru,"Крипта","Crypto"),callback_data="dt_cry",icon_custom_emoji_id="5264713049637409446")],
-        [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5377620962390857342")],
+        [InlineKeyboardButton(R(ru,"NFT подарок","NFT Gift"),callback_data="dt_nft",icon_custom_emoji_id="5893034681636491040"),
+         InlineKeyboardButton("NFT Username",callback_data="dt_usr",icon_custom_emoji_id="5893034681636491040")],
+        [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="dt_str",icon_custom_emoji_id="5893034681636491040"),
+         InlineKeyboardButton(R(ru,"Крипта","Crypto"),callback_data="dt_cry",icon_custom_emoji_id="6039709013090768335")],
+        [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5893431652578758294")],
         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
     ])
 
 def pay_cur_kb(lang):
     def b(label, cd, eid): return InlineKeyboardButton(label, callback_data=cd, icon_custom_emoji_id=eid)
+    TON="6039709013090768335"; USDT="6039641775377748623"; STARS="5893034681636491040"; CARD="5902056028513505203"
     return InlineKeyboardMarkup([
-        [b("TON","pay_cur_ton","5264713049637409446"), b("USDT","pay_cur_usdt","5201873447554145566")],
-        [b("RUB","pay_cur_rub","5471952986970267163"), b("Stars / Звёзды","pay_cur_stars","5267500801240092311")],
-        [b("KZT","pay_cur_kzt","5471952986970267163"), b("AZN","pay_cur_azn","5471952986970267163")],
-        [b("KGS","pay_cur_kgs","5471952986970267163"), b("UZS","pay_cur_uzs","5471952986970267163")],
-        [b("TJS","pay_cur_tjs","5471952986970267163"), b("BYN","pay_cur_byn","5471952986970267163")],
-        [b("UAH","pay_cur_uah","5471952986970267163"), b("GEL","pay_cur_gel","5471952986970267163")],
+        [b("💎 TON","pay_cur_ton",TON), b("💵 USDT","pay_cur_usdt",USDT)],
+        [b("🇷🇺 Рубли","pay_cur_rub",CARD), b("⭐️ Stars / Звёзды","pay_cur_stars",STARS)],
+        [b("🇰🇿 Теңге","pay_cur_kzt",CARD), b("🇦🇿 Manat","pay_cur_azn",CARD)],
+        [b("🇰🇬 Сом","pay_cur_kgs",CARD), b("🇺🇿 So'm","pay_cur_uzs",CARD)],
+        [b("🇹🇯 Сомонӣ","pay_cur_tjs",CARD), b("🇧🇾 Рубли","pay_cur_byn",CARD)],
+        [b("🇺🇦 Гривнi","pay_cur_uah",CARD), b("🇬🇪 ლარი","pay_cur_gel",CARD)],
     ])
 
 def cur_kb(lang):
     def b(label, cd, eid): return InlineKeyboardButton(label, callback_data=cd, icon_custom_emoji_id=eid)
+    TON="6039709013090768335"; USDT="6039641775377748623"; STARS="5893034681636491040"; CARD="5902056028513505203"
     return InlineKeyboardMarkup([
-        [b("TON","cur_ton","5264713049637409446"), b("USDT","cur_usdt","5201873447554145566")],
-        [b("RUB","cur_rub","5471952986970267163"), b("Stars / Звёзды","cur_stars","5267500801240092311")],
-        [b("KZT","cur_kzt","5471952986970267163"), b("AZN","cur_azn","5471952986970267163")],
-        [b("KGS","cur_kgs","5471952986970267163"), b("UZS","cur_uzs","5471952986970267163")],
-        [b("TJS","cur_tjs","5471952986970267163"), b("BYN","cur_byn","5471952986970267163")],
-        [b("UAH","pay_cur_uah","5471952986970267163"), b("GEL","cur_gel","5471952986970267163")],
+        [b("💎 TON","cur_ton",TON), b("💵 USDT","cur_usdt",USDT)],
+        [b("🇷🇺 Рубли","cur_rub",CARD), b("⭐️ Stars / Звёзды","cur_stars",STARS)],
+        [b("🇰🇿 Теңге","cur_kzt",CARD), b("🇦🇿 Manat","cur_azn",CARD)],
+        [b("🇰🇬 Сом","cur_kgs",CARD), b("🇺🇿 So'm","cur_uzs",CARD)],
+        [b("🇹🇯 Сомонӣ","cur_tjs",CARD), b("🇧🇾 Рубли","cur_byn",CARD)],
+        [b("🇺🇦 Гривнi","pay_cur_uah",CARD), b("🇬🇪 ლარი","cur_gel",CARD)],
     ])
 
 # ─── Validation ───────────────────────────────────────────────────────────────
