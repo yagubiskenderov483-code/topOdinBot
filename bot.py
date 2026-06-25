@@ -355,34 +355,34 @@ async def send_new(update, text, kb=None, section="main"):
 def main_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"🤝 {R(ru,'Создать сделку','Create Deal')}",callback_data="menu_deal"),
-         InlineKeyboardButton(f"👤 {R(ru,'Профиль','Profile')}",callback_data="menu_profile")],
-        [InlineKeyboardButton(f"💰 {R(ru,'Пополнить/Вывод','Top Up/Withdraw')}",callback_data="menu_balance"),
-         InlineKeyboardButton(f"📋 {R(ru,'Мои сделки','My Deals')}",callback_data="menu_my_deals")],
-        [InlineKeyboardButton(f"🌍 {R(ru,'Язык / Lang','Language')}",callback_data="menu_lang"),
-         InlineKeyboardButton(f"🏆 {R(ru,'Топ продавцов','Top Sellers')}",callback_data="menu_top")],
-        [InlineKeyboardButton(f"🤝 {R(ru,'Рефералы','Referrals')}",callback_data="menu_ref"),
-         InlineKeyboardButton(f"📋 {R(ru,'Реквизиты','Requisites')}",callback_data="menu_req")],
-        [InlineKeyboardButton(f"🛟 {R(ru,'Тех. поддержка','Tech Support')}",url="https://t.me/GiftDealsSupport")],
+        [InlineKeyboardButton(R(ru,'Создать сделку','Create Deal'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
+         InlineKeyboardButton(R(ru,'Профиль','Profile'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
+        [InlineKeyboardButton(R(ru,'Пополнить/Вывод','Top Up/Withdraw'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
+         InlineKeyboardButton(R(ru,'Мои сделки','My Deals'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+        [InlineKeyboardButton(R(ru,'Язык / Lang','Language'),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212"),
+         InlineKeyboardButton(R(ru,'Топ продавцов','Top Sellers'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
+        [InlineKeyboardButton(R(ru,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
+         InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url="https://t.me/GiftDealsSupport",icon_custom_emoji_id="5258260149037965799")],
     ])
 
 def role_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"🛒 {R(ru,'Я покупатель','I am the Buyer')}",callback_data="role_buyer")],
-        [InlineKeyboardButton(f"🏪 {R(ru,'Я продавец','I am the Seller')}",callback_data="role_seller")],
-        [InlineKeyboardButton(f"◀️ {R(ru,'Назад','Back')}",callback_data="main_menu")],
+        [InlineKeyboardButton(R(ru,'Я покупатель','I am the Buyer'),callback_data="role_buyer",icon_custom_emoji_id="5893431652578758294")],
+        [InlineKeyboardButton(R(ru,'Я продавец','I am the Seller'),callback_data="role_seller",icon_custom_emoji_id="5893168654551355607")],
+        [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5877629862306385808")],
     ])
 
 def types_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"🎁 {R(ru,'NFT подарок','NFT Gift')}",callback_data="dt_nft"),
-         InlineKeyboardButton(f"👤 NFT Username",callback_data="dt_usr")],
-        [InlineKeyboardButton(f"⭐ {R(ru,'Звёзды','Stars')}",callback_data="dt_str"),
-         InlineKeyboardButton(f"💎 {R(ru,'Крипта','Crypto')}",callback_data="dt_cry")],
-        [InlineKeyboardButton(f"✈️ Telegram Premium",callback_data="dt_prm")],
-        [InlineKeyboardButton(f"◀️ {R(ru,'Назад','Back')}",callback_data="main_menu")],
+        [InlineKeyboardButton(R(ru,'NFT подарок','NFT Gift'),callback_data="dt_nft",icon_custom_emoji_id="5906716471756593520"),
+         InlineKeyboardButton("NFT Username",callback_data="dt_usr",icon_custom_emoji_id="5906976471896824396")],
+        [InlineKeyboardButton(R(ru,'Звёзды','Stars'),callback_data="dt_str",icon_custom_emoji_id="5906478942885255780"),
+         InlineKeyboardButton(R(ru,'Крипта','Crypto'),callback_data="dt_cry",icon_custom_emoji_id="5904576890848419790")],
+        [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5906715307820456633")],
+        [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5877629862306385808")],
     ])
 
 def pay_cur_kb(lang):
