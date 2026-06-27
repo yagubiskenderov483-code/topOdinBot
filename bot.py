@@ -939,7 +939,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"💎 <b>{f"<tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки','Enter deal amount')}"} (TON):</b>",
+                f"💎 <b><tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки','Enter deal amount')} (TON):</b>",
                 parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
@@ -948,7 +948,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"💵 <b>{f"<tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки','Enter deal amount')}"} (USDT):</b>",
+                f"💵 <b><tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки','Enter deal amount')} (USDT):</b>",
                 parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
@@ -999,7 +999,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"<b>{f"<tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки','Enter deal amount')}"} {flag} {name}:</b>",
+                f"<b><tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки','Enter deal amount')} {flag} {name}:</b>",
                 parse_mode="HTML")
             ud["last_msg"]=msg.message_id; return
 
@@ -1399,7 +1399,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if clean_link.startswith(prefix): clean_link=clean_link[len(prefix):]; break
             if not clean_link.startswith("t.me/"): clean_link="t.me/"+clean_link
             ud["nft_link"]=clean_link; ud["step"]="amount"
-            await send_step(f"{Enft} <b>{f"<tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки:','Enter deal amount:')}"}</b>"); return
+            await send_step(f"{Enft} <b><tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"); return
 
         if step=="trade_usr":
             cl=text.strip().replace("https://","").replace("http://","")
@@ -1411,13 +1411,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{R(ru,'Введите корректную ссылку t.me/username или @username (мин. 4 символа).','Enter valid t.me/username or @username (min 4 chars).')}</b>",
                     parse_mode="HTML"); return
             ud["trade_username"]=text.strip(); ud["step"]="amount"
-            await send_step(f"{Eu} <b>{f"<tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки:','Enter deal amount:')}"}</b>"); return
+            await send_step(f"{Eu} <b><tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"); return
 
         if step=="stars_cnt":
             if not text.isdigit():
                 await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Только цифры!','Numbers only!')}</b>",parse_mode="HTML"); return
             ud["stars_count"]=text; ud["step"]="amount"
-            await send_step(f"⭐ <b>{f"<tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки:','Enter deal amount:')}"}</b>"); return
+            await send_step(f"⭐ <b><tg-emoji emoji-id='5427181942934088912'>💬</tg-emoji> {R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"); return
 
         if step in ("cry_currency","prem_period","currency","pay_currency"):
             await update.message.reply_text(
