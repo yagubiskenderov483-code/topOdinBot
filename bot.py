@@ -854,6 +854,7 @@ async def cmd_my_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Callbacks ────────────────────────────────────────────────────────────────
 async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.info(f"CALLBACK RECEIVED: {update.callback_query.data if update.callback_query else None}")
     try:
         q=update.callback_query; await q.answer(); d=q.data
         ud=context.user_data; uid=update.effective_user.id
