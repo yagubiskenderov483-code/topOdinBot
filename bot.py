@@ -730,12 +730,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_new(update,text,kb,section="deal_card")
                 return
         if not u.get("lang_set",False):
+            save_db(db)
             kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Русский",callback_data="lang_ru",icon_custom_emoji_id="5377472000040115969")],
-                [InlineKeyboardButton("English",callback_data="lang_en",icon_custom_emoji_id="5375544401537803855")],
+                [InlineKeyboardButton("🇷🇺 Русский",callback_data="lang_ru",icon_custom_emoji_id="5377472000040115969")],
+                [InlineKeyboardButton("🇬🇧 English",callback_data="lang_en",icon_custom_emoji_id="5375544401537803855")],
             ])
             await update.effective_chat.send_message(
-                "Выберите язык / Choose your language:",reply_markup=kb)
+                "<b>Выберите язык\nChoose your language</b>",
+                parse_mode="HTML",reply_markup=kb)
             return
         await show_main(update,context)
     except Exception as e: logger.error(f"cmd_start: {e}")
@@ -1209,7 +1211,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d[12:].split("_",1); target_uid=parts[0]; ridx=int(parts[1]) if len(parts)>1 else -1
             db=load_db()
             if target_uid in db["users"] and 0<=ridx<len(db["users"][target_uid].get("reviews",[])):
-                db["users"][target_uid]["reviews"].pop(ridx); save_db(db); await q.answer("Удалено")
+                db["users"][target_uid]["reviews"].pop(ridx); save_db(db)
                 revs=db["users"][target_uid].get("reviews",[]); u2=db["users"][target_uid]; uname2=u2.get("username","?")
                 if not revs:
                     await q.edit_message_text(f"<b>@{uname2}: отзывов нет</b>",parse_mode="HTML",
@@ -1716,7 +1718,6 @@ async def show_lang(update, context):
 async def set_lang(update, context, lang):
     try:
         db=load_db(); u=get_user(db,update.effective_user.id); u["lang"]=lang; u["lang_set"]=True; save_db(db)
-        await update.callback_query.answer("OK")
         await show_main(update,context)
     except Exception as e: logger.error(f"set_lang: {e}")
 
@@ -1927,7 +1928,7 @@ async def handle_adm_cb(update, context):
                 if not db.get("banners"): db["banners"]={}
                 db["banners"][section]={}
                 if section=="main": db["banner"]=db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None
-                save_db(db); await q.answer("Удалено")
+                save_db(db)
                 await q.message.edit_text(f"🎁 <b>Баннеры</b>",parse_mode="HTML",reply_markup=adm_banners_kb()); return
 
         if d.startswith("adm_banner_"):
@@ -1968,11 +1969,10 @@ async def handle_adm_cb(update, context):
                     [InlineKeyboardButton("Открыть" if lh else "Скрыть",callback_data="adm_log_toggle_mask")],
                     [InlineKeyboardButton("Назад",callback_data="adm_back")]
                 ]))
-            await q.answer("OK"); return
+            return
 
         if d=="adm_toggle_hidden":
             db=load_db(); db["log_hidden"]=not db.get("log_hidden",False); save_db(db)
-            await q.answer("Скрыто" if db["log_hidden"] else "Открыто")
             try: await q.message.edit_text(f"{Edl} <b>Панель администратора</b>",parse_mode="HTML",reply_markup=adm_kb())
             except: pass
             return
@@ -2103,7 +2103,6 @@ async def handle_adm_cb(update, context):
             if target:
                 db=load_db(); u2=db["users"].get(target,{})
                 u2["status"]=sm[d]; db["users"][target]=u2; save_db(db)
-                await q.answer(f"Статус: {sm[d] or 'убран'}")
                 try: await q.edit_message_reply_markup(reply_markup=None)
                 except: pass
 
