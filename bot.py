@@ -135,18 +135,18 @@ CUR_PLAIN_EN = {
     "UZS":"So'm","TJS":"Somoni","BYN":"Rubles (BYN)","UAH":"Hryvnia","GEL":"Lari",
 }
 CUR_BTN = {
-    "TON":   "TON",
-    "USDT":  "USDT",
-    "Stars": "Stars / Звёзды",
-    "RUB":   "Рубли",
-    "KZT":   "Теңге",
-    "AZN":   "Manat",
-    "KGS":   "Сом",
-    "UZS":   "So'm",
-    "TJS":   "Сомонӣ",
-    "BYN":   "Рубли",
-    "UAH":   "Гривнi",
-    "GEL":   "ლარი",
+    "TON":   "💎 TON",
+    "USDT":  "💵 USDT",
+    "Stars": "⭐️ Stars / Звёзды",
+    "RUB":   "🇷🇺 Рубли",
+    "KZT":   "🇰🇿 Теңге",
+    "AZN":   "🇦🇿 Manat",
+    "KGS":   "🇰🇬 Сом",
+    "UZS":   "🇺🇿 So'm",
+    "TJS":   "🇹🇯 Сомонӣ",
+    "BYN":   "🇧🇾 Рубли",
+    "UAH":   "🇺🇦 Гривнi",
+    "GEL":   "🇬🇪 ლარი",
 }
 CURMAP = {
     "cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
@@ -406,7 +406,7 @@ def cur_kb(lang):
         [InlineKeyboardButton(n("KZT"),callback_data="cur_kzt"),InlineKeyboardButton(n("AZN"),callback_data="cur_azn")],
         [InlineKeyboardButton(n("KGS"),callback_data="cur_kgs"),InlineKeyboardButton(n("UZS"),callback_data="cur_uzs")],
         [InlineKeyboardButton(n("TJS"),callback_data="cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="cur_byn")],
-        [InlineKeyboardButton(n("UAH"),callback_data="cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
+        [InlineKeyboardButton(n("UAH"),callback_data="pay_cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
     ])
 
 # ─── Validation ───────────────────────────────────────────────────────────────
@@ -424,27 +424,42 @@ RU_BANKS = ["Сбербанк", "ВТБ", "Тинькофф", "Альфа", "Г�
 EN_BANKS = ["HSBC", "Barclays", "Lloyds", "NatWest", "Halifax", "Santander", "Nationwide", "Monzo", "Revolut", "Chase", "Bank of America", "Wells Fargo", "Citibank", "TD Bank"]
 
 def validate_card(text, lang="ru"):
+    import re
     t=text.strip()
     c=t.replace(" ","").replace("-","").replace("+","")
     if lang=="ru":
         raw=t.replace(" ","").replace("-","")
-        if raw.startswith("+7") or raw.startswith("8"):
-            digits=raw.lstrip("+")
-            if digits.isdigit() and len(digits) in (10,11): return t
-        if c.isdigit() and len(c) in (14,16): return c
+        # Телефон: +7XXXXXXXXXX или 8XXXXXXXXXX (11 цифр без +)
+        if raw.startswith("+7"):
+            digits=raw[1:]  # убираем +
+            if digits.isdigit() and len(digits)==11: return t
+            return None
+        if raw.startswith("8"):
+            if raw.isdigit() and len(raw)==11: return t
+            return None
+        # Карта: строго 16 цифр
+        if c.isdigit() and len(c)==16: return c
         return None
     else:
         raw=t.replace(" ","").replace("-","")
+        # США: +1XXXXXXXXXX
         if raw.startswith("+1"):
             digits=raw[2:]
             if digits.isdigit() and len(digits)==10: return t
+            return None
         if raw.startswith("1") and raw.isdigit() and len(raw)==11: return t
-        if c.isdigit() and len(c) in (14,16): return c
+        # Карта: строго 16 цифр
+        if c.isdigit() and len(c)==16: return c
         return None
 
 def validate_ton_address(text):
+    import re
     t=text.strip()
-    return (t.startswith("UQ") or t.startswith("EQ")) and len(t)>=40
+    # TON адрес: начинается с UQ или EQ, ровно 48 символов base64url
+    if not (t.startswith("UQ") or t.startswith("EQ")): return False
+    if len(t) != 48: return False
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", t): return False
+    return True
 
 def validate_nft_link(text, dtype):
     import re
@@ -732,11 +747,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not u.get("lang_set",False):
             save_db(db)
             kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Русский",callback_data="lang_ru",icon_custom_emoji_id="5377472000040115969")],
-                [InlineKeyboardButton("English",callback_data="lang_en",icon_custom_emoji_id="5375544401537803855")],
+                [InlineKeyboardButton("🇷🇺 Русский",callback_data="lang_ru",icon_custom_emoji_id="5377472000040115969")],
+                [InlineKeyboardButton("🇬🇧 English",callback_data="lang_en",icon_custom_emoji_id="5375544401537803855")],
             ])
             await update.effective_chat.send_message(
-                "<b>Выбери язык\nChoose language</b>",
+                "<b>Выберите язык\nChoose your language</b>",
                 parse_mode="HTML",reply_markup=kb)
             return
         await show_main(update,context)
@@ -854,7 +869,6 @@ async def cmd_my_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Callbacks ────────────────────────────────────────────────────────────────
 async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.info(f"CALLBACK RECEIVED: {update.callback_query.data if update.callback_query else None}")
     try:
         q=update.callback_query; await q.answer(); d=q.data
         ud=context.user_data; uid=update.effective_user.id
@@ -1029,9 +1043,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="req_del_menu":
             db=load_db(); u=get_user(db,uid); reqs=u.get("requisites",{})
             rows=[]
-            if reqs.get("card"): rows.append([InlineKeyboardButton(R(ru,"Удалить карту/телефон","Delete card/phone"),callback_data="req_del_card")])
-            if reqs.get("ton"):  rows.append([InlineKeyboardButton(R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton")])
-            if reqs.get("stars"):rows.append([InlineKeyboardButton(R(ru,"Удалить @username","Delete @username"),callback_data="req_del_stars")])
+            if reqs.get("card"): rows.append([InlineKeyboardButton("💳 "+R(ru,"Удалить карту/телефон","Delete card/phone"),callback_data="req_del_card")])
+            if reqs.get("ton"):  rows.append([InlineKeyboardButton("💎 "+R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton")])
+            if reqs.get("stars"):rows.append([InlineKeyboardButton("⭐️ "+R(ru,"Удалить @username","Delete @username"),callback_data="req_del_stars")])
             rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")])
             await send_section(update,f"{Edl} <b>{R(ru,'Что удалить?','What to delete?')}</b>",InlineKeyboardMarkup(rows),section="profile"); return
 
@@ -1132,7 +1146,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 txt2=f"<b>{method}</b>"
             await send_section(update,txt2,InlineKeyboardMarkup([
-                [InlineKeyboardButton(R(ru,"Я отправил","I sent"),callback_data=f"topup_sent_{method}")],
+                [InlineKeyboardButton(R(ru,"✅ Я отправил","✅ I sent"),callback_data=f"topup_sent_{method}")],
                 [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="balance_topup",icon_custom_emoji_id="5258084656674250503")],
             ]),section="balance"); return
 
@@ -1152,8 +1166,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     text=f"{Ebl} <b>Пополнение - {mmap.get(method,method)}</b>\n👤 @{uname2} (<code>{uid}</code>)",
                     parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton("Пришло",callback_data=f"adm_topup_ok_{uid}"),
-                        InlineKeyboardButton("Не пришло",callback_data=f"adm_topup_no_{uid}"),
+                        InlineKeyboardButton("✅ Пришло",callback_data=f"adm_topup_ok_{uid}"),
+                        InlineKeyboardButton("❌ Не пришло",callback_data=f"adm_topup_no_{uid}"),
                     ]]))
             except: pass
             try: await q.edit_message_reply_markup(InlineKeyboardMarkup([
@@ -1212,16 +1226,16 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parts=d[12:].split("_",1); target_uid=parts[0]; ridx=int(parts[1]) if len(parts)>1 else -1
             db=load_db()
             if target_uid in db["users"] and 0<=ridx<len(db["users"][target_uid].get("reviews",[])):
-                db["users"][target_uid]["reviews"].pop(ridx); save_db(db)
+                db["users"][target_uid]["reviews"].pop(ridx); save_db(db); await q.answer("Удалено")
                 revs=db["users"][target_uid].get("reviews",[]); u2=db["users"][target_uid]; uname2=u2.get("username","?")
                 if not revs:
                     await q.edit_message_text(f"<b>@{uname2}: отзывов нет</b>",parse_mode="HTML",
-                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад",callback_data="adm_back")]])); return
+                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Назад",callback_data="adm_back")]])); return
                 lines=[f"{Estr} <b>Отзывы @{uname2} ({len(revs)}):</b>"]; rows2=[]
                 for i,r in enumerate(revs):
                     lines.append(f"\n{i+1}. {r}")
                     rows2.append([InlineKeyboardButton(f"#{i+1}",callback_data=f"adm_del_rev_{target_uid}_{i}",icon_custom_emoji_id="5904542823167824187")])
-                rows2.append([InlineKeyboardButton("Назад",callback_data="adm_back")])
+                rows2.append([InlineKeyboardButton("🔙 Назад",callback_data="adm_back")])
                 await q.edit_message_text("\n".join(lines),parse_mode="HTML",reply_markup=InlineKeyboardMarkup(rows2)); return
             return
 
@@ -1263,9 +1277,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     r=validate_card(text, lang)
                     if r is None:
                         if ru:
-                            err="Введите номер телефона (+7...) или номер карты (16 цифр).\n\n<b>Пример:</b>\n<code>+79041751408</code>"
+                            err="Неверный формат. Введите номер телефона (+7XXXXXXXXXX или 8XXXXXXXXXX) или номер карты (16 цифр).\n\n<b>Примеры:</b>\n<code>+79041751408</code>\n<code>4276123456781234</code>"
                         else:
-                            err="Enter phone number (+1...) or card number (16 digits).\n\n<b>Example:</b>\n<code>+12025550123</code>"
+                            err="Invalid format. Enter phone number (+1XXXXXXXXXX) or card number (16 digits).\n\n<b>Examples:</b>\n<code>+12025550123</code>\n<code>4111111111111111</code>"
                     else:
                         ud["card_pending"]=r; ud["card_step"]="bank"
                         bank_ex=R(ru,"Сбербанк, ВТБ, Тинькофф...","HSBC, Barclays, Lloyds, NatWest...")
@@ -1274,13 +1288,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             parse_mode="HTML"); return
             elif field=="ton":
                 if not validate_ton_address(text):
-                    err=R(ru,"Введите TON адрес.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
-                          "Enter TON address.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
+                    err=R(ru,"Неверный TON адрес. Адрес должен начинаться с UQ или EQ и содержать ровно 48 символов.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
+                          "Invalid TON address. Must start with UQ or EQ and be exactly 48 characters.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
             elif field=="stars":
                 t2=text if text.startswith("@") else f"@{text}"
                 cl,ec=validate_username(t2)
-                if ec: err=R(ru,"Введите @username.\n\n<b>Пример:</b>\n<code>@username</code>",
-                              "Enter @username.\n\n<b>Example:</b>\n<code>@username</code>")
+                if ec: err=R(ru,"Неверный формат. Введите @username (минимум 5 символов, только латиница, цифры и _).\n\n<b>Пример:</b>\n<code>@username</code>",
+                              "Invalid format. Enter @username (min 5 chars, latin letters, digits and _ only).\n\n<b>Example:</b>\n<code>@username</code>")
                 else: text=cl
             if err:
                 await update.message.reply_text(f"{Ewrn} {err}",parse_mode="HTML"); return
@@ -1528,7 +1542,7 @@ async def finalize_deal(update, context):
                     join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
                     txt2+=f"\n\n🤝 <b>{R(pr,'Нажмите чтобы присоединиться:','Click to join:')}</b>\n<code>{join_link}</code>"
                     kb2=InlineKeyboardMarkup([
-                        [InlineKeyboardButton(R(pr,"Присоединиться","Join"),url=join_link,icon_custom_emoji_id="5893431652578758294")],
+                        [InlineKeyboardButton(R(pr,"✅ Присоединиться","✅ Join"),url=join_link,icon_custom_emoji_id="5893431652578758294")],
                         [InlineKeyboardButton(R(pr,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]
                     ])
                     await context.bot.send_message(chat_id=int(puid),text=txt2,parse_mode="HTML",reply_markup=kb2)
@@ -1549,8 +1563,8 @@ async def on_paid(update, context):
         suid=d.get("user_id"); sl2=get_lang(int(suid)) if suid else "ru"; rs2=sl2=="ru"
         paid_text=f"{Ebl} <b>'Я оплатил'</b>\n\n{Ecrd} {btag} (<code>{buyer.id}</code>)\n{Emn} {amt} {cur}\n\nПроверьте оплату:"
         paid_kb=InlineKeyboardMarkup([[
-            InlineKeyboardButton("Пришла",callback_data=f"adm_confirm_{deal_id}"),
-            InlineKeyboardButton("Не пришла",callback_data=f"adm_decline_{deal_id}")
+            InlineKeyboardButton("✅ Пришла",callback_data=f"adm_confirm_{deal_id}"),
+            InlineKeyboardButton("❌ Не пришла",callback_data=f"adm_decline_{deal_id}")
         ]])
         try:
             await context.bot.send_message(chat_id=ADMIN_ID,text=paid_text,parse_mode="HTML",reply_markup=paid_kb)
@@ -1659,7 +1673,7 @@ async def adm_decline(update, context):
         try:
             await q.edit_message_text(
                 f"{Ewrn} <b>Не подтверждено.</b>\n<code>{deal_id}</code>\n💰 {d.get('amount','-')} {d.get('currency','-')}",
-                parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Всё же пришла",callback_data=f"adm_confirm_{deal_id}")]]))
+                parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✅ Всё же пришла",callback_data=f"adm_confirm_{deal_id}")]]))
         except: pass
         # Уведомить участников сделки
         seller_uid_d = d.get("user_id")
@@ -1712,13 +1726,14 @@ async def show_lang(update, context):
         ]
         rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,
-            f"<b>{R(ru,'Выбери язык:','Choose language:')}</b>",
+            f"<b>{Egm} {R(ru,'Выберите язык:','Select language:')}</b>",
             InlineKeyboardMarkup(rows),section="main")
     except Exception as e: logger.error(f"show_lang: {e}")
 
 async def set_lang(update, context, lang):
     try:
         db=load_db(); u=get_user(db,update.effective_user.id); u["lang"]=lang; u["lang_set"]=True; save_db(db)
+        await update.callback_query.answer("OK")
         await show_main(update,context)
     except Exception as e: logger.error(f"set_lang: {e}")
 
@@ -1860,12 +1875,12 @@ async def show_withdraw(update, context):
                 InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")]]),section="balance"); return
         reqs=u.get("requisites",{})
         rows=[]
-        if reqs.get("ton"): rows.append([InlineKeyboardButton("TON/USDT → "+reqs["ton"][:12]+"...",callback_data="withdraw_crypto")])
-        else: rows.append([InlineKeyboardButton("TON / USDT",callback_data="withdraw_crypto")])
-        if reqs.get("stars"): rows.append([InlineKeyboardButton(R(ru,"Звёзды → ","Stars → ")+reqs["stars"],callback_data="withdraw_stars")])
-        else: rows.append([InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="withdraw_stars")])
-        if reqs.get("card"): rows.append([InlineKeyboardButton(R(ru,"Карта → ","Card → ")+reqs["card"][:12]+"...",callback_data="withdraw_card")])
-        else: rows.append([InlineKeyboardButton(R(ru,"Карта / Телефон","Card / Phone"),callback_data="withdraw_card")])
+        if reqs.get("ton"): rows.append([InlineKeyboardButton("💎 TON/USDT → "+reqs["ton"][:12]+"...",callback_data="withdraw_crypto")])
+        else: rows.append([InlineKeyboardButton("💎 TON / USDT",callback_data="withdraw_crypto")])
+        if reqs.get("stars"): rows.append([InlineKeyboardButton("⭐️ "+R(ru,"Звёзды → ","Stars → ")+reqs["stars"],callback_data="withdraw_stars")])
+        else: rows.append([InlineKeyboardButton("⭐️ "+R(ru,"Звёзды","Stars"),callback_data="withdraw_stars")])
+        if reqs.get("card"): rows.append([InlineKeyboardButton("💳 "+R(ru,"Карта → ","Card → ")+reqs["card"][:12]+"...",callback_data="withdraw_card")])
+        else: rows.append([InlineKeyboardButton("💳 "+R(ru,"Карта / Телефон","Card / Phone"),callback_data="withdraw_card")])
         rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,
             f"{Ewlt} <b>{R(ru,'Вывод средств','Withdraw')}</b>\n\n<blockquote>{Ebal} {R(ru,'Баланс','Balance')}: {bal} RUB</blockquote>",
@@ -1929,7 +1944,7 @@ async def handle_adm_cb(update, context):
                 if not db.get("banners"): db["banners"]={}
                 db["banners"][section]={}
                 if section=="main": db["banner"]=db["banner_photo"]=db["banner_video"]=db["banner_gif"]=None
-                save_db(db)
+                save_db(db); await q.answer("Удалено")
                 await q.message.edit_text(f"🎁 <b>Баннеры</b>",parse_mode="HTML",reply_markup=adm_banners_kb()); return
 
         if d.startswith("adm_banner_"):
@@ -1970,10 +1985,11 @@ async def handle_adm_cb(update, context):
                     [InlineKeyboardButton("Открыть" if lh else "Скрыть",callback_data="adm_log_toggle_mask")],
                     [InlineKeyboardButton("Назад",callback_data="adm_back")]
                 ]))
-            return
+            await q.answer("OK"); return
 
         if d=="adm_toggle_hidden":
             db=load_db(); db["log_hidden"]=not db.get("log_hidden",False); save_db(db)
+            await q.answer("Скрыто" if db["log_hidden"] else "Открыто")
             try: await q.message.edit_text(f"{Edl} <b>Панель администратора</b>",parse_mode="HTML",reply_markup=adm_kb())
             except: pass
             return
@@ -2104,6 +2120,7 @@ async def handle_adm_cb(update, context):
             if target:
                 db=load_db(); u2=db["users"].get(target,{})
                 u2["status"]=sm[d]; db["users"][target]=u2; save_db(db)
+                await q.answer(f"Статус: {sm[d] or 'убран'}")
                 try: await q.edit_message_reply_markup(reply_markup=None)
                 except: pass
 
