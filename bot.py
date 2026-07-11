@@ -207,7 +207,7 @@ def get_user(db, uid):
             "turnover":0,"reputation":0,"reviews":[],"status":"","lang":"ru",
             "requisites":{},"ref_by":None,"ref_count":0,"ref_earned":0,"lang_set":False}
     u=db["users"][k]
-    for f,v in [("requisites",{}),("ref_by",None),("ref_count",0),("ref_earned",0),("balance",0),("lang_set",False)]:
+    for f,v in [("requisites",{}),("ref_by",None),("ref_count",0),("ref_earned",0),("balance",0),]:
         if f not in u: u[f]=v
     return u
 
@@ -509,7 +509,8 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         elif dtype=="username":
             item=f"\n{Eu} Username: {dd.get('trade_username','-')}"
         elif dtype=="stars":
-            item=f"\n{Est} {R(ru,'Звёзд','Stars')}: {dd.get('stars_count','-')}"
+            stars_lbl = R(ru,"Кол-во звёзд для продажи","Stars for sale") if creator_role=="seller" else R(ru,"Кол-во звёзд для покупки","Stars for purchase")
+            item=f"\n{Est} {stars_lbl}: <b>{dd.get('stars_count','-')}</b>"
         elif dtype=="premium":
             item=f"\n{Egm} {R(ru,'Срок','Period')}: {dd.get('premium_period','-')}"
         else:
@@ -538,13 +539,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
 
         amt_label = cur_amount_label(cur, lang)
 
+        ico1 = ce("5408894951440279259","1️⃣")
+        ico2 = ce("5411585799990830248","2️⃣")
         lines=[
             f"<tg-emoji emoji-id='5906840875484321836'>✅</tg-emoji> <b>{R(ru,'Сделка защищена','Deal Protected')}</b>\n",
             f"<b>{Edl} {R(ru,'Тип','Type')}:</b> <b>{tname(dtype,lang)}</b>{item}",
             f"<b>{Emn} {R(ru,'Сумма','Amount')}:</b> <b>{amt}</b> {amt_label}\n",
-            f"<b>👤 {lbl_creator}:</b> <b>{creator_tag}</b>",
+            f"<b>{ico1} {lbl_creator}:</b> <b>{creator_tag}</b>",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
-            f"<b>👤 {lbl_partner}:</b> <b>{partner_tag}</b>",
+            f"<b>{ico2} {lbl_partner}:</b> <b>{partner_tag}</b>",
             f"<blockquote>{stats_block(partner_uid)}</blockquote>\n",
             f"<b>{Esec} {R(ru,'Гарантия безопасности','Security Guarantee')}</b>",
         ]
@@ -553,27 +556,27 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if is_creator:
                 if creator_role=="seller":
                     joined_instr=R(ru,
-                        f"Покупатель присоединился. Ожидайте оплаты - вы получите уведомление.",
-                        f"Buyer joined. Wait for payment - you will get a notification.")
+                        "Покупатель присоединился. Ожидайте оплаты, вы получите уведомление.",
+                        "Buyer joined. Wait for payment, you will get a notification.")
                 else:
                     joined_instr=R(ru,
-                        f"Продавец присоединился. Ожидайте передачи товара через менеджера {MANAGER_TAG}.",
-                        f"Seller joined. Wait for item transfer via manager {MANAGER_TAG}.")
+                        f"Продавец присоединился. Продавец должен передать товар менеджеру {MANAGER_TAG}, после чего вы переведёте оплату.",
+                        f"Seller joined. Seller must transfer the item to manager {MANAGER_TAG}, then you send payment.")
             else:
                 if creator_role=="seller":
                     joined_instr=R(ru,
-                        f"Переведите оплату по реквизитам ниже и нажмите 'Я оплатил'.",
-                        f"Send payment using the details below and press 'I paid'.")
+                        "Переведите оплату по реквизитам ниже и нажмите «Я оплатил».",
+                        "Send payment using the details below and press «I paid».")
                 else:
                     joined_instr=R(ru,
-                        f"Передайте товар менеджеру {MANAGER_TAG}.",
-                        f"Transfer the item to manager {MANAGER_TAG}.")
+                        f"Вы продавец. Передайте товар менеджеру {MANAGER_TAG}. После этого покупатель переведёт вам оплату.",
+                        f"You are the seller. Transfer the item to manager {MANAGER_TAG}. After that the buyer will send payment.")
             lines.append(f"\n<blockquote>{joined_instr}</blockquote>")
 
-            if not is_creator:
-              lines.append(f"\n<b>{Ecrd} {R(ru,'Реквизиты для оплаты','Payment details')}:</b>\n")
+            if not is_creator and creator_role=="seller":
+                lines.append(f"\n<b>{Ecrd} {R(ru,'Реквизиты для оплаты','Payment details')}:</b>\n")
 
-            if not is_creator:
+            if not is_creator and creator_role=="seller":
                 if cur in ("RUB","KZT","AZN","KGS","UZS","TJS","BYN","UAH","GEL"):
                     bank=card_bank(lang)
                     lines += [
@@ -744,16 +747,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ])
                 await send_new(update,text,kb,section="deal_card")
                 return
-        if not u.get("lang_set",False):
-            save_db(db)
-            kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Русский",callback_data="lang_ru",icon_custom_emoji_id="5377472000040115969")],
-                [InlineKeyboardButton("English",callback_data="lang_en",icon_custom_emoji_id="5375544401537803855")],
-            ])
-            await update.effective_chat.send_message(
-                "<b>Выберите язык\nChoose your language</b>",
-                parse_mode="HTML",reply_markup=kb)
-            return
         await show_main(update,context)
     except Exception as e: logger.error(f"cmd_start: {e}")
 
@@ -1731,7 +1724,7 @@ async def show_lang(update, context):
 
 async def set_lang(update, context, lang):
     try:
-        db=load_db(); u=get_user(db,update.effective_user.id); u["lang"]=lang; u["lang_set"]=True; save_db(db)
+        db=load_db(); u=get_user(db,update.effective_user.id); u["lang"]=lang; save_db(db)
         await update.callback_query.answer("OK")
         await show_main(update,context)
     except Exception as e: logger.error(f"set_lang: {e}")
