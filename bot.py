@@ -6,10 +6,10 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN    = "8767675859:AAFcwYRpmDsPEXh8mfAQl_8-Om11X5PFoYo"
+BOT_TOKEN    = "8820210545:AAG5TYwOp1-deZAvNzIuI25bb0rmIXJ9sto"
 ADMIN_ID     = 8726084830
 ADMIN_IDS    = {8726084830, 90283607}
-BOT_USERNAME = "GiftDeals_Robot"
+BOT_USERNAME = "GiftDealsRebot"
 MANAGER_URL  = "https://t.me/GiftDealsManager"
 MANAGER_TAG  = "@GiftDealsManager"
 CRYPTO_ADDR  = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
