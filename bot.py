@@ -6,7 +6,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN    = "8790434095:AAHblM59nn7fWTQpSQr7fH15mvM5e6w-Td8"
+BOT_TOKEN    = os.getenv("BOT_TOKEN", "").strip()
 ADMIN_ID     = 8726084830
 ADMIN_IDS    = {8726084830, 90283607}
 BOT_USERNAME = "GiftDealsRebot"
@@ -2346,6 +2346,9 @@ async def cmd_take_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
+    if not BOT_TOKEN:
+        raise RuntimeError("BOT_TOKEN environment variable is required")
+
     db=load_db()
     if not db.get("banners"): db["banners"]={}
     lp=db.get("banner_photo"); lv=db.get("banner_video"); lg=db.get("banner_gif"); lt=db.get("banner") or ""
@@ -2379,8 +2382,26 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,on_msg))
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION,handle_adm_msg))
 
-    print(f"Bot @{BOT_USERNAME} started!")
-    app.run_polling()
+    hostname=os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+    webhook_url=os.getenv("WEBHOOK_URL", "").strip()
+    if not webhook_url and hostname:
+        webhook_url=f"https://{hostname}"
+
+    if webhook_url:
+        port=int(os.getenv("PORT", "10000"))
+        webhook_path=os.getenv("WEBHOOK_PATH", "telegram").strip("/")
+        webhook_secret=os.getenv("WEBHOOK_SECRET") or None
+        print(f"Bot @{BOT_USERNAME} started in webhook mode!")
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path=webhook_path,
+            webhook_url=f"{webhook_url.rstrip('/')}/{webhook_path}",
+            secret_token=webhook_secret,
+        )
+    else:
+        print(f"Bot @{BOT_USERNAME} started in polling mode!")
+        app.run_polling()
 
 if __name__=="__main__":
     main()
