@@ -270,6 +270,7 @@ def requisite_missing_text(currency, lang="ru"):
 
 def R(ru, a, b): return a if ru else b
 def H(value): return html.escape(str(value))
+def card_bank(lang="ru"): return CARD_BANK_EN if lang=="en" else CARD_BANK_RU
 
 def my_deals_kb(lang="ru"):
     ru=lang=="ru"
@@ -1574,16 +1575,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for key in ("topup_step","topup_amount","topup_method","topup_ref"):
                 ud.pop(key,None)
             await send_section(update,
-                f"{Emn} <b>{R(ru,'Выберите способ пополнения:','Choose a top-up method:')}</b>\n\n"
-                f"<blockquote>{R(ru,'Минимум: 3 TON, 400 RUB, 700 звёзд, 9 USDT.','Minimums: 3 TON, 400 RUB, 700 Stars, 9 USDT.')}</blockquote>",
+                f"{Emn} <b>{R(ru,'Выберите способ пополнения:','Choose a top-up method:')}</b>",
                 topup_methods_kb(lang),section="balance"); return
 
         if d=="topup_methods":
             for key in ("topup_step","topup_amount","topup_method","topup_ref"):
                 ud.pop(key,None)
             await send_section(update,
-                f"{Emn} <b>{R(ru,'Выберите способ пополнения:','Choose a top-up method:')}</b>\n\n"
-                f"<blockquote>{R(ru,'Минимум: 3 TON, 400 RUB, 700 звёзд, 9 USDT.','Minimums: 3 TON, 400 RUB, 700 Stars, 9 USDT.')}</blockquote>",
+                f"{Emn} <b>{R(ru,'Выберите способ пополнения:','Choose a top-up method:')}</b>",
                 topup_methods_kb(lang),section="balance"); return
 
         if d.startswith("topup_cur_"):
@@ -1592,19 +1591,17 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not amount:
                 ud["topup_method"]=method; ud["topup_step"]="amount"
                 ud["topup_ref"]=f"EG-{uid}-{int(time.time())}"
-                minimum=TOPUP_MINIMUMS[method]; unit=topup_unit(method,lang)
+                unit=topup_unit(method,lang)
                 await send_section(update,
-                    f"{Emn} <b>{R(ru,'Введите сумму пополнения','Enter top-up amount')} ({unit}):</b>\n\n"
-                    f"<blockquote>{R(ru,'Минимальная сумма','Minimum amount')}: {minimum:g} {unit}.</blockquote>",
+                    f"{Emn} <b>{R(ru,'Введите сумму пополнения','Enter top-up amount')} ({unit}):</b>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="topup_methods",icon_custom_emoji_id="5258084656674250503")]]),
                     section="balance"); return
-            minimum=TOPUP_MINIMUMS[method]
-            if float(amount)<minimum:
+            minimum=TOPUP_MINIMUMS.get(method)
+            if minimum is not None and float(amount)<minimum:
                 unit=topup_unit(method,lang)
                 ud.pop("topup_amount",None); ud["topup_method"]=method; ud["topup_step"]="amount"
                 await send_section(update,
-                    f"{Ewrn} <b>{R(ru,'Минимальная сумма пополнения','Minimum top-up amount')}: "
-                    f"{minimum:g} {unit}.</b>\n\n"
+                    f"{Ewrn} <b>{R(ru,'Сумма слишком маленькая.','Amount is too small.')}</b>\n\n"
                     f"<blockquote>{R(ru,'Введите сумму ещё раз.','Enter the amount again.')}</blockquote>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="topup_methods",icon_custom_emoji_id="5258084656674250503")]]),
                     section="balance"); return
@@ -1739,10 +1736,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode="HTML"); return
             method=ud.get("topup_method")
             if method in TOPUP_MINIMUMS and value<TOPUP_MINIMUMS[method]:
-                minimum=TOPUP_MINIMUMS[method]; unit=topup_unit(method,lang)
                 await update.message.reply_text(
-                    f"{Ewrn} <b>{R(ru,'Минимальная сумма пополнения','Minimum top-up amount')}: "
-                    f"{minimum:g} {unit}.</b>\n\n"
+                    f"{Ewrn} <b>{R(ru,'Сумма слишком маленькая.','Amount is too small.')}</b>\n\n"
                     f"<blockquote>{R(ru,'Введите сумму ещё раз.','Enter the amount again.')}</blockquote>",
                     parse_mode="HTML",
                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(
