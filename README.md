@@ -1,4 +1,4 @@
-# 💎 Gift Deals Bot
+# 💎 Eldorado GG Bot
 
 Безопасная платформа для сделок в Telegram.
 
