@@ -366,7 +366,7 @@ def main_kb(lang):
         [InlineKeyboardButton(R(ru,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
         [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url="https://t.me/EldoradoGGSupport",icon_custom_emoji_id="5258260149037965799"),
-         InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),url="https://www.eldorado.gg/",icon_custom_emoji_id="5377746319601324795")],
+         InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),url="https://www.eldorado.gg/",icon_custom_emoji_id="6035162669948867129")],
         [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928")],
     ])
 
@@ -1130,7 +1130,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud.pop("topup_amount",None); ud["topup_step"]="amount"
             await send_section(update,
                 f"{Emn} <b>{R(ru,'Введите сумму пополнения:','Enter top-up amount:')}</b>\n\n"
-                f"<blockquote>{R(ru,'Для пополнения в TON минимум 3 TON.','Minimum TON top-up is 3 TON.')}</blockquote>",
+                f"<blockquote>{R(ru,'Минимум: 3 TON, 400 RUB, 700 звёзд, 9 USDT.','Minimums: 3 TON, 400 RUB, 700 Stars, 9 USDT.')}\n\n"
+                f"{R(ru,'После ввода суммы выберите способ оплаты и получите реквизиты.','Enter the amount, then choose a payment method to receive the payment details.')}</blockquote>",
                 InlineKeyboardMarkup([
                     [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
                 ]),section="balance"); return
@@ -1140,7 +1141,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud["topup_step"]="amount"
                 await send_section(update,
                     f"{Emn} <b>{R(ru,'Введите сумму пополнения:','Enter top-up amount:')}</b>\n\n"
-                    f"<blockquote>{R(ru,'Для пополнения в TON минимум 3 TON.','Minimum TON top-up is 3 TON.')}</blockquote>",
+                    f"<blockquote>{R(ru,'Минимум: 3 TON, 400 RUB, 700 звёзд, 9 USDT.','Minimums: 3 TON, 400 RUB, 700 Stars, 9 USDT.')}\n\n"
+                    f"{R(ru,'После ввода суммы выберите способ оплаты и получите реквизиты.','Enter the amount, then choose a payment method to receive the payment details.')}</blockquote>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")]]),
                     section="balance"); return
             await send_section(update,
@@ -1157,10 +1159,28 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{R(ru,'Сначала введите сумму пополнения.','Enter the top-up amount first.')}</b>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Ввести сумму","Enter amount"),callback_data="balance_topup",icon_custom_emoji_id="5810051751654460532")]]),
                     section="balance"); return
-            if method in ("ton_tonkeeper","ton_only") and float(amount)<3:
+            minimums={
+                "stars":700,
+                "rub":400,
+                "ton_tonkeeper":3,
+                "ton_only":3,
+                "usdt_tonkeeper":9,
+                "usdt_only":9,
+            }
+            minimum=minimums.get(method,0)
+            if float(amount)<minimum:
+                minimum_units={
+                    "stars":R(ru,"звёзд","Stars"),
+                    "rub":"RUB",
+                    "ton_tonkeeper":"TON",
+                    "ton_only":"TON",
+                    "usdt_tonkeeper":"USDT",
+                    "usdt_only":"USDT",
+                }
                 ud["topup_step"]="amount"
                 await send_section(update,
-                    f"{Ewrn} <b>{R(ru,'Минимальная сумма пополнения: 3 TON.','Minimum top-up amount: 3 TON.')}</b>",
+                    f"{Ewrn} <b>{R(ru,'Минимальная сумма пополнения','Minimum top-up amount')}: "
+                    f"{minimum:g} {minimum_units.get(method,'')}.</b>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Изменить сумму","Change amount"),callback_data="balance_topup",icon_custom_emoji_id="5879841310902324730")]]),
                     section="balance"); return
             ud["topup_method"]=method
