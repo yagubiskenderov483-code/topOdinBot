@@ -137,15 +137,10 @@ CUR_PLAIN_EN = {
     "RUB":"Rubles","KZT":"Tenge","AZN":"Manat","KGS":"Som",
     "UZS":"So'm","TJS":"Somoni","BYN":"Rubles (BYN)","UAH":"Hryvnia","GEL":"Lari",
 }
-CUR_BTN = {
-    "TON":"TON","USDT":"USDT","Stars":"Stars / Звёзды","RUB":"🇷🇺 RUB",
-    "KZT":"🇰🇿 KZT","AZN":"🇦🇿 AZN","KGS":"🇰🇬 KGS","UZS":"🇺🇿 UZS",
-    "TJS":"🇹🇯 TJS","BYN":"🇧🇾 BYN","UAH":"🇺🇦 UAH","GEL":"🇬🇪 GEL",
-}
-CUR_ICON = {
-    "TON":"5397829221605191505","USDT":"5406841020769936275",
-    "Stars":"5893034681636491040","RUB":None,"KZT":None,"AZN":None,
-    "KGS":None,"UZS":None,"TJS":None,"BYN":None,"UAH":None,"GEL":None,
+CUR_EMOJI = {
+    "TON":"💎","USDT":"💵","Stars":"⭐","RUB":"🇷🇺","KZT":"🇰🇿",
+    "AZN":"🇦🇿","KGS":"🇰🇬","UZS":"🇺🇿","TJS":"🇹🇯","BYN":"🇧🇾",
+    "UAH":"🇺🇦","GEL":"🇬🇪",
 }
 CURMAP = {
     "cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars",
@@ -162,6 +157,9 @@ CUR_FLAG = {
 def cur_plain(code, lang="ru"):
     if lang=="en": return CUR_PLAIN_EN.get(code, code)
     return CUR_PLAIN_RU.get(code, code)
+
+def cur_button_text(code, lang="ru"):
+    return f"{CUR_EMOJI.get(code,'')} {cur_plain(code,lang)}".strip()
 
 def cur_amount_label(code, lang="ru"):
     flag = CUR_FLAG.get(code, "")
@@ -492,27 +490,25 @@ def types_kb(lang):
     ])
 
 def pay_cur_kb(lang):
-    def n(c): return CUR_BTN.get(c,c)
-    def i(c): return CUR_ICON.get(c)
+    def n(c): return cur_button_text(c,lang)
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(n("TON"),callback_data="pay_cur_ton",icon_custom_emoji_id=i("TON")),InlineKeyboardButton(n("USDT"),callback_data="pay_cur_usdt",icon_custom_emoji_id=i("USDT"))],
-        [InlineKeyboardButton(n("RUB"),callback_data="pay_cur_rub",icon_custom_emoji_id=i("RUB")),InlineKeyboardButton(n("Stars"),callback_data="pay_cur_stars",icon_custom_emoji_id=i("Stars"))],
-        [InlineKeyboardButton(n("KZT"),callback_data="pay_cur_kzt",icon_custom_emoji_id=i("KZT")),InlineKeyboardButton(n("AZN"),callback_data="pay_cur_azn",icon_custom_emoji_id=i("AZN"))],
-        [InlineKeyboardButton(n("KGS"),callback_data="pay_cur_kgs",icon_custom_emoji_id=i("KGS")),InlineKeyboardButton(n("UZS"),callback_data="pay_cur_uzs",icon_custom_emoji_id=i("UZS"))],
-        [InlineKeyboardButton(n("TJS"),callback_data="pay_cur_tjs",icon_custom_emoji_id=i("TJS")),InlineKeyboardButton(n("BYN"),callback_data="pay_cur_byn",icon_custom_emoji_id=i("BYN"))],
-        [InlineKeyboardButton(n("UAH"),callback_data="pay_cur_uah",icon_custom_emoji_id=i("UAH")),InlineKeyboardButton(n("GEL"),callback_data="pay_cur_gel",icon_custom_emoji_id=i("GEL"))],
+        [InlineKeyboardButton(n("TON"),callback_data="pay_cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="pay_cur_usdt")],
+        [InlineKeyboardButton(n("RUB"),callback_data="pay_cur_rub"),InlineKeyboardButton(n("Stars"),callback_data="pay_cur_stars")],
+        [InlineKeyboardButton(n("KZT"),callback_data="pay_cur_kzt"),InlineKeyboardButton(n("AZN"),callback_data="pay_cur_azn")],
+        [InlineKeyboardButton(n("KGS"),callback_data="pay_cur_kgs"),InlineKeyboardButton(n("UZS"),callback_data="pay_cur_uzs")],
+        [InlineKeyboardButton(n("TJS"),callback_data="pay_cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="pay_cur_byn")],
+        [InlineKeyboardButton(n("UAH"),callback_data="pay_cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="pay_cur_gel")],
     ])
 
 def cur_kb(lang):
-    def n(c): return CUR_BTN.get(c,c)
-    def i(c): return CUR_ICON.get(c)
+    def n(c): return cur_button_text(c,lang)
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(n("TON"),callback_data="cur_ton",icon_custom_emoji_id=i("TON")),InlineKeyboardButton(n("USDT"),callback_data="cur_usdt",icon_custom_emoji_id=i("USDT"))],
-        [InlineKeyboardButton(n("RUB"),callback_data="cur_rub",icon_custom_emoji_id=i("RUB")),InlineKeyboardButton(n("Stars"),callback_data="cur_stars",icon_custom_emoji_id=i("Stars"))],
-        [InlineKeyboardButton(n("KZT"),callback_data="cur_kzt",icon_custom_emoji_id=i("KZT")),InlineKeyboardButton(n("AZN"),callback_data="cur_azn",icon_custom_emoji_id=i("AZN"))],
-        [InlineKeyboardButton(n("KGS"),callback_data="cur_kgs",icon_custom_emoji_id=i("KGS")),InlineKeyboardButton(n("UZS"),callback_data="cur_uzs",icon_custom_emoji_id=i("UZS"))],
-        [InlineKeyboardButton(n("TJS"),callback_data="cur_tjs",icon_custom_emoji_id=i("TJS")),InlineKeyboardButton(n("BYN"),callback_data="cur_byn",icon_custom_emoji_id=i("BYN"))],
-        [InlineKeyboardButton(n("UAH"),callback_data="cur_uah",icon_custom_emoji_id=i("UAH")),InlineKeyboardButton(n("GEL"),callback_data="cur_gel",icon_custom_emoji_id=i("GEL"))],
+        [InlineKeyboardButton(n("TON"),callback_data="cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="cur_usdt")],
+        [InlineKeyboardButton(n("RUB"),callback_data="cur_rub"),InlineKeyboardButton(n("Stars"),callback_data="cur_stars")],
+        [InlineKeyboardButton(n("KZT"),callback_data="cur_kzt"),InlineKeyboardButton(n("AZN"),callback_data="cur_azn")],
+        [InlineKeyboardButton(n("KGS"),callback_data="cur_kgs"),InlineKeyboardButton(n("UZS"),callback_data="cur_uzs")],
+        [InlineKeyboardButton(n("TJS"),callback_data="cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="cur_byn")],
+        [InlineKeyboardButton(n("UAH"),callback_data="cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
     ])
 
 # ─── Validation ───────────────────────────────────────────────────────────────
