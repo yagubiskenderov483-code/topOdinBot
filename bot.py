@@ -171,12 +171,12 @@ def cur_button_text(code, lang="ru"):
     return f"{CUR_EMOJI.get(code,'')} {cur_plain(code,lang)}".strip()
 
 def cur_amount_label(code, lang="ru"):
-    icon = CUR_EMOJI.get(code, "")
+    flag = CUR_FLAG.get(code, "")
     name = cur_plain(code, lang)
-    return f"{icon} <b>{name}</b>".strip()
+    return f"{flag} <b>{name}</b>"
 
 def cur_amount_label_last(code, lang="ru"):
-    name=cur_plain(code,lang); icon=CUR_EMOJI.get(code,"")
+    name=cur_plain(code,lang); icon=CUR_FLAG.get(code,"")
     return f"<b>{name}</b> {icon}".strip()
 
 def user_has_requisites(u):
@@ -504,8 +504,8 @@ def topup_details_text(method, amount, uid, lang="ru", payment_ref=None):
                 f"{R(ru,'ID для комментария','Comment ID')}: <code>{payment_ref}</code>\n\n{within}</blockquote>")
     return f"<b>{method}</b>"
 
-Edeal_cur = "💱"
-Eamt_in   = "💰"
+Edeal_cur = ce("5776233299424843260", "🏦")
+Eamt_in   = ce("6039614175917903752", "💰")
 Enft_link = ce("6050847684355428245", "🖼")
 Eprof_user= ce("6035084557378654059", "🪙")
 Eprof_ok  = ce("5805550320985578625", "✅")
@@ -516,8 +516,7 @@ def deal_currency_prompt(lang="ru"):
 
 def deal_amount_prompt(currency, lang="ru"):
     ru=lang=="ru"; name=cur_plain(currency,lang)
-    icon=CUR_EMOJI.get(currency,"💰")
-    return f"{icon} <b>{R(ru,'Введите сумму сделки','Enter deal amount')} ({name}):</b>"
+    return f"{Eamt_in} <b>{R(ru,'Введите сумму сделки','Enter deal amount')} ({name}):</b>"
 
 def normalize_currency_amount(raw, currency):
     try:
@@ -557,7 +556,7 @@ def types_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(R(ru,'NFT подарок','NFT Gift'),callback_data="dt_nft",icon_custom_emoji_id="5906716471756593520"),
-         InlineKeyboardButton("NFT Username",callback_data="dt_usr")],
+         InlineKeyboardButton("NFT Username",callback_data="dt_usr",icon_custom_emoji_id="5906976471896824396")],
         [InlineKeyboardButton(R(ru,'Звёзды','Stars'),callback_data="dt_str",icon_custom_emoji_id="5906478942885255780"),
          InlineKeyboardButton(R(ru,'Крипта','Crypto'),callback_data="dt_cry",icon_custom_emoji_id="5904576890848419790")],
         [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5906715307820456633")],
@@ -1297,14 +1296,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"💱 <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",
+                f"{Emn} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💎 TON",callback_data="prem_cur_ton"),
-                     InlineKeyboardButton("💵 USDT",callback_data="prem_cur_usdt")],
-                    [InlineKeyboardButton("⭐ "+R(ru,"Звёзды","Stars"),callback_data="prem_cur_stars")],
-                    [InlineKeyboardButton("🇷🇺 "+R(ru,"Рубли","Rubles"),callback_data="prem_cur_rub"),
-                     InlineKeyboardButton("🇺🇦 "+R(ru,"Гривны","Hryvnia"),callback_data="prem_cur_uah")],
+                    [InlineKeyboardButton("TON",callback_data="prem_cur_ton",icon_custom_emoji_id="5406976471153545018"),
+                     InlineKeyboardButton("USDT",callback_data="prem_cur_usdt",icon_custom_emoji_id="5406841020769936275")],
+                    [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="prem_cur_stars",icon_custom_emoji_id="5406812184359507637")],
+                    [InlineKeyboardButton(R(ru,"Рубли","Rubles"),callback_data="prem_cur_rub",icon_custom_emoji_id="5377472000040115969"),
+                     InlineKeyboardButton(R(ru,"Гривны","Hryvnia"),callback_data="prem_cur_uah",icon_custom_emoji_id="5375587209476843297")],
                 ]))
             ud["last_msg"]=msg.message_id; return
 
@@ -1752,7 +1751,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(f"{Enft_link} <b>{R(ru,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
-                await send_step(f"<b>{R(ru,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
+                await send_step(f"{Eu} <b>{R(ru,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
                 cr3=ud.get("creator_role","seller")
@@ -1761,10 +1760,10 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
                 await send_step(
-                    f"💎 <b>{R(ru,'Выберите крипту для сделки:','Choose crypto for the deal:')}</b>",
+                    f"{Edm} <b>{R(ru,'Выберите крипту для сделки:','Choose crypto for the deal:')}</b>",
                     InlineKeyboardMarkup([
-                        [InlineKeyboardButton("💎 TON",callback_data="cry_ton"),
-                         InlineKeyboardButton("💵 USDT",callback_data="cry_usd")],
+                        [InlineKeyboardButton("TON",callback_data="cry_ton",icon_custom_emoji_id="5397829221605191505"),
+                         InlineKeyboardButton("USDT",callback_data="cry_usd",icon_custom_emoji_id="5406841020769936275")],
                     ]))
             elif dtype=="premium":
                 ud["step"]="prem_period"
@@ -1876,7 +1875,7 @@ async def finalize_deal(update, context):
             "text":share_msg,
         }, quote_via=quote)
         text_out=(
-            f"✅ <b>{R(ru,'Сделка создана!','Deal created!')}</b>\n\n"
+            f"<tg-emoji emoji-id='5906840875484321836'>✅</tg-emoji> <b>{R(ru,'Сделка создана!','Deal created!')}</b>\n\n"
             f"{share_text}\n<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
         )
         kb=InlineKeyboardMarkup([
@@ -1893,7 +1892,7 @@ async def finalize_deal(update, context):
                     pl=get_lang(int(puid)); pr=pl=="ru"
                     join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
                     txt2=(
-                        f"✅ <b>{R(pr,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
+                        f"<tg-emoji emoji-id='5906840875484321836'>✅</tg-emoji> <b>{R(pr,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
                         f"<a href=\"{H(join_link)}\">{H(join_link)}</a>"
                     )
                     kb2=InlineKeyboardMarkup([
