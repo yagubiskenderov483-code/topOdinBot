@@ -968,12 +968,10 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         guarantee=R(ru,
             "Комиссия сервиса: <b>0%</b>\n"
             "После оплаты ожидайте подтверждения менеджера.\n"
-            "Средства защищены до завершения сделки.\n"
-            f"Поддержка: {MANAGER_TAG}",
+            "Средства защищены до завершения сделки.",
             "Service fee: <b>0%</b>\n"
             "After payment wait for manager confirmation.\n"
-            "Funds are protected until the deal is completed.\n"
-            f"Support: {MANAGER_TAG}")
+            "Funds are protected until the deal is completed.")
         lines=[
             f"<tg-emoji emoji-id='5906840875484321836'>✅</tg-emoji> <b>{R(ru,'Сделка защищена','Deal Protected')}</b>\n",
             f"<b>{R(ru,'Тип','Type')}:</b> <b>{tname_plain(dtype,lang)}</b>{item}",
