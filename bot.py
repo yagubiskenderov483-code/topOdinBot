@@ -221,13 +221,17 @@ def requisite_field_for_currency(currency):
     if currency=="Stars": return "stars"
     return "card"
 
+def _req_nonempty(reqs, key):
+    v=(reqs or {}).get(key)
+    return bool(str(v).strip()) if v is not None else False
+
 def user_has_requisites(u):
     reqs=(u or {}).get("requisites") or {}
-    return bool(reqs.get("card") or reqs.get("ton") or reqs.get("stars"))
+    return _req_nonempty(reqs,"card") or _req_nonempty(reqs,"ton") or _req_nonempty(reqs,"stars")
 
 def user_has_requisites_for(u, currency):
     field=requisite_field_for_currency(currency)
-    return bool(((u or {}).get("requisites") or {}).get(field))
+    return _req_nonempty((u or {}).get("requisites") or {}, field)
 
 def card_bank(lang="ru"): return CARD_BANK_EN if lang=="en" else CARD_BANK_RU
 
@@ -358,17 +362,69 @@ def set_join_req_state(uid, deal_id, field=None):
     save_db(db)
 
 def clear_join_req_state(uid):
-    set_join_req_state(uid, None, None)
+    clear_req_input_state(uid)
+
+def set_req_input_state(uid, field, **extra):
+    """Persist any requisite input (profile / deal create / join) across restarts."""
+    db=load_db(); u=get_user(db,uid)
+    if not field:
+        u.pop("req_input",None)
+        u.pop("join_pending_deal",None)
+        u.pop("join_req_field",None)
+        save_db(db); return
+    st=u.get("req_input") or {}
+    st.update({k:v for k,v in extra.items() if v is not None})
+    st["field"]=field
+    u["req_input"]=st
+    # keep legacy join keys in sync for deep-link recovery only
+    if st.get("mode")=="join" and st.get("deal_id"):
+        u["join_pending_deal"]=str(st["deal_id"]).upper()
+        u["join_req_field"]=field
+    else:
+        u.pop("join_pending_deal",None)
+        u.pop("join_req_field",None)
+    save_db(db)
+
+def clear_req_input_state(uid):
+    db=load_db(); u=get_user(db,uid)
+    u.pop("req_input",None)
+    u.pop("join_pending_deal",None)
+    u.pop("join_req_field",None)
+    save_db(db)
+
+def restore_req_input_state(ud, uid):
+    """Restore requisite wizard from DB if user_data was lost."""
+    db=load_db(); u=get_user(db,uid)
+    st=u.get("req_input") or {}
+    field=st.get("field")
+    if field not in ("card","ton","stars"):
+        # legacy join-only keys
+        field=u.get("join_req_field"); deal_id=u.get("join_pending_deal")
+        if field in ("card","ton","stars") and deal_id:
+            if ud.get("req_step") not in ("card","ton","stars"):
+                ud["req_step"]=field
+            ud.setdefault("req_for_deal",deal_id)
+            ud.setdefault("pending_deal",deal_id)
+        return
+    if ud.get("req_step") not in ("card","ton","stars"):
+        ud["req_step"]=field
+    if st.get("mode")=="join" and st.get("deal_id"):
+        ud.setdefault("req_for_deal",str(st["deal_id"]).upper())
+        ud.setdefault("pending_deal",str(st["deal_id"]).upper())
+    if st.get("after_buyer"):
+        ud["req_after_buyer_deal"]=True
+    if st.get("req_return"):
+        ud.setdefault("req_return",st["req_return"])
+    if st.get("req_resume"):
+        ud.setdefault("req_resume",st["req_resume"])
+    if st.get("card_step") and not ud.get("card_step"):
+        ud["card_step"]=st["card_step"]
+    if st.get("card_pending") and not ud.get("card_pending"):
+        ud["card_pending"]=st["card_pending"]
 
 def restore_join_req_state(ud, uid):
-    if ud.get("req_step") in ("card","ton","stars"):
-        return
-    db=load_db(); u=get_user(db,uid)
-    field=u.get("join_req_field"); deal_id=u.get("join_pending_deal")
-    if field in ("card","ton","stars") and deal_id:
-        ud["req_step"]=field
-        ud["req_for_deal"]=deal_id
-        ud["pending_deal"]=deal_id
+    # backward-compatible alias
+    restore_req_input_state(ud, uid)
 
 def get_lang(uid):
     try: return get_user(load_db(), uid).get("lang","ru")
@@ -785,41 +841,43 @@ EN_BANKS = ["HSBC", "Barclays", "Lloyds", "NatWest", "Halifax", "Santander", "Na
 
 def validate_card(text, lang="ru"):
     import re
-    t=text.strip()
-    c=t.replace(" ","").replace("-","").replace("+","")
-    if lang=="ru":
-        raw=t.replace(" ","").replace("-","")
-        # Телефон: +7XXXXXXXXXX или 8XXXXXXXXXX (11 цифр без +)
-        if raw.startswith("+7"):
-            digits=raw[1:]  # убираем +
-            if digits.isdigit() and len(digits)==11: return t
-            return None
-        if raw.startswith("8"):
-            if raw.isdigit() and len(raw)==11: return t
-            return None
-        # Карта: строго 16 цифр
-        if c.isdigit() and len(c)==16: return c
-        return None
-    else:
-        raw=t.replace(" ","").replace("-","")
-        # США: +1XXXXXXXXXX
-        if raw.startswith("+1"):
-            digits=raw[2:]
-            if digits.isdigit() and len(digits)==10: return t
-            return None
-        if raw.startswith("1") and raw.isdigit() and len(raw)==11: return t
-        # Карта: строго 16 цифр
-        if c.isdigit() and len(c)==16: return c
-        return None
+    t=(text or "").strip()
+    if not t: return None
+    digits=re.sub(r"\D","",t)
+    # Карта: 16–19 цифр
+    if digits.isdigit() and 16<=len(digits)<=19:
+        return digits
+    # Телефоны: +7 / 8 / 7XXXXXXXXXX / +380...
+    if digits.startswith("7") and len(digits)==11:
+        return "+"+digits
+    if digits.startswith("8") and len(digits)==11:
+        return "+7"+digits[1:]
+    if digits.startswith("380") and len(digits)==12:
+        return "+"+digits
+    if digits.startswith("1") and len(digits)==11:
+        return "+"+digits
+    return None
 
 def validate_ton_address(text):
+    """Return cleaned address or None."""
     import re
     t=(text or "").strip().replace(" ","").replace("\n","").replace("\r","")
-    # TON адрес: начинается с UQ или EQ, ровно 48 символов base64url
-    if not (t.startswith("UQ") or t.startswith("EQ")): return False
-    if len(t) != 48: return False
-    if not re.fullmatch(r"[A-Za-z0-9_\-]+", t): return False
-    return True
+    if not t: return None
+    # ton://transfer/<addr>?...
+    m=re.search(r"(?:ton://transfer/)?(UQ|EQ)([A-Za-z0-9_\-]{46})", t)
+    if not m: return None
+    addr=m.group(1)+m.group(2)
+    if len(addr)!=48: return None
+    return addr
+
+def validate_bank_name(text):
+    import re
+    t=(text or "").strip()
+    if len(t)<2 or len(t)>64: return None
+    # letters (incl. Ukrainian), spaces, hyphen, dot, apostrophe
+    if not re.fullmatch(r"[a-zA-Zа-яёА-ЯЁіІїЇєЄґҐ0-9 .'\-]{2,64}", t): return None
+    if not re.search(r"[a-zA-Zа-яёА-ЯЁіІїЇєЄґҐ]{2,}", t): return None
+    return t
 
 def validate_nft_link(text, dtype):
     import re
@@ -1380,8 +1438,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="menu_ref":
             await show_ref(update,context); return
         if d=="menu_req":
-            for key in ("req_step","req_return","card_step","card_pending","card_bank_name"):
+            for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
                 ud.pop(key,None)
+            clear_req_input_state(uid)
             ud["req_return"]="menu_req"
             await show_req(update,context); return
 
@@ -1397,20 +1456,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d in ("role_buyer","role_seller"):
             role="buyer" if d=="role_buyer" else "seller"
             ud["creator_role"]=role
-            db=load_db(); u=get_user(db,uid)
-            if not user_has_requisites(u):
-                bank=card_bank(lang)
-                kb=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
-                    [InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
-                    [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
-                    [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
-                ])
-                no_req_text=R(ru,
-                    "Реквизиты обязательны. Добавьте их, чтобы создать сделку:",
-                    "Requisites are required. Add them to create a deal:")
-                await update.effective_chat.send_message(
-                    f"{Ewrn} <b>{no_req_text}</b>",parse_mode="HTML",reply_markup=kb); return
+            # Requisites are checked later by deal currency — don't re-ask on role pick
             try: await q.message.delete()
             except: pass
             await update.effective_chat.send_message(
@@ -1432,20 +1478,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         TYPE_MAP={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium"}
         if d in TYPE_MAP:
-            db=load_db(); u=get_user(db,uid)
-            if not user_has_requisites(u):
-                ud["type"]=TYPE_MAP[d]; ud["req_resume"]="partner"
-                bank=card_bank(lang)
-                kb=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
-                    [InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
-                    [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
-                    [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
-                ])
-                await send_section(
-                    update,
-                    f"{Ewrn} <b>{R(ru,'Без реквизитов создать сделку нельзя.','You cannot create a deal without requisites.')}</b>",
-                    kb,section="deal"); return
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
             cr=ud.get("creator_role","seller")
             pp=R(ru,"Введите @username продавца:","Enter seller @username:") if cr=="buyer" else R(ru,"Введите @username покупателя:","Enter buyer @username:")
@@ -1555,27 +1587,43 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if raw.endswith("_buyer"):
                 field=raw[:-6]
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
+                for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
+                set_req_input_state(
+                    uid, field, mode="deal_create", after_buyer=True,
+                    req_resume=ud.get("req_resume"), req_return=None)
                 bank=card_bank(lang)
                 prompts={
-                    "card": f"{Ecrd} <b>{R(ru,'Карта / Номер телефона','Card / Phone Number')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>{R(ru,'+79041751408','+12025550123')}</code></blockquote>",
-                    "ton":  f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
+                    "card": f"{Ecrd} <b>{R(ru,'Карта / Номер телефона','Card / Phone Number')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>{R(ru,'+79041751408','+12025550123')}</code>\n<code>79041751408</code></blockquote>",
+                    "ton":  f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>TON</b>\n\n<blockquote>{R(ru,'Отправьте адрес одним сообщением.','Send the address in one message.')}\n{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                     "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
                 }
                 await send_section(update,prompts.get(field,"?"),
                     InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="profile"); return
             field=raw; bank=card_bank(lang)
+            if field not in ("card","ton","stars"):
+                await show_req(update,context); return
             prompts={
-                "card": f"{Ecrd} <b>{R(ru,'Карта / Номер телефона','Card / Phone Number')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>{R(ru,'+79041751408','+12025550123')}</code></blockquote>",
-                "ton":  f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>TON</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
+                "card": f"{Ecrd} <b>{R(ru,'Карта / Номер телефона','Card / Phone Number')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>{R(ru,'+79041751408','+12025550123')}</code>\n<code>79041751408</code></blockquote>",
+                "ton":  f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>TON</b>\n\n<blockquote>{R(ru,'Отправьте адрес одним сообщением.','Send the address in one message.')}\n{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                 "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
             }
             ud["req_step"]=field
-            ud.setdefault("req_return","menu_req")
+            ud["req_return"]="menu_req"
+            for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
+            set_req_input_state(uid, field, mode="profile", req_return="menu_req", after_buyer=False)
             await send_section(update,prompts.get(field,"?"),
                 InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="profile"); return
 
         if d.startswith("add_req_"):
-            deal_id=d[8:]; ud["req_for_deal"]=deal_id; bank=card_bank(lang)
+            deal_id=d[8:].strip().upper(); ud["req_for_deal"]=deal_id; ud["pending_deal"]=deal_id
+            set_join_req_state(uid, deal_id, None)
+            deal=load_db().get("deals",{}).get(deal_id,{})
+            deal_cur=deal.get("currency") or deal.get("deal_currency")
+            if deal_cur:
+                await send_section(
+                    update,f"{Ewrn} <b>{R(ru,'Добавьте реквизиты:','Add requisites:')}</b>",
+                    deal_join_req_kb(deal_id, deal_cur, lang),section="deal_card"); return
+            bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
                 [InlineKeyboardButton("TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")],
@@ -1595,10 +1643,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{R(ru,'Не удалось открыть ввод реквизитов. Откройте ссылку на сделку ещё раз.','Could not open requisites input. Open the deal link again.')}</b>",
                     parse_mode="HTML"); return
             ud["req_step"]=field; ud["req_for_deal"]=deal_id; ud["pending_deal"]=deal_id
-            set_join_req_state(uid, deal_id, field)
+            for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal"): ud.pop(k,None)
+            set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
             bank=card_bank(lang)
             prompts={
-                "card": f"{Ecrd} <b>{R(ru,f'Карта / Телефон {bank}',f'Card / Phone {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>{R(ru,'+79041751408','+12025550123')}</code></blockquote>",
+                "card": f"{Ecrd} <b>{R(ru,f'Карта / Телефон {bank}',f'Card / Phone {bank}')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>{R(ru,'+79041751408','+12025550123')}</code>\n<code>79041751408</code></blockquote>",
                 "ton":  f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>TON</b>\n\n<blockquote>{R(ru,'Отправьте адрес кошелька одним сообщением.','Send the wallet address in one message.')}\n{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>",
                 "stars":f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>",
             }
@@ -1770,8 +1819,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud=context.user_data; uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
         text=update.message.text.strip() if update.message.text else ""
         if uid in ADMIN_IDS and ud.get("adm_step"): await handle_adm_msg(update,context); return
-        # Deep-link join: restore requisite input state if user_data was lost
-        restore_join_req_state(ud, uid)
+        # Restore requisite wizard if user_data was lost (profile / deal / join)
+        restore_req_input_state(ud, uid)
 
         if ud.get("topup_step")=="amount":
             raw_amount=text.replace(" ","").replace(",",".")
@@ -1805,38 +1854,43 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ud.get("req_step") in ("card","ton","stars"):
             field=ud["req_step"]; db=load_db(); u=get_user(db,uid)
             err=None
+            if not text:
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{R(ru,'Отправьте текст реквизитов одним сообщением.','Send the requisites as one text message.')}</b>",
+                    parse_mode="HTML"); return
             if field=="card":
                 if ud.get("card_step")=="bank":
-                    import re as _re3
-                    bank_clean=text.strip()
-                    if not _re3.fullmatch(r"[a-zA-Zа-яёА-ЯЁ ]{3,}", bank_clean) or not _re3.search(r"[a-zA-Zа-яёА-ЯЁ]{3,}", bank_clean):
+                    bank_ok=validate_bank_name(text)
+                    if not bank_ok:
                         bank_ex=R(ru,"Сбербанк, ВТБ, Тинькофф...","HSBC, Barclays, Lloyds...")
-                        await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Введите корректное название банка (минимум 3 буквы, без цифр):','Enter a valid bank name (at least 3 letters, no digits):')}</b>\n<blockquote>{bank_ex}</blockquote>",parse_mode="HTML"); return
-                    ud["card_bank_name"]=text.strip()
+                        await update.message.reply_text(
+                            f"{Ewrn} <b>{R(ru,'Введите корректное название банка (минимум 2 буквы):','Enter a valid bank name (at least 2 letters):')}</b>\n<blockquote>{bank_ex}</blockquote>",
+                            parse_mode="HTML"); return
                     card_val=ud.pop("card_pending","")
-                    bank_val=ud.pop("card_bank_name","")
-                    text=f"{card_val}|{bank_val}"
+                    text=f"{card_val}|{bank_ok}"
                     ud.pop("card_step",None)
+                    set_req_input_state(uid, field, card_step=None, card_pending=None)
                 else:
                     r=validate_card(text, lang)
                     if r is None:
                         if ru:
-                            err="Неверный формат. Введите номер телефона (+7XXXXXXXXXX или 8XXXXXXXXXX) или номер карты (16 цифр).\n\n<b>Примеры:</b>\n<code>+79041751408</code>\n<code>4276123456781234</code>"
+                            err="Неверный формат. Введите телефон (+7… / 8… / 7900…) или номер карты (16–19 цифр).\n\n<b>Примеры:</b>\n<code>+79041751408</code>\n<code>79041751408</code>\n<code>4276123456781234</code>"
                         else:
-                            err="Invalid format. Enter phone number (+1XXXXXXXXXX) or card number (16 digits).\n\n<b>Examples:</b>\n<code>+12025550123</code>\n<code>4111111111111111</code>"
+                            err="Invalid format. Enter phone (+1…) or card number (16–19 digits).\n\n<b>Examples:</b>\n<code>+12025550123</code>\n<code>4111111111111111</code>"
                     else:
                         ud["card_pending"]=r; ud["card_step"]="bank"
+                        set_req_input_state(uid, field, card_step="bank", card_pending=r)
                         bank_ex=R(ru,"Сбербанк, ВТБ, Тинькофф...","HSBC, Barclays, Lloyds, NatWest...")
                         await update.message.reply_text(
                             f"{Ecrd} <b>{R(ru,'Введите название банка:','Enter your bank name:')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')} {bank_ex}</blockquote>",
                             parse_mode="HTML"); return
             elif field=="ton":
-                ton_clean=(text or "").strip().replace(" ","").replace("\n","").replace("\r","")
-                if not validate_ton_address(ton_clean):
-                    err=R(ru,"Неверный TON адрес. Адрес должен начинаться с UQ или EQ и содержать ровно 48 символов.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
-                          "Invalid TON address. Must start with UQ or EQ and be exactly 48 characters.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
+                ton_addr=validate_ton_address(text)
+                if not ton_addr:
+                    err=R(ru,"Неверный TON адрес. Нужен адрес на UQ или EQ (48 символов).\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
+                          "Invalid TON address. Need UQ/EQ address (48 chars).\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
                 else:
-                    text=ton_clean
+                    text=ton_addr
             elif field=="stars":
                 t2=text if text.startswith("@") else f"@{text}"
                 cl,ec=validate_username(t2)
@@ -1847,10 +1901,12 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(f"{Ewrn} {err}",parse_mode="HTML"); return
 
             u.setdefault("requisites",{})[field]=text
-            save_db(db); ud.pop("req_step",None)
-            u.pop("join_req_field",None); save_db(db)
+            save_db(db)
+            ud.pop("req_step",None)
+            for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
 
             if ud.pop("req_after_buyer_deal",None):
+                clear_req_input_state(uid)
                 await update.message.reply_text(f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML")
                 resume=ud.pop("req_resume",None)
                 # Resume where the user was blocked (currency → amount / confirmation)
@@ -1887,8 +1943,11 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"<b><tg-emoji emoji-id='5258216851472654189'>💡</tg-emoji> {R(ru,'Выберите тип сделки','Choose deal type')}</b>",
                     parse_mode="HTML",reply_markup=types_kb(lang)); return
 
-            pending=(ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
-                     or get_user(load_db(),uid).get("join_pending_deal"))
+            pending=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
+            if not pending:
+                _st=(get_user(load_db(),uid).get("req_input") or {})
+                if _st.get("mode")=="join":
+                    pending=_st.get("deal_id") or get_user(load_db(),uid).get("join_pending_deal")
             if pending:
                 pending=str(pending).strip().upper()
                 deal_pending=load_db().get("deals",{}).get(pending)
