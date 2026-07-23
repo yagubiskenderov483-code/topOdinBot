@@ -11,12 +11,22 @@ python bot.py
 
 ## ⚙️ Настройка
 
-Вставь свой токен в `bot.py`:
-```python
-BOT_TOKEN = "ВАШ_ТОКЕН"
+Токен получить: @BotFather → `/newbot`. Перед запуском добавьте его в
+переменную окружения `BOT_TOKEN`:
+
+```bash
+export BOT_TOKEN="ВАШ_ТОКЕН"
+python bot.py
 ```
 
-Токен получить: @BotFather → /newbot
+На Render создайте **Web Service** со следующими настройками:
+
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `python bot.py`
+- Environment Variable: `BOT_TOKEN` — токен от @BotFather
+
+Render автоматически задаёт адрес и порт сервиса, после чего бот запускается
+в режиме webhook. Локально, без адреса Render, бот использует polling.
 
 ## 📁 Файлы
 
