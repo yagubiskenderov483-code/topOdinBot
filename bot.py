@@ -1761,10 +1761,10 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif dtype=="crypto":
                 ud["step"]="cry_currency"
                 await send_step(
-                    f"{Edm} <b>{R(ru,'Выберите крипту для сделки:','Choose crypto for the deal:')}</b>",
+                    f"💎 <b>{R(ru,'Выберите крипту для сделки:','Choose crypto for the deal:')}</b>",
                     InlineKeyboardMarkup([
-                        [InlineKeyboardButton("TON",callback_data="cry_ton",icon_custom_emoji_id="5397829221605191505"),
-                         InlineKeyboardButton("USDT",callback_data="cry_usd",icon_custom_emoji_id="5406841020769936275")],
+                        [InlineKeyboardButton("💎 TON",callback_data="cry_ton"),
+                         InlineKeyboardButton("💵 USDT",callback_data="cry_usd")],
                     ]))
             elif dtype=="premium":
                 ud["step"]="prem_period"
