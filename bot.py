@@ -139,7 +139,7 @@ def tname_plain(t, lang="ru"): return TNAMES_PLAIN_EN.get(t,t) if lang=="en" els
 CUR_PLAIN_RU = {
     "TON":"TON","USDT":"USDT","Stars":"Звёзды",
     "RUB":"Рубли","KZT":"Теңге","AZN":"Manat","KGS":"Сом",
-    "UZS":"So'm","TJS":"Сомонӣ","BYN":"Рубли (BYN)","UAH":"Гривнi","GEL":"ლარი",
+    "UZS":"So'm","TJS":"Сомонӣ","BYN":"Рубли (BYN)","UAH":"Гривні","GEL":"ლარი",
 }
 CUR_PLAIN_EN = {
     "TON":"TON","USDT":"USDT","Stars":"Stars",
@@ -247,10 +247,15 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
         ]
     elif pay_cur=="TON":
         tonkeeper_url=deal_tonkeeper_payment_url(deal_id,d)
+        lines.append(f"<b>{Eton} TON - Tonkeeper:</b>")
+        if tonkeeper_url:
+            lines.append(
+                f"<blockquote><a href='{H(tonkeeper_url)}'>{R(ru,'Оплатить в Tonkeeper','Pay in Tonkeeper')}</a>\n"
+                f"{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>")
+        else:
+            lines.append(
+                f"<blockquote>{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>")
         lines += [
-            f"<b>{Eton} TON - Tonkeeper:</b>",
-            f"<blockquote><a href='{H(tonkeeper_url)}'>{R(ru,'Оплатить в Tonkeeper','Pay in Tonkeeper')}</a>\n"
-            f"{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>",
             f"<b>{Ecbt} TON - Send / Crypto Bot:</b>",
             f"<blockquote><a href='{CRYPTO_BOT}'>{R(ru,'Открыть Send / Crypto Bot','Open Send / Crypto Bot')}</a>\n"
             f"{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>",
@@ -259,10 +264,15 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
         ]
     elif pay_cur=="USDT":
         tonkeeper_url=deal_tonkeeper_payment_url(deal_id,d)
+        lines.append(f"<b>{Eusdt} USDT - Tonkeeper:</b>")
+        if tonkeeper_url:
+            lines.append(
+                f"<blockquote><a href='{H(tonkeeper_url)}'>{R(ru,'Оплатить в Tonkeeper','Pay in Tonkeeper')}</a>\n"
+                f"{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>")
+        else:
+            lines.append(
+                f"<blockquote>{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>")
         lines += [
-            f"<b>{Eusdt} USDT - Tonkeeper:</b>",
-            f"<blockquote><a href='{H(tonkeeper_url)}'>{R(ru,'Оплатить в Tonkeeper','Pay in Tonkeeper')}</a>\n"
-            f"{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>",
             f"<b>{Ecbt} USDT - Send / Crypto Bot:</b>",
             f"<blockquote><a href='{CRYPTO_BOT}'>{R(ru,'Открыть Send / Crypto Bot','Open Send / Crypto Bot')}</a>\n"
             f"{R(ru,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>",
@@ -697,10 +707,31 @@ def validate_username(text):
     t = text.strip()
     if not t.startswith("@"): t = "@" + t
     u = t[1:]
-    if len(u) < 4: return None, "short"
+    # Telegram usernames are 5–32 chars
+    if len(u) < 5: return None, "short"
     if not re.fullmatch(r"[a-zA-Z0-9_]+", u): return None, "chars"
     if not re.search(r"[a-zA-Z]", u): return None, "chars"
     return t, None
+
+def deal_join_req_kb(deal_id, currency, lang="ru"):
+    """Keyboard asking only for the requisite type needed by deal currency."""
+    ru=lang=="ru"; bank=card_bank(lang)
+    field=requisite_field_for_currency(currency)
+    rows=[]
+    if field=="card":
+        rows.append([InlineKeyboardButton(
+            R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),
+            callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")])
+    elif field=="ton":
+        rows.append([InlineKeyboardButton(
+            "TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")])
+    else:
+        rows.append([InlineKeyboardButton(
+            R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}",
+            icon_custom_emoji_id="5893034681636491040")])
+    rows.append([InlineKeyboardButton(
+        R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
+    return InlineKeyboardMarkup(rows)
 
 RU_BANKS = ["Сбербанк", "ВТБ", "Тинькофф", "Альфа", "Газпром", "Россельхоз", "Открытие", "Совком", "Райффайзен", "МКБ", "Росбанк", "Промсвязь", "Уралсиб", "Банк России"]
 EN_BANKS = ["HSBC", "Barclays", "Lloyds", "NatWest", "Halifax", "Santander", "Nationwide", "Monzo", "Revolut", "Chase", "Bank of America", "Wells Fargo", "Citibank", "TD Bank"]
@@ -825,15 +856,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         # One amount only: show what must be paid (payment currency)
         show_amt=payment_amount
         show_cur=pay_cur
-        amt_label = cur_amount_label_last(show_cur, lang)
         amt_phrase = cur_amount_phrase(show_amt, show_cur, lang)
+        amt_icon = CUR_FLAG.get(show_cur, "")
 
         ico1 = ce("5408894951440279259","1️⃣")
         ico2 = ce("5411585799990830248","2️⃣")
         lines=[
             f"<tg-emoji emoji-id='5906840875484321836'>✅</tg-emoji> <b>{R(ru,'Сделка защищена','Deal Protected')}</b>\n",
             f"<b>{R(ru,'Тип','Type')}:</b> <b>{tname_plain(dtype,lang)}</b>{item}",
-            f"<b>{R(ru,'Сумма','Amount')}:</b> <b>{amt_phrase}</b> {amt_label}\n",
+            f"<b>{R(ru,'Сумма','Amount')}:</b> <b>{amt_phrase}</b> {amt_icon}\n",
             f"<b>{ico1} {lbl_creator}:</b> <b>{creator_tag}</b>",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
             f"<b>{ico2} {lbl_partner}:</b> <b>{partner_tag}</b>",
@@ -908,6 +939,7 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
             rows.append([InlineKeyboardButton(
                 R(ru,"Tonkeeper","Tonkeeper"),url=payment_url,
                 icon_custom_emoji_id="5397829221605191505" if deal.get("currency")=="TON" else "5406841020769936275")])
+        if deal.get("currency") in ("TON","USDT"):
             rows.append([InlineKeyboardButton(
                 R(ru,"Send / Crypto Bot","Send / Crypto Bot"),url=CRYPTO_BOT,
                 icon_custom_emoji_id="5242606681166220600")])
@@ -1105,13 +1137,20 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_db(db); context.user_data.clear()
 
         if args and args[0].lower().startswith("deal_"):
-            deal_id=args[0].split("_",1)[1].upper(); d=db.get("deals",{}).get(deal_id)
+            deal_id=args[0].split("_",1)[1].strip().upper()
+            if not deal_id:
+                await update.effective_message.reply_text(
+                    f"{Ewrn} <b>{R(get_lang(uid)=='ru','Сделка не найдена.','Deal not found.')}</b>",
+                    parse_mode="HTML")
+                await show_main(update,context); return
+            d=db.get("deals",{}).get(deal_id)
             if not d:
                 await update.effective_message.reply_text(
                     f"{Ewrn} <b>{R(get_lang(uid)=='ru','Сделка не найдена.','Deal not found.')}</b>",
                     parse_mode="HTML")
                 await show_main(update,context); return
             creator_uid=d.get("user_id"); lang=u.get("lang","ru"); ru=lang=="ru"
+            deal_cur=d.get("currency") or d.get("deal_currency")
 
             if creator_uid and creator_uid==str(uid):
                 await update.effective_message.reply_text(
@@ -1134,19 +1173,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode="HTML")
                 await show_main(update,context); return
 
-            if not user_has_requisites(u):
+            if not user_has_requisites_for(u, deal_cur):
                 context.user_data["pending_deal"]=deal_id
-                bank=card_bank(lang)
-                kb=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
-                    [InlineKeyboardButton("TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")],
-                    [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
-                    [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
-                ])
+                need=R(ru,"карту / телефон","card / phone") if requisite_field_for_currency(deal_cur)=="card" else (
+                    "TON" if requisite_field_for_currency(deal_cur)=="ton" else R(ru,"@username для звёзд","@username for Stars"))
                 await send_new(
                     update,
-                    f"{Ewrn} <b>{R(ru,'Чтобы присоединиться к сделке, сначала добавьте реквизиты.','To join the deal, add requisites first.')}</b>",
-                    kb,section="deal_card"); return
+                    f"{Ewrn} <b>{R(ru,'Чтобы присоединиться к сделке, добавьте реквизиты','To join the deal, add requisites')}: {need}</b>",
+                    deal_join_req_kb(deal_id, deal_cur, lang),section="deal_card"); return
 
             ok=await complete_deal_join(update,context,deal_id)
             if not ok:
@@ -1834,8 +1868,17 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             pending=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
             if pending:
-                if load_db().get("deals",{}).get(pending):
+                deal_pending=load_db().get("deals",{}).get(pending)
+                if deal_pending:
                     await update.message.reply_text(f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML")
+                    deal_cur=deal_pending.get("currency") or deal_pending.get("deal_currency")
+                    if not user_has_requisites_for(u, deal_cur):
+                        context.user_data["pending_deal"]=pending
+                        need=R(ru,"карту / телефон","card / phone") if requisite_field_for_currency(deal_cur)=="card" else (
+                            "TON" if requisite_field_for_currency(deal_cur)=="ton" else R(ru,"@username для звёзд","@username for Stars"))
+                        await update.effective_chat.send_message(
+                            f"{Ewrn} <b>{R(ru,'Для этой сделки нужны реквизиты','This deal needs requisites')}: {need}</b>",
+                            parse_mode="HTML",reply_markup=deal_join_req_kb(pending, deal_cur, lang)); return
                     await complete_deal_join(update,context,pending); return
 
             req_return=ud.pop("req_return","menu_req")
@@ -1904,8 +1947,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cl_p, ec_p = validate_username(t_raw)
             if ec_p:
                 err_msg = R(ru,
-                    "Некорректный @username. Минимум 4 символа, только латиница/цифры/подчёркивание.",
-                    "Invalid @username. Min 4 chars, only latin/digits/underscore.")
+                    "Некорректный @username. Минимум 5 символов, только латиница/цифры/подчёркивание.",
+                    "Invalid @username. Min 5 chars, only latin/digits/underscore.")
                 await update.message.reply_text(f"{Ewrn} <b>{err_msg}</b>\n\n<b>{R(ru,'Пример','Example')}:</b> <code>@username</code>",parse_mode="HTML"); return
             ud["partner"]=cl_p
             if dtype=="nft":
@@ -1950,11 +1993,11 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if step=="trade_usr":
             cl=text.strip().replace("https://","").replace("http://","")
             import re as _re
-            ok_link = cl.startswith("t.me/") and len(cl[5:].strip("/"))>=4 and _re.fullmatch(r"[a-zA-Z0-9_]+", cl[5:].strip("/"))
-            ok_at   = text.strip().startswith("@") and len(text.strip()[1:])>=4 and _re.fullmatch(r"[a-zA-Z0-9_]+", text.strip()[1:])
+            ok_link = cl.startswith("t.me/") and len(cl[5:].strip("/"))>=5 and _re.fullmatch(r"[a-zA-Z0-9_]+", cl[5:].strip("/"))
+            ok_at   = text.strip().startswith("@") and len(text.strip()[1:])>=5 and _re.fullmatch(r"[a-zA-Z0-9_]+", text.strip()[1:])
             if not ok_link and not ok_at:
                 await update.message.reply_text(
-                    f"{Ewrn} <b>{R(ru,'Введите корректную ссылку t.me/username или @username (мин. 4 символа).','Enter valid t.me/username or @username (min 4 chars).')}</b>",
+                    f"{Ewrn} <b>{R(ru,'Введите корректную ссылку t.me/username или @username (мин. 5 символов).','Enter valid t.me/username or @username (min 5 chars).')}</b>",
                     parse_mode="HTML"); return
             ud["trade_username"]=text.strip(); ud["step"]="currency"
             await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
@@ -2001,20 +2044,24 @@ async def finalize_deal(update, context):
             raise ValueError("incomplete deal draft")
         user=update.effective_user
         u_check=get_user(db,user.id)
-        if not user_has_requisites(u_check):
+        currency=ud.get("currency","-")
+        if not user_has_requisites_for(u_check, currency):
             lang=get_lang(user.id); ru=lang=="ru"; bank=card_bank(lang)
-            kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
-                [InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
-                [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
-                [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
-            ])
+            field=requisite_field_for_currency(currency)
+            rows=[]
+            if field=="card":
+                rows.append([InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")])
+            elif field=="ton":
+                rows.append([InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")])
+            else:
+                rows.append([InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")])
+            rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")])
             await update.effective_chat.send_message(
                 f"{Ewrn} <b>{R(ru,'Без реквизитов создать сделку нельзя.','You cannot create a deal without requisites.')}</b>",
-                parse_mode="HTML",reply_markup=kb); return
+                parse_mode="HTML",reply_markup=InlineKeyboardMarkup(rows)); return
         ud["_finalizing_deal"]=True
         dtype=ud.get("type","?"); partner=ud.get("partner","-")
-        currency=ud.get("currency","-"); amount=ud.get("amount","-")
+        amount=ud.get("amount","-")
         pay_currency=ud.get("pay_currency") or currency
         payment_amount=ud.get("payment_amount") or amount
         creator_role=ud.get("creator_role","seller")
@@ -2045,9 +2092,9 @@ async def finalize_deal(update, context):
             f"{Edl} <b>Новая сделка</b>\n\n"
             f"{Eu} {H(uname)} (<code>{user.id}</code>)\n"
             f"{Edln} <code>{deal_id}</code>\n"
-            f"{R(True,'Тип','Type')}: {dtype}\n"
-            f"{R(True,'Роль','Role')}: {creator_role}\n"
-            f"{R(True,'Партнёр','Partner')}: {H(partner)}\n"
+            f"Тип: {dtype}\n"
+            f"Роль: {creator_role}\n"
+            f"Партнёр: {H(partner)}\n"
             f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
 
         join_link_f=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
@@ -2338,7 +2385,7 @@ async def adm_decline(update, context):
         buyer_uid_d,seller_uid_d = deal_participant_roles(d)
         deal_link_d = f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
         back_kb_d = InlineKeyboardMarkup([[InlineKeyboardButton(
-            R(True,"Вернуться к сделке","Return to deal"),
+            "Вернуться к сделке",
             url=deal_link_d,
             icon_custom_emoji_id="5893161718179173515"
         )]])
