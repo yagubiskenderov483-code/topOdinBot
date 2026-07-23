@@ -905,6 +905,15 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         u["username"]=update.effective_user.username or ""; args=context.args
+        username=f"@{update.effective_user.username}" if update.effective_user.username else R(True,"нет username","no username")
+        start_param=args[0] if args else R(True,"обычный запуск","regular start")
+        await notify_admins(
+            context,
+            f"{Ewlc} <b>Пользователь запустил бота</b>\n\n"
+            f"{Eu} {H(update.effective_user.full_name or 'Без имени')}\n"
+            f"{Eln} {H(username)}\n"
+            f"ID: <code>{uid}</code>\n"
+            f"Параметр: <code>{H(start_param)}</code>")
 
         if args and args[0].startswith("ref_") and not u.get("ref_by"):
             ref_uid=args[0][4:]; ref_user=db.get("users",{}).get(ref_uid)
