@@ -1,6 +1,6 @@
 import logging, json, os, math
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 logging.basicConfig(level=logging.INFO)
@@ -366,7 +366,7 @@ def main_kb(lang):
         [InlineKeyboardButton(R(ru,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
         [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url="https://t.me/EldoradoGGSupport",icon_custom_emoji_id="5258260149037965799"),
-         InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),url="https://www.eldorado.gg/",icon_custom_emoji_id="6035162669948867129")],
+         InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),web_app=WebAppInfo(url="https://www.eldorado.gg/"),icon_custom_emoji_id="5983580310292402968")],
         [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928")],
     ])
 
