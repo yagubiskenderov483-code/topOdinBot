@@ -571,14 +571,27 @@ def pay_cur_kb(lang):
     return cur_kb(lang)
 
 def cur_kb(lang):
-    def n(c): return cur_button_text(c,lang)
+    def n(c): return cur_plain(c,lang)
+    icons={
+        "TON":"5397829221605191505","USDT":"5406841020769936275",
+        "RUB":"5377472000040115969","Stars":"5406812184359507637",
+        "KZT":"5377472000040115969","AZN":"5377472000040115969",
+        "KGS":"5377472000040115969","UZS":"5377472000040115969",
+        "TJS":"5377472000040115969","BYN":"5377472000040115969",
+        "UAH":"5375587209476843297","GEL":"5377472000040115969",
+    }
+    def b(code, data):
+        eid=icons.get(code)
+        kw={"text":n(code),"callback_data":data}
+        if eid: kw["icon_custom_emoji_id"]=eid
+        return InlineKeyboardButton(**kw)
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(n("TON"),callback_data="cur_ton"),InlineKeyboardButton(n("USDT"),callback_data="cur_usdt")],
-        [InlineKeyboardButton(n("RUB"),callback_data="cur_rub"),InlineKeyboardButton(n("Stars"),callback_data="cur_stars")],
-        [InlineKeyboardButton(n("KZT"),callback_data="cur_kzt"),InlineKeyboardButton(n("AZN"),callback_data="cur_azn")],
-        [InlineKeyboardButton(n("KGS"),callback_data="cur_kgs"),InlineKeyboardButton(n("UZS"),callback_data="cur_uzs")],
-        [InlineKeyboardButton(n("TJS"),callback_data="cur_tjs"),InlineKeyboardButton(n("BYN"),callback_data="cur_byn")],
-        [InlineKeyboardButton(n("UAH"),callback_data="cur_uah"),InlineKeyboardButton(n("GEL"),callback_data="cur_gel")],
+        [b("TON","cur_ton"),b("USDT","cur_usdt")],
+        [b("RUB","cur_rub"),b("Stars","cur_stars")],
+        [b("KZT","cur_kzt"),b("AZN","cur_azn")],
+        [b("KGS","cur_kgs"),b("UZS","cur_uzs")],
+        [b("TJS","cur_tjs"),b("BYN","cur_byn")],
+        [b("UAH","cur_uah"),b("GEL","cur_gel")],
     ])
 
 # ─── Validation ───────────────────────────────────────────────────────────────
@@ -1303,7 +1316,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
-                f"{Emn} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",
+                f"{Edeal_cur} <b>{R(ru,'Выберите валюту:','Choose currency:')}</b>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("TON",callback_data="prem_cur_ton",icon_custom_emoji_id="5406976471153545018"),
@@ -1773,9 +1786,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud["step"]="prem_period"
                 await send_step(f"{Eprem} <b>Telegram Premium\n\n{R(ru,'Выберите срок:','Choose period:')}</b>",
                     InlineKeyboardMarkup([[
-                        InlineKeyboardButton("3 "+R(ru,"мес.","mo"),callback_data="prm_3"),
-                        InlineKeyboardButton("6 "+R(ru,"мес.","mo"),callback_data="prm_6"),
-                        InlineKeyboardButton("12 "+R(ru,"мес.","mo"),callback_data="prm_12")]]))
+                        InlineKeyboardButton("3 "+R(ru,"мес.","mo"),callback_data="prm_3",icon_custom_emoji_id="5906715307820456633"),
+                        InlineKeyboardButton("6 "+R(ru,"мес.","mo"),callback_data="prm_6",icon_custom_emoji_id="5906715307820456633"),
+                        InlineKeyboardButton("12 "+R(ru,"мес.","mo"),callback_data="prm_12",icon_custom_emoji_id="5906715307820456633")]]))
             return
 
         if step=="nft_link":
