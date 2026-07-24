@@ -361,7 +361,7 @@ async def notify_admins(context, text, reply_markup=None):
 
 BANNER_SECTIONS = {
     "main":"Главное меню","deal":"Создать сделку","balance":"Пополнить/Вывод",
-    "profile":"Профиль","top":"Топ","my_deals":"Мои сделки",
+    "profile":"Профиль","req":"Реквизиты","top":"Топ","my_deals":"Мои сделки",
     "deal_card":"Карточка сделки","deal_join":"Присоединение к сделке",
     "deal_forward":"Пересылка сделки","ref":"Рефералы",
 }
@@ -1624,7 +1624,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if reqs.get("ton"):  rows.append([InlineKeyboardButton(R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
             if reqs.get("stars"):rows.append([InlineKeyboardButton(R(ru,"Удалить @username","Delete @username"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
             rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")])
-            await send_section(update,f"{Edl} <b>{R(ru,'Что удалить?','What to delete?')}</b>",InlineKeyboardMarkup(rows),section="profile"); return
+            await send_section(update,f"{Edl} <b>{R(ru,'Что удалить?','What to delete?')}</b>",InlineKeyboardMarkup(rows),section="req"); return
 
         if d.startswith("req_del_"):
             field=d[8:]
@@ -1648,7 +1648,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     uid, field, mode="deal_create", after_buyer=True,
                     req_resume=ud.get("req_resume"), req_return=None)
                 await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="profile"); return
+                    InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
             field=raw
             if field not in REQ_FIELDS:
                 await show_req(update,context); return
@@ -1657,7 +1657,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
             set_req_input_state(uid, field, mode="profile", req_return="menu_req", after_buyer=False)
             await send_section(update,req_prompt_text(field,lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="profile"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
 
         if d.startswith("add_req_"):
             deal_id=d[8:].strip().upper(); ud["req_for_deal"]=deal_id; ud["pending_deal"]=deal_id
@@ -2671,7 +2671,7 @@ async def show_req(update, context):
         else:
             rows.append([InlineKeyboardButton(R(ru,"Добавить Звёзды","Add Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")])
         rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
-        await send_section(update,"\n".join(lines),InlineKeyboardMarkup(rows),section="profile")
+        await send_section(update,"\n".join(lines),InlineKeyboardMarkup(rows),section="req")
     except Exception as e:
         logger.error(f"show_req: {e}", exc_info=True)
         try:
