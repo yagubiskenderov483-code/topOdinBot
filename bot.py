@@ -2041,7 +2041,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ud.get("withdraw_step")=="req":
             method=ud.get("withdraw_method","?"); db=load_db()
             u=get_user(db,uid); bal=u.get("balance",0); uname3=update.effective_user.username or str(uid)
-            mnames={"stars":R(ru,"Звёзды","Stars"),"crypto":R(ru,"Крипта","Crypto"),"card":R(ru,"Карта","Card")}
+            mnames={"stars":R(ru,"Звёзды","Stars"),"crypto":R(ru,"Крипта","Crypto"),"card":R(ru,"Карта (рубли)","Card (RUB)"),"card_uah":R(ru,"Карта (гривны)","Card (UAH)")}
             mname=mnames.get(method,method)
             await notify_admins(context,
                 f"{Edm} <b>Вывод - {mname}</b>\n{Eu} @{uname3} (<code>{uid}</code>)\n"
