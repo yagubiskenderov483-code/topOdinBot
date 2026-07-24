@@ -219,14 +219,12 @@ def cur_amount_label_last(code, lang="ru"):
 def requisite_field_for_currency(currency):
     if currency in ("TON","USDT"): return "ton"
     if currency=="Stars": return "stars"
-    if currency=="UAH": return "card_uah"
-    return "card"  # RUB and other fiat
+    return "card"  # RUB / UAH — одна карта/телефон (в т.ч. укр.)
 
-REQ_FIELDS = ("card","card_uah","ton","stars")
-CARD_REQ_FIELDS = ("card","card_uah")
+REQ_FIELDS = ("card","ton","stars")
 
 def is_card_req_field(field):
-    return field in CARD_REQ_FIELDS
+    return field=="card"
 
 def _req_nonempty(reqs, key):
     v=(reqs or {}).get(key)
@@ -244,21 +242,16 @@ def req_need_label(field, lang="ru"):
     ru=lang=="ru"
     if field=="ton": return "TON"
     if field=="stars": return R(ru,"@username для звёзд","@username for Stars")
-    if field=="card_uah": return R(ru,"карту / телефон (гривны)","card / phone (UAH)")
-    return R(ru,"карту / телефон (рубли)","card / phone (RUB)")
+    return R(ru,"карту / телефон","card / phone")
 
 def req_prompt_text(field, lang="ru"):
     ru=lang=="ru"
     if field=="card":
-        return (f"{Ecrd} <b>{R(ru,'Карта / Телефон (рубли)','Card / Phone (RUB)')}</b>\n\n"
-                f"<blockquote>{R(ru,'Пример:','Example:')}\n"
-                f"<code>+79041751408</code>\n<code>79041751408</code>\n"
+        return (f"{Ecrd} <b>{R(ru,'Карта / Телефон','Card / Phone')}</b>\n\n"
+                f"<blockquote>{R(ru,'Можно российскую или украинскую карту/телефон.','Russian or Ukrainian card/phone allowed.')}\n"
+                f"{R(ru,'Пример:','Example:')}\n"
+                f"<code>+79041751408</code>\n<code>+380501234567</code>\n"
                 f"<code>4276123456781234</code></blockquote>")
-    if field=="card_uah":
-        return (f"{Ecrd} <b>{R(ru,'Карта / Телефон (гривны)','Card / Phone (UAH)')}</b>\n\n"
-                f"<blockquote>{R(ru,'Пример:','Example:')}\n"
-                f"<code>+380501234567</code>\n<code>380501234567</code>\n"
-                f"<code>4149491234567890</code></blockquote>")
     if field=="ton":
         return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>TON</b>\n\n"
                 f"<blockquote>{R(ru,'Отправьте адрес одним сообщением.','Send the address in one message.')}\n"
@@ -270,9 +263,9 @@ def req_prompt_text(field, lang="ru"):
 
 def req_bank_examples(field, lang="ru"):
     ru=lang=="ru"
-    if field=="card_uah":
-        return R(ru,"ПриватБанк, Монобанк, Ощадбанк...","PrivatBank, Monobank, Oschadbank...")
-    return R(ru,"Сбербанк, ВТБ, Тинькофф...","HSBC, Barclays, Lloyds, NatWest...")
+    return R(ru,
+        "Сбербанк, ВТБ, Тинькофф, ПриватБанк, Монобанк...",
+        "Sberbank, VTB, PrivatBank, Monobank...")
 
 def card_bank(lang="ru"): return CARD_BANK_EN if lang=="en" else CARD_BANK_RU
 
@@ -387,6 +380,15 @@ def get_user(db, uid):
     u=db["users"][k]
     for f,v in [("requisites",{}),("ref_by",None),("ref_count",0),("ref_earned",0),("balance",0),]:
         if f not in u: u[f]=v
+    # legacy: merge old separate UAH card into single card field
+    reqs=u.setdefault("requisites",{})
+    migrated=False
+    if reqs.get("card_uah") and not reqs.get("card"):
+        reqs["card"]=reqs.pop("card_uah"); migrated=True
+    elif "card_uah" in reqs:
+        reqs.pop("card_uah",None); migrated=True
+    if migrated:
+        save_db(db)
     return u
 
 def set_join_req_state(uid, deal_id, field=None):
@@ -771,13 +773,9 @@ def currency_requisites_kb(currency, lang="ru"):
         rows=[[InlineKeyboardButton("TON / USDT",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")]]
     elif field=="stars":
         rows=[[InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")]]
-    elif field=="card_uah":
-        rows=[[InlineKeyboardButton(
-            R(ru,"Карта / Телефон (гривны)","Card / Phone (UAH)"),
-            callback_data="req_edit_card_uah_buyer",icon_custom_emoji_id="5375587209476843297")]]
     else:
         rows=[[InlineKeyboardButton(
-            R(ru,"Карта / Телефон (рубли)","Card / Phone (RUB)"),
+            R(ru,"Карта / Телефон","Card / Phone"),
             callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")]]
     rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
@@ -870,12 +868,8 @@ def deal_join_req_kb(deal_id, currency, lang="ru"):
     rows=[]
     if field=="card":
         rows.append([InlineKeyboardButton(
-            R(ru,"Карта / Телефон (рубли)","Card / Phone (RUB)"),
+            R(ru,"Карта / Телефон","Card / Phone"),
             callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")])
-    elif field=="card_uah":
-        rows.append([InlineKeyboardButton(
-            R(ru,"Карта / Телефон (гривны)","Card / Phone (UAH)"),
-            callback_data=f"req_deal_card_uah_{deal_id}",icon_custom_emoji_id="5375587209476843297")])
     elif field=="ton":
         rows.append([InlineKeyboardButton(
             "TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")])
@@ -1619,8 +1613,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="req_del_menu":
             db=load_db(); u=get_user(db,uid); reqs=u.get("requisites",{})
             rows=[]
-            if reqs.get("card"): rows.append([InlineKeyboardButton(R(ru,"Удалить карту (рубли)","Delete card (RUB)"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
-            if reqs.get("card_uah"): rows.append([InlineKeyboardButton(R(ru,"Удалить карту (гривны)","Delete card (UAH)"),callback_data="req_del_card_uah",icon_custom_emoji_id="5904542823167824187")])
+            if reqs.get("card"): rows.append([InlineKeyboardButton(R(ru,"Удалить карту/телефон","Delete card/phone"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
             if reqs.get("ton"):  rows.append([InlineKeyboardButton(R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
             if reqs.get("stars"):rows.append([InlineKeyboardButton(R(ru,"Удалить @username","Delete @username"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
             rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")])
@@ -1680,7 +1673,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("req_deal_"):
             rest=d[len("req_deal_"):]
             field=None; deal_id=""
-            for cand in ("card_uah","stars","card","ton"):
+            for cand in ("stars","card","ton"):
                 if rest.startswith(cand+"_"):
                     field=cand; deal_id=rest[len(cand)+1:].strip().upper(); break
             if field not in REQ_FIELDS or not deal_id:
@@ -1794,8 +1787,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(update,
                     f"{Ewrn} <b>{R(ru,'Для вывода добавьте реквизиты.','Add requisites to withdraw.')}</b>",
                     InlineKeyboardMarkup([
-                        [InlineKeyboardButton(R(ru,"Добавить карту (рубли)","Add card (RUB)"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
-                        [InlineKeyboardButton(R(ru,"Добавить карту (гривны)","Add card (UAH)"),callback_data="req_edit_card_uah",icon_custom_emoji_id="5375587209476843297")],
+                        [InlineKeyboardButton(R(ru,"Добавить карту/телефон","Add card/phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
                         [InlineKeyboardButton(R(ru,"Добавить TON","Add TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(R(ru,"Добавить @username","Add @username"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
@@ -1806,8 +1798,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             method=d[9:]
             prompts={"stars":R(ru,"@username для звёзд:","@username for stars:"),
                      "crypto":R(ru,"TON/USDT адрес:","TON/USDT address:"),
-                     "card":R(ru,"Номер карты или телефона (рубли):","Card or phone number (RUB):"),
-                     "card_uah":R(ru,"Номер карты или телефона (гривны):","Card or phone number (UAH):")}
+                     "card":R(ru,"Номер карты или телефона:","Card or phone number:")}
             ud["withdraw_method"]=method; ud["withdraw_step"]="req"
             await send_section(update,
                 f"{Ewlt} <b>{R(ru,'Вывод','Withdraw')}</b>\n\n<blockquote>{prompts.get(method,'?')}</blockquote>",
@@ -1914,14 +1905,12 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     r=validate_card(text, lang)
                     if r is None:
-                        if field=="card_uah":
-                            err=R(ru,
-                                "Неверный формат. Введите телефон (+380…) или номер карты (16–19 цифр).\n\n<b>Примеры:</b>\n<code>+380501234567</code>\n<code>4149491234567890</code>",
-                                "Invalid format. Enter phone (+380…) or card number (16–19 digits).\n\n<b>Examples:</b>\n<code>+380501234567</code>\n<code>4149491234567890</code>")
-                        elif ru:
-                            err="Неверный формат. Введите телефон (+7… / 8… / 7900…) или номер карты (16–19 цифр).\n\n<b>Примеры:</b>\n<code>+79041751408</code>\n<code>79041751408</code>\n<code>4276123456781234</code>"
+                        if ru:
+                            err=("Неверный формат. Введите телефон (+7… / +380…) или номер карты (16–19 цифр).\n\n"
+                                 "<b>Примеры:</b>\n<code>+79041751408</code>\n<code>+380501234567</code>\n<code>4276123456781234</code>")
                         else:
-                            err="Invalid format. Enter phone (+1…) or card number (16–19 digits).\n\n<b>Examples:</b>\n<code>+12025550123</code>\n<code>4111111111111111</code>"
+                            err=("Invalid format. Enter phone (+7… / +380… / +1…) or card number (16–19 digits).\n\n"
+                                 "<b>Examples:</b>\n<code>+79041751408</code>\n<code>+380501234567</code>\n<code>4111111111111111</code>")
                     else:
                         ud["card_pending"]=r; ud["card_step"]="bank"
                         set_req_input_state(uid, field, card_step="bank", card_pending=r)
@@ -2041,7 +2030,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ud.get("withdraw_step")=="req":
             method=ud.get("withdraw_method","?"); db=load_db()
             u=get_user(db,uid); bal=u.get("balance",0); uname3=update.effective_user.username or str(uid)
-            mnames={"stars":R(ru,"Звёзды","Stars"),"crypto":R(ru,"Крипта","Crypto"),"card":R(ru,"Карта (рубли)","Card (RUB)"),"card_uah":R(ru,"Карта (гривны)","Card (UAH)")}
+            mnames={"stars":R(ru,"Звёзды","Stars"),"crypto":R(ru,"Крипта","Crypto"),"card":R(ru,"Карта","Card")}
             mname=mnames.get(method,method)
             await notify_admins(context,
                 f"{Edm} <b>Вывод - {mname}</b>\n{Eu} @{uname3} (<code>{uid}</code>)\n"
@@ -2627,23 +2616,19 @@ async def show_req(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); ru=lang=="ru"; reqs=u.get("requisites",{})
-        card=reqs.get("card"); card_uah=reqs.get("card_uah"); ton=reqs.get("ton"); stars=reqs.get("stars")
-
-        def fmt_card(val, default_bank):
-            if not val: return None
-            if "|" in val:
-                card_num,card_bnk=val.split("|",1)
-            else:
-                card_num=val; card_bnk=default_bank
-            return f"{R(ru,'Номер','Number')}: <code>{card_num}</code>\n{R(ru,'Банк','Bank')}: {card_bnk}"
+        card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
+        bank=card_bank(lang)
 
         lines=[f"{Ecwn} <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n"]
-        lines.append(f"{Ecrd} <b>{R(ru,'Карта / Телефон (рубли)','Card / Phone (RUB)')}:</b>")
-        rub_block=fmt_card(card, card_bank(lang))
-        lines.append(f"<blockquote>{rub_block}</blockquote>" if rub_block else f"<blockquote>{R(ru,'Не добавлена','Not added')}</blockquote>")
-        lines.append(f"\n{Ecrd} <b>{R(ru,'Карта / Телефон (гривны)','Card / Phone (UAH)')}:</b>")
-        uah_block=fmt_card(card_uah, R(ru,"ПриватБанк","PrivatBank"))
-        lines.append(f"<blockquote>{uah_block}</blockquote>" if uah_block else f"<blockquote>{R(ru,'Не добавлена','Not added')}</blockquote>")
+        lines.append(f"{Ecrd} <b>{R(ru,'Карта / Телефон','Card / Phone')}:</b>")
+        if card:
+            if "|" in card:
+                card_num,card_bnk=card.split("|",1)
+            else:
+                card_num=card; card_bnk=bank
+            lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card_num}</code>\n{R(ru,'Банк','Bank')}: {card_bnk}</blockquote>")
+        else:
+            lines.append(f"<blockquote>{R(ru,'Не добавлена','Not added')}</blockquote>")
         lines.append(f"\n{Eton} <b>TON:</b>")
         lines.append(f"<blockquote><code>{ton}</code></blockquote>" if ton else f"<blockquote>{R(ru,'Не добавлен','Not added')}</blockquote>")
         lines.append(f"\n{Est} <b>{R(ru,'Звёзды','Stars')}:</b>")
@@ -2651,15 +2636,10 @@ async def show_req(update, context):
 
         rows=[]
         if card:
-            rows.append([InlineKeyboardButton(R(ru,"Изменить карту ₽","Edit card ₽"),callback_data="req_edit_card",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Удалить ₽","Delete ₽"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
+            rows.append([InlineKeyboardButton(R(ru,"Изменить карту","Edit card"),callback_data="req_edit_card",icon_custom_emoji_id="5879841310902324730"),
+                         InlineKeyboardButton(R(ru,"Удалить карту","Delete card"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
         else:
-            rows.append([InlineKeyboardButton(R(ru,"Добавить карту (рубли)","Add card (RUB)"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")])
-        if card_uah:
-            rows.append([InlineKeyboardButton(R(ru,"Изменить карту ₴","Edit card ₴"),callback_data="req_edit_card_uah",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Удалить ₴","Delete ₴"),callback_data="req_del_card_uah",icon_custom_emoji_id="5904542823167824187")])
-        else:
-            rows.append([InlineKeyboardButton(R(ru,"Добавить карту (гривны)","Add card (UAH)"),callback_data="req_edit_card_uah",icon_custom_emoji_id="5375587209476843297")])
+            rows.append([InlineKeyboardButton(R(ru,"Добавить карту / телефон","Add card / phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")])
         if ton:
             rows.append([InlineKeyboardButton(R(ru,"Изменить TON","Edit TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5879841310902324730"),
                          InlineKeyboardButton(R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
@@ -2741,10 +2721,8 @@ async def show_withdraw(update, context):
         else: rows.append([InlineKeyboardButton("TON / USDT",callback_data="withdraw_crypto",icon_custom_emoji_id="5409321884074419506")])
         if reqs.get("stars"): rows.append([InlineKeyboardButton(R(ru,"Звёзды → ","Stars → ")+reqs["stars"],callback_data="withdraw_stars",icon_custom_emoji_id="5893034681636491040")])
         else: rows.append([InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="withdraw_stars",icon_custom_emoji_id="5893034681636491040")])
-        if reqs.get("card"): rows.append([InlineKeyboardButton(R(ru,"Карта ₽ → ","Card ₽ → ")+reqs["card"][:12]+"...",callback_data="withdraw_card",icon_custom_emoji_id="5902056028513505203")])
-        else: rows.append([InlineKeyboardButton(R(ru,"Карта (рубли)","Card (RUB)"),callback_data="withdraw_card",icon_custom_emoji_id="5902056028513505203")])
-        if reqs.get("card_uah"): rows.append([InlineKeyboardButton(R(ru,"Карта ₴ → ","Card ₴ → ")+reqs["card_uah"][:12]+"...",callback_data="withdraw_card_uah",icon_custom_emoji_id="5375587209476843297")])
-        else: rows.append([InlineKeyboardButton(R(ru,"Карта (гривны)","Card (UAH)"),callback_data="withdraw_card_uah",icon_custom_emoji_id="5375587209476843297")])
+        if reqs.get("card"): rows.append([InlineKeyboardButton(R(ru,"Карта → ","Card → ")+reqs["card"][:12]+"...",callback_data="withdraw_card",icon_custom_emoji_id="5902056028513505203")])
+        else: rows.append([InlineKeyboardButton(R(ru,"Карта / Телефон","Card / Phone"),callback_data="withdraw_card",icon_custom_emoji_id="5902056028513505203")])
         rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,
             f"{Ewlt} <b>{R(ru,'Вывод средств','Withdraw')}</b>\n\n<blockquote>{Ebal} {R(ru,'Баланс','Balance')}: {bal} RUB</blockquote>",
