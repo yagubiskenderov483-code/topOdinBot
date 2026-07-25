@@ -360,6 +360,7 @@ async def notify_admins(context, text, reply_markup=None):
 BANNER_SECTIONS = {
     "main":"Главное меню","deal":"Создать сделку","balance":"Пополнить/Вывод",
     "profile":"Профиль","req":"Реквизиты","top":"Топ","my_deals":"Мои сделки",
+    "info":"Информация",
     "deal_card":"Карточка сделки","deal_join":"Присоединение к сделке",
     "deal_forward":"Пересылка сделки","ref":"Рефералы",
 }
