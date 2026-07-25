@@ -2,7 +2,7 @@ import logging, json, os, math, html, time
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +22,11 @@ CARD_NAME    = "Александр Ф."
 CARD_BANK_RU = "ВТБ"
 CARD_BANK_EN = "VTB"
 DB_FILE      = "db.json"
+# Reviews Mini App (miniapp/). Host on Render Static Site, then set URL here / via env.
+REVIEWS_MINIAPP_URL = os.getenv(
+    "REVIEWS_MINIAPP_URL",
+    "https://brewpage.app/public/ymfZSnVVn4",
+).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
 
@@ -655,7 +660,15 @@ def main_kb(lang):
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
         [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
          InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),web_app=WebAppInfo(url="https://www.eldorado.gg/"),icon_custom_emoji_id="5983580310292402968")],
+        [InlineKeyboardButton(R(ru,'Информация','Information'),callback_data="menu_info",icon_custom_emoji_id="5409181322679706928")],
+    ])
+
+def info_kb(lang):
+    ru=lang=="ru"
+    return InlineKeyboardMarkup([
         [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928")],
+        [InlineKeyboardButton(R(ru,'👤 Отзывы','👤 Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL))],
+        [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 def topup_methods_kb(lang):
@@ -1244,6 +1257,16 @@ async def show_main(update, context):
         await send_section(update,desc,main_kb(lang),section="main")
     except Exception as e: logger.error(f"show_main: {e}")
 
+async def show_info(update, context):
+    try:
+        uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
+        text=(
+            f"{Eln} <b>{R(ru,'Информация','Information')}</b>\n\n"
+            f"<blockquote>{R(ru,'Как проходят сделки и отзывы.','How deals work and reviews.')}</blockquote>"
+        )
+        await send_section(update,text,info_kb(lang),section="info")
+    except Exception as e: logger.error(f"show_info: {e}")
+
 # ─── /start ───────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -1479,6 +1502,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_top(update,context); return
         if d=="menu_ref":
             await show_ref(update,context); return
+        if d=="menu_info":
+            await show_info(update,context); return
         if d=="menu_req":
             for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
                 ud.pop(key,None)
@@ -3208,6 +3233,8 @@ def main():
     async def post_init(application):
         await application.bot.set_my_commands([BotCommand("start","Главное меню")])
         await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
+        # Bottom-left menu = /start commands, not Mini App
+        await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
     app.post_init=post_init
 
     app.add_handler(CommandHandler("start",cmd_start))
