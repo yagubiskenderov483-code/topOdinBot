@@ -667,8 +667,8 @@ def main_kb(lang):
 def info_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928")],
-        [InlineKeyboardButton(R(ru,'👤 Отзывы','👤 Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL))],
+        [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928"),
+         InlineKeyboardButton(R(ru,'👤 Отзывы','👤 Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL))],
         [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
