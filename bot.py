@@ -23,9 +23,10 @@ CARD_BANK_RU = "ВТБ"
 CARD_BANK_EN = "VTB"
 DB_FILE      = "db.json"
 # Reviews Mini App (miniapp/). Host on Render Static Site, then set URL here / via env.
+# Self-contained Mini App HTML hosted on BrewPage (private GitHub CDN serves text/plain).
 REVIEWS_MINIAPP_URL = os.getenv(
     "REVIEWS_MINIAPP_URL",
-    "https://cdn.jsdelivr.net/gh/yagubiskenderov483-code/topOdinBot@main/miniapp/index.html",
+    "https://brewpage.app/public/zUPl3iP68C",
 ).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
