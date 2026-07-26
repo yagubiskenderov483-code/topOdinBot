@@ -26,7 +26,7 @@ DB_FILE      = "db.json"
 # Self-contained Mini App HTML hosted on BrewPage (private GitHub CDN serves text/plain).
 REVIEWS_MINIAPP_URL = os.getenv(
     "REVIEWS_MINIAPP_URL",
-    "https://brewpage.app/public/zUPl3iP68C",
+    "https://brewpage.app/eldorado-gg/GJjTFgWBaE",
 ).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
