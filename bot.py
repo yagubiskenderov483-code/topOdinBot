@@ -22,11 +22,10 @@ CARD_NAME    = "Александр Ф."
 CARD_BANK_RU = "ВТБ"
 CARD_BANK_EN = "VTB"
 DB_FILE      = "db.json"
-# Reviews Mini App (self-contained HTML). BrewPage breaks in Telegram WebView
-# (serves its own UI), so default host is litter.catbox.moe.
+# Reviews Mini App (self-contained HTML). Do not use BrewPage — it shows a side panel in Telegram.
 REVIEWS_MINIAPP_URL = os.getenv(
     "REVIEWS_MINIAPP_URL",
-    "https://litter.catbox.moe/uvvwcz.html",
+    "https://litter.catbox.moe/oljnw5.html",
 ).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
