@@ -7,14 +7,13 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #07131a;
       --bg2: #0d2230;
-      --panel: rgba(16, 42, 56, 0.55);
       --ink: #eef7f4;
-      --muted: rgba(238, 247, 244, 0.58);
+      --muted: rgba(238, 247, 244, 0.62);
       --line: rgba(126, 214, 186, 0.16);
       --mint: #7ed6ba;
       --mint-deep: #2f9d7a;
@@ -25,303 +24,314 @@
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { min-height: 100%; background: var(--bg); color: var(--ink); font-family: "Manrope", sans-serif; -webkit-font-smoothing: antialiased; }
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Manrope", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
     body {
       background:
-        radial-gradient(90% 70% at 10% -10%, rgba(47, 157, 122, 0.28), transparent 55%),
-        radial-gradient(80% 60% at 100% 0%, rgba(240, 197, 109, 0.16), transparent 45%),
-        linear-gradient(180deg, var(--bg2), var(--bg) 48%, #040b10 100%);
-      background-attachment: fixed;
+        radial-gradient(90% 50% at 0% 0%, rgba(47, 157, 122, 0.22), transparent 50%),
+        radial-gradient(70% 40% at 100% 0%, rgba(240, 197, 109, 0.12), transparent 45%),
+        linear-gradient(180deg, var(--bg2), var(--bg) 40%, #040b10 100%);
     }
-    .shell { width: min(100%, 480px); margin: 0 auto; padding: calc(16px + var(--safe-top)) 16px calc(28px + var(--safe-bottom)); }
-    .hero {
-      position: relative;
-      overflow: hidden;
-      min-height: calc(100svh - 40px - var(--safe-top) - var(--safe-bottom));
-      display: flex; flex-direction: column; justify-content: flex-end;
-      padding: 8px 2px 30px;
+    .shell {
+      width: min(100%, 480px);
+      margin: 0 auto;
+      padding: calc(12px + var(--safe-top)) 16px calc(24px + var(--safe-bottom));
     }
-    .orbit {
-      position: absolute; inset: 4% -30% auto; height: 62%;
-      background:
-        radial-gradient(circle at 30% 40%, rgba(126,214,186,.18), transparent 42%),
-        radial-gradient(circle at 70% 35%, rgba(240,197,109,.14), transparent 38%);
-      filter: blur(2px);
-      animation: floaty 10s ease-in-out infinite alternate;
-      pointer-events: none;
+    .top {
+      padding: 4px 0 14px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 4px;
     }
-    .grid {
-      position: absolute; inset: 8% 0 30%;
-      background-image:
-        linear-gradient(rgba(126,214,186,.07) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(126,214,186,.07) 1px, transparent 1px);
-      background-size: 28px 28px;
-      mask-image: linear-gradient(180deg, #000, transparent);
-      animation: drift 18s linear infinite;
-      pointer-events: none;
-    }
-    @keyframes floaty { from { transform: translateY(0) scale(1); } to { transform: translateY(16px) scale(1.04); } }
-    @keyframes drift { from { transform: translateY(0); } to { transform: translateY(28px); } }
-    @keyframes rise { to { opacity: 1; transform: translateY(0); } }
-    @keyframes shimmer { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.18); } }
     .brand {
-      position: relative; z-index: 1;
       font-family: "Bricolage Grotesque", sans-serif;
-      font-weight: 800; font-size: clamp(2.7rem, 12vw, 3.6rem);
-      line-height: .92; letter-spacing: -.045em;
-      opacity: 0; transform: translateY(20px);
-      animation: rise .75s cubic-bezier(.2,.8,.2,1) .08s forwards;
+      font-weight: 800;
+      font-size: 1.85rem;
+      line-height: 1;
+      letter-spacing: -0.04em;
     }
-    .brand em { font-style: normal; color: var(--amber-soft); text-shadow: 0 0 36px rgba(240,197,109,.28); }
+    .brand em { font-style: normal; color: var(--amber-soft); }
     .brand small {
-      display: block; margin-top: 10px; font-size: .34em; letter-spacing: .34em;
-      color: var(--mint); font-weight: 700;
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 0.42em;
+      letter-spacing: 0.22em;
+      color: var(--mint);
+      vertical-align: middle;
+      font-weight: 700;
     }
     .lead {
-      position: relative; z-index: 1; margin-top: 16px; max-width: 28ch;
-      color: var(--muted); font-size: 1.02rem; line-height: 1.45;
-      opacity: 0; transform: translateY(20px);
-      animation: rise .75s cubic-bezier(.2,.8,.2,1) .22s forwards;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
     }
-    .cta {
-      position: relative; z-index: 1; margin-top: 26px; width: fit-content;
-      border: 0; border-radius: 14px; padding: 14px 18px;
-      background: linear-gradient(135deg, var(--amber-soft), #d7a84a);
-      color: #1a1408; font: 800 .95rem "Manrope", sans-serif;
-      cursor: pointer; opacity: 0; transform: translateY(20px);
-      animation: rise .75s cubic-bezier(.2,.8,.2,1) .36s forwards;
-    }
-    .cta:active { transform: scale(.98); }
-    .panel-head { margin: 6px 0 14px; }
-    .panel-head h2 {
-      font-family: "Bricolage Grotesque", sans-serif;
-      font-size: 1.6rem; letter-spacing: -.03em;
-    }
-    .panel-head p { margin-top: 6px; color: var(--muted); font-size: .9rem; }
     .stats {
-      margin-top: 16px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px;
-    }
-    .stat {
-      padding: 12px 0 4px; border-top: 1px solid var(--line);
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
     .stat strong {
-      display: block; font-family: "Bricolage Grotesque", sans-serif;
-      font-size: 1.45rem; letter-spacing: -.03em;
+      display: block;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 1.35rem;
+      letter-spacing: -0.03em;
     }
-    .stat span { color: var(--muted); font-size: .78rem; font-weight: 600; }
-    .bars { margin: 14px 0 6px; display: grid; gap: 7px; }
-    .bar-row { display: grid; grid-template-columns: 28px 1fr 34px; gap: 8px; align-items: center; font-size: .78rem; color: var(--muted); }
-    .bar-track { height: 6px; border-radius: 999px; background: rgba(238,247,244,.08); overflow: hidden; }
-    .bar-fill { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--mint-deep), var(--amber)); transition: width .8s cubic-bezier(.2,.8,.2,1); }
-    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }
+    .stat span { color: var(--muted); font-size: 0.75rem; font-weight: 600; }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 6px;
+    }
     .filters button {
-      border: 1px solid var(--line); background: transparent; color: var(--muted);
-      border-radius: 999px; padding: 8px 12px; font: 700 .78rem "Manrope", sans-serif; cursor: pointer;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 10px;
+      padding: 8px 12px;
+      font: 700 0.78rem "Manrope", sans-serif;
+      cursor: pointer;
     }
-    .filters button.active { color: #102018; background: var(--mint); border-color: transparent; }
+    .filters button.active {
+      color: #102018;
+      background: var(--mint);
+      border-color: transparent;
+    }
     .feed { display: flex; flex-direction: column; }
     .review {
-      padding: 18px 0; border-top: 1px solid var(--line);
-      opacity: 0; transform: translateY(14px);
-      transition: opacity .45s ease, transform .45s ease;
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
     }
-    .review.visible { opacity: 1; transform: none; }
-    .review-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; margin-bottom: 8px; }
-    .name { font-weight: 800; font-size: .98rem; max-width: 70%; overflow-wrap: anywhere; }
-    .name.anon { color: var(--muted); font-weight: 700; font-style: italic; }
-    .name.fancy { font-weight: 700; letter-spacing: .02em; color: var(--amber-soft); }
-    .name.long { font-size: .86rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--mint); }
-    .meta { color: var(--muted); font-size: .76rem; white-space: nowrap; }
-    .stars { color: var(--amber); letter-spacing: .1em; margin-bottom: 8px; font-size: .92rem; display: inline-block; }
+    .review-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .name {
+      font-weight: 800;
+      font-size: 0.95rem;
+      max-width: 70%;
+      overflow-wrap: anywhere;
+    }
+    .name.anon { color: var(--muted); font-style: italic; font-weight: 700; }
+    .name.fancy { color: var(--amber-soft); }
+    .name.long {
+      font-size: 0.84rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--mint);
+    }
+    .meta { color: var(--muted); font-size: 0.74rem; white-space: nowrap; }
+    .stars {
+      color: var(--amber);
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
     .stars.low { color: var(--danger); }
-    .stars.pulse { animation: shimmer 2.4s ease-in-out infinite; }
-    .text { color: rgba(238,247,244,.88); font-size: .95rem; line-height: 1.5; }
+    .text {
+      color: rgba(238, 247, 244, 0.9);
+      font-size: 0.93rem;
+      line-height: 1.45;
+    }
     .tag {
-      display: inline-block; margin-top: 10px; color: var(--mint);
-      font-size: .76rem; font-weight: 700; letter-spacing: .02em;
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--mint);
+      font-size: 0.74rem;
+      font-weight: 700;
     }
     .more {
-      margin: 18px 0 8px; width: 100%; border: 1px solid var(--line); background: var(--panel);
-      color: var(--amber-soft); border-radius: 14px; padding: 13px 16px;
-      font: 800 .9rem "Manrope", sans-serif; cursor: pointer; backdrop-filter: blur(8px);
+      margin: 14px 0 6px;
+      width: 100%;
+      border: 1px solid var(--line);
+      background: rgba(16, 42, 56, 0.55);
+      color: var(--amber-soft);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font: 800 0.9rem "Manrope", sans-serif;
+      cursor: pointer;
     }
     .more[hidden] { display: none; }
-    .status { color: var(--muted); font-size: .85rem; padding: 10px 0; }
-    .foot { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; line-height: 1.45; }
+    .status { color: var(--muted); font-size: 0.82rem; padding: 8px 0; }
+    .foot {
+      margin-top: 22px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
     .foot a { color: var(--amber-soft); text-decoration: none; font-weight: 700; }
   </style>
 </head>
 <body>
   <div class="shell">
-    <header class="hero">
-      <div class="orbit" aria-hidden="true"></div>
-      <div class="grid" aria-hidden="true"></div>
-      <div class="brand"><em>Eldorado</em><small>GG REVIEWS</small></div>
-      <p class="lead">Живые отзывы по сделкам: Stars, NFT, TON, Premium. Без воды — как прошло на самом деле.</p>
-      <button class="cta" type="button" id="scrollReviews">Открыть отзывы ↓</button>
+    <header class="top">
+      <div class="brand"><em>Eldorado</em><small>REVIEWS</small></div>
+      <p class="lead">Отзывы по сделкам Stars, NFT, TON и Premium.</p>
+      <div class="stats">
+        <div class="stat"><strong id="avgScore">—</strong><span>средняя оценка</span></div>
+        <div class="stat"><strong id="reviewCount">—</strong><span>отзывов</span></div>
+      </div>
+      <div class="filters" id="filters"></div>
     </header>
 
     <section id="reviews" aria-label="Отзывы">
-      <div class="panel-head">
-        <h2>Отзывы</h2>
-        <p>Оценки после реальных сделок на площадке.</p>
-        <div class="stats">
-          <div class="stat"><strong id="avgScore">—</strong><span>средняя оценка</span></div>
-          <div class="stat"><strong id="reviewCount">—</strong><span>отзывов</span></div>
-        </div>
-        <div class="bars" id="bars"></div>
-        <div class="filters" id="filters"></div>
-      </div>
       <div class="feed" id="feed"></div>
-      <p class="status" id="loadStatus">Загрузка…</p>
+      <p class="status" id="loadStatus"></p>
       <button class="more" type="button" id="loadMore" hidden>Показать ещё</button>
     </section>
 
     <footer class="foot">
-      Хотите оставить отзыв после сделки — напишите в
+      Отзыв после сделки —
       <a href="https://t.me/EldoradoGGRobot" target="_blank" rel="noopener">@EldoradoGGRobot</a>
-      или
-      <a href="https://t.me/EldoradoGGSupport" target="_blank" rel="noopener">@EldoradoGGSupport</a>.
+      /
+      <a href="https://t.me/EldoradoGGSupport" target="_blank" rel="noopener">@EldoradoGGSupport</a>
     </footer>
   </div>
 
   <script>
 window.REVIEWS_DATA={"average":4.6,"count":220,"reviews":[{"name":"Jake","stars":5,"date":"Jul 26","tag":"Stars","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Sara N.","stars":5,"date":"Jul 26","tag":"Premium","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"kz_trader","stars":5,"date":"25 июл","tag":"Premium","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Kyle","stars":4,"date":"25 июл","tag":"Карта","text":"В целом ок, чуть подождали менеджера, но сделку закрыли."},{"name":"Ruby","stars":5,"date":"Jul 24","tag":"NFT Gift","text":"NFT gift transfer went through after manager check. Solid."},{"name":"ua_swap","stars":5,"date":"Jul 24","tag":"TON","text":"Bought stars, seller was chill, money released on time."},{"name":"moscow_p2p","stars":4,"date":"24 июл","tag":"Карта","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"stars_for_ton_exchange","stars":5,"date":"24 июл","tag":"USDT","text":"Сделка на тон, комиссия понятная, без сюрпризов."},{"name":"Глеб","stars":5,"date":"22 июл","tag":"NFT Username","text":"Звёзды пришли, ник тот что надо. Спасибо."},{"name":"Luke","stars":5,"date":"22 июл","tag":"Stars","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"eldorado_trusted_seller_ru","stars":5,"date":"Jul 22","tag":"Карта","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Кирилл","stars":5,"date":"Jul 22","tag":"Premium","text":"Звёзды пришли, ник тот что надо. Спасибо."},{"name":"Олег М.","stars":4,"date":"Jul 22","tag":"Stars","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"seller_pro51","stars":5,"date":"21 июл","tag":"Карта","text":"Всё чётко, деньги пришли за пару минут. Гарант реально работает."},{"name":"gg_trade","stars":4,"date":"21 июл","tag":"NFT Gift","text":"Сделка удалась. Один раз пришлось уточнять реквизиты."},{"name":"safe_p2p_escrow_user","stars":4,"date":"Jul 21","tag":"USDT","text":"В целом ок, чуть подождали менеджера, но сделку закрыли."},{"name":"Вика","stars":4,"date":"21 июл","tag":"Карта","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"Полина","stars":5,"date":"21 июл","tag":"USDT","text":"Перевод на карту прошёл, продавец отдал товар сразу после подтверждения."},{"name":"Оля","stars":5,"date":"Jul 21","tag":"USDT","text":"No weird DMs asking to leave the bot. Good."},{"name":"Катя","stars":5,"date":"21 июл","tag":"Карта","text":"Продавал username — покупатель оплатил, я передал, закрыли сделку."},{"name":"Hidden user","stars":4,"date":"21 июл","tag":"Premium","text":"Worked fine, just waited a bit on confirmation."},{"name":"𝕋𝕠𝕟𝕂𝕚𝕟𝕘","stars":5,"date":"Jul 21","tag":"Premium","text":"Продавал username — покупатель оплатил, я передал, закрыли сделку."},{"name":"Лена","stars":4,"date":"20 июл","tag":"NFT Username","text":"Работает. Для первой сделки норм опыт."},{"name":"trade_hub","stars":5,"date":"20 июл","tag":"NFT Username","text":"First time here — smoother than expected."},{"name":"ton_dealer9","stars":5,"date":"19 июл","tag":"NFT Gift","text":"Первая сделка — норм. Поддержка быстро ответила на вопрос."},{"name":"Ира Т.","stars":5,"date":"Jul 19","tag":"NFT Username","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"buyer_ok","stars":5,"date":"Jul 19","tag":"TON","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"Алина","stars":5,"date":"Jul 18","tag":"Escrow","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Ethan","stars":5,"date":"18 июл","tag":"NFT Username","text":"Premium deal done. Clear steps, no drama."},{"name":"seller_pro","stars":5,"date":"18 июл","tag":"USDT","text":"Перевод на карту прошёл, продавец отдал товар сразу после подтверждения."},{"name":"Алина М.","stars":4,"date":"Jul 18","tag":"Stars","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"stars_market","stars":4,"date":"18 июл","tag":"Карта","text":"Всё прошло, только интерфейс местами неочевидный."},{"name":"Глеб Х.","stars":5,"date":"Jul 18","tag":"Карта","text":"Брал звёзды, продавец адекватный, без нервов. Буду ещё. 👍"},{"name":"Саша Н.","stars":3,"date":"Jul 18","tag":"Escrow","text":"Средне. Менеджер ответил не сразу, пришлось писать повторно."},{"name":"Blake","stars":5,"date":"Jul 18","tag":"Карта","text":"Первая сделка — норм. Поддержка быстро ответила на вопрос."},{"name":"Chloe T.","stars":5,"date":"18 июл","tag":"USDT","text":"Всё чётко, деньги пришли за пару минут. Гарант реально работает."},{"name":"kz_trader","stars":3,"date":"17 июл","tag":"Premium","text":"Okay result, communication was messy at first."},{"name":"Таня","stars":5,"date":"Jul 17","tag":"USDT","text":"Premium deal done. Clear steps, no drama."},{"name":"Gabe B.","stars":5,"date":"17 июл","tag":"NFT Username","text":"Звёзды пришли, ник тот что надо. Спасибо."},{"name":"Паша Б.","stars":5,"date":"Jul 17","tag":"Stars","text":"Купил Premium, всё активировали как написано. Ок."},{"name":"Маша","stars":5,"date":"Jul 17","tag":"TON","text":"Второй раз тут — снова без косяков."},{"name":"gift_hunter","stars":5,"date":"Jul 16","tag":"TON","text":"Второй раз тут — снова без косяков."},{"name":"Артём","stars":4,"date":"16 июл","tag":"NFT Gift","text":"Работает. Для первой сделки норм опыт."},{"name":"buyer_ok75","stars":4,"date":"16 июл","tag":"Stars","text":"Worked fine, just waited a bit on confirmation."},{"name":"Юля Д.","stars":5,"date":"16 июл","tag":"Escrow","text":"TON payment + release worked exactly as described."},{"name":"Лёша","stars":5,"date":"Jul 15","tag":"USDT","text":"Первая сделка — норм. Поддержка быстро ответила на вопрос."},{"name":"₦₣₮","stars":5,"date":"Jul 15","tag":"Stars","text":"Перевод на карту прошёл, продавец отдал товар сразу после подтверждения."},{"name":"Лев","stars":4,"date":"15 июл","tag":"NFT Gift","text":"Работает. Для первой сделки норм опыт."},{"name":"𝐿𝑒𝓃𝒶","stars":5,"date":"15 июл","tag":"NFT Gift","text":"Всё чётко, деньги пришли за пару минут. Гарант реально работает."},{"name":"Mia J.","stars":4,"date":"Jul 15","tag":"Stars","text":"Норм, но хотелось бы чуть быстрее по статусам."},{"name":"Gabe S.","stars":4,"date":"15 июл","tag":"TON","text":"Норм, но хотелось бы чуть быстрее по статусам."},{"name":"Богдан","stars":5,"date":"14 июл","tag":"USDT","text":"Брал звёзды, продавец адекватный, без нервов. Буду ещё."},{"name":"Таня","stars":5,"date":"14 июл","tag":"NFT Username","text":"Support answered in a few minutes when I got stuck."},{"name":"Лиза","stars":5,"date":"13 июл","tag":"NFT Username","text":"Clean deal, escrow held until both sides confirmed. Would use again."},{"name":"𝔇𝔦𝔪𝔞","stars":5,"date":"Jul 13","tag":"USDT","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"Jake","stars":5,"date":"13 июл","tag":"Escrow","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"crypto_king_moscow_2024","stars":5,"date":"Jul 13","tag":"NFT Username","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Лёша М.","stars":5,"date":"12 июл","tag":"Stars","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"Leah T.","stars":5,"date":"Jul 11","tag":"Escrow","text":"TON payment + release worked exactly as described."},{"name":"Blake","stars":5,"date":"Jul 11","tag":"USDT","text":"Второй раз тут — снова без косяков. 🔥"},{"name":"Zoe S.","stars":5,"date":"Jul 11","tag":"Escrow","text":"Сделка на тон, комиссия понятная, без сюрпризов."},{"name":"nft_swapper","stars":4,"date":"Jul 11","tag":"NFT Username","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"Kate L.","stars":5,"date":"11 июл","tag":"USDT","text":"Перевод на карту прошёл, продавец отдал товар сразу после подтверждения."},{"name":"Саша","stars":4,"date":"Jul 11","tag":"NFT Username","text":"Сделка удалась. Один раз пришлось уточнять реквизиты."},{"name":"𝒮𝒶𝓈𝒽𝒶","stars":5,"date":"Jul 11","tag":"NFT Gift","text":"Первая сделка — норм. Поддержка быстро ответила на вопрос."},{"name":"Анонимный","stars":5,"date":"11 июл","tag":"Stars","text":"Всё чётко, деньги пришли за пару минут. Гарант реально работает."},{"name":"Ксюша","stars":4,"date":"11 июл","tag":"TON","text":"Сделка удалась. Один раз пришлось уточнять реквизиты."},{"name":"deal_fast","stars":4,"date":"Jul 11","tag":"Stars","text":"Good escrow, UI could be clearer for new users."},{"name":"stars_for_ton_exchange","stars":5,"date":"Jul 9","tag":"Premium","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"safe_p2p_escrow_user","stars":5,"date":"9 июл","tag":"Карта","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"скрытый ник","stars":5,"date":"9 июл","tag":"TON","text":"Сделка на тон, комиссия понятная, без сюрпризов."},{"name":"Настя Т.","stars":4,"date":"Jul 9","tag":"Карта","text":"Solid overall. Would still recommend for P2P."},{"name":"Maya","stars":5,"date":"Jul 9","tag":"Escrow","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Nora","stars":4,"date":"Jul 9","tag":"Premium","text":"4 звезды потому что ждал дольше чем думал, но без обмана."},{"name":"Макс","stars":4,"date":"Jul 9","tag":"USDT","text":"4 звезды потому что ждал дольше чем думал, но без обмана."},{"name":"Nora B.","stars":5,"date":"Jul 9","tag":"Escrow","text":"Очень удобно что не надо в лс уходить. Всё в боте."},{"name":"premium_only","stars":4,"date":"Jul 8","tag":"TON","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"Ivy N.","stars":5,"date":"8 июл","tag":"NFT Gift","text":"Всё чётко, деньги пришли за пару минут. Гарант реально работает."},{"name":"Jake T.","stars":5,"date":"8 июл","tag":"Premium","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Seth","stars":4,"date":"8 июл","tag":"Premium","text":"Сделка удалась. Один раз пришлось уточнять реквизиты."},{"name":"Zoe S.","stars":4,"date":"7 июл","tag":"Escrow","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"Матвей Г.","stars":4,"date":"7 июл","tag":"NFT Username","text":"Сделка удалась. Один раз пришлось уточнять реквизиты."},{"name":"Luke M.","stars":5,"date":"7 июл","tag":"Stars","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"safe_p2p_escrow_user","stars":5,"date":"7 июл","tag":"NFT Gift","text":"Сделка на тон, комиссия понятная, без сюрпризов."},{"name":"Ruby","stars":4,"date":"Jul 7","tag":"Escrow","text":"Solid overall. Would still recommend for P2P."},{"name":"eldorado_fan80","stars":5,"date":"Jul 7","tag":"Stars","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Костя Г.","stars":5,"date":"6 июл","tag":"Escrow","text":"Первая сделка — норм. Поддержка быстро ответила на вопрос."},{"name":"𝒱𝒾𝓀𝒶","stars":5,"date":"6 июл","tag":"Escrow","text":"Support answered in a few minutes when I got stuck."},{"name":"gift_hunter67","stars":5,"date":"6 июл","tag":"USDT","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"eldorado_fan","stars":5,"date":"6 июл","tag":"Stars","text":"Clean deal, escrow held until both sides confirmed. Would use again."},{"name":"Ryan","stars":5,"date":"5 июл","tag":"Карта","text":"No weird DMs asking to leave the bot. Good."},{"name":"Богдан","stars":3,"date":"Jul 5","tag":"Escrow","text":"Не обманули, просто очень медленно на каждом шаге."},{"name":"Sara B.","stars":2,"date":"5 июл","tag":"Карта","text":"Almost cancelled. Seller went quiet, then came back."},{"name":"Никита Г.","stars":5,"date":"Jul 5","tag":"Escrow","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Богдан","stars":5,"date":"4 июл","tag":"Escrow","text":"Очень удобно что не надо в лс уходить. Всё в боте."},{"name":"Nate","stars":5,"date":"Jul 4","tag":"NFT Gift","text":"Купил Premium, всё активировали как написано. Ок."},{"name":"Maya W.","stars":5,"date":"4 июл","tag":"USDT","text":"Звёзды пришли, ник тот что надо. Спасибо."},{"name":"stars_market54","stars":5,"date":"4 июл","tag":"Premium","text":"First time here — smoother than expected."},{"name":"Гоша Ф.","stars":5,"date":"Jul 4","tag":"USDT","text":"Купил Premium, всё активировали как написано. Ок. ++"},{"name":"Андрей З.","stars":4,"date":"Jul 4","tag":"TON","text":"Good escrow, UI could be clearer for new users."},{"name":"Рома","stars":5,"date":"Jul 4","tag":"TON","text":"Support answered in a few minutes when I got stuck."},{"name":"Гоша","stars":5,"date":"Jul 3","tag":"NFT Gift","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"Марк","stars":5,"date":"3 июл","tag":"Stars","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"без ника","stars":4,"date":"Jul 3","tag":"Premium","text":"Всё прошло, только интерфейс местами неочевидный."},{"name":"𝒱𝒾𝓀𝒶","stars":5,"date":"3 июл","tag":"Escrow","text":"NFT gift transfer went through after manager check. Solid."},{"name":"Blake L.","stars":5,"date":"Jul 2","tag":"USDT","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"crypto_king_moscow_2024","stars":4,"date":"2 июл","tag":"USDT","text":"Good escrow, UI could be clearer for new users."},{"name":"Maya P.","stars":5,"date":"2 июл","tag":"Premium","text":"Продавал username — покупатель оплатил, я передал, закрыли сделку."},{"name":"Anonymous","stars":5,"date":"Jul 2","tag":"Premium","text":"Clean deal, escrow held until both sides confirmed. Would use again."},{"name":"top_seller_from_spb_gg","stars":5,"date":"2 июл","tag":"NFT Gift","text":"First time here — smoother than expected."},{"name":"Анонимный","stars":4,"date":"2 июл","tag":"Карта","text":"Всё прошло, только интерфейс местами неочевидный. 🔥"},{"name":"best_nft_deals_telegram","stars":5,"date":"2 июл","tag":"Escrow","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"Илья","stars":2,"date":"2 июл","tag":"NFT Gift","text":"Почти сорвалось — продавец пропал на час. Потом всё же закрыли."},{"name":"Mia M.","stars":1,"date":"Jul 2","tag":"NFT Username","text":"Ждал подтверждение слишком долго, чуть не ушёл в другой чат."},{"name":"Kyle","stars":5,"date":"Jul 2","tag":"Stars","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Толя В.","stars":5,"date":"2 июл","tag":"NFT Gift","text":"Продавал username — покупатель оплатил, я передал, закрыли сделку."},{"name":"Kyle W.","stars":5,"date":"Jul 1","tag":"Stars","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"eldorado_trusted_seller_ru","stars":5,"date":"1 июл","tag":"NFT Username","text":"Всё чётко, деньги пришли за пару минут. Гарант реально работает."},{"name":"kz_trader10","stars":1,"date":"1 июл","tag":"Stars","text":"Ждал подтверждение слишком долго, чуть не ушёл в другой чат."},{"name":"moscow_p2p","stars":5,"date":"Jul 1","tag":"Карта","text":"Второй раз тут — снова без косяков."},{"name":"𝒮𝒶𝓈𝒽𝒶","stars":4,"date":"Jul 1","tag":"Stars","text":"Норм, но хотелось бы чуть быстрее по статусам."},{"name":"Юля","stars":5,"date":"Jul 1","tag":"NFT Username","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"ᎪᏒᏆᎬᎷ","stars":5,"date":"1 июл","tag":"Premium","text":"Support answered in a few minutes when I got stuck."},{"name":"Анонимный","stars":5,"date":"30 июн","tag":"NFT Username","text":"NFT gift transfer went through after manager check. Solid."},{"name":"Оля","stars":5,"date":"Jun 30","tag":"Карта","text":"Купил Premium, всё активировали как написано. Ок."},{"name":"Ethan","stars":5,"date":"Jun 30","tag":"Карта","text":"NFT gift transfer went through after manager check. Solid."},{"name":"𝓜𝓪𝔁","stars":4,"date":"Jun 30","tag":"NFT Username","text":"Worked fine, just waited a bit on confirmation. 🔥"},{"name":"cryptowave10","stars":5,"date":"Jun 30","tag":"Карта","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Lila","stars":4,"date":"Jun 30","tag":"NFT Gift","text":"Работает. Для первой сделки норм опыт."},{"name":"stars_market","stars":5,"date":"29 июн","tag":"Premium","text":"Сделка на тон, комиссия понятная, без сюрпризов."},{"name":"kz_trader44","stars":5,"date":"29 июн","tag":"Premium","text":"Очень удобно что не надо в лс уходить. Всё в боте."},{"name":"premium_only","stars":5,"date":"Jun 29","tag":"TON","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"Глеб Д.","stars":5,"date":"29 июн","tag":"Stars","text":"Продавал username — покупатель оплатил, я передал, закрыли сделку."},{"name":"safe_escrow","stars":5,"date":"29 июн","tag":"Premium","text":"Второй раз тут — снова без косяков."},{"name":"safe_escrow","stars":5,"date":"29 июн","tag":"TON","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"Elle","stars":4,"date":"29 июн","tag":"Escrow","text":"Работает. Для первой сделки норм опыт."},{"name":"Hidden user","stars":4,"date":"Jun 29","tag":"Карта","text":"Solid overall. Would still recommend for P2P."},{"name":"Seth","stars":4,"date":"29 июн","tag":"TON","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"kz_trader","stars":5,"date":"28 июн","tag":"Premium","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Gabe","stars":4,"date":"Jun 28","tag":"Stars","text":"Got what I paid for. Slight delay, nothing major."},{"name":"Miles","stars":5,"date":"Jun 28","tag":"Stars","text":"Перевод на карту прошёл, продавец отдал товар сразу после подтверждения."},{"name":"safe_escrow","stars":3,"date":"28 июн","tag":"USDT","text":"Deal finished, but confirmation took forever."},{"name":"Hidden user","stars":5,"date":"Jun 28","tag":"Карта","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"premium_only","stars":5,"date":"Jun 28","tag":"NFT Username","text":"Clean deal, escrow held until both sides confirmed. Would use again."},{"name":"Катя","stars":5,"date":"28 июн","tag":"USDT","text":"Clean deal, escrow held until both sides confirmed. Would use again."},{"name":"Света","stars":4,"date":"Jun 28","tag":"NFT Gift","text":"Работает. Для первой сделки норм опыт."},{"name":"deal_fast","stars":5,"date":"Jun 27","tag":"Escrow","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Ava K.","stars":5,"date":"27 июн","tag":"Stars","text":"Очень удобно что не надо в лс уходить. Всё в боте."},{"name":"cryptowave","stars":5,"date":"Jun 27","tag":"TON","text":"Очень удобно что не надо в лс уходить. Всё в боте."},{"name":"Настя","stars":5,"date":"Jun 27","tag":"Stars","text":"Сделка на тон, комиссия понятная, без сюрпризов."},{"name":"Chloe N.","stars":4,"date":"27 июн","tag":"Stars","text":"Работает. Для первой сделки норм опыт."},{"name":"crypto_king_moscow_2024","stars":4,"date":"Jun 25","tag":"Premium","text":"В целом ок, чуть подождали менеджера, но сделку закрыли."},{"name":"Chase P.","stars":5,"date":"Jun 25","tag":"USDT","text":"Брал звёзды, продавец адекватный, без нервов. Буду ещё."},{"name":"Тимур Ш.","stars":5,"date":"25 июн","tag":"Premium","text":"No weird DMs asking to leave the bot. Good."},{"name":"buyer_ok83","stars":5,"date":"25 июн","tag":"Stars","text":"Купил Premium, всё активировали как написано. Ок."},{"name":"Noah J.","stars":4,"date":"Jun 25","tag":"Карта","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"ua_swap","stars":4,"date":"25 июн","tag":"USDT","text":"Всё прошло, только интерфейс местами неочевидный."},{"name":"Troy","stars":4,"date":"25 июн","tag":"Escrow","text":"В целом ок, чуть подождали менеджера, но сделку закрыли."},{"name":"by_nft","stars":5,"date":"Jun 25","tag":"Escrow","text":"No weird DMs asking to leave the bot. Good."},{"name":"Brett H.","stars":5,"date":"Jun 24","tag":"Escrow","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Noah B.","stars":5,"date":"24 июн","tag":"NFT Gift","text":"Перевод на карту прошёл, продавец отдал товар сразу после подтверждения."},{"name":"Толя Х.","stars":5,"date":"Jun 24","tag":"Escrow","text":"Premium deal done. Clear steps, no drama."},{"name":"by_nft","stars":5,"date":"24 июн","tag":"Stars","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Liam B.","stars":5,"date":"Jun 24","tag":"Карта","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"Troy","stars":5,"date":"Jun 24","tag":"TON","text":"No weird DMs asking to leave the bot. Good."},{"name":"𝕂𝕚𝕣𝕚𝕝𝕝","stars":5,"date":"22 июн","tag":"Premium","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"Олег","stars":4,"date":"22 июн","tag":"NFT Gift","text":"4 звезды потому что ждал дольше чем думал, но без обмана. 🔥"},{"name":"gift_hunter20","stars":5,"date":"Jun 22","tag":"Stars","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"Катя Ш.","stars":5,"date":"22 июн","tag":"Stars","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"Саша В.","stars":4,"date":"Jun 22","tag":"USDT","text":"Worked fine, just waited a bit on confirmation."},{"name":"premium_only","stars":5,"date":"21 июн","tag":"Stars","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"premium_gifts_market_pro","stars":5,"date":"Jun 21","tag":"Карта","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"Андрей","stars":4,"date":"21 июн","tag":"NFT Username","text":"В целом ок, чуть подождали менеджера, но сделку закрыли."},{"name":"Ava C.","stars":4,"date":"Jun 21","tag":"NFT Gift","text":"Worked fine, just waited a bit on confirmation."},{"name":"Maya","stars":5,"date":"21 июн","tag":"TON","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"top_seller_from_spb_gg","stars":5,"date":"21 июн","tag":"NFT Gift","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"best_nft_deals_telegram","stars":5,"date":"Jun 20","tag":"Escrow","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"𝒱𝒾𝓀𝒶","stars":5,"date":"20 июн","tag":"Premium","text":"NFT gift transfer went through after manager check. Solid."},{"name":"gg_trade","stars":5,"date":"20 июн","tag":"Stars","text":"Перевод на карту прошёл, продавец отдал товар сразу после подтверждения."},{"name":"Анонимный","stars":5,"date":"20 июн","tag":"Stars","text":"Купил Premium, всё активировали как написано. Ок."},{"name":"Женя М.","stars":5,"date":"20 июн","tag":"NFT Username","text":"First time here — smoother than expected."},{"name":"Cole G.","stars":5,"date":"20 июн","tag":"NFT Gift","text":"Второй раз тут — снова без косяков."},{"name":"Катя Ф.","stars":5,"date":"20 июн","tag":"NFT Username","text":"Сделка на тон, комиссия понятная, без сюрпризов."},{"name":"Даша С.","stars":5,"date":"19 июн","tag":"Premium","text":"Второй раз тут — снова без косяков."},{"name":"Gabe N.","stars":4,"date":"19 июн","tag":"NFT Gift","text":"Всё прошло, только интерфейс местами неочевидный."},{"name":"seller_pro","stars":4,"date":"Jun 19","tag":"Карта","text":"Solid overall. Would still recommend for P2P."},{"name":"eldorado_fan","stars":4,"date":"Jun 18","tag":"NFT Username","text":"Норм, но хотелось бы чуть быстрее по статусам."},{"name":"Ava P.","stars":5,"date":"Jun 18","tag":"TON","text":"Купил Premium, всё активировали как написано. Ок."},{"name":"gift_hunter","stars":5,"date":"18 июн","tag":"Stars","text":"Норм площадка. Быстрее чем через знакомых."},{"name":"Sara","stars":5,"date":"Jun 17","tag":"NFT Gift","text":"Clean deal, escrow held until both sides confirmed. Would use again."},{"name":"без ника","stars":5,"date":"17 июн","tag":"USDT","text":"Звёзды пришли, ник тот что надо. Спасибо."},{"name":"Анонимный","stars":2,"date":"17 июн","tag":"USDT","text":"Almost cancelled. Seller went quiet, then came back."},{"name":"buyer_ok69","stars":4,"date":"17 июн","tag":"NFT Username","text":"4 звезды потому что ждал дольше чем думал, но без обмана."},{"name":"Ethan","stars":5,"date":"Jun 17","tag":"Карта","text":"Второй раз тут — снова без косяков."},{"name":"Лиза","stars":4,"date":"17 июн","tag":"USDT","text":"Worked fine, just waited a bit on confirmation."},{"name":"Blake M.","stars":1,"date":"16 июн","tag":"NFT Gift","text":"Ждал подтверждение слишком долго, чуть не ушёл в другой чат."},{"name":"𝕊𝕥𝕒𝕣𝕤","stars":5,"date":"16 июн","tag":"TON","text":"Второй раз тут — снова без косяков."},{"name":"Seth","stars":5,"date":"Jun 16","tag":"Escrow","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"Лев","stars":5,"date":"Jun 15","tag":"Premium","text":"Брал звёзды, продавец адекватный, без нервов. Буду ещё. 👍"},{"name":"Катя","stars":5,"date":"Jun 15","tag":"NFT Gift","text":"Второй раз тут — снова без косяков."},{"name":"𝕂𝕚𝕣𝕚𝕝𝕝","stars":5,"date":"Jun 15","tag":"Escrow","text":"Clean deal, escrow held until both sides confirmed. Would use again."},{"name":"Chloe","stars":4,"date":"Jun 15","tag":"NFT Gift","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"Ваня","stars":4,"date":"15 июн","tag":"NFT Username","text":"Worked fine, just waited a bit on confirmation."},{"name":"by_nft","stars":5,"date":"Jun 13","tag":"USDT","text":"Очень удобно что не надо в лс уходить. Всё в боте."},{"name":"deal_fast","stars":5,"date":"Jun 13","tag":"Карта","text":"Нфт ушёл без проблем, менеджер подтвердил быстро."},{"name":"Таня П.","stars":5,"date":"Jun 13","tag":"Stars","text":"TON payment + release worked exactly as described."},{"name":"moscow_p2p","stars":5,"date":"Jun 13","tag":"NFT Gift","text":"TON payment + release worked exactly as described."},{"name":"Troy","stars":4,"date":"Jun 13","tag":"USDT","text":"Solid overall. Would still recommend for P2P."},{"name":"Kate","stars":5,"date":"13 июн","tag":"Карта","text":"Брал звёзды, продавец адекватный, без нервов. Буду ещё."},{"name":"Gabe J.","stars":5,"date":"Jun 13","tag":"NFT Gift","text":"Звёзды пришли, ник тот что надо. Спасибо."},{"name":"moscow_p2p22","stars":5,"date":"Jun 12","tag":"NFT Gift","text":"First time here — smoother than expected."},{"name":"Ava C.","stars":5,"date":"Jun 12","tag":"Карта","text":"Звёзды пришли, ник тот что надо. Спасибо. ++"},{"name":"Слава","stars":5,"date":"12 июн","tag":"USDT","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"seller_pro","stars":4,"date":"12 июн","tag":"TON","text":"Товар получил, минус — долго подтверждали оплату."},{"name":"Hidden user","stars":4,"date":"Jun 12","tag":"Escrow","text":"Good escrow, UI could be clearer for new users. 🔥"},{"name":"Денис","stars":5,"date":"11 июн","tag":"USDT","text":"Не кинули, уже хорошо. По факту всё прозрачно."},{"name":"gift_hunter11","stars":5,"date":"Jun 11","tag":"Stars","text":"Давно искал нормальный гарант в тг — этот подошёл."},{"name":"crypto_king_moscow_2024","stars":5,"date":"Jun 11","tag":"NFT Username","text":"Всё чётко, деньги пришли за пару минут. Гарант реально работает."},{"name":"без ника","stars":5,"date":"11 июн","tag":"Карта","text":"Саппорт помог когда зависло на подтверждении. Респект."},{"name":"Денис Ш.","stars":5,"date":"11 июн","tag":"TON","text":"Очень удобно что не надо в лс уходить. Всё в боте. 🔥"}]};
 
-    const PAGE = 24;
-    let source = [];
-    let filtered = [];
-    let shown = 0;
-    let activeFilter = "all";
+(function () {
+  var PAGE = 30;
+  var source = [];
+  var filtered = [];
+  var shown = 0;
+  var activeFilter = "all";
+  var ANON = {
+    "Аноним": 1, "Anonymous": 1, "скрытый ник": 1,
+    "Анонимный": 1, "Hidden user": 1, "без ника": 1
+  };
 
-    const feed = document.getElementById("feed");
-    const loadMore = document.getElementById("loadMore");
-    const loadStatus = document.getElementById("loadStatus");
-    const filtersEl = document.getElementById("filters");
+  var feed = document.getElementById("feed");
+  var loadMore = document.getElementById("loadMore");
+  var loadStatus = document.getElementById("loadStatus");
+  var filtersEl = document.getElementById("filters");
 
-    const ANON = new Set(["Аноним","Anonymous","скрытый ник","Анонимный","Hidden user","без ника"]);
-    const FANCY_RE = /[𝔄-𝖅𝖆-𝖟𝒜-𝓏𝐴-𝑧𝔸-𝕫ℕ₣₮Ꭺ-Ꮞ]/
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          io.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12 });
+  function starsHtml(n) {
+    n = Number(n) || 0;
+    if (n < 0) n = 0;
+    if (n > 5) n = 5;
+    return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n);
+  }
 
-    function esc(s) {
-      return String(s)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+  function nameClass(name) {
+    if (ANON[name]) return "name anon";
+    if (name.length > 18 || name.indexOf("_") !== -1) return "name long";
+    // fancy unicode nicknames usually have chars outside BMP / special ranges
+    for (var i = 0; i < name.length; i++) {
+      if (name.charCodeAt(i) > 1000 && /[^\u0400-\u04FF]/.test(name.charAt(i))) {
+        return "name fancy";
+      }
     }
+    return "name";
+  }
 
-    function starsHtml(n) {
-      return "★".repeat(n) + "☆".repeat(5 - n);
+  function renderFilters() {
+    var items = [
+      ["all", "Все"],
+      ["5", "5★"],
+      ["4", "4★"],
+      ["low", "1–3★"]
+    ];
+    filtersEl.innerHTML = items.map(function (pair) {
+      var id = pair[0], label = pair[1];
+      return '<button type="button" data-f="' + id + '" class="' +
+        (activeFilter === id ? "active" : "") + '">' + label + "</button>";
+    }).join("");
+    var buttons = filtersEl.querySelectorAll("button");
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].onclick = function () {
+        activeFilter = this.getAttribute("data-f");
+        applyFilter();
+        renderFilters();
+      };
     }
+  }
 
-    function nameClass(name) {
-      if (ANON.has(name)) return "name anon";
-      if (FANCY_RE.test(name)) return "name fancy";
-      if (name.length > 18 || /_/.test(name)) return "name long";
-      return "name";
+  function applyFilter() {
+    if (activeFilter === "all") filtered = source.slice();
+    else if (activeFilter === "low") {
+      filtered = source.filter(function (r) { return r.stars <= 3; });
+    } else {
+      filtered = source.filter(function (r) { return String(r.stars) === activeFilter; });
     }
+    shown = 0;
+    feed.innerHTML = "";
+    renderBatch();
+  }
 
-    function renderBars(list) {
-      const counts = {1:0,2:0,3:0,4:0,5:0};
-      list.forEach((r) => { counts[r.stars] = (counts[r.stars] || 0) + 1; });
-      const max = Math.max(1, ...Object.values(counts));
-      const root = document.getElementById("bars");
-      root.innerHTML = [5,4,3,2,1].map((s) => {
-        const pct = Math.round((counts[s] / max) * 100);
-        return `<div class="bar-row"><span>${s}★</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div><span>${counts[s]}</span></div>`;
-      }).join("");
+  function renderBatch() {
+    var slice = filtered.slice(shown, shown + PAGE);
+    var html = [];
+    for (var i = 0; i < slice.length; i++) {
+      var r = slice[i];
+      var low = r.stars <= 2 ? " low" : "";
+      html.push(
+        '<article class="review">' +
+          '<div class="review-top">' +
+            '<div class="' + nameClass(r.name) + '">' + esc(r.name) + "</div>" +
+            '<div class="meta">' + esc(r.date) + "</div>" +
+          "</div>" +
+          '<div class="stars' + low + '" aria-label="' + r.stars + ' / 5">' + starsHtml(r.stars) + "</div>" +
+          '<p class="text">' + esc(r.text) + "</p>" +
+          '<div class="tag">' + esc(r.tag) + "</div>" +
+        "</article>"
+      );
     }
+    feed.insertAdjacentHTML("beforeend", html.join(""));
+    shown += slice.length;
+    loadMore.hidden = shown >= filtered.length;
+    if (!filtered.length) loadStatus.textContent = "Пока нет отзывов в этом фильтре";
+    else if (shown >= filtered.length) loadStatus.textContent = "Показаны все " + filtered.length;
+    else loadStatus.textContent = "Показано " + shown + " из " + filtered.length;
+  }
 
-    function renderFilters() {
-      const items = [
-        ["all", "Все"],
-        ["5", "5★"],
-        ["4", "4★"],
-        ["low", "1–3★"],
-      ];
-      filtersEl.innerHTML = items.map(([id, label]) =>
-        `<button type="button" data-f="${id}" class="${activeFilter===id?"active":""}">${label}</button>`
-      ).join("");
-      filtersEl.querySelectorAll("button").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          activeFilter = btn.dataset.f;
-          applyFilter();
-          renderFilters();
-        });
-      });
-    }
-
-    function applyFilter() {
-      if (activeFilter === "all") filtered = source.slice();
-      else if (activeFilter === "low") filtered = source.filter((r) => r.stars <= 3);
-      else filtered = source.filter((r) => String(r.stars) === activeFilter);
-      shown = 0;
-      feed.innerHTML = "";
-      renderBatch();
-    }
-
-    function renderBatch() {
-      const slice = filtered.slice(shown, shown + PAGE);
-      slice.forEach((r, i) => {
-        const el = document.createElement("article");
-        el.className = "review";
-        const idx = shown + i;
-        const low = r.stars <= 2;
-        el.innerHTML = `
-          <div class="review-top">
-            <div class="${nameClass(r.name)}">${esc(r.name)}</div>
-            <div class="meta">${esc(r.date)}</div>
-          </div>
-          <div class="stars${low?" low":""}${idx < 2 ? " pulse" : ""}" aria-label="${r.stars} / 5">${starsHtml(r.stars)}</div>
-          <p class="text">${esc(r.text)}</p>
-          <div class="tag">${esc(r.tag)}</div>
-        `;
-        feed.appendChild(el);
-        el.style.transitionDelay = `${Math.min(i, 7) * 35}ms`;
-        io.observe(el);
-      });
-      shown += slice.length;
-      loadMore.hidden = shown >= filtered.length;
-      loadStatus.textContent = filtered.length
-        ? (shown >= filtered.length ? `Показаны все ${filtered.length}` : `Показано ${shown} из ${filtered.length}`)
-        : "Пока нет отзывов в этом фильтре";
-    }
-
-    function boot() {
-      const data = window.REVIEWS_DATA || { reviews: [], average: "—", count: 0 };
+  function boot() {
+    try {
+      var data = window.REVIEWS_DATA || {};
       source = Array.isArray(data.reviews) ? data.reviews.slice() : [];
-      document.getElementById("avgScore").textContent = String(data.average ?? "—");
-      document.getElementById("reviewCount").textContent = String(data.count ?? source.length);
-      renderBars(source);
+      document.getElementById("avgScore").textContent = String(data.average != null ? data.average : "—");
+      document.getElementById("reviewCount").textContent = String(data.count != null ? data.count : source.length);
       renderFilters();
       applyFilter();
+      if (!source.length) loadStatus.textContent = "Отзывы не найдены";
+    } catch (e) {
+      loadStatus.textContent = "Ошибка загрузки отзывов";
     }
+  }
 
-    loadMore.addEventListener("click", renderBatch);
-    document.getElementById("scrollReviews").addEventListener("click", () => {
-      document.getElementById("reviews").scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+  loadMore.onclick = renderBatch;
 
-    try {
-      const tg = window.Telegram && window.Telegram.WebApp;
-      if (tg) {
-        tg.ready();
-        tg.expand();
-        if (tg.setHeaderColor) tg.setHeaderColor("#07131a");
-        if (tg.setBackgroundColor) tg.setBackgroundColor("#07131a");
-      }
-    } catch (_) {}
+  try {
+    var tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      if (tg.setHeaderColor) tg.setHeaderColor("#07131a");
+      if (tg.setBackgroundColor) tg.setBackgroundColor("#07131a");
+    }
+  } catch (e) {}
 
-    boot();
+  boot();
+})();
   </script>
 </body>
 </html>
