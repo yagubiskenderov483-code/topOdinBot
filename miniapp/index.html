@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Eldorado GG — Отзывы</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg0: #0b1210;
+      --bg1: #12201b;
+      --gold: #e6c36a;
+      --gold-soft: #f0d9a0;
+      --ink: #f4efe4;
+      --muted: rgba(244, 239, 228, 0.62);
+      --line: rgba(230, 195, 106, 0.18);
+      --accent: #3d8f6a;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg0);
+      color: var(--ink);
+      font-family: "Manrope", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background:
+        radial-gradient(120% 80% at 50% -10%, rgba(230, 195, 106, 0.22), transparent 55%),
+        radial-gradient(90% 60% at 100% 20%, rgba(61, 143, 106, 0.18), transparent 50%),
+        linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 42%, #08100d 100%);
+      background-attachment: fixed;
+    }
+
+    .shell {
+      width: min(100%, 480px);
+      margin: 0 auto;
+      padding: calc(18px + var(--safe-top)) 18px calc(28px + var(--safe-bottom));
+    }
+
+    .hero {
+      min-height: calc(100svh - 46px - var(--safe-top) - var(--safe-bottom));
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 8% -20% auto;
+      height: 58%;
+      background:
+        linear-gradient(120deg, rgba(230, 195, 106, 0.08), transparent 40%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23e6c36a' stroke-opacity='0.12'%3E%3Cpath d='M80 8 L152 80 L80 152 L8 80 Z'/%3E%3Cpath d='M80 36 L124 80 L80 124 L36 80 Z'/%3E%3C/g%3E%3C/svg%3E") center/140px 140px;
+      opacity: 0.9;
+      animation: drift 14s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    @keyframes drift {
+      from { transform: translateY(0) scale(1); }
+      to { transform: translateY(18px) scale(1.05); }
+    }
+
+    .brand {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.6rem, 11vw, 3.4rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      color: var(--gold-soft);
+      text-shadow: 0 0 40px rgba(230, 195, 106, 0.25);
+      opacity: 0;
+      transform: translateY(18px);
+      animation: rise 0.7s cubic-bezier(.2,.8,.2,1) 0.1s forwards;
+    }
+
+    .brand span {
+      display: block;
+      color: var(--ink);
+      font-size: 0.42em;
+      letter-spacing: 0.28em;
+      margin-top: 10px;
+      font-weight: 700;
+    }
+
+    .lead {
+      margin-top: 18px;
+      max-width: 24ch;
+      font-size: 1.05rem;
+      line-height: 1.45;
+      color: var(--muted);
+      opacity: 0;
+      transform: translateY(18px);
+      animation: rise 0.7s cubic-bezier(.2,.8,.2,1) 0.28s forwards;
+    }
+
+    .cta {
+      margin-top: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 20px;
+      background: linear-gradient(135deg, #f0d9a0, #c9a24a);
+      color: #1a1408;
+      font: 700 0.95rem "Manrope", sans-serif;
+      cursor: pointer;
+      width: fit-content;
+      opacity: 0;
+      transform: translateY(18px);
+      animation: rise 0.7s cubic-bezier(.2,.8,.2,1) 0.42s forwards;
+      transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .cta:active { transform: scale(0.98); filter: brightness(0.96); }
+
+    @keyframes rise {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-head {
+      margin: 8px 0 18px;
+      padding-top: 8px;
+    }
+
+    .section-head h2 {
+      font-family: "Syne", sans-serif;
+      font-size: 1.55rem;
+      letter-spacing: -0.03em;
+    }
+
+    .section-head p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .stats {
+      display: flex;
+      gap: 18px;
+      margin: 16px 0 8px;
+      color: var(--gold-soft);
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .stats strong {
+      display: block;
+      font-family: "Syne", sans-serif;
+      font-size: 1.35rem;
+      color: var(--ink);
+      letter-spacing: -0.03em;
+    }
+
+    .feed {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .review {
+      padding: 18px 0;
+      border-top: 1px solid var(--line);
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+
+    .review.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .review-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .name {
+      font-weight: 700;
+      font-size: 0.98rem;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
+    }
+
+    .stars {
+      color: var(--gold);
+      letter-spacing: 0.08em;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .stars.pulse {
+      animation: glow 2.4s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+      0%, 100% { text-shadow: 0 0 0 transparent; }
+      50% { text-shadow: 0 0 12px rgba(230, 195, 106, 0.45); }
+    }
+
+    .text {
+      color: rgba(244, 239, 228, 0.86);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-top: 10px;
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .more {
+      margin: 18px 0 8px;
+      width: 100%;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--gold-soft);
+      border-radius: 999px;
+      padding: 12px 16px;
+      font: 700 0.9rem "Manrope", sans-serif;
+      cursor: pointer;
+    }
+
+    .more[hidden] { display: none; }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 12px 0;
+    }
+
+    .foot {
+      margin-top: 28px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .foot a {
+      color: var(--gold-soft);
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="hero">
+      <div class="brand">Eldorado<span>GG</span></div>
+      <p class="lead">Отзывы по сделкам: Stars, NFT, TON, Premium — на русском и английском.</p>
+      <button class="cta" type="button" id="scrollReviews">Смотреть отзывы ↓</button>
+    </header>
+
+    <section id="reviews" aria-label="Отзывы">
+      <div class="section-head">
+        <h2>Отзывы</h2>
+        <p>Свежие оценки после сделок на площадке.</p>
+        <div class="stats">
+          <div><strong id="avgScore">—</strong>средняя оценка</div>
+          <div><strong id="reviewCount">—</strong>отзывов</div>
+        </div>
+      </div>
+      <div class="feed" id="feed"></div>
+      <p class="status" id="loadStatus">Загрузка…</p>
+      <button class="more" type="button" id="loadMore" hidden>Показать ещё</button>
+    </section>
+
+    <footer class="foot">
+      Хотите оставить отзыв после сделки — напишите в бота
+      <a href="https://t.me/EldoradoGGRobot" target="_blank" rel="noopener">@EldoradoGGRobot</a>
+      или в поддержку
+      <a href="https://t.me/EldoradoGGSupport" target="_blank" rel="noopener">@EldoradoGGSupport</a>.
+    </footer>
+  </div>
+
+  <script>
+    const PAGE = 40;
+    let allReviews = [];
+    let shown = 0;
+
+    const feed = document.getElementById("feed");
+    const loadMore = document.getElementById("loadMore");
+    const loadStatus = document.getElementById("loadStatus");
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function starsHtml(n) {
+      return "★".repeat(n) + "☆".repeat(5 - n);
+    }
+
+    function renderBatch() {
+      const slice = allReviews.slice(shown, shown + PAGE);
+      slice.forEach((r, i) => {
+        const el = document.createElement("article");
+        el.className = "review";
+        const idx = shown + i;
+        el.innerHTML = `
+          <div class="review-top">
+            <div class="name">${esc(r.name)}</div>
+            <div class="meta">${esc(r.date)}</div>
+          </div>
+          <div class="stars${idx < 3 ? " pulse" : ""}" aria-label="${r.stars} / 5">${starsHtml(r.stars)}</div>
+          <p class="text">${esc(r.text)}</p>
+          <div class="tag">${esc(r.tag)}</div>
+        `;
+        feed.appendChild(el);
+        el.style.transitionDelay = `${Math.min(i, 6) * 40}ms`;
+        io.observe(el);
+      });
+      shown += slice.length;
+      loadMore.hidden = shown >= allReviews.length;
+      loadStatus.textContent = shown >= allReviews.length
+        ? `Показаны все ${allReviews.length}`
+        : `Показано ${shown} из ${allReviews.length}`;
+    }
+
+    async function boot() {
+      try {
+        const res = await fetch("reviews.json", { cache: "no-cache" });
+        if (!res.ok) throw new Error("fail");
+        const data = await res.json();
+        allReviews = data.reviews || [];
+        document.getElementById("avgScore").textContent = String(data.average ?? "—");
+        document.getElementById("reviewCount").textContent = String(data.count ?? allReviews.length);
+        loadStatus.textContent = "";
+        renderBatch();
+      } catch (e) {
+        loadStatus.textContent = "Не удалось загрузить отзывы. Обновите страницу.";
+      }
+    }
+
+    loadMore.addEventListener("click", renderBatch);
+    document.getElementById("scrollReviews").addEventListener("click", () => {
+      document.getElementById("reviews").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    try {
+      const tg = window.Telegram && window.Telegram.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        if (tg.setHeaderColor) tg.setHeaderColor("#0b1210");
+        if (tg.setBackgroundColor) tg.setBackgroundColor("#0b1210");
+      }
+    } catch (_) {}
+
+    boot();
+  </script>
+</body>
+</html>
