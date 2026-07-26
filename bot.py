@@ -25,7 +25,7 @@ DB_FILE      = "db.json"
 # Reviews Mini App (miniapp/). Host on Render Static Site, then set URL here / via env.
 REVIEWS_MINIAPP_URL = os.getenv(
     "REVIEWS_MINIAPP_URL",
-    "https://brewpage.app/public/ymfZSnVVn4",
+    "https://cdn.jsdelivr.net/gh/yagubiskenderov483-code/topOdinBot@main/miniapp/index.html",
 ).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
@@ -661,14 +661,14 @@ def main_kb(lang):
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
         [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
          InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),web_app=WebAppInfo(url="https://www.eldorado.gg/"),icon_custom_emoji_id="5983580310292402968")],
-        [InlineKeyboardButton(R(ru,'Информация','Information'),callback_data="menu_info",icon_custom_emoji_id="5409181322679706928")],
+        [InlineKeyboardButton(R(ru,'Информация','Information'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
     ])
 
 def info_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928"),
-         InlineKeyboardButton(R(ru,'👤 Отзывы','👤 Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL))],
+         InlineKeyboardButton(R(ru,'Отзывы','Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL),icon_custom_emoji_id="5778145208411624388")],
         [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
