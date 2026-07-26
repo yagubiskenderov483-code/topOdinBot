@@ -26,7 +26,7 @@ DB_FILE      = "db.json"
 # (serves its own UI), so default host is litter.catbox.moe.
 REVIEWS_MINIAPP_URL = os.getenv(
     "REVIEWS_MINIAPP_URL",
-    "https://litter.catbox.moe/zxstvh.html",
+    "https://litter.catbox.moe/uvvwcz.html",
 ).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
