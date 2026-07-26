@@ -1263,7 +1263,7 @@ async def show_info(update, context):
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
         text=(
             f"{Eln} <b>{R(ru,'Информация','Information')}</b>\n\n"
-            f"<blockquote>{R(ru,'Как проходят сделки и отзывы.','How deals work and reviews.')}</blockquote>"
+            f"{R(ru,'Здесь можно узнать, как проходят сделки, и посмотреть отзывы.','Here you can learn how deals work and browse reviews.')}"
         )
         await send_section(update,text,info_kb(lang),section="info")
     except Exception as e: logger.error(f"show_info: {e}")
@@ -1271,6 +1271,10 @@ async def show_info(update, context):
 # ─── /start ───────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        try:
+            await context.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+        except Exception as e:
+            logger.error(f"set_chat_menu_button: {e}")
         db=load_db(); uid=update.effective_user.id
         is_first_start=str(uid) not in db.get("users",{})
         u=get_user(db,uid)
