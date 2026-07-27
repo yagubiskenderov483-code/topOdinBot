@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: eldorado-reviews-miniapp
+    runtime: static
+    buildCommand: python3 miniapp/build.py
+    staticPublishPath: miniapp
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -30,6 +30,19 @@ BOT_TOKEN = "ВАШ_ТОКЕН"
 Меню слева внизу — команда `/start` (не Mini App).  
 Главное меню → **Информация**: Telegraph «Как проходят сделки» + **👤 Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
 
+### Mini App с отзывами (Render Static Site)
+
+1. В Render: **New → Static Site**, репозиторий `topOdinBot`, ветка `main`.
+2. **Root Directory:** `.` (корень репозитория).
+3. **Build Command:** `python3 miniapp/build.py`
+4. **Publish Directory:** `miniapp`
+5. После деплоя скопируй URL (например `https://eldorado-reviews-miniapp.onrender.com`).
+6. В Render → сервис бота → **Environment** → `REVIEWS_MINIAPP_URL` = этот URL.
+7. В @BotFather → **Bot Settings → Configure Mini App / Domain** → добавь домен `onrender.com` (или свой поддомен).
+8. Перезапусти бота (Manual Deploy).
+
+Обновление отзывов: правь `miniapp/reviews.json`, затем `python3 miniapp/build.py` и redeploy Static Site.
+
 ## 🔧 Команды
 
 | Команда | Описание |
