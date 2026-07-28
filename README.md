@@ -28,8 +28,7 @@ BOT_TOKEN = "ВАШ_ТОКЕН"
 | `db.json` | База данных (создаётся автоматически) |
 
 Меню слева внизу — команда `/start` (не Mini App).  
-<<<<<<< HEAD
-Главное меню → **Информация**: Telegraph «Как проходят сделки» + **👤 Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
+Главное меню → **Информация**: Telegraph «Как проходят сделки» + **Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
 
 ### Mini App с отзывами (Render Static Site)
 
@@ -43,9 +42,6 @@ BOT_TOKEN = "ВАШ_ТОКЕН"
 8. Перезапусти бота (Manual Deploy).
 
 Обновление отзывов: правь `miniapp/reviews.json`, затем `python3 miniapp/build.py` и redeploy Static Site.
-=======
-Главное меню → **Информация**: Telegraph «Как проходят сделки» + **Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
->>>>>>> origin/main
 
 ## 🔧 Команды
 
