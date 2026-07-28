@@ -30,18 +30,23 @@ BOT_TOKEN = "ВАШ_ТОКЕН"
 Меню слева внизу — команда `/start` (не Mini App).  
 Главное меню → **Информация**: Telegraph «Как проходят сделки» + **Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
 
-### Mini App с отзывами (Render Static Site)
+### Mini App с отзывами
 
-1. В Render: **New → Static Site**, репозиторий `topOdinBot`, ветка `main`.
-2. **Root Directory:** `.` (корень репозитория).
-3. **Build Command:** `python3 miniapp/build.py`
-4. **Publish Directory:** `miniapp`
-5. После деплоя скопируй URL (например `https://eldorado-reviews-miniapp.onrender.com`).
-6. В Render → сервис бота → **Environment** → `REVIEWS_MINIAPP_URL` = этот URL.
-7. В @BotFather → **Bot Settings → Configure Mini App / Domain** → добавь домен `onrender.com` (или свой поддомен).
-8. Перезапусти бота (Manual Deploy).
+Кнопка **Отзывы** открывает `REVIEWS_MINIAPP_URL` (HTTPS). Старый catbox/litter URL мог протухнуть → 404 в Telegram.
 
-Обновление отзывов: правь `miniapp/reviews.json`, затем `python3 miniapp/build.py` и redeploy Static Site.
+**Быстрый фикс сейчас:** в Render → бот → Environment:
+```
+REVIEWS_MINIAPP_URL=https://litter.catbox.moe/k4q8zc.htm
+```
+и **Manual Deploy**. В @BotFather разреши домен `catbox.moe` / `litter.catbox.moe`.
+
+**Постоянно (рекомендуется):** бот как **Web Service** на Render (не Background Worker). При наличии `PORT` бот сам раздаёт `miniapp/`. Тогда:
+```
+REVIEWS_MINIAPP_URL=https://<твой-сервис>.onrender.com/index.html
+```
+или оставь пустым — возьмётся `RENDER_EXTERNAL_URL/index.html`. В BotFather добавь `onrender.com`.
+
+Обновление отзывов: правь `miniapp/reviews.json` → `python3 miniapp/build.py` → redeploy.
 
 ## 🔧 Команды
 

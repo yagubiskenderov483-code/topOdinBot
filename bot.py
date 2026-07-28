@@ -23,9 +23,12 @@ CARD_BANK_RU = "ВТБ"
 CARD_BANK_EN = "VTB"
 DB_FILE      = "db.json"
 # Reviews Mini App (self-contained HTML). Do not use BrewPage — it shows a side panel in Telegram.
-REVIEWS_MINIAPP_URL = os.getenv(
-    "REVIEWS_MINIAPP_URL",
-    "https://litter.catbox.moe/3fbcyz.html",
+# Prefer explicit env, then Render public URL, then temporary litterbox host.
+_RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
+REVIEWS_MINIAPP_URL = (
+    os.getenv("REVIEWS_MINIAPP_URL")
+    or (f"{_RENDER_URL}/index.html" if _RENDER_URL else "")
+    or "https://litter.catbox.moe/k4q8zc.htm"
 ).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
@@ -3226,6 +3229,27 @@ async def cmd_take_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"{Ech} <b>-{amount} RUB ← @{u.get('username','?')} (<code>{target}</code>)\nБаланс: {u['balance']} RUB</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_take_balance: {e}")
 
+# ─── Mini App HTTP (Render Web Service) ───────────────────────────────────────
+def start_reviews_http_server():
+    """Serve miniapp/ on $PORT so Telegram can open reviews without catbox."""
+    port = os.getenv("PORT")
+    if not port:
+        return
+    try:
+        from functools import partial
+        from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+        import threading
+        root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "miniapp")
+        if not os.path.isdir(root):
+            logger.warning("miniapp folder missing, HTTP reviews server skipped")
+            return
+        handler = partial(SimpleHTTPRequestHandler, directory=root)
+        server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        logger.info("Reviews Mini App HTTP on :%s (%s)", port, REVIEWS_MINIAPP_URL)
+    except Exception as e:
+        logger.error("start_reviews_http_server: %s", e)
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     db=load_db()
@@ -3235,6 +3259,8 @@ def main():
         db["banners"]["main"]={"photo":lp,"video":lv,"gif":lg,"text":lt}
         db["banner_photo"]=db["banner_video"]=db["banner_gif"]=db["banner"]=None
         save_db(db)
+
+    start_reviews_http_server()
 
     app=Application.builder().token(BOT_TOKEN).build()
     async def post_init(application):
@@ -3264,6 +3290,7 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION,handle_adm_msg))
 
     print(f"Bot @{BOT_USERNAME} started!")
+    print(f"Reviews Mini App: {REVIEWS_MINIAPP_URL}")
     app.run_polling()
 
 if __name__=="__main__":
