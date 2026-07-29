@@ -36,7 +36,7 @@ BOT_TOKEN = "ВАШ_ТОКЕН"
 
 **Быстрый фикс сейчас:** в Render → бот → Environment:
 ```
-REVIEWS_MINIAPP_URL=https://litter.catbox.moe/k4q8zc.htm
+REVIEWS_MINIAPP_URL=https://litter.catbox.moe/brgw8b.htm
 ```
 и **Manual Deploy**. В @BotFather разреши домен `catbox.moe` / `litter.catbox.moe`.
 
