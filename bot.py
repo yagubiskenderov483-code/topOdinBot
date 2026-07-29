@@ -38,9 +38,9 @@ TONCONNECT_MINIAPP_URL = (
         if REVIEWS_MINIAPP_URL.endswith("/index.html") else "")
 ).strip()
 
-# ИИ-помощник: живые ответы через LLM (не шаблоны).
-# На Render добавь один из ключей: GEMINI_API_KEY (бесплатно) / GROQ_API_KEY / OPENAI_API_KEY
-# Опционально: AI_PROVIDER=gemini|groq|openai  AI_MODEL=...  AI_BASE_URL=...
+# ИИ: Gemini / ChatGPT (OpenAI) / Groq по ключу, иначе бесплатный ChatGPT через g4f.
+# Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
+# AI_PROVIDER=gemini|openai|groq|g4f|auto
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
 AI_MODEL = (os.getenv("AI_MODEL") or "").strip()
 AI_BASE_URL = (os.getenv("AI_BASE_URL") or "").rstrip("/")
@@ -1880,16 +1880,55 @@ AI_KB = {
 
 def resolve_ai_provider():
     p=(AI_PROVIDER or "auto").lower()
-    if p in ("gemini","groq","openai") and (
-        (p=="gemini" and GEMINI_API_KEY) or
-        (p=="groq" and GROQ_API_KEY) or
-        (p=="openai" and OPENAI_API_KEY)
-    ):
-        return p
+    if p=="gemini" and GEMINI_API_KEY: return "gemini"
+    if p=="openai" and OPENAI_API_KEY: return "openai"
+    if p=="groq" and GROQ_API_KEY: return "groq"
+    if p=="g4f": return "g4f"
     if GEMINI_API_KEY: return "gemini"
-    if GROQ_API_KEY: return "groq"
     if OPENAI_API_KEY: return "openai"
-    return None
+    if GROQ_API_KEY: return "groq"
+    return "g4f"  # ChatGPT-совместимый бесплатный провайдер по умолчанию
+
+async def _ai_call_g4f(system, messages):
+    """Живой ChatGPT-ответ без ключа (g4f)."""
+    import asyncio
+    def _run():
+        from g4f.client import Client
+        client=Client()
+        model=AI_MODEL or "gpt-4o-mini"
+        msgs=[{"role":"system","content":system}]+list(messages)
+        r=client.chat.completions.create(model=model, messages=msgs)
+        text=(r.choices[0].message.content or "").strip()
+        if not text:
+            raise RuntimeError("empty g4f response")
+        return text
+    return await asyncio.to_thread(_run)
+
+async def ai_chat(question, lang="ru", history=None):
+    """Gemini / ChatGPT / Groq / g4f — живые ответы на любые вопросы."""
+    provider=resolve_ai_provider()
+    system=build_ai_system_prompt(lang)
+    msgs=[]
+    for h in (history or [])[-12:]:
+        if h.get("role") in ("user","assistant") and h.get("content"):
+            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
+    msgs.append({"role":"user","content":str(question or "")[:2000]})
+    try:
+        if provider=="gemini":
+            return await _ai_call_gemini(system, msgs)
+        if provider in ("openai","groq"):
+            return await _ai_call_openai_compatible(system, msgs, provider)
+        if provider=="g4f":
+            return await _ai_call_g4f(system, msgs)
+    except Exception as e:
+        logger.error(f"ai_chat provider={provider}: {e}", exc_info=True)
+        # fallback chain
+        if provider!="g4f":
+            try:
+                return await _ai_call_g4f(system, msgs)
+            except Exception as e2:
+                logger.error(f"ai_chat g4f fallback: {e2}", exc_info=True)
+    return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
     ru=lang=="ru"
@@ -2089,24 +2128,6 @@ def ai_local_answer(question, lang="ru", history=None):
         "• Money disputes: @EldoradoGGSupport or @EldoradoGGManager.\n\n"
         "Examples: “what is blockchain”, “how to bind a card”, “photosynthesis”, “3% referrals”.")
 
-async def ai_chat(question, lang="ru", history=None):
-    """Gemini/Groq/OpenAI если есть ключ; иначе локальный умный ответ — пользователю без лекций про API."""
-    provider=resolve_ai_provider()
-    system=build_ai_system_prompt(lang)
-    msgs=[]
-    for h in (history or [])[-12:]:
-        if h.get("role") in ("user","assistant") and h.get("content"):
-            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
-    msgs.append({"role":"user","content":str(question or "")[:2000]})
-    if provider:
-        try:
-            if provider=="gemini":
-                return await _ai_call_gemini(system, msgs)
-            return await _ai_call_openai_compatible(system, msgs, provider)
-        except Exception as e:
-            logger.error(f"ai_chat provider={provider}: {e}", exc_info=True)
-    return ai_local_answer(question, lang, history)
-
 async def show_ai(update, context):
     try:
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
@@ -2115,7 +2136,7 @@ async def show_ai(update, context):
         ud.setdefault("ai_history",[])
         text=(
             f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
-            f"<blockquote>{R(ru,'Пишите любой вопрос обычным сообщением — отвечу как живой ассистент по боту и не только. Можно продолжать диалог.','Write any question as a normal message — I’ll answer like a live assistant about the bot and more. You can keep chatting.')}</blockquote>"
+            f"<blockquote>{R(ru,'Пишите любой вопрос — отвечаю через ChatGPT/Gemini на любые темы, не только про бота. Можно продолжать диалог.','Ask anything — I answer via ChatGPT/Gemini on any topic, not only the bot. You can keep chatting.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")

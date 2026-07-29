@@ -41,17 +41,17 @@ REVIEWS_MINIAPP_URL=https://<сервис>.onrender.com/index.html
 TONCONNECT_MINIAPP_URL=https://<сервис>.onrender.com/tonconnect.html
 ```
 
-### ИИ-помощник (живой LLM)
+### ИИ-помощник
 
-В Render → Environment добавь ключ (хватит одного):
+По умолчанию отвечает через **ChatGPT (g4f)** на любые вопросы — ключ не обязателен.
 
+Опционально на Render (стабильнее):
 ```
-GEMINI_API_KEY=ваш_ключ_из_aistudio.google.com/apikey
+GEMINI_API_KEY=...          # Google AI Studio
+# или
+OPENAI_API_KEY=sk-...       # ChatGPT официально
+AI_PROVIDER=auto
 ```
-
-или `GROQ_API_KEY` / `OPENAI_API_KEY`. Опционально: `AI_PROVIDER=gemini`, `AI_MODEL=gemini-2.0-flash`.
-
-Без ключа ИИ напишет, что нужен API key. С ключом отвечает на любые вопросы (не шаблоны).
 
 ### Mini App с отзывами
 
