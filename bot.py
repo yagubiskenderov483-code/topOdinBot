@@ -1921,8 +1921,116 @@ async def _ai_call_openai_compatible(system, messages, provider):
     if not text: raise RuntimeError("empty openai response")
     return text
 
+def ai_local_answer(question, lang="ru", history=None):
+    """Ответ без внешнего API: по базе Eldorado GG + общий хелпер. Без упоминаний ключей."""
+    ru=lang=="ru"
+    q=(question or "").strip()
+    ql=q.lower().replace("ё","е")
+    if not q:
+        return R(ru,"Напишите вопрос — отвечу.","Write a question — I’ll answer.")
+
+    # приветствия / small talk
+    if any(x in ql for x in ("привет","здравств","хай","hello","hi ","yo ","добрый")):
+        return R(ru,
+            "Привет! Я ИИ-помощник Eldorado GG. Спросите что угодно про сделки, пополнение, вывод, Tonkeeper, жалобы, рефералы — или просто уточните, где вы застряли.",
+            "Hi! I’m the Eldorado GG AI helper. Ask about deals, top-up, withdraw, Tonkeeper, reports, referrals — or where you’re stuck.")
+    if any(x in ql for x in ("как дела","how are you","что умеешь","кто ты")):
+        return R(ru,
+            "На связи. Помогаю по боту @EldoradoGGRobot: сделки (GD29548+), баланс, Tonkeeper, жалобы, отзывы, рефералы 3%. Статистика площадки: 132.584 сделок, оборот $1.346.582, комиссия 0%.",
+            "Here. I help with @EldoradoGGRobot: deals (GD29548+), balance, Tonkeeper, reports, reviews, 3% referrals. Platform stats: 132,584 deals, $1,346,582 turnover, 0% fee.")
+    if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
+        return R(ru,"Пожалуйста! Если ещё что-то — пишите.","You’re welcome! Ask anytime.")
+
+    # простая арифметика «сколько 2+2»
+    import re as _re
+    m=_re.fullmatch(r"(?:сколько\s+(?:будет\s+)?)?(\d+)\s*([+\-*/x×])\s*(\d+)\s*\??", ql)
+    if m:
+        a,op,b=int(m.group(1)),m.group(2),int(m.group(3))
+        try:
+            if op in ("+",""): r=a+b
+            elif op=="-": r=a-b
+            elif op in ("*","x","×"): r=a*b
+            elif op=="/": r=(a/b) if b else "∞"
+            else: r=None
+            if r is not None:
+                return R(ru,f"{a} {op} {b} = {r}",f"{a} {op} {b} = {r}")
+        except Exception:
+            pass
+
+    scored=[]
+    for topic, entry in AI_KB.items():
+        score=0
+        for key in entry.get("keys",()):
+            k=key.lower().replace("ё","е")
+            if k and k in ql:
+                score += 2 + min(len(k),16)//4
+        # доп. сигналы
+        extras={
+            "deal":("создать","сделк","deal","create","партнер","партнёр"),
+            "join":("присоедин","join","ссылк","start=deal"),
+            "types":("nft","premium","звезд","звёзд","крипт","username","тип"),
+            "topup":("пополн","top up","topup","закинуть","баланс не"),
+            "withdraw":("вывод","withdraw","вывест","снять"),
+            "req":("реквизит","кошел","tonkeeper","привяз","uq","eq","карт"),
+            "safe":("безопас","гарант","кидал","scam","эскроу","обман"),
+            "complaint":("жалоб","репорт","спор","кинули","не отдал"),
+            "reviews":("отзыв","review","рейтинг"),
+            "ref":("реферал","рефк","приглас","3%"),
+            "profile":("профиль","оборот","статистик","мой баланс"),
+            "support":("поддержк","менеджер","саппорт","support","сайт"),
+            "fee":("комисс","0%","процент","сколько берёт"),
+            "paid":("оплатил","передал","подтверд","долго жду","статус"),
+            "currency":("валют","usdt","rub","uah","чем платить"),
+        }
+        for w in extras.get(topic,()):
+            if w.replace("ё","е") in ql: score+=2
+        if score>0: scored.append((score, topic))
+
+    if scored:
+        scored.sort(reverse=True)
+        top=[t for s,t in scored if s>=scored[0][0]-2][:2]
+        parts=[]
+        for t in top:
+            body=AI_KB[t]["ru" if ru else "en"]
+            # чуть «живее» вступление
+            if len(top)==1:
+                parts.append(R(ru,f"По вашему вопросу — вот как это устроено:\n\n{body}",f"Here’s how that works:\n\n{body}"))
+            else:
+                parts.append(body)
+        ans="\n\n—\n\n".join(parts)
+        ans += R(ru,
+            "\n\nЕсли нужно — уточните детали (номер GD, валюта, на каком шаге зависли), разберём точечно.",
+            "\n\nIf needed, add details (GD id, currency, which step you’re stuck on) and I’ll narrow it down.")
+        return ans[:3500]
+
+    # общие факты про площадку
+    if any(x in ql for x in ("eldorado","бот","площадк","маркет","гарант","что это")):
+        return R(ru,
+            "Eldorado GG (@EldoradoGGRobot) — гарант-маркетплейс в Telegram: NFT, Stars, Premium, крипта. "
+            "Комиссия 0%, сделки с GD29548+, 132.584 сделок, оборот $1.346.582. "
+            "Реквизиты → привязка карты или кошелька Tonkeeper. Споры — «Пожаловаться» (ящик маркетплейса). "
+            "Люди: @EldoradoGGSupport · @EldoradoGGManager · сайт eldorado.gg",
+            "Eldorado GG (@EldoradoGGRobot) is a Telegram escrow marketplace: NFT, Stars, Premium, crypto. "
+            "0% fee, deals from GD29548+, 132,584 deals, $1,346,582 turnover. "
+            "Bind card or Tonkeeper in Requisites. Disputes → Report (marketplace inbox). "
+            "Humans: @EldoradoGGSupport · @EldoradoGGManager · eldorado.gg")
+
+    # свободный ответ: не отшиваем
+    return R(ru,
+        f"Принял вопрос: «{q[:180]}».\n\n"
+        "По Eldorado GG могу подробно: создать/войти в сделку, типы (NFT/Stars/Premium/крипта), "
+        "пополнение (мин. Stars 700 / RUB 400 / TON 3 / USDT 9), вывод, привязка Tonkeeper, "
+        "безопасность, жалобы, рефералы 3%, отзывы, статусы «Я оплатил/передал».\n\n"
+        "Сформулируйте чуть конкретнее (например: «как привязать Tonkeeper» или «баланс не пришёл») — "
+        "дам пошаговый ответ. Сложный кейс: @EldoradoGGSupport / @EldoradoGGManager.",
+        f"Got it: “{q[:180]}”.\n\n"
+        "On Eldorado GG I can detail: create/join deals, types, top-up mins, withdraw, Tonkeeper bind, "
+        "safety, reports, 3% referrals, reviews, I paid/transferred statuses.\n\n"
+        "Be a bit more specific (e.g. “how to bind Tonkeeper” or “balance didn’t arrive”) — "
+        "I’ll give steps. Hard case: @EldoradoGGSupport / @EldoradoGGManager.")
+
 async def ai_chat(question, lang="ru", history=None):
-    """Живой ответ через Gemini/Groq/OpenAI — не шаблоны."""
+    """Gemini/Groq/OpenAI если есть ключ; иначе локальный умный ответ — пользователю без лекций про API."""
     provider=resolve_ai_provider()
     system=build_ai_system_prompt(lang)
     msgs=[]
@@ -1930,25 +2038,15 @@ async def ai_chat(question, lang="ru", history=None):
         if h.get("role") in ("user","assistant") and h.get("content"):
             msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
     msgs.append({"role":"user","content":str(question or "")[:2000]})
-    if not provider:
-        ru=lang=="ru"
-        return R(ru,
-            "ИИ сейчас без ключа API. Админу нужно в Render Environment добавить GEMINI_API_KEY "
-            "(бесплатно: aistudio.google.com/apikey) или GROQ_API_KEY / OPENAI_API_KEY, затем redeploy.\n"
-            "Пока пишите @EldoradoGGSupport / @EldoradoGGManager.",
-            "AI has no API key yet. Admin must set GEMINI_API_KEY on Render "
-            "(free: aistudio.google.com/apikey) or GROQ_API_KEY / OPENAI_API_KEY, then redeploy.\n"
-            "Meanwhile contact @EldoradoGGSupport / @EldoradoGGManager.")
-    try:
-        if provider=="gemini":
-            return await _ai_call_gemini(system, msgs)
-        return await _ai_call_openai_compatible(system, msgs, provider)
-    except Exception as e:
-        logger.error(f"ai_chat provider={provider}: {e}", exc_info=True)
-        ru=lang=="ru"
-        return R(ru,
-            f"ИИ временно недоступен ({provider}). Попробуйте ещё раз или напишите @EldoradoGGSupport.",
-            f"AI temporarily unavailable ({provider}). Try again or contact @EldoradoGGSupport.")
+    if provider:
+        try:
+            if provider=="gemini":
+                return await _ai_call_gemini(system, msgs)
+            return await _ai_call_openai_compatible(system, msgs, provider)
+        except Exception as e:
+            logger.error(f"ai_chat provider={provider}: {e}", exc_info=True)
+            # тихо откатываемся на локальный ответ
+    return ai_local_answer(question, lang, history)
 
 async def show_ai(update, context):
     try:
