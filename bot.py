@@ -4298,6 +4298,7 @@ def main():
 
     print(f"Bot @{BOT_USERNAME} started!")
     print(f"Reviews Mini App: {REVIEWS_MINIAPP_URL}")
+    print(f"TonConnect Mini App: {TONCONNECT_MINIAPP_URL}")
     app.run_polling()
 
 if __name__=="__main__":
