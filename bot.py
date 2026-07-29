@@ -363,7 +363,7 @@ async def notify_admins(context, text, reply_markup=None):
 BANNER_SECTIONS = {
     "main":"Главное меню","deal":"Создать сделку","balance":"Пополнить/Вывод",
     "profile":"Профиль","req":"Реквизиты","top":"Топ","my_deals":"Мои сделки",
-    "info":"Информация",
+    "info":"Информация","complaint":"Жалоба","ai":"ИИ-помощник",
     "deal_card":"Карточка сделки","deal_join":"Присоединение к сделке",
     "deal_forward":"Пересылка сделки","ref":"Рефералы",
 }
@@ -662,9 +662,38 @@ def main_kb(lang):
          InlineKeyboardButton(R(ru,'Топ продавцов','Top Sellers'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
         [InlineKeyboardButton(R(ru,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(R(ru,'Пожаловаться','Report'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882"),
+         InlineKeyboardButton(R(ru,'ИИ-помощник','AI Helper'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
         [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
          InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),web_app=WebAppInfo(url="https://www.eldorado.gg/"),icon_custom_emoji_id="5983580310292402968")],
         [InlineKeyboardButton(R(ru,'Информация','Information'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
+    ])
+
+def complaint_kb(lang):
+    ru=lang=="ru"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(R(ru,'На покупателя','About buyer'),callback_data="cmp_buyer",icon_custom_emoji_id="5927118708873892465")],
+        [InlineKeyboardButton(R(ru,'На продавца','About seller'),callback_data="cmp_seller",icon_custom_emoji_id="6032914237389541410")],
+        [InlineKeyboardButton(R(ru,'На маркетплейс','About marketplace'),callback_data="cmp_market",icon_custom_emoji_id="5920332557466997677")],
+        [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+def complaint_cancel_kb(lang, back="menu_complaint"):
+    ru=lang=="ru"
+    return InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,'Отмена','Cancel'),callback_data=back,icon_custom_emoji_id="5258084656674250503")]])
+
+def ai_kb(lang):
+    ru=lang=="ru"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(R(ru,'Как создать сделку?','How to create a deal?'),callback_data="ai_q_deal",icon_custom_emoji_id="5260687681733533075")],
+        [InlineKeyboardButton(R(ru,'Как пополнить баланс?','How to top up?'),callback_data="ai_q_topup",icon_custom_emoji_id="5258043150110301407")],
+        [InlineKeyboardButton(R(ru,'Как вывести деньги?','How to withdraw?'),callback_data="ai_q_withdraw",icon_custom_emoji_id="5409321884074419506")],
+        [InlineKeyboardButton(R(ru,'Реквизиты / кошелёк','Requisites / wallet'),callback_data="ai_q_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(R(ru,'Безопасность сделок','Deal safety'),callback_data="ai_q_safe",icon_custom_emoji_id="5197434882321567830")],
+        [InlineKeyboardButton(R(ru,'Жалобы и споры','Reports & disputes'),callback_data="ai_q_complaint",icon_custom_emoji_id="6032742198179532882")],
+        [InlineKeyboardButton(R(ru,'Рефералы / отзывы','Referrals / reviews'),callback_data="ai_q_ref",icon_custom_emoji_id="5258362837411045098")],
+        [InlineKeyboardButton(R(ru,'Задать свой вопрос','Ask my question'),callback_data="ai_ask",icon_custom_emoji_id="5258093637450866522")],
+        [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 def info_kb(lang):
@@ -1271,6 +1300,565 @@ async def show_info(update, context):
         await send_section(update,text,info_kb(lang),section="info")
     except Exception as e: logger.error(f"show_info: {e}")
 
+def clear_complaint_state(ud):
+    for k in ("complaint_type","complaint_step","cmp_username","cmp_deal","cmp_time","cmp_topic","cmp_evidence"):
+        ud.pop(k,None)
+
+def validate_complaint_username(text):
+    import re
+    t=(text or "").strip()
+    if not t: return None
+    if not t.startswith("@"): t="@"+t
+    if not re.fullmatch(r"@[A-Za-z0-9_]{5,32}", t):
+        return None
+    return t
+
+def validate_complaint_deal_id(text):
+    import re
+    t=(text or "").strip().upper().replace(" ","")
+    if not t: return None
+    if re.fullmatch(r"GD\d{3,8}", t): return t
+    if re.fullmatch(r"[A-Z]{1,4}\d{3,10}", t): return t
+    if re.fullmatch(r"\d{3,10}", t): return f"GD{int(t):05d}" if len(t)<=5 else t
+    return None
+
+def validate_complaint_time(text):
+    t=(text or "").strip()
+    if len(t)<4 or len(t)>80: return None
+    return t
+
+def validate_complaint_evidence(text):
+    t=(text or "").strip()
+    if len(t)<8 or len(t)>1500: return None
+    return t
+
+def complaint_prompt(step, ctype, lang="ru"):
+    ru=lang=="ru"
+    if ctype=="buyer":
+        who_ru,who_en="покупателя","buyer"
+    elif ctype=="seller":
+        who_ru,who_en="продавца","seller"
+    else:
+        who_ru,who_en="маркетплейса","marketplace"
+    if ctype=="market":
+        prompts={
+            "topic":(
+                f"<tg-emoji emoji-id='5920332557466997677'>⚠️</tg-emoji> <b>{R(ru,'Жалоба на маркетплейс','Marketplace report')}</b>\n\n"
+                f"<b>1. {R(ru,'Тема / что случилось','Topic / what happened')}</b>\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>{R(ru,'Долго не подтверждают пополнение','Top-up not confirmed for too long')}</code></blockquote>"
+            ),
+            "deal":(
+                f"<b>2. {R(ru,'Номер сделки (если есть)','Deal ID (if any)')}</b>\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD00042</code>\n"
+                f"{R(ru,'Если сделки нет — напишите','If no deal — write')}: <code>-</code></blockquote>"
+            ),
+            "time":(
+                f"<b>3. {R(ru,'Когда это произошло','When it happened')}</b>\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>29.07.2026 18:40</code></blockquote>"
+            ),
+            "evidence":(
+                f"<b>4. {R(ru,'Доказательства','Evidence')}</b>\n"
+                f"<blockquote>{R(ru,'Ссылки, скрины текстом, ID платежа.','Links, screenshot text, payment ID.')}\n"
+                f"{R(ru,'Пример:','Example:')}\n<code>{R(ru,'Чек EG-123, скрин отправил в поддержку','Receipt EG-123, screenshot sent to support')}</code></blockquote>"
+            ),
+        }
+        return prompts.get(step,"?")
+    role_word=R(ru,who_ru,who_en)
+    emoji="5927118708873892465" if ctype=="buyer" else "6032914237389541410"
+    prompts={
+        "username":(
+            f"<tg-emoji emoji-id='{emoji}'>⚠️</tg-emoji> <b>{R(ru,'Жалоба на','Report about')} {role_word}</b>\n\n"
+            f"<b>1. {R(ru,'Юзернейм','Username')} {role_word}</b>\n"
+            f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>"
+        ),
+        "deal":(
+            f"<b>2. {R(ru,'Номер сделки','Deal ID')}</b>\n"
+            f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD00042</code></blockquote>"
+        ),
+        "time":(
+            f"<b>3. {R(ru,'Время сделки','Deal time')}</b>\n"
+            f"<blockquote>{R(ru,'Когда была сделка','When the deal happened')}\n"
+            f"{R(ru,'Пример:','Example:')}\n<code>29.07.2026 15:30</code></blockquote>"
+        ),
+        "evidence":(
+            f"<b>4. {R(ru,'Доказательства','Evidence')}</b>\n"
+            f"<blockquote>{R(ru,'Опишите проблему и приложите факты.','Describe the issue and include facts.')}\n"
+            f"{R(ru,'Пример:','Example:')}\n<code>{R(ru,'Оплата ушла, товар не отдали, чек: ...','Paid, item not delivered, receipt: ...')}</code></blockquote>"
+        ),
+    }
+    return prompts.get(step,"?")
+
+async def show_complaint(update, context):
+    try:
+        uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
+        clear_complaint_state(context.user_data)
+        text=(
+            f"<tg-emoji emoji-id='6032742198179532882'>⚠️</tg-emoji> <b>{R(ru,'Пожаловаться','Report')}</b>\n\n"
+            f"<blockquote>{R(ru,'Выберите, на кого жалоба. Заполните форму по шагам — заявка уйдёт админам.','Choose who to report. Fill the form step by step — admins will receive it.')}</blockquote>"
+        )
+        await send_section(update,text,complaint_kb(lang),section="complaint")
+    except Exception as e: logger.error(f"show_complaint: {e}")
+
+async def start_complaint(update, context, ctype):
+    ud=context.user_data; uid=update.effective_user.id; lang=get_lang(uid)
+    clear_complaint_state(ud)
+    ud["complaint_type"]=ctype
+    if ctype=="market":
+        ud["complaint_step"]="topic"
+    else:
+        ud["complaint_step"]="username"
+    await send_section(update,complaint_prompt(ud["complaint_step"],ctype,lang),complaint_cancel_kb(lang),section="complaint")
+
+async def finish_complaint(update, context):
+    ud=context.user_data; uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
+    ctype=ud.get("complaint_type","?")
+    uname=f"@{update.effective_user.username}" if update.effective_user.username else str(uid)
+    titles={"buyer":R(ru,"на покупателя","about buyer"),"seller":R(ru,"на продавца","about seller"),"market":R(ru,"на маркетплейс","about marketplace")}
+    title=titles.get(ctype,ctype)
+    if ctype=="market":
+        body=(
+            f"<tg-emoji emoji-id='5920332557466997677'>⚠️</tg-emoji> <b>Жалоба {title}</b>\n\n"
+            f"{Eu} От: {H(uname)} (<code>{uid}</code>)\n"
+            f"1. Тема: <b>{H(ud.get('cmp_topic',''))}</b>\n"
+            f"2. Сделка: <code>{H(ud.get('cmp_deal',''))}</code>\n"
+            f"3. Время: <b>{H(ud.get('cmp_time',''))}</b>\n"
+            f"4. Доказательства:\n<blockquote>{H(ud.get('cmp_evidence',''))}</blockquote>"
+        )
+    else:
+        emoji="5927118708873892465" if ctype=="buyer" else "6032914237389541410"
+        role=R(ru,"покупатель","buyer") if ctype=="buyer" else R(ru,"продавец","seller")
+        body=(
+            f"<tg-emoji emoji-id='{emoji}'>⚠️</tg-emoji> <b>Жалоба {title}</b>\n\n"
+            f"{Eu} От: {H(uname)} (<code>{uid}</code>)\n"
+            f"1. Юзернейм {role}: <b>{H(ud.get('cmp_username',''))}</b>\n"
+            f"2. Номер сделки: <code>{H(ud.get('cmp_deal',''))}</code>\n"
+            f"3. Время сделки: <b>{H(ud.get('cmp_time',''))}</b>\n"
+            f"4. Доказательства:\n<blockquote>{H(ud.get('cmp_evidence',''))}</blockquote>"
+        )
+    await notify_admins(context, body)
+    clear_complaint_state(ud)
+    await update.message.reply_text(
+        f"{Ech} <b>{R(ru,'Жалоба отправлена админам.','Report sent to admins.')}</b>",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,'Главное меню','Main menu'),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]))
+
+# Большая база знаний ИИ-помощника Eldorado GG (RU/EN)
+AI_KB = {
+    "deal": {
+        "keys": ("создать сделк","как сделк","сделку","create deal","how to deal","новая сделк","открыть сделк","deal flow","эскроу сделк"),
+        "ru": (
+            "Как создать сделку в Eldorado GG\n\n"
+            "1) Главное меню → «Создать сделку».\n"
+            "2) Выберите роль: Покупатель или Продавец.\n"
+            "3) Выберите тип: NFT подарок / NFT Username / Звёзды / Крипта / Telegram Premium.\n"
+            "4) Введите @username партнёра.\n"
+            "5) Для NFT — ссылка; для Username — t.me/… или @username; для Stars — количество; для Premium — срок.\n"
+            "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
+            "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
+            "8) Отправьте партнёру ссылку вида t.me/EldoradoGGRobot?start=deal_GDxxxxx.\n\n"
+            "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
+            "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
+        ),
+        "en": (
+            "How to create a deal in Eldorado GG\n\n"
+            "1) Main menu → Create Deal.\n"
+            "2) Choose role: Buyer or Seller.\n"
+            "3) Choose type: NFT Gift / NFT Username / Stars / Crypto / Telegram Premium.\n"
+            "4) Enter partner @username.\n"
+            "5) NFT needs a link; Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
+            "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
+            "7) Enter amount → review → Create deal.\n"
+            "8) Send the partner link: t.me/EldoradoGGRobot?start=deal_GDxxxxx.\n\n"
+            "Important: matching requisites are required for the deal currency.\n"
+            "Service fee: 0%. Track status in My Deals."
+        ),
+    },
+    "join": {
+        "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
+        "ru": (
+            "Как присоединиться к сделке\n\n"
+            "Откройте ссылку от партнёра (start=deal_GDxxxxx) в боте @EldoradoGGRobot.\n"
+            "Если реквизитов нет — бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
+            "После входа обе стороны видят карточку сделки и инструкции.\n"
+            "Продавец передаёт товар менеджеру @EldoradoGGManager и жмёт «Я передал».\n"
+            "Покупатель платит по реквизитам и жмёт «Я оплатил».\n"
+            "Менеджер подтверждает — сделка закрывается. Если ссылка не открывается — напишите в поддержку."
+        ),
+        "en": (
+            "How to join a deal\n\n"
+            "Open the partner link (start=deal_GDxxxxx) in @EldoradoGGRobot.\n"
+            "If requisites are missing, bind the ones required for the deal currency.\n"
+            "After joining both sides see the deal card and instructions.\n"
+            "Seller transfers the item to manager @EldoradoGGManager and presses I transferred.\n"
+            "Buyer pays using the details and presses I paid.\n"
+            "Manager confirms and the deal closes. If the link fails — contact support."
+        ),
+    },
+    "types": {
+        "keys": ("тип сделк","nft","username","premium","звезд","звёзд","крипт","gift","какой тип"),
+        "ru": (
+            "Типы сделок\n\n"
+            "• NFT подарок — сделка по NFT-подарку (нужна ссылка на подарок).\n"
+            "• NFT Username — сделка по юзернейму (t.me/username или @username).\n"
+            "• Звёзды — покупка/продажа Telegram Stars (укажите количество).\n"
+            "• Крипта — криптообмен через гаранта.\n"
+            "• Telegram Premium — оформление Premium на срок.\n\n"
+            "Валюты оплаты: TON, USDT, RUB, Stars, UAH.\n"
+            "Для RUB/UAH нужна карта/телефон, для TON/USDT — TON-кошелёк, для Stars — @username."
+        ),
+        "en": (
+            "Deal types\n\n"
+            "• NFT Gift — NFT gift deal (gift link required).\n"
+            "• NFT Username — username deal (t.me/username or @username).\n"
+            "• Stars — buy/sell Telegram Stars (enter count).\n"
+            "• Crypto — crypto exchange via escrow.\n"
+            "• Telegram Premium — Premium for a period.\n\n"
+            "Payment currencies: TON, USDT, RUB, Stars, UAH.\n"
+            "RUB/UAH need card/phone, TON/USDT need a TON wallet, Stars need @username."
+        ),
+    },
+    "topup": {
+        "keys": ("пополн","top up","topup","закинуть","баланс пополн","как пополн","stars пополн","тон пополн","usdt пополн"),
+        "ru": (
+            "Как пополнить баланс\n\n"
+            "Главное меню → «Пополнить/Вывод» → Пополнить → способ:\n"
+            "• Звёзды — минимум 700 Stars\n"
+            "• Карта / Телефон — минимум 400 RUB\n"
+            "• TON (Tonkeeper / адрес) — минимум 3 TON\n"
+            "• USDT (Tonkeeper / адрес) — минимум 9 USDT\n\n"
+            "Введите сумму → оплатите строго с комментарием/референсом из бота (EG-…).\n"
+            "Для Tonkeeper можно открыть готовую ссылку оплаты.\n"
+            "После оплаты дождитесь подтверждения админа (обычно до нескольких минут).\n"
+            "Баланс смотрите в Профиле."
+        ),
+        "en": (
+            "How to top up\n\n"
+            "Main menu → Top Up/Withdraw → Top up → method:\n"
+            "• Stars — min 700 Stars\n"
+            "• Card / Phone — min 400 RUB\n"
+            "• TON (Tonkeeper / address) — min 3 TON\n"
+            "• USDT (Tonkeeper / address) — min 9 USDT\n\n"
+            "Enter amount → pay with the exact comment/ref from the bot (EG-…).\n"
+            "Tonkeeper can open a ready payment link.\n"
+            "Wait for admin confirmation (usually a few minutes).\n"
+            "Check balance in Profile."
+        ),
+    },
+    "withdraw": {
+        "keys": ("вывод","withdraw","вывест","снять денег","выплатить","кэшаут","cashout"),
+        "ru": (
+            "Как вывести средства\n\n"
+            "1) Сначала привяжите реквизиты в «Реквизиты» (карта/телефон, TON-кошелёк или @username).\n"
+            "2) «Пополнить/Вывод» → Вывод → выберите способ.\n"
+            "3) Укажите реквизиты для выплаты (если бот попросит).\n"
+            "4) Заявка уходит админам в ЛС — они видят, кому и куда выдавать деньги.\n\n"
+            "Без привязанных реквизитов вывод недоступен.\n"
+            "Если долго нет ответа — напишите менеджеру @EldoradoGGManager или в поддержку."
+        ),
+        "en": (
+            "How to withdraw\n\n"
+            "1) First bind requisites in Requisites (card/phone, TON wallet or @username).\n"
+            "2) Top Up/Withdraw → Withdraw → choose method.\n"
+            "3) Provide payout details if asked.\n"
+            "4) Admins get a DM with who to pay and where.\n\n"
+            "Withdraw is blocked without bound requisites.\n"
+            "If delayed — contact @EldoradoGGManager or support."
+        ),
+    },
+    "req": {
+        "keys": ("реквизит","кошел","привяз","wallet","bind","карта","телефон","uq","eq адрес","отвяз"),
+        "ru": (
+            "Реквизиты / привязка кошелька\n\n"
+            "Раздел «Реквизиты» — не «добавить наугад», а привязать свои данные для выплат:\n"
+            "• Карта / телефон (+7… / +380… или 16–19 цифр карты) + название банка\n"
+            "• TON-кошелёк — адрес UQ/EQ (48 символов)\n"
+            "• Звёзды — ваш @username\n\n"
+            "После привязки админам в ЛС уходит уведомление: кто привязал и куда выдавать деньги.\n"
+            "Можно изменить или отвязать реквизит.\n"
+            "Для сделки валюта и реквизиты должны совпадать (RUB/UAH→карта, TON/USDT→TON, Stars→@username)."
+        ),
+        "en": (
+            "Requisites / wallet binding\n\n"
+            "Requisites means binding your payout details:\n"
+            "• Card / phone (+7… / +380… or 16–19 digit card) + bank name\n"
+            "• TON wallet — UQ/EQ address (48 chars)\n"
+            "• Stars — your @username\n\n"
+            "After binding, admins get a DM: who bound what and where to pay.\n"
+            "You can edit or unbind later.\n"
+            "Deal currency must match requisites (RUB/UAH→card, TON/USDT→TON, Stars→@username)."
+        ),
+    },
+    "safe": {
+        "keys": ("безопас","гарант","кидал","scam","safe","эскроу","обман","развод","защит","менеджер"),
+        "ru": (
+            "Безопасность сделок (гарант Eldorado GG)\n\n"
+            "• Комиссия сервиса: 0%.\n"
+            "• Не уходите в оплату «в личку» вне бота — это риск скама.\n"
+            "• Продавец передаёт товар менеджеру @EldoradoGGManager, покупатель платит по реквизитам сделки.\n"
+            "• Кнопки «Я передал» / «Я оплатил» фиксируют шаги; финал подтверждает админ/менеджер.\n"
+            "• Средства/товар защищены до завершения сделки.\n"
+            "• Смотрите рейтинг, сделки и отзывы партнёра в карточке.\n"
+            "• Спор → «Пожаловаться» (на покупателя / продавца / маркетплейс) или поддержка @EldoradoGGSupport."
+        ),
+        "en": (
+            "Deal safety (Eldorado GG escrow)\n\n"
+            "• Service fee: 0%.\n"
+            "• Don’t move payment to private chats outside the bot — scam risk.\n"
+            "• Seller transfers to manager @EldoradoGGManager; buyer pays deal requisites.\n"
+            "• I transferred / I paid track steps; admin/manager confirms the finish.\n"
+            "• Funds/item stay protected until completion.\n"
+            "• Check partner stats and reviews on the deal card.\n"
+            "• Dispute → Report (buyer / seller / marketplace) or @EldoradoGGSupport."
+        ),
+    },
+    "complaint": {
+        "keys": ("жалоб","репорт","спор","complaint","report","кинули","не отдал","не пришло"),
+        "ru": (
+            "Жалобы и споры\n\n"
+            "Главное меню → «Пожаловаться» → готовые кнопки:\n"
+            "• На покупателя — юзернейм, номер сделки, время, доказательства\n"
+            "• На продавца — то же, но по продавцу\n"
+            "• На маркетплейс — тема, сделка (или «-»), время, доказательства\n\n"
+            "Заявка сразу уходит админам в ЛС.\n"
+            "Пишите факты: GD-номер, время, чеки, ссылки, что именно нарушено.\n"
+            "Параллельно можно писать @EldoradoGGSupport / @EldoradoGGManager."
+        ),
+        "en": (
+            "Reports and disputes\n\n"
+            "Main menu → Report → ready buttons:\n"
+            "• About buyer — username, deal ID, time, evidence\n"
+            "• About seller — same fields for the seller\n"
+            "• About marketplace — topic, deal (or «-»), time, evidence\n\n"
+            "The form is sent to admins in DM.\n"
+            "Include facts: GD id, time, receipts, links, what broke.\n"
+            "You can also contact @EldoradoGGSupport / @EldoradoGGManager."
+        ),
+    },
+    "reviews": {
+        "keys": ("отзыв","review","мини апп","mini app","рейтинг","оценк","звёзд отз"),
+        "ru": (
+            "Отзывы\n\n"
+            "• Большая лента: Информация → «Отзывы» (Mini App).\n"
+            "• После успешной сделки бот может предложить оставить отзыв (оценка + комментарий).\n"
+            "• В профиле видны ваши отзывы, число сделок и оборот.\n"
+            "• В карточке сделки видны статистика и отзывы обеих сторон.\n"
+            "Если Mini App не открывается — обновите ссылку у админа / перезайдите в бота."
+        ),
+        "en": (
+            "Reviews\n\n"
+            "• Full feed: Information → Reviews (Mini App).\n"
+            "• After a successful deal the bot may ask for a review (stars + comment).\n"
+            "• Profile shows your reviews, deals and turnover.\n"
+            "• Deal card shows both sides’ stats and reviews.\n"
+            "If Mini App fails — ask admin to refresh the URL / reopen the bot."
+        ),
+    },
+    "ref": {
+        "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
+        "ru": (
+            "Реферальная программа\n\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/EldoradoGGRobot?start=ref_ВАШ_ID.\n"
+            "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
+            "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
+            "Награда копится в статистике рефералов; вопросы по выплате — менеджеру."
+        ),
+        "en": (
+            "Referral program\n\n"
+            "Referrals → your link t.me/EldoradoGGRobot?start=ref_YOUR_ID.\n"
+            "You earn 3% from each deal of users who joined via your link.\n"
+            "See invited count, earned amount and referral list.\n"
+            "Payout questions — ask the manager."
+        ),
+    },
+    "profile": {
+        "keys": ("профиль","статистик","оборот","успешн","мой баланс","profile","status"),
+        "ru": (
+            "Профиль\n\n"
+            "В «Профиль» видно: @username, баланс (RUB), всего сделок, успешных сделок, оборот и отзывы.\n"
+            "«Мои сделки» — все сделки, где вы создатель или участник.\n"
+            "«Топ продавцов» — рейтинг продавцов платформы.\n"
+            "Язык: кнопка «Язык» (RU/EN)."
+        ),
+        "en": (
+            "Profile\n\n"
+            "Profile shows: @username, balance (RUB), total deals, successful deals, turnover and reviews.\n"
+            "My Deals lists deals you created or joined.\n"
+            "Top Sellers ranks platform sellers.\n"
+            "Language button switches RU/EN."
+        ),
+    },
+    "support": {
+        "keys": ("поддержк","саппорт","support","менеджер","manager","сайт","eldorado.gg","тех"),
+        "ru": (
+            "Контакты и помощь\n\n"
+            "• Техподдержка: @EldoradoGGSupport\n"
+            "• Менеджер сделок: @EldoradoGGManager\n"
+            "• Сайт: eldorado.gg (кнопка «Наш сайт»)\n"
+            "• Информация: Telegraph «Как проходят сделки» + отзывы Mini App\n"
+            "• ИИ-помощник: быстрые ответы по боту; сложные кейсы — людям в поддержку.\n"
+            "Бот: @EldoradoGGRobot"
+        ),
+        "en": (
+            "Contacts and help\n\n"
+            "• Support: @EldoradoGGSupport\n"
+            "• Deal manager: @EldoradoGGManager\n"
+            "• Website: eldorado.gg (Our Website button)\n"
+            "• Information: Telegraph how-deals guide + Reviews Mini App\n"
+            "• AI Helper: quick bot answers; hard cases go to human support.\n"
+            "Bot: @EldoradoGGRobot"
+        ),
+    },
+    "fee": {
+        "keys": ("комисс","fee","0%","процент","сколько берёт","платн"),
+        "ru": (
+            "Комиссия Eldorado GG — 0%.\n"
+            "Сервис зарабатывает как гарант/маркетплейс без процента с суммы сделки в карточке.\n"
+            "Рефералка: 3% вам с сделок приглашённых друзей (это бонус рефереру)."
+        ),
+        "en": (
+            "Eldorado GG service fee is 0%.\n"
+            "The deal card shows no percent cut on the deal amount.\n"
+            "Referrals: you earn 3% from invited friends’ deals (referrer bonus)."
+        ),
+    },
+    "paid": {
+        "keys": ("я оплатил","я передал","подтверд","админ не","долго жду","статус сделк","item_transferred"),
+        "ru": (
+            "Статусы сделки\n\n"
+            "1) Ожидание партнёра по ссылке.\n"
+            "2) Продавец → передаёт товар менеджеру → «Я передал».\n"
+            "3) Покупатель → платит по реквизитам → «Я оплатил».\n"
+            "4) Админ/менеджер подтверждает оплату и передачу.\n"
+            "5) Сделка завершена → можно оставить отзыв.\n\n"
+            "Если шаг завис — проверьте «Мои сделки», напишите менеджеру и при необходимости подайте жалобу."
+        ),
+        "en": (
+            "Deal statuses\n\n"
+            "1) Waiting for partner via link.\n"
+            "2) Seller transfers item to manager → I transferred.\n"
+            "3) Buyer pays requisites → I paid.\n"
+            "4) Admin/manager confirms payment and transfer.\n"
+            "5) Deal completed → leave a review.\n\n"
+            "If stuck — check My Deals, message the manager, or file a report."
+        ),
+    },
+    "currency": {
+        "keys": ("валют","currency","rub","uah","usdt","чем платить","какая валют"),
+        "ru": (
+            "Валюты в боте: TON, USDT, RUB, Stars, UAH.\n\n"
+            "• RUB / UAH — привяжите карту или телефон + банк.\n"
+            "• TON / USDT — привяжите TON-адрес (UQ/EQ).\n"
+            "• Stars — привяжите @username.\n"
+            "Сумма вводится с допустимой точностью; 0 и отрицательные нельзя.\n"
+            "В сделке одна валюта оплаты; реквизиты должны ей соответствовать."
+        ),
+        "en": (
+            "Currencies: TON, USDT, RUB, Stars, UAH.\n\n"
+            "• RUB / UAH — bind card or phone + bank.\n"
+            "• TON / USDT — bind TON address (UQ/EQ).\n"
+            "• Stars — bind @username.\n"
+            "Amount must be > 0 with supported precision.\n"
+            "One payment currency per deal; requisites must match."
+        ),
+    },
+}
+
+def ai_answer(question, lang="ru"):
+    ru=lang=="ru"
+    q=(question or "").lower().replace("ё","е")
+    # точные кнопки / короткие алиасы
+    aliases={
+        "deal":("как создать сделку","how to create a deal","создать сделку"),
+        "topup":("как пополнить баланс","how to top up","пополнить"),
+        "withdraw":("как вывести деньги","how to withdraw","вывести"),
+        "safe":("безопасность сделок","deal safety"),
+        "req":("реквизиты / кошелёк","requisites / wallet","реквизиты","привязать кошелёк"),
+        "complaint":("жалобы и споры","reports & disputes","жалоба","пожаловаться"),
+        "reviews":("отзывы","reviews","мини апп"),
+        "ref":("рефералы","referrals","реферальная"),
+        "ref_reviews":("рефералы / отзывы","referrals / reviews"),
+    }
+    for topic, words in aliases.items():
+        if q.strip() in words:
+            if topic=="ref_reviews":
+                a=AI_KB["ref"]["ru" if ru else "en"]
+                b=AI_KB["reviews"]["ru" if ru else "en"]
+                return f"{a}\n\n—\n\n{b}"
+            entry=AI_KB.get(topic)
+            if entry: return entry["ru"] if ru else entry["en"]
+
+    scored=[]
+    for topic, entry in AI_KB.items():
+        score=0
+        for key in entry["keys"]:
+            k=key.lower().replace("ё","е")
+            if k in q:
+                score += 3 + min(len(k), 12)//4
+        if topic=="deal" and any(x in q for x in ("создать","create")) and "сделк" in q.replace("ё","е"): score+=2
+        if topic=="topup" and any(x in q for x in ("пополн","top up","topup","закинуть")): score+=2
+        if topic=="withdraw" and any(x in q for x in ("вывод","withdraw","вывест","снять")): score+=2
+        if topic=="reviews" and any(x in q for x in ("отзыв","review")): score+=3
+        if topic=="ref" and any(x in q for x in ("реферал","referral","рефк","приглас")): score+=3
+        if score>0: scored.append((score, topic))
+    if scored:
+        scored.sort(reverse=True)
+        best=scored[0][1]
+        if best in ("ref","reviews") and any(x in q for x in ("отзыв","review")) and any(x in q for x in ("реферал","referral","реф")):
+            a=AI_KB["ref"]["ru" if ru else "en"]
+            b=AI_KB["reviews"]["ru" if ru else "en"]
+            return f"{a}\n\n—\n\n{b}"
+        entry=AI_KB[best]
+        return entry["ru"] if ru else entry["en"]
+
+    # общий обзор, если вопрос слишком общий
+    if any(x in q for x in ("что умеет","как работ","помощь","help","команды","бот","eldorado")):
+        return R(ru,
+            "Eldorado GG — гарант-маркетплейс в Telegram (@EldoradoGGRobot).\n\n"
+            "Умею объяснить: создание/вход в сделку, типы (NFT/Stars/Premium/крипта), валюты, "
+            "пополнение (мин. Stars 700 / RUB 400 / TON 3 / USDT 9), вывод, привязку реквизитов, "
+            "безопасность (комиссия 0%), жалобы, рефералы 3%, отзывы Mini App, профиль и контакты.\n\n"
+            "Спросите конкретно, например: «как привязать TON» или «что делать после Я оплатил».\n"
+            "Люди: @EldoradoGGSupport · @EldoradoGGManager",
+            "Eldorado GG is a Telegram escrow marketplace (@EldoradoGGRobot).\n\n"
+            "I can explain: create/join deals, types (NFT/Stars/Premium/crypto), currencies, "
+            "top-up mins (Stars 700 / RUB 400 / TON 3 / USDT 9), withdraw, binding requisites, "
+            "safety (0% fee), reports, 3% referrals, reviews Mini App, profile and contacts.\n\n"
+            "Ask something specific, e.g. “how to bind TON” or “what after I paid”.\n"
+            "Humans: @EldoradoGGSupport · @EldoradoGGManager")
+
+    return R(ru,
+        "По этому вопросу точного шаблона нет, но я знаю весь бот Eldorado GG.\n"
+        "Уточните: сделка / пополнение / вывод / реквизиты / жалоба / рефералы / отзывы / безопасность.\n"
+        "Или напишите @EldoradoGGSupport / @EldoradoGGManager.",
+        "No exact template for that, but I know the whole Eldorado GG bot.\n"
+        "Clarify: deal / top-up / withdraw / requisites / report / referrals / reviews / safety.\n"
+        "Or contact @EldoradoGGSupport / @EldoradoGGManager.")
+
+async def show_ai(update, context):
+    try:
+        uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
+        context.user_data.pop("ai_ask",None)
+        text=(
+            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
+            f"<blockquote>{R(ru,'Выберите частый вопрос или задайте свой — отвечу по работе бота и сделкам.','Pick a common question or ask your own — I’ll answer about the bot and deals.')}</blockquote>"
+        )
+        await send_section(update,text,ai_kb(lang),section="ai")
+    except Exception as e: logger.error(f"show_ai: {e}")
+
+async def notify_admins_wallet_bound(context, uid, username, field, value, lang="ru"):
+    ru=lang=="ru"
+    labels={"card":R(ru,"Карта/телефон","Card/phone"),"ton":"TON","stars":R(ru,"Звёзды @username","Stars @username")}
+    label=labels.get(field,field)
+    uname=f"@{username}" if username else "нет username"
+    text=(
+        f"{Ewlt} <b>{R(ru,'Привязка реквизитов','Requisites bound')}</b>\n\n"
+        f"{Eu} {H(uname)} (<code>{uid}</code>)\n"
+        f"{Ereq} {label}\n"
+        f"<blockquote><code>{H(value)}</code></blockquote>\n"
+        f"{R(ru,'Сюда выдавать деньги при выводе / сделке.','Pay out here on withdraw / deal.')}"
+    )
+    await notify_admins(context, text)
+
 # ─── /start ───────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -1495,7 +2083,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_new(update,invite,section="deal_forward"); return
 
         if d=="main_menu":
-            ud.clear(); clear_join_req_state(uid); await show_main(update,context); return
+            ud.clear(); clear_join_req_state(uid); clear_complaint_state(ud)
+            await show_main(update,context); return
         if d=="menu_profile":
             await show_profile(update,context); return
         if d=="menu_balance":
@@ -1514,6 +2103,41 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_ref(update,context); return
         if d=="menu_info":
             await show_info(update,context); return
+        if d=="menu_complaint":
+            clear_complaint_state(ud); ud.pop("ai_ask",None)
+            await show_complaint(update,context); return
+        if d in ("cmp_buyer","cmp_seller","cmp_market"):
+            ctype={"cmp_buyer":"buyer","cmp_seller":"seller","cmp_market":"market"}[d]
+            await start_complaint(update,context,ctype); return
+        if d=="menu_ai":
+            clear_complaint_state(ud)
+            await show_ai(update,context); return
+        if d.startswith("ai_q_"):
+            key=d[5:]
+            canned={
+                "deal":R(ru,"как создать сделку","how to create a deal"),
+                "topup":R(ru,"как пополнить баланс","how to top up"),
+                "withdraw":R(ru,"как вывести деньги","how to withdraw"),
+                "safe":R(ru,"безопасность сделок","deal safety"),
+                "req":R(ru,"реквизиты / кошелёк","requisites / wallet"),
+                "complaint":R(ru,"жалобы и споры","reports & disputes"),
+                "ref":R(ru,"рефералы / отзывы","referrals / reviews"),
+            }
+            qtext=canned.get(key,key)
+            ans=ai_answer(qtext,lang)
+            await send_section(
+                update,
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
+                f"<blockquote>{H(ans)}</blockquote>",
+                ai_kb(lang),section="ai"); return
+        if d=="ai_ask":
+            ud["ai_ask"]=True
+            await send_section(
+                update,
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'Задайте вопрос','Ask a question')}</b>\n\n"
+                f"<blockquote>{R(ru,'Напишите одним сообщением — отвечу по боту и сделкам.','Write one message — I’ll answer about the bot and deals.')}</blockquote>",
+                InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Отмена","Cancel"),callback_data="menu_ai",icon_custom_emoji_id="5258084656674250503")]]),
+                section="ai"); return
         if d=="menu_req":
             for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
                 ud.pop(key,None)
@@ -1820,11 +2444,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not any(reqs.get(f) for f in REQ_FIELDS):
                 ud["req_return"]="withdraw"
                 await send_section(update,
-                    f"{Ewrn} <b>{R(ru,'Для вывода добавьте реквизиты.','Add requisites to withdraw.')}</b>",
+                    f"{Ewrn} <b>{R(ru,'Для вывода привяжите реквизиты.','Bind requisites to withdraw.')}</b>",
                     InlineKeyboardMarkup([
-                        [InlineKeyboardButton(R(ru,"Добавить карту/телефон","Add card/phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
-                        [InlineKeyboardButton(R(ru,"Добавить TON","Add TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
-                        [InlineKeyboardButton(R(ru,"Добавить @username","Add @username"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
+                        [InlineKeyboardButton(R(ru,"Привязать карту/телефон","Bind card/phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
+                        [InlineKeyboardButton(R(ru,"Привязать TON","Bind TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
+                        [InlineKeyboardButton(R(ru,"Привязать @username","Bind @username"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
                     ]),section="balance"); return
             await show_withdraw(update,context); return
@@ -1888,6 +2512,62 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if uid in ADMIN_IDS and ud.get("adm_step"): await handle_adm_msg(update,context); return
         # Restore requisite wizard if user_data was lost (profile / deal / join)
         restore_req_input_state(ud, uid)
+
+        if ud.get("ai_ask"):
+            ud.pop("ai_ask",None)
+            ans=ai_answer(text,lang)
+            await update.message.reply_text(
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
+                f"<blockquote>{H(ans)}</blockquote>",
+                parse_mode="HTML",reply_markup=ai_kb(lang)); return
+
+        if ud.get("complaint_step"):
+            step=ud["complaint_step"]; ctype=ud.get("complaint_type","buyer")
+            if step=="username":
+                ok=validate_complaint_username(text)
+                if not ok:
+                    await update.message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Неверный юзернейм. Пример: @username (5–32 символа).','Invalid username. Example: @username (5–32 chars).')}</b>",
+                        parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+                ud["cmp_username"]=ok; ud["complaint_step"]="deal"
+                await update.message.reply_text(complaint_prompt("deal",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+            if step=="topic":
+                t=(text or "").strip()
+                if len(t)<4 or len(t)>200:
+                    await update.message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Опишите тему короче/подробнее (4–200 символов).','Describe the topic (4–200 chars).')}</b>",
+                        parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+                ud["cmp_topic"]=t; ud["complaint_step"]="deal"
+                await update.message.reply_text(complaint_prompt("deal",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+            if step=="deal":
+                raw=(text or "").strip()
+                if ctype=="market" and raw in ("-","—","нет","no","n/a","N/A"):
+                    ok="-"
+                else:
+                    ok=validate_complaint_deal_id(raw)
+                if not ok:
+                    await update.message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Неверный номер сделки. Пример: GD00042','Invalid deal ID. Example: GD00042')}</b>"
+                        + (R(ru,"\nИли «-» если сделки нет.","\nOr «-» if none.") if ctype=="market" else ""),
+                        parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+                ud["cmp_deal"]=ok; ud["complaint_step"]="time"
+                await update.message.reply_text(complaint_prompt("time",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+            if step=="time":
+                ok=validate_complaint_time(text)
+                if not ok:
+                    await update.message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Укажите время сделки. Пример: 29.07.2026 15:30','Enter deal time. Example: 29.07.2026 15:30')}</b>",
+                        parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+                ud["cmp_time"]=ok; ud["complaint_step"]="evidence"
+                await update.message.reply_text(complaint_prompt("evidence",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+            if step=="evidence":
+                ok=validate_complaint_evidence(text)
+                if not ok:
+                    await update.message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Доказательства слишком короткие. Минимум 8 символов.','Evidence too short. Min 8 chars.')}</b>",
+                        parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
+                ud["cmp_evidence"]=ok
+                await finish_complaint(update,context); return
 
         if ud.get("topup_step")=="amount":
             raw_amount=text.replace(" ","").replace(",",".")
@@ -1971,12 +2651,17 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             u.setdefault("requisites",{})[field]=text
             save_db(db)
+            try:
+                await notify_admins_wallet_bound(
+                    context, uid, update.effective_user.username, field, text, lang)
+            except Exception as e:
+                logger.error(f"notify wallet bound: {e}")
             ud.pop("req_step",None)
             for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
 
             if ud.pop("req_after_buyer_deal",None):
                 clear_req_input_state(uid)
-                await update.message.reply_text(f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",parse_mode="HTML")
+                await update.message.reply_text(f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты привязаны!','Requisites bound!')}</b>",parse_mode="HTML")
                 resume=ud.pop("req_resume",None)
                 # Resume where the user was blocked (currency → amount / confirmation)
                 if resume=="amount" or (ud.get("currency") and ud.get("type") and ud.get("partner")):
@@ -2021,7 +2706,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pending=str(pending).strip().upper()
                 deal_pending=load_db().get("deals",{}).get(pending)
                 await update.message.reply_text(
-                    f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",
+                    f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты привязаны!','Requisites bound!')}</b>",
                     parse_mode="HTML")
                 if not deal_pending:
                     clear_join_req_state(uid)
@@ -2054,7 +2739,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             clear_join_req_state(uid)
             req_return=ud.pop("req_return","menu_req")
             await update.message.reply_text(
-                f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты сохранены!','Requisites saved!')}</b>",
+                f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {R(ru,'Реквизиты привязаны!','Requisites bound!')}</b>",
                 parse_mode="HTML")
             if req_return=="pay_currency":
                 await show_deal_confirmation(update,context); return
@@ -2663,28 +3348,28 @@ async def show_req(update, context):
                 card_num=card; card_bnk=bank
             lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card_num}</code>\n{R(ru,'Банк','Bank')}: {card_bnk}</blockquote>")
         else:
-            lines.append(f"<blockquote>{R(ru,'Не добавлена','Not added')}</blockquote>")
+            lines.append(f"<blockquote>{R(ru,'Не привязана','Not bound')}</blockquote>")
         lines.append(f"\n{Eton} <b>TON:</b>")
-        lines.append(f"<blockquote><code>{ton}</code></blockquote>" if ton else f"<blockquote>{R(ru,'Не добавлен','Not added')}</blockquote>")
+        lines.append(f"<blockquote><code>{ton}</code></blockquote>" if ton else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
         lines.append(f"\n{Est} <b>{R(ru,'Звёзды','Stars')}:</b>")
-        lines.append(f"<blockquote><code>{stars}</code></blockquote>" if stars else f"<blockquote>{R(ru,'Не добавлен','Not added')}</blockquote>")
+        lines.append(f"<blockquote><code>{stars}</code></blockquote>" if stars else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
 
         rows=[]
         if card:
             rows.append([InlineKeyboardButton(R(ru,"Изменить карту","Edit card"),callback_data="req_edit_card",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Удалить карту","Delete card"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
+                         InlineKeyboardButton(R(ru,"Отвязать карту","Unbind card"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
         else:
-            rows.append([InlineKeyboardButton(R(ru,"Добавить карту / телефон","Add card / phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")])
+            rows.append([InlineKeyboardButton(R(ru,"Привязать карту / телефон","Bind card / phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")])
         if ton:
             rows.append([InlineKeyboardButton(R(ru,"Изменить TON","Edit TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Удалить TON","Delete TON"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
+                         InlineKeyboardButton(R(ru,"Отвязать TON","Unbind TON"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
         else:
-            rows.append([InlineKeyboardButton(R(ru,"Добавить TON","Add TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
+            rows.append([InlineKeyboardButton(R(ru,"Привязать TON-кошелёк","Bind TON wallet"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
         if stars:
             rows.append([InlineKeyboardButton(R(ru,"Изменить Звёзды","Edit Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Удалить Звёзды","Delete Stars"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
+                         InlineKeyboardButton(R(ru,"Отвязать Звёзды","Unbind Stars"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
         else:
-            rows.append([InlineKeyboardButton(R(ru,"Добавить Звёзды","Add Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")])
+            rows.append([InlineKeyboardButton(R(ru,"Привязать Звёзды","Bind Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")])
         rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,"\n".join(lines),InlineKeyboardMarkup(rows),section="req")
     except Exception as e:
