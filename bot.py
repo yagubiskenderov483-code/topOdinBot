@@ -22,6 +22,7 @@ CARD_NAME    = "Александр Ф."
 CARD_BANK_RU = "ВТБ"
 CARD_BANK_EN = "VTB"
 DB_FILE      = "db.json"
+DEAL_COUNTER_START = 29548
 # Reviews Mini App (self-contained HTML). Do not use BrewPage — it shows a side panel in Telegram.
 # Prefer explicit env, then Render public URL, then temporary litterbox host.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
@@ -499,8 +500,6 @@ def get_lang(uid):
     try: return get_user(load_db(), uid).get("lang","ru")
     except: return "ru"
 
-DEAL_COUNTER_START = 29548
-
 def gen_deal_id(db):
     n=int(db.get("deal_counter") or DEAL_COUNTER_START)
     if n < DEAL_COUNTER_START:
@@ -709,14 +708,7 @@ def complaint_cancel_kb(lang, back="menu_complaint"):
 def ai_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,'Как создать сделку?','How to create a deal?'),callback_data="ai_q_deal",icon_custom_emoji_id="5260687681733533075")],
-        [InlineKeyboardButton(R(ru,'Как пополнить баланс?','How to top up?'),callback_data="ai_q_topup",icon_custom_emoji_id="5258043150110301407")],
-        [InlineKeyboardButton(R(ru,'Как вывести деньги?','How to withdraw?'),callback_data="ai_q_withdraw",icon_custom_emoji_id="5409321884074419506")],
-        [InlineKeyboardButton(R(ru,'Реквизиты / кошелёк','Requisites / wallet'),callback_data="ai_q_req",icon_custom_emoji_id="5260730055880876557")],
-        [InlineKeyboardButton(R(ru,'Безопасность сделок','Deal safety'),callback_data="ai_q_safe",icon_custom_emoji_id="5197434882321567830")],
-        [InlineKeyboardButton(R(ru,'Жалобы и споры','Reports & disputes'),callback_data="ai_q_complaint",icon_custom_emoji_id="6032742198179532882")],
-        [InlineKeyboardButton(R(ru,'Рефералы / отзывы','Referrals / reviews'),callback_data="ai_q_ref",icon_custom_emoji_id="5258362837411045098")],
-        [InlineKeyboardButton(R(ru,'Задать свой вопрос','Ask my question'),callback_data="ai_ask",icon_custom_emoji_id="5258093637450866522")],
+        [InlineKeyboardButton(R(ru,'Очистить чат','Clear chat'),callback_data="ai_clear",icon_custom_emoji_id="5904542823167824187")],
         [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
@@ -1018,12 +1010,12 @@ def get_welcome(lang):
         pts=["Сделки с NFT, подарками, звёздами и криптовалютой","Полная защита обеих сторон",
              "Средства заморожены до подтверждения",f"Передача через менеджера: {MANAGER_TAG}"]
         intro="Eldorado GG - самая безопасная площадка для сделок в Telegram"
-        footer="Выберите действие ниже"; stats="39.000+ сделок · оборот $370.000"
+        footer="Выберите действие ниже"; stats="132.584 сделок · оборот $1.346.582"
     else:
         pts=["Deals with NFTs, gifts, Stars and cryptocurrency","Full protection for both parties",
              "Funds frozen until confirmation",f"Transfer via manager: {MANAGER_TAG}"]
         intro="Eldorado GG - the safest platform for deals in Telegram"
-        footer="Choose an action below"; stats="39,000+ deals · $370,000 turnover"
+        footer="Choose an action below"; stats="132,584 deals · $1,346,582 turnover"
     nums=[En1,En2,En3,En4]
     lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
     return (f"{Ecwn} <b>{intro}</b>\n\n{lines}\n\n"
@@ -1787,84 +1779,140 @@ AI_KB = {
     },
 }
 
-def ai_answer(question, lang="ru"):
+def resolve_ai_provider():
+    p=(AI_PROVIDER or "auto").lower()
+    if p in ("gemini","groq","openai") and (
+        (p=="gemini" and GEMINI_API_KEY) or
+        (p=="groq" and GROQ_API_KEY) or
+        (p=="openai" and OPENAI_API_KEY)
+    ):
+        return p
+    if GEMINI_API_KEY: return "gemini"
+    if GROQ_API_KEY: return "groq"
+    if OPENAI_API_KEY: return "openai"
+    return None
+
+def build_ai_system_prompt(lang="ru"):
     ru=lang=="ru"
-    q=(question or "").lower().replace("ё","е")
-    # точные кнопки / короткие алиасы
-    aliases={
-        "deal":("как создать сделку","how to create a deal","создать сделку"),
-        "topup":("как пополнить баланс","how to top up","пополнить"),
-        "withdraw":("как вывести деньги","how to withdraw","вывести"),
-        "safe":("безопасность сделок","deal safety"),
-        "req":("реквизиты / кошелёк","requisites / wallet","реквизиты","привязать кошелёк"),
-        "complaint":("жалобы и споры","reports & disputes","жалоба","пожаловаться"),
-        "reviews":("отзывы","reviews","мини апп"),
-        "ref":("рефералы","referrals","реферальная"),
-        "ref_reviews":("рефералы / отзывы","referrals / reviews"),
+    kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
+    if ru:
+        return (
+            "Ты — умный ИИ-помощник платформы Eldorado GG (Telegram-бот @EldoradoGGRobot). "
+            "Отвечай как живой ассистент (как Gemini/Cursor): свободно, по делу, на любые вопросы пользователя — "
+            "и про бот/сделки, и общие. Если вопрос про Eldorado GG — опирайся на базу знаний ниже. "
+            "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
+            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
+            "Факты платформы:\n"
+            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
+            "• Комиссия сервиса: 0%\n"
+            "• Рефералка: 3% с сделок приглашённых\n"
+            "• Поддержка: @EldoradoGGSupport · менеджер: @EldoradoGGManager\n"
+            "• Сайт: eldorado.gg\n"
+            "• Номера сделок вида GD29548+\n\n"
+            f"База знаний бота:\n{kb}"
+        )
+    return (
+        "You are the smart AI helper for Eldorado GG (Telegram bot @EldoradoGGRobot). "
+        "Answer like a live assistant (Gemini/Cursor): freely, on any user question — bot/deals and general. "
+        "For Eldorado GG questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
+        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
+        "Platform facts:\n"
+        "• Stats: 132,584 deals, turnover $1,346,582\n"
+        "• Service fee: 0%\n"
+        "• Referrals: 3% from invited users’ deals\n"
+        "• Support: @EldoradoGGSupport · manager: @EldoradoGGManager\n"
+        "• Website: eldorado.gg\n"
+        "• Deal IDs like GD29548+\n\n"
+        f"Bot knowledge base:\n{kb}"
+    )
+
+async def _ai_call_gemini(system, messages):
+    import httpx
+    model=AI_MODEL or "gemini-2.0-flash"
+    url=f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    contents=[]
+    for m in messages:
+        role="user" if m["role"]=="user" else "model"
+        contents.append({"role":role,"parts":[{"text":m["content"]}]})
+    payload={
+        "system_instruction":{"parts":[{"text":system}]},
+        "contents":contents,
+        "generationConfig":{"temperature":0.7,"maxOutputTokens":1024},
     }
-    for topic, words in aliases.items():
-        if q.strip() in words:
-            if topic=="ref_reviews":
-                a=AI_KB["ref"]["ru" if ru else "en"]
-                b=AI_KB["reviews"]["ru" if ru else "en"]
-                return f"{a}\n\n—\n\n{b}"
-            entry=AI_KB.get(topic)
-            if entry: return entry["ru"] if ru else entry["en"]
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        r=await client.post(url, params={"key":GEMINI_API_KEY}, json=payload)
+        r.raise_for_status()
+        data=r.json()
+    parts=data.get("candidates",[{}])[0].get("content",{}).get("parts",[])
+    text="".join(p.get("text","") for p in parts).strip()
+    if not text: raise RuntimeError("empty gemini response")
+    return text
 
-    scored=[]
-    for topic, entry in AI_KB.items():
-        score=0
-        for key in entry["keys"]:
-            k=key.lower().replace("ё","е")
-            if k in q:
-                score += 3 + min(len(k), 12)//4
-        if topic=="deal" and any(x in q for x in ("создать","create")) and "сделк" in q.replace("ё","е"): score+=2
-        if topic=="topup" and any(x in q for x in ("пополн","top up","topup","закинуть")): score+=2
-        if topic=="withdraw" and any(x in q for x in ("вывод","withdraw","вывест","снять")): score+=2
-        if topic=="reviews" and any(x in q for x in ("отзыв","review")): score+=3
-        if topic=="ref" and any(x in q for x in ("реферал","referral","рефк","приглас")): score+=3
-        if score>0: scored.append((score, topic))
-    if scored:
-        scored.sort(reverse=True)
-        best=scored[0][1]
-        if best in ("ref","reviews") and any(x in q for x in ("отзыв","review")) and any(x in q for x in ("реферал","referral","реф")):
-            a=AI_KB["ref"]["ru" if ru else "en"]
-            b=AI_KB["reviews"]["ru" if ru else "en"]
-            return f"{a}\n\n—\n\n{b}"
-        entry=AI_KB[best]
-        return entry["ru"] if ru else entry["en"]
+async def _ai_call_openai_compatible(system, messages, provider):
+    import httpx
+    if provider=="groq":
+        key=GROQ_API_KEY
+        base=AI_BASE_URL or "https://api.groq.com/openai/v1"
+        model=AI_MODEL or "llama-3.3-70b-versatile"
+    else:
+        key=OPENAI_API_KEY
+        base=AI_BASE_URL or "https://api.openai.com/v1"
+        model=AI_MODEL or "gpt-4o-mini"
+    payload={
+        "model":model,
+        "messages":[{"role":"system","content":system}]+list(messages),
+        "temperature":0.7,
+        "max_tokens":1024,
+    }
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        r=await client.post(
+            f"{base}/chat/completions",
+            headers={"Authorization":f"Bearer {key}","Content-Type":"application/json"},
+            json=payload)
+        r.raise_for_status()
+        data=r.json()
+    text=(data.get("choices") or [{}])[0].get("message",{}).get("content","").strip()
+    if not text: raise RuntimeError("empty openai response")
+    return text
 
-    # общий обзор, если вопрос слишком общий
-    if any(x in q for x in ("что умеет","как работ","помощь","help","команды","бот","eldorado")):
+async def ai_chat(question, lang="ru", history=None):
+    """Живой ответ через Gemini/Groq/OpenAI — не шаблоны."""
+    provider=resolve_ai_provider()
+    system=build_ai_system_prompt(lang)
+    msgs=[]
+    for h in (history or [])[-12:]:
+        if h.get("role") in ("user","assistant") and h.get("content"):
+            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
+    msgs.append({"role":"user","content":str(question or "")[:2000]})
+    if not provider:
+        ru=lang=="ru"
         return R(ru,
-            "Eldorado GG — гарант-маркетплейс в Telegram (@EldoradoGGRobot).\n\n"
-            "Умею объяснить: создание/вход в сделку, типы (NFT/Stars/Premium/крипта), валюты, "
-            "пополнение (мин. Stars 700 / RUB 400 / TON 3 / USDT 9), вывод, привязку реквизитов, "
-            "безопасность (комиссия 0%), жалобы, рефералы 3%, отзывы Mini App, профиль и контакты.\n\n"
-            "Спросите конкретно, например: «как привязать TON» или «что делать после Я оплатил».\n"
-            "Люди: @EldoradoGGSupport · @EldoradoGGManager",
-            "Eldorado GG is a Telegram escrow marketplace (@EldoradoGGRobot).\n\n"
-            "I can explain: create/join deals, types (NFT/Stars/Premium/crypto), currencies, "
-            "top-up mins (Stars 700 / RUB 400 / TON 3 / USDT 9), withdraw, binding requisites, "
-            "safety (0% fee), reports, 3% referrals, reviews Mini App, profile and contacts.\n\n"
-            "Ask something specific, e.g. “how to bind TON” or “what after I paid”.\n"
-            "Humans: @EldoradoGGSupport · @EldoradoGGManager")
-
-    return R(ru,
-        "По этому вопросу точного шаблона нет, но я знаю весь бот Eldorado GG.\n"
-        "Уточните: сделка / пополнение / вывод / реквизиты / жалоба / рефералы / отзывы / безопасность.\n"
-        "Или напишите @EldoradoGGSupport / @EldoradoGGManager.",
-        "No exact template for that, but I know the whole Eldorado GG bot.\n"
-        "Clarify: deal / top-up / withdraw / requisites / report / referrals / reviews / safety.\n"
-        "Or contact @EldoradoGGSupport / @EldoradoGGManager.")
+            "ИИ сейчас без ключа API. Админу нужно в Render Environment добавить GEMINI_API_KEY "
+            "(бесплатно: aistudio.google.com/apikey) или GROQ_API_KEY / OPENAI_API_KEY, затем redeploy.\n"
+            "Пока пишите @EldoradoGGSupport / @EldoradoGGManager.",
+            "AI has no API key yet. Admin must set GEMINI_API_KEY on Render "
+            "(free: aistudio.google.com/apikey) or GROQ_API_KEY / OPENAI_API_KEY, then redeploy.\n"
+            "Meanwhile contact @EldoradoGGSupport / @EldoradoGGManager.")
+    try:
+        if provider=="gemini":
+            return await _ai_call_gemini(system, msgs)
+        return await _ai_call_openai_compatible(system, msgs, provider)
+    except Exception as e:
+        logger.error(f"ai_chat provider={provider}: {e}", exc_info=True)
+        ru=lang=="ru"
+        return R(ru,
+            f"ИИ временно недоступен ({provider}). Попробуйте ещё раз или напишите @EldoradoGGSupport.",
+            f"AI temporarily unavailable ({provider}). Try again or contact @EldoradoGGSupport.")
 
 async def show_ai(update, context):
     try:
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
-        context.user_data.pop("ai_ask",None)
+        ud=context.user_data
+        ud["ai_ask"]=True
+        ud.setdefault("ai_history",[])
         text=(
             f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
-            f"<blockquote>{R(ru,'Выберите частый вопрос или задайте свой — отвечу по работе бота и сделкам.','Pick a common question or ask your own — I’ll answer about the bot and deals.')}</blockquote>"
+            f"<blockquote>{R(ru,'Пишите любой вопрос обычным сообщением — отвечу как живой ассистент по боту и не только. Можно продолжать диалог.','Write any question as a normal message — I’ll answer like a live assistant about the bot and more. You can keep chatting.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
@@ -2136,32 +2184,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="menu_ai":
             clear_complaint_state(ud)
             await show_ai(update,context); return
-        if d.startswith("ai_q_"):
-            key=d[5:]
-            canned={
-                "deal":R(ru,"как создать сделку","how to create a deal"),
-                "topup":R(ru,"как пополнить баланс","how to top up"),
-                "withdraw":R(ru,"как вывести деньги","how to withdraw"),
-                "safe":R(ru,"безопасность сделок","deal safety"),
-                "req":R(ru,"реквизиты / кошелёк","requisites / wallet"),
-                "complaint":R(ru,"жалобы и споры","reports & disputes"),
-                "ref":R(ru,"рефералы / отзывы","referrals / reviews"),
-            }
-            qtext=canned.get(key,key)
-            ans=ai_answer(qtext,lang)
-            await send_section(
-                update,
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
-                f"<blockquote>{H(ans)}</blockquote>",
-                ai_kb(lang),section="ai"); return
-        if d=="ai_ask":
+        if d=="ai_clear":
             ud["ai_ask"]=True
+            ud["ai_history"]=[]
             await send_section(
                 update,
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'Задайте вопрос','Ask a question')}</b>\n\n"
-                f"<blockquote>{R(ru,'Напишите одним сообщением — отвечу по боту и сделкам.','Write one message — I’ll answer about the bot and deals.')}</blockquote>",
-                InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Отмена","Cancel"),callback_data="menu_ai",icon_custom_emoji_id="5258084656674250503")]]),
-                section="ai"); return
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'Чат очищен','Chat cleared')}</b>\n\n"
+                f"<blockquote>{R(ru,'Пишите следующий вопрос.','Write your next question.')}</blockquote>",
+                ai_kb(lang),section="ai"); return
         if d=="menu_req":
             for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
                 ud.pop(key,None)
@@ -2538,12 +2568,24 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         restore_req_input_state(ud, uid)
 
         if ud.get("ai_ask"):
-            ud.pop("ai_ask",None)
-            ans=ai_answer(text,lang)
-            await update.message.reply_text(
+            wait=await update.message.reply_text(
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <i>{R(ru,'Думаю…','Thinking…')}</i>",
+                parse_mode="HTML")
+            hist=ud.setdefault("ai_history",[])
+            ans=await ai_chat(text,lang,hist)
+            hist.append({"role":"user","content":text})
+            hist.append({"role":"assistant","content":ans})
+            if len(hist)>24: ud["ai_history"]=hist[-24:]
+            # keep chat open for follow-ups
+            ud["ai_ask"]=True
+            body=(
                 f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
-                f"<blockquote>{H(ans)}</blockquote>",
-                parse_mode="HTML",reply_markup=ai_kb(lang)); return
+                f"<blockquote>{H(ans)}</blockquote>"
+            )
+            try: await wait.edit_text(body,parse_mode="HTML",reply_markup=ai_kb(lang))
+            except Exception:
+                await update.message.reply_text(body,parse_mode="HTML",reply_markup=ai_kb(lang))
+            return
 
         if ud.get("complaint_step"):
             step=ud["complaint_step"]; ctype=ud.get("complaint_type","buyer")
@@ -3446,7 +3488,7 @@ async def show_top(update, context):
         for i,(u2,a,dd) in enumerate(TOP):
             medal = Emdl if i<3 else f"{i+1}."
             lines.append(f"<b>{medal} {u2} - ${a} · {dd} {dw}</b>")
-        lines.append(f"\n<b>{CF} {R(ru,'39.000+ сделок · оборот $370.000','39,000+ deals · $370,000 turnover')}</b>")
+        lines.append(f"\n<b>{CF} {R(ru,'132.584 сделок · оборот $1.346.582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")

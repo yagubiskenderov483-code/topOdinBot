@@ -30,6 +30,18 @@ BOT_TOKEN = "ВАШ_ТОКЕН"
 Меню слева внизу — команда `/start` (не Mini App).  
 Главное меню → **Информация**: Telegraph «Как проходят сделки» + **Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
 
+### ИИ-помощник (живой LLM)
+
+В Render → Environment добавь ключ (хватит одного):
+
+```
+GEMINI_API_KEY=ваш_ключ_из_aistudio.google.com/apikey
+```
+
+или `GROQ_API_KEY` / `OPENAI_API_KEY`. Опционально: `AI_PROVIDER=gemini`, `AI_MODEL=gemini-2.0-flash`.
+
+Без ключа ИИ напишет, что нужен API key. С ключом отвечает на любые вопросы (не шаблоны).
+
 ### Mini App с отзывами
 
 Кнопка **Отзывы** открывает `REVIEWS_MINIAPP_URL` (HTTPS). Старый catbox/litter URL мог протухнуть → 404 в Telegram.
