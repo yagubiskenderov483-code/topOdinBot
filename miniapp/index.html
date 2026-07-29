@@ -393,11 +393,16 @@ window.REVIEWS_DATA={"average":4.6,"count":911,"baseCount":911,"growthEpochMs":1
     var grown = future.slice(0, next).map(function (r, i) { return withCalendarDate(r, i); });
     var base = baseReviews.map(function (r) { return withCalendarDate(r, null); });
     source = sortByCalendar(grown.concat(base));
-    var avg = 0;
-    for (var i = 0; i < source.length; i++) avg += Number(source[i].stars) || 0;
-    avg = source.length ? Math.round((avg / source.length) * 10) / 10 : 0;
+    var avg = Number(data.average);
+    if (!(avg > 0)) {
+      avg = 0;
+      for (var i = 0; i < source.length; i++) avg += Number(source[i].stars) || 0;
+      avg = source.length ? Math.round((avg / source.length) * 10) / 10 : 0;
+    }
+    var shownCount = Number(data.displayCount || data.count);
+    if (!(shownCount > 0)) shownCount = source.length;
     document.getElementById("avgScore").textContent = String(avg);
-    document.getElementById("reviewCount").textContent = String(source.length);
+    document.getElementById("reviewCount").textContent = String(shownCount);
     var prev = unlocked;
     unlocked = next;
     return Math.max(0, unlocked - prev);
