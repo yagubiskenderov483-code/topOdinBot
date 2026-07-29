@@ -1,0 +1,661 @@
+[
+  {
+    "keys": [
+      "фотосинтез",
+      "photosynthesis"
+    ],
+    "ru": "Фотосинтез — процесс, при котором растения с помощью света превращают CO₂ и воду в глюкозу и кислород. Нужен для жизни на Земле: даёт еду и кислород.",
+    "en": "Photosynthesis is how plants use light to turn CO₂ and water into glucose and oxygen. It feeds ecosystems and produces oxygen."
+  },
+  {
+    "keys": [
+      "гравитац",
+      "gravity",
+      "притяжен"
+    ],
+    "ru": "Гравитация — притяжение масс друг к другу. На Земле даёт вес; в космосе держит планеты на орбитах. Описывается законом Ньютона и общей теорией относительности Эйнштейна.",
+    "en": "Gravity is attraction between masses. On Earth it creates weight; in space it keeps planets in orbit. Described by Newton and Einstein’s GR."
+  },
+  {
+    "keys": [
+      "черн.*дыр",
+      "black hole"
+    ],
+    "ru": "Чёрная дыра — область пространства, где гравитация настолько сильна, что даже свет не может уйти. Граница называется горизонтом событий.",
+    "en": "A black hole is a region where gravity is so strong even light can’t escape. The boundary is the event horizon."
+  },
+  {
+    "keys": [
+      "днк",
+      "dna",
+      "ген"
+    ],
+    "ru": "ДНК — молекула наследственности. Хранит генетический код в последовательности азотистых оснований (A, T, G, C).",
+    "en": "DNA stores genetic information as sequences of bases (A, T, G, C)."
+  },
+  {
+    "keys": [
+      "электричеств",
+      "electric"
+    ],
+    "ru": "Электричество — движение зарядов (обычно электронов) по проводнику. Напряжение — «давление», ток — поток, сопротивление — препятствие.",
+    "en": "Electricity is flow of charge. Voltage is pressure, current is flow, resistance opposes flow."
+  },
+  {
+    "keys": [
+      "скорость света",
+      "speed of light"
+    ],
+    "ru": "Скорость света в вакууме ≈ 299 792 458 м/с. Это предельная скорость передачи информации в физике.",
+    "en": "Speed of light in vacuum is about 299,792,458 m/s — the cosmic speed limit."
+  },
+  {
+    "keys": [
+      "пифагор",
+      "hypotenuse",
+      "гипотенуз"
+    ],
+    "ru": "Теорема Пифагора: в прямоугольном треугольнике a² + b² = c², где c — гипотенуза.",
+    "en": "Pythagorean theorem: in a right triangle a² + b² = c² (c = hypotenuse)."
+  },
+  {
+    "keys": [
+      "процент",
+      "percent",
+      "%"
+    ],
+    "ru": "Процент — сотая часть. X% от N = N × X / 100. Например 3% от 1000 = 30.",
+    "en": "Percent means per hundred. X% of N = N × X / 100."
+  },
+  {
+    "keys": [
+      "дроб",
+      "fraction",
+      "делитель"
+    ],
+    "ru": "Дробь a/b — a частей из b. Чтобы сложить дроби, приводят к общему знаменателю.",
+    "en": "A fraction a/b is a parts of b. Add fractions using a common denominator."
+  },
+  {
+    "keys": [
+      "квадратн.*уравн",
+      "quadratic"
+    ],
+    "ru": "Квадратное уравнение ax²+bx+c=0. Дискриминант D=b²-4ac. Корни: x=(-b±√D)/(2a).",
+    "en": "Quadratic ax²+bx+c=0. Discriminant D=b²-4ac. Roots x=(-b±√D)/(2a)."
+  },
+  {
+    "keys": [
+      "блокчейн",
+      "blockchain"
+    ],
+    "ru": "Блокчейн — цепочка блоков с транзакциями, защищённая криптографией. Данные почти нельзя незаметно изменить. TON, Bitcoin, Ethereum — примеры сетей.",
+    "en": "A blockchain is a cryptographically linked chain of transaction blocks. TON, Bitcoin, Ethereum are examples."
+  },
+  {
+    "keys": [
+      "тон кошел",
+      "tonkeeper",
+      "uq",
+      "eq адрес",
+      "привяз.*тон"
+    ],
+    "ru": "Tonkeeper — кошелёк сети TON. В Eldorado GG: Реквизиты → Привязать Tonkeeper (через приложение или вручную UQ/EQ). Адрес нужен для TON/USDT сделок и вывода.",
+    "en": "Tonkeeper is a TON wallet. In Eldorado GG: Requisites → Bind Tonkeeper (app or manual UQ/EQ). Needed for TON/USDT deals and withdraw."
+  },
+  {
+    "keys": [
+      "usdt",
+      "тезер",
+      "tether"
+    ],
+    "ru": "USDT — стейблкоин, обычно ≈ 1$. В боте можно платить USDT (в т.ч. через Tonkeeper jetton).",
+    "en": "USDT is a stablecoin ≈ $1. In the bot you can pay with USDT (incl. Tonkeeper jetton)."
+  },
+  {
+    "keys": [
+      "nft",
+      "нфт"
+    ],
+    "ru": "NFT — уникальный токен (часто картинка/подарок/username). В Eldorado GG есть сделки NFT Gift и NFT Username через гаранта.",
+    "en": "NFTs are unique tokens. Eldorado GG supports NFT Gift and NFT Username escrow deals."
+  },
+  {
+    "keys": [
+      "газ.*комисс.*тон",
+      "gas fee",
+      "комиссия сети"
+    ],
+    "ru": "Сетевая комиссия (gas) — плата блокчейну за транзакцию. Это не комиссия Eldorado GG (у сервиса 0%).",
+    "en": "Network gas is paid to the blockchain. Eldorado GG service fee is still 0%."
+  },
+  {
+    "keys": [
+      "телеграм.?premium",
+      "telegram premium"
+    ],
+    "ru": "Telegram Premium — платная подписка с доп. функциями. В боте можно оформить сделку на Premium через гаранта.",
+    "en": "Telegram Premium is a paid sub. The bot can escrow Premium deals."
+  },
+  {
+    "keys": [
+      "юзернейм телеграм",
+      "telegram username",
+      "@username"
+    ],
+    "ru": "Юзернейм Telegram — от 5 символов (в жалобах у нас от 4), латиница/цифры/_. В реквизитах Stars привязывают @username.",
+    "en": "Telegram usernames: latin/digits/_. Stars requisites use @username."
+  },
+  {
+    "keys": [
+      "инфляц",
+      "inflation"
+    ],
+    "ru": "Инфляция — рост общего уровня цен, покупательная способность денег падает. Для сбережений часто смотрят на реальную доходность.",
+    "en": "Inflation is rising prices / falling purchasing power."
+  },
+  {
+    "keys": [
+      "фишинг",
+      "phishing",
+      "развод"
+    ],
+    "ru": "Фишинг — обман ради паролей/сидов/оплаты. Не переходите по сомнительным ссылкам и не уводите сделку Eldorado GG в «лишку вне бота».",
+    "en": "Phishing steals logins/seeds. Don’t leave Eldorado GG escrow for random DMs."
+  },
+  {
+    "keys": [
+      "сид.?фраз",
+      "seed phrase",
+      "мнемоник"
+    ],
+    "ru": "Seed-фраза — ключ к криптокошельку. Никому не отправляйте. Админы Eldorado GG её не просят.",
+    "en": "A seed phrase controls your wallet. Never share it. Eldorado admins never ask for it."
+  },
+  {
+    "keys": [
+      "что такое python",
+      "python язык"
+    ],
+    "ru": "Python — популярный язык программирования: простой синтаксис, веб, боты, AI, скрипты. Этот Telegram-бот тоже на Python.",
+    "en": "Python is a popular language for bots, web, AI and scripts. This Telegram bot is Python."
+  },
+  {
+    "keys": [
+      "html",
+      "что такое html"
+    ],
+    "ru": "HTML — язык разметки веб-страниц: заголовки, текст, кнопки, структура.",
+    "en": "HTML marks up web page structure."
+  },
+  {
+    "keys": [
+      "api",
+      "что такое api"
+    ],
+    "ru": "API — интерфейс, через который программы обмениваются данными. Telegram Bot API — пример.",
+    "en": "An API lets programs talk. Telegram Bot API is an example."
+  },
+  {
+    "keys": [
+      "json"
+    ],
+    "ru": "JSON — текстовый формат данных {\"ключ\": \"значение\"}. Часто используют в API и конфигах.",
+    "en": "JSON is a text data format used in APIs and configs."
+  },
+  {
+    "keys": [
+      "столица франц",
+      "paris",
+      "париж"
+    ],
+    "ru": "Столица Франции — Париж.",
+    "en": "The capital of France is Paris."
+  },
+  {
+    "keys": [
+      "столица япони",
+      "токио",
+      "tokyo"
+    ],
+    "ru": "Столица Японии — Токио.",
+    "en": "The capital of Japan is Tokyo."
+  },
+  {
+    "keys": [
+      "самая высокая гор",
+      "эверест",
+      "everest"
+    ],
+    "ru": "Самая высокая гора над уровнем моря — Джомолунгма (Эверест), ≈ 8848 м.",
+    "en": "The highest mountain above sea level is Everest (~8848 m)."
+  },
+  {
+    "keys": [
+      "сколько дней в год",
+      "високос"
+    ],
+    "ru": "Обычный год — 365 дней, високосный — 366 (раз в 4 года, с правилами исключений).",
+    "en": "Common year 365 days; leap year 366."
+  },
+  {
+    "keys": [
+      "как быстро заснуть",
+      "бессонниц"
+    ],
+    "ru": "Помогают: темнота, прохлада, без экранов за 30–60 мин, дыхание 4-7-8, режим сна. Если долго — к врачу.",
+    "en": "Try darkness, cool room, less screens, steady schedule. See a doctor if chronic."
+  },
+  {
+    "keys": [
+      "вод.*день",
+      "сколько воды"
+    ],
+    "ru": "Ориентир часто ~1.5–2.5 л жидкости в день, но зависит от жары, спорта и здоровья.",
+    "en": "Often ~1.5–2.5L fluids/day, depending on heat, sport and health."
+  },
+  {
+    "keys": [
+      "кто такой менеджер",
+      "eldoradogmanager"
+    ],
+    "ru": "Менеджер сделок Eldorado GG: @EldoradoGGManager. Товар передают ему, он подтверждает шаги сделки.",
+    "en": "Deal manager: @EldoradoGGManager. Items go through him; he confirms deal steps."
+  },
+  {
+    "keys": [
+      "поддержка бота",
+      "саппорт eldorado",
+      "eldoradogsupport"
+    ],
+    "ru": "Техподдержка: @EldoradoGGSupport. Жалобы также уходят в ящик маркетплейса через кнопку «Пожаловаться».",
+    "en": "Support: @EldoradoGGSupport. Reports also go to the marketplace inbox via Report."
+  },
+  {
+    "keys": [
+      "что такое ии",
+      "искусственн.*интеллект",
+      "нейросет"
+    ],
+    "ru": "ИИ — системы, которые решают задачи, похожие на «умные»: ответы, перевод, поиск закономерностей. Я здесь помогаю с Eldorado GG и общими вопросами.",
+    "en": "AI systems solve tasks like answering and pattern finding. I help with Eldorado GG and general questions."
+  },
+  {
+    "keys": [
+      "как выучить английск",
+      "учить english"
+    ],
+    "ru": "Практика каждый день: 20–30 мин, слова в контексте, слушание, говорение вслух, простой контент. Лучше регулярно, чем редко и много.",
+    "en": "Daily practice beats cramming: vocab in context, listening, speaking, simple content."
+  },
+  {
+    "keys": [
+      "мотивац",
+      "выгорел"
+    ],
+    "ru": "Разбейте цель на маленькие шаги, уберите лишнее, отметьте прогресс, сон и движение. Если тяжело долго — поговорите с близкими или специалистом.",
+    "en": "Break goals down, cut noise, track small wins, sleep and move. Seek help if it persists."
+  },
+  {
+    "keys": [
+      "bitcoin",
+      "биткоин"
+    ],
+    "ru": "Bitcoin — первая крупная криптовалюта, сеть без банка, ограниченная эмиссия. Волатильна; это не «гарант-сделка» Eldorado GG.",
+    "en": "Bitcoin is the first major cryptocurrency. Volatile; separate from Eldorado escrow."
+  },
+  {
+    "keys": [
+      "эфириум",
+      "ethereum",
+      "eth "
+    ],
+    "ru": "Ethereum — блокчейн со смарт-контрактами (программы в сети). На нём много токенов и NFT.",
+    "en": "Ethereum is a smart-contract blockchain used for many tokens and NFTs."
+  },
+  {
+    "keys": [
+      "vpn"
+    ],
+    "ru": "VPN шифрует трафик и может менять «видимый» IP. Не делает вас полностью анонимным и не заменяет антивирус.",
+    "en": "A VPN encrypts traffic and can change visible IP. Not perfect anonymity."
+  },
+  {
+    "keys": [
+      "парол",
+      "password"
+    ],
+    "ru": "Хороший пароль: длинный, уникальный, менеджер паролей, 2FA. Не используйте один пароль везде.",
+    "en": "Use long unique passwords, a password manager, and 2FA."
+  },
+  {
+    "keys": [
+      "сколько км в мил",
+      "mile"
+    ],
+    "ru": "1 миля ≈ 1.609 км. 1 км ≈ 0.621 мили.",
+    "en": "1 mile ≈ 1.609 km; 1 km ≈ 0.621 miles."
+  },
+  {
+    "keys": [
+      "цельсия.*фаренгейт",
+      "fahrenheit",
+      "celsius"
+    ],
+    "ru": "°C → °F: F = C×9/5 + 32. °F → °C: C = (F−32)×5/9.",
+    "en": "C to F: F=C×9/5+32. F to C: C=(F−32)×5/9."
+  },
+  {
+    "keys": [
+      "мини.?апп",
+      "mini app",
+      "отзывы не откры"
+    ],
+    "ru": "Отзывы открываются как Mini App (Информация → Отзывы). Нужен HTTPS-хост (обычно onrender.com). Если 404 — админу обновить REVIEWS_MINIAPP_URL.",
+    "en": "Reviews open as a Mini App. Needs HTTPS host; if 404, admin must refresh REVIEWS_MINIAPP_URL."
+  },
+  {
+    "keys": [
+      "gd29548",
+      "номер сделки gd"
+    ],
+    "ru": "Номера сделок Eldorado GG начинаются с GD29548 и дальше (GD29549…). В жалобе указывайте именно такой номер.",
+    "en": "Deal IDs start at GD29548+. Use that format in reports."
+  },
+  {
+    "keys": [
+      "анекдот",
+      "шутк",
+      "joke"
+    ],
+    "ru": "Программист заходит в лифт… а лифт отвечает: «404 Floor Not Found». 🙂 Если нужна помощь по боту — спрашивайте серьёзно, тоже ок.",
+    "en": "Why do programmers prefer dark mode? Because light attracts bugs. Ask bot questions anytime too."
+  },
+  {
+    "keys": [
+      "погода"
+    ],
+    "ru": "Я не вижу вашу геолокацию в реальном времени. Откройте погодное приложение или напишите город — подскажу типичный климат/что учесть.",
+    "en": "I can’t see live weather here. Tell me your city for general climate tips."
+  },
+  {
+    "keys": [
+      "луна",
+      "moon"
+    ],
+    "ru": "Луна — спутник Земли, влияет на приливы.",
+    "en": "The Moon is Earth’s satellite and drives tides."
+  },
+  {
+    "keys": [
+      "солнц",
+      "sun"
+    ],
+    "ru": "Солнце — звезда, источник света и тепла для Земли.",
+    "en": "The Sun is the star that powers Earth’s climate."
+  },
+  {
+    "keys": [
+      "марс",
+      "mars"
+    ],
+    "ru": "Марс — 4-я планета от Солнца, «красная планета».",
+    "en": "Mars is the 4th planet, the red planet."
+  },
+  {
+    "keys": [
+      "океан",
+      "ocean"
+    ],
+    "ru": "Океаны покрывают ~71% поверхности Земли.",
+    "en": "Oceans cover about 71% of Earth’s surface."
+  },
+  {
+    "keys": [
+      "кислород",
+      "oxygen"
+    ],
+    "ru": "Кислород нужен большинству животных для дыхания; растения выделяют его при фотосинтезе.",
+    "en": "Oxygen is needed for animal respiration; plants release it via photosynthesis."
+  },
+  {
+    "keys": [
+      "индонез",
+      "indonesia"
+    ],
+    "ru": "Индонезия — страна в Юго-Восточной Азии из тысяч островов, столица Джакарта.",
+    "en": "Indonesia is a SE Asian archipelago; capital Jakarta."
+  },
+  {
+    "keys": [
+      "бразил",
+      "brazil"
+    ],
+    "ru": "Бразилия — крупнейшая страна Южной Америки, язык португальский, столица Бразилиа.",
+    "en": "Brazil is South America’s largest country; language Portuguese; capital Brasília."
+  },
+  {
+    "keys": [
+      "доллар",
+      "usd",
+      "dollar"
+    ],
+    "ru": "Доллар США (USD) — мировая резервная валюта. USDT обычно привязан к доллару.",
+    "en": "USD is a global reserve currency. USDT usually tracks the dollar."
+  },
+  {
+    "keys": [
+      "евро",
+      "euro",
+      "eur"
+    ],
+    "ru": "Евро (EUR) — валюта еврозоны.",
+    "en": "Euro (EUR) is the eurozone currency."
+  },
+  {
+    "keys": [
+      "рубл",
+      "rub"
+    ],
+    "ru": "Рубль (RUB) — валюта РФ. В боте можно выбрать RUB для сделки и привязать карту/телефон.",
+    "en": "RUBLE (RUB). In the bot choose RUB and bind card/phone."
+  },
+  {
+    "keys": [
+      "украин",
+      "uah",
+      "гривн"
+    ],
+    "ru": "Гривна (UAH) — валюта Украины. В боте есть UAH и карта/телефон.",
+    "en": "Hryvnia (UAH). The bot supports UAH with card/phone."
+  },
+  {
+    "keys": [
+      "эскроу",
+      "escrow",
+      "гарант сделк"
+    ],
+    "ru": "Эскроу/гарант — посредник держит актив/деньгии до выполнения условий. Eldorado GG работает как гарант в Telegram.",
+    "en": "Escrow holds value until conditions are met. Eldorado GG is Telegram escrow."
+  },
+  {
+    "keys": [
+      "2fa",
+      "двухфактор"
+    ],
+    "ru": "2FA — второй фактор входа (код из приложения/SMS). Включайте везде, где есть крипта и деньги.",
+    "en": "2FA adds a second login factor. Use it for money and crypto accounts."
+  },
+  {
+    "keys": [
+      "seed",
+      "сид "
+    ],
+    "ru": "Seed/мнемоника открывает кошелёк. Сохраните офлайн. Никому в чатах не отправляйте.",
+    "en": "A seed phrase unlocks the wallet. Keep offline; never send in chats."
+  },
+  {
+    "keys": [
+      "смарт.?контракт",
+      "smart contract"
+    ],
+    "ru": "Смарт-контракт — программа в блокчейне, исполняется автоматически по правилам.",
+    "en": "A smart contract is on-chain code that runs by rules automatically."
+  },
+  {
+    "keys": [
+      "п2п",
+      "p2p"
+    ],
+    "ru": "P2P — обмен напрямую между людьми. Без гаранта выше риск кидка; в Eldorado GG лучше через сделку в боте.",
+    "en": "P2P is direct person-to-person trade. Escrow in Eldorado GG is safer."
+  },
+  {
+    "keys": [
+      "ампер",
+      "вольт",
+      "ватт"
+    ],
+    "ru": "Вольт — напряжение, ампер — ток, ватт = вольт×ампер (мощность).",
+    "en": "Volt=voltage, amp=current, watt=volts×amps (power)."
+  },
+  {
+    "keys": [
+      "пи ",
+      "число пи",
+      "pi "
+    ],
+    "ru": "Число π ≈ 3.14159 — отношение длины окружности к диаметру.",
+    "en": "π ≈ 3.14159 — circumference/diameter."
+  },
+  {
+    "keys": [
+      "факториал"
+    ],
+    "ru": "n! = 1×2×…×n. Например 5! = 120.",
+    "en": "n! = 1×2×…×n. Example 5! = 120."
+  },
+  {
+    "keys": [
+      "логarithm",
+      "логарифм"
+    ],
+    "ru": "log_b(a) — степень, в которую нужно возвести b, чтобы получить a.",
+    "en": "log_b(a) is the power to raise b to get a."
+  },
+  {
+    "keys": [
+      "интеграл"
+    ],
+    "ru": "Интеграл — накопленная сумма непрерывных изменений (площадь под кривой).",
+    "en": "An integral accumulates change (area under a curve)."
+  },
+  {
+    "keys": [
+      "производн"
+    ],
+    "ru": "Производная — скорость изменения функции в точке.",
+    "en": "A derivative is the rate of change at a point."
+  },
+  {
+    "keys": [
+      "http",
+      "https"
+    ],
+    "ru": "HTTP — протокол веба. HTTPS — то же + шифрование TLS. Mini App требует HTTPS.",
+    "en": "HTTP is the web protocol; HTTPS adds TLS. Mini Apps need HTTPS."
+  },
+  {
+    "keys": [
+      "git",
+      "github"
+    ],
+    "ru": "Git — система контроля версий. GitHub хранит репозитории в облаке.",
+    "en": "Git tracks code versions; GitHub hosts repositories."
+  },
+  {
+    "keys": [
+      "linux"
+    ],
+    "ru": "Linux — семейство ОС с открытым ядром, часто на серверах.",
+    "en": "Linux is an open-source OS family, common on servers."
+  },
+  {
+    "keys": [
+      "windows"
+    ],
+    "ru": "Windows — ОС Microsoft для ПК.",
+    "en": "Windows is Microsoft’s desktop OS."
+  },
+  {
+    "keys": [
+      "android"
+    ],
+    "ru": "Android — ОС Google для смартфонов. Tonkeeper есть под Android/iOS.",
+    "en": "Android is Google’s mobile OS. Tonkeeper is on Android/iOS."
+  },
+  {
+    "keys": [
+      "ios",
+      "айфон"
+    ],
+    "ru": "iOS — ОС Apple для iPhone.",
+    "en": "iOS is Apple’s iPhone OS."
+  },
+  {
+    "keys": [
+      "wifi",
+      "вай.?фай"
+    ],
+    "ru": "Wi‑Fi — беспроводная локальная сеть. Для безопасности используйте пароль WPA2/WPA3.",
+    "en": "Wi‑Fi is wireless LAN. Use WPA2/WPA3 passwords."
+  },
+  {
+    "keys": [
+      "bluetooth"
+    ],
+    "ru": "Bluetooth — ближняя беспроводная связь для наушников, часов и т.п.",
+    "en": "Bluetooth is short-range wireless for accessories."
+  },
+  {
+    "keys": [
+      "gps"
+    ],
+    "ru": "GPS — спутниковая навигация для определения координат.",
+    "en": "GPS is satellite navigation for location."
+  },
+  {
+    "keys": [
+      "cpu",
+      "процессор"
+    ],
+    "ru": "CPU — «мозг» компьютера, выполняет инструкции программ.",
+    "en": "The CPU executes program instructions."
+  },
+  {
+    "keys": [
+      "gpu",
+      "видеокарт"
+    ],
+    "ru": "GPU ускоряет графику и параллельные вычисления (в т.ч. нейросети).",
+    "en": "GPUs accelerate graphics and parallel compute."
+  },
+  {
+    "keys": [
+      "озу",
+      "ram ",
+      "оперативн"
+    ],
+    "ru": "ОЗУ (RAM) — быстрая временная память работающих программ.",
+    "en": "RAM is fast temporary memory for running programs."
+  },
+  {
+    "keys": [
+      "ssd",
+      "жестк.*диск",
+      "hdd"
+    ],
+    "ru": "SSD быстрее HDD. SSD — на флеш-памяти, HDD — магнитные диски.",
+    "en": "SSDs are faster flash storage; HDDs use spinning disks."
+  }
+]

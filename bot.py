@@ -242,10 +242,11 @@ def cur_amount_label_last(code, lang="ru"):
     return f"<b>{name}</b> {icon}".strip()
 
 def requisite_field_for_currency(currency):
-    # В реквизитах только Tonkeeper — для любой валюты сделки нужен TON-кошелёк
-    return "ton"
+    if currency in ("TON","USDT"): return "ton"
+    if currency=="Stars": return "stars"
+    return "card"  # RUB / UAH
 
-REQ_FIELDS = ("ton",)
+REQ_FIELDS = ("card","ton","stars")
 
 def is_card_req_field(field):
     return field=="card"
@@ -256,21 +257,38 @@ def _req_nonempty(reqs, key):
 
 def user_has_requisites(u):
     reqs=(u or {}).get("requisites") or {}
-    return _req_nonempty(reqs, "ton")
+    return any(_req_nonempty(reqs,k) for k in REQ_FIELDS)
 
 def user_has_requisites_for(u, currency):
-    return user_has_requisites(u)
+    field=requisite_field_for_currency(currency)
+    return _req_nonempty((u or {}).get("requisites") or {}, field)
 
 def req_need_label(field, lang="ru"):
     ru=lang=="ru"
-    return R(ru,"кошелёк Tonkeeper","Tonkeeper wallet")
+    if field=="ton": return R(ru,"кошелёк Tonkeeper","Tonkeeper wallet")
+    if field=="stars": return R(ru,"@username для звёзд","@username for Stars")
+    return R(ru,"карту / телефон","card / phone")
 
 def req_prompt_text(field, lang="ru"):
     ru=lang=="ru"
-    return (
-        f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>{R(ru,'Кошелёк Tonkeeper','Tonkeeper wallet')}</b>\n\n"
-        f"<blockquote>{R(ru,'Нажмите кнопку ниже — откроется Tonkeeper. Подтвердите подключение, адрес сохранится сам.','Tap the button below — Tonkeeper will open. Confirm connect, the address is saved automatically.')}</blockquote>"
-    )
+    if field=="card":
+        return (f"{Ecrd} <b>{R(ru,'Привязать карту / телефон','Bind card / phone')}</b>\n\n"
+                f"<blockquote>{R(ru,'Можно российскую или украинскую карту/телефон.','Russian or Ukrainian card/phone allowed.')}\n"
+                f"{R(ru,'Пример:','Example:')}\n"
+                f"<code>+79041751408</code>\n<code>+380501234567</code>\n"
+                f"<code>4276123456781234</code></blockquote>")
+    if field=="ton":
+        return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>{R(ru,'Привязать Tonkeeper','Bind Tonkeeper')}</b>\n\n"
+                f"<blockquote>{R(ru,'Лучше через приложение Tonkeeper (кнопка ниже) — адрес сохранится сам.','Best via Tonkeeper app (button below) — address is saved automatically.')}\n"
+                f"{R(ru,'Или отправьте адрес вручную:','Or send the address manually:')}\n"
+                f"• UQ… / EQ…\n"
+                f"• ton://transfer/UQ…\n"
+                f"• https://app.tonkeeper.com/transfer/UQ…\n\n"
+                f"{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>")
+    if field=="stars":
+        return (f"{Est} <b>{R(ru,'Привязать Звёзды','Bind Stars')}</b>\n\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>")
+    return "?"
 
 def req_bank_examples(field, lang="ru"):
     ru=lang=="ru"
@@ -820,18 +838,28 @@ def deal_amount_prompt(currency, lang="ru"):
     return f"{Eamt_in} <b>{R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"
 
 def currency_requisites_kb(currency, lang="ru"):
-    """Only Tonkeeper connect (via app)."""
+    """Ask for the requisite type needed by the chosen deal currency."""
     ru=lang=="ru"
+    field=requisite_field_for_currency(currency)
     rows=[]
-    if TONCONNECT_MINIAPP_URL:
+    if field=="ton":
+        if TONCONNECT_MINIAPP_URL:
+            rows.append([InlineKeyboardButton(
+                R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
+                web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+                icon_custom_emoji_id="5397829221605191505")])
         rows.append([InlineKeyboardButton(
-            R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
-            web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
-            icon_custom_emoji_id="5397829221605191505")])
+            R(ru,"Привязать Tonkeeper вручную","Bind Tonkeeper manually"),
+            callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")])
+    elif field=="stars":
+        rows.append([InlineKeyboardButton(
+            R(ru,"Привязать Звёзды","Bind Stars"),
+            callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")])
     else:
+        bank=card_bank(lang)
         rows.append([InlineKeyboardButton(
-            R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),
-            callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
+            R(ru,f"Привязать карту / телефон {bank}",f"Bind card / phone {bank}"),
+            callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")])
     rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
@@ -917,18 +945,27 @@ def validate_username(text):
     return t, None
 
 def deal_join_req_kb(deal_id, currency, lang="ru"):
-    """Keyboard: bind Tonkeeper via app to join deal."""
+    """Keyboard asking for the requisite type needed by deal currency."""
     ru=lang=="ru"
+    field=requisite_field_for_currency(currency)
     rows=[]
-    if TONCONNECT_MINIAPP_URL:
+    if field=="card":
         rows.append([InlineKeyboardButton(
-            R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
-            web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
-            icon_custom_emoji_id="5397829221605191505")])
+            R(ru,"Привязать карту / телефон","Bind card / phone"),
+            callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")])
+    elif field=="ton":
+        if TONCONNECT_MINIAPP_URL:
+            rows.append([InlineKeyboardButton(
+                R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
+                web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+                icon_custom_emoji_id="5397829221605191505")])
+        rows.append([InlineKeyboardButton(
+            R(ru,"Привязать Tonkeeper вручную","Bind Tonkeeper manually"),
+            callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")])
     else:
         rows.append([InlineKeyboardButton(
-            "Tonkeeper",callback_data=f"req_deal_ton_{deal_id}",
-            icon_custom_emoji_id="5397829221605191505")])
+            R(ru,"Привязать Звёзды","Bind Stars"),callback_data=f"req_deal_stars_{deal_id}",
+            icon_custom_emoji_id="5893034681636491040")])
     rows.append([InlineKeyboardButton(
         R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
@@ -1937,113 +1974,120 @@ async def _ai_call_openai_compatible(system, messages, provider):
     if not text: raise RuntimeError("empty openai response")
     return text
 
+def _load_extra_ai_knowledge():
+    path=os.path.join(os.path.dirname(os.path.abspath(__file__)),"ai_knowledge.json")
+    try:
+        with open(path,"r",encoding="utf-8") as f:
+            data=json.load(f)
+        return data if isinstance(data,list) else []
+    except Exception as e:
+        logger.error(f"ai_knowledge.json: {e}")
+        return []
+
+AI_EXTRA_KB = _load_extra_ai_knowledge()
+
 def ai_local_answer(question, lang="ru", history=None):
-    """Ответ без внешнего API: по базе Eldorado GG + общий хелпер. Без упоминаний ключей."""
+    """Отвечает на любые вопросы: общая база + Eldorado GG. Без лекций про API-ключи."""
+    import re as _re
     ru=lang=="ru"
     q=(question or "").strip()
     ql=q.lower().replace("ё","е")
     if not q:
-        return R(ru,"Напишите вопрос — отвечу.","Write a question — I’ll answer.")
+        return R(ru,"Напишите вопрос — отвечу по любой теме.","Write a question — I’ll answer on any topic.")
 
-    # приветствия / small talk
-    if any(x in ql for x in ("привет","здравств","хай","hello","hi ","yo ","добрый")):
+    if any(x in ql for x in ("привет","здравств","хай","hello","hi","йо ","добрый")):
         return R(ru,
-            "Привет! Я ИИ-помощник Eldorado GG. Спросите что угодно про сделки, пополнение, вывод, Tonkeeper, жалобы, рефералы — или просто уточните, где вы застряли.",
-            "Hi! I’m the Eldorado GG AI helper. Ask about deals, top-up, withdraw, Tonkeeper, reports, referrals — or where you’re stuck.")
+            "Привет! Я ИИ Eldorado GG. Могу ответить почти на что угодно: сделки и бот, крипта, наука, учёба, бытовые вопросы. Спрашивайте свободно.",
+            "Hi! I’m Eldorado GG AI. Ask about the bot/deals, crypto, science, study, everyday topics — anything.")
     if any(x in ql for x in ("как дела","how are you","что умеешь","кто ты")):
         return R(ru,
-            "На связи. Помогаю по боту @EldoradoGGRobot: сделки (GD29548+), баланс, Tonkeeper, жалобы, отзывы, рефералы 3%. Статистика площадки: 132.584 сделок, оборот $1.346.582, комиссия 0%.",
-            "Here. I help with @EldoradoGGRobot: deals (GD29548+), balance, Tonkeeper, reports, reviews, 3% referrals. Platform stats: 132,584 deals, $1,346,582 turnover, 0% fee.")
+            "На связи. Отвечаю как помощник: Eldorado GG (@EldoradoGGRobot) + общие знания. Сделки GD29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
+            "Here. I cover Eldorado GG (@EldoradoGGRobot) plus general knowledge. Deals GD29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
-        return R(ru,"Пожалуйста! Если ещё что-то — пишите.","You’re welcome! Ask anytime.")
+        return R(ru,"Пожалуйста! Если ещё вопрос — пишите.","You’re welcome! Ask more anytime.")
 
-    # простая арифметика «сколько 2+2»
-    import re as _re
-    m=_re.fullmatch(r"(?:сколько\s+(?:будет\s+)?)?(\d+)\s*([+\-*/x×])\s*(\d+)\s*\??", ql)
+    m=_re.fullmatch(r"(?:сколько\s+(?:будет\s+)?)?(\d+)\s*([+\-*/x×:])\s*(\d+)\s*\??", ql)
     if m:
         a,op,b=int(m.group(1)),m.group(2),int(m.group(3))
         try:
-            if op in ("+",""): r=a+b
+            if op=="+": r=a+b
             elif op=="-": r=a-b
             elif op in ("*","x","×"): r=a*b
-            elif op=="/": r=(a/b) if b else "∞"
+            elif op in ("/",":"): r=(a/b) if b else "∞"
             else: r=None
             if r is not None:
-                return R(ru,f"{a} {op} {b} = {r}",f"{a} {op} {b} = {r}")
+                return f"{a} {op} {b} = {r}"
         except Exception:
             pass
 
+    # 1) Extra general knowledge (Gemini-style fact base)
+    best_extra=None; best_score=0
+    for entry in AI_EXTRA_KB:
+        score=0
+        for key in entry.get("keys") or []:
+            k=str(key).lower().replace("ё","е")
+            try:
+                if _re.search(k, ql):
+                    score += 4 + min(len(k),20)//3
+            except _re.error:
+                if k in ql:
+                    score += 3
+        if score>best_score:
+            best_score=score; best_extra=entry
+    if best_extra and best_score>=4:
+        return best_extra["ru" if ru else "en"]
+
+    # 2) Eldorado bot knowledge (AI_KB)
     scored=[]
+    bot_signals=("сделк","пополн","вывод","реквизит","жалоб","реферал","отзыв","eldorado","бот","гарант","тонkeeper","привяз","баланс","gd")
+    is_botish=any(s.replace("ё","е") in ql for s in bot_signals)
     for topic, entry in AI_KB.items():
         score=0
         for key in entry.get("keys",()):
             k=key.lower().replace("ё","е")
             if k and k in ql:
                 score += 2 + min(len(k),16)//4
-        # доп. сигналы
         extras={
-            "deal":("создать","сделк","deal","create","партнер","партнёр"),
-            "join":("присоедин","join","ссылк","start=deal"),
-            "types":("nft","premium","звезд","звёзд","крипт","username","тип"),
-            "topup":("пополн","top up","topup","закинуть","баланс не"),
-            "withdraw":("вывод","withdraw","вывест","снять"),
-            "req":("реквизит","кошел","tonkeeper","привяз","uq","eq","карт"),
-            "safe":("безопас","гарант","кидал","scam","эскроу","обман"),
-            "complaint":("жалоб","репорт","спор","кинули","не отдал"),
-            "reviews":("отзыв","review","рейтинг"),
+            "deal":("создать","сделк","deal","create"),
+            "join":("присоедин","join","ссылк"),
+            "types":("nft","premium","звезд","звёзд","крипт","username"),
+            "topup":("пополн","top up","topup","закинуть"),
+            "withdraw":("вывод","withdraw","вывест"),
+            "req":("реквизит","кошел","tonkeeper","привяз","карт"),
+            "safe":("безопас","гарант","кидал","scam","эскроу"),
+            "complaint":("жалоб","репорт","спор"),
+            "reviews":("отзыв","review"),
             "ref":("реферал","рефк","приглас","3%"),
-            "profile":("профиль","оборот","статистик","мой баланс"),
-            "support":("поддержк","менеджер","саппорт","support","сайт"),
-            "fee":("комисс","0%","процент","сколько берёт"),
-            "paid":("оплатил","передал","подтверд","долго жду","статус"),
-            "currency":("валют","usdt","rub","uah","чем платить"),
+            "profile":("профиль","оборот","статистик"),
+            "support":("поддержк","менеджер","саппорт"),
+            "fee":("комисс","0%"),
+            "paid":("оплатил","передал","подтверд"),
+            "currency":("валют","usdt","rub","uah"),
         }
         for w in extras.get(topic,()):
             if w.replace("ё","е") in ql: score+=2
         if score>0: scored.append((score, topic))
-
-    if scored:
+    if scored and (is_botish or scored[0][0]>=5):
         scored.sort(reverse=True)
         top=[t for s,t in scored if s>=scored[0][0]-2][:2]
-        parts=[]
-        for t in top:
-            body=AI_KB[t]["ru" if ru else "en"]
-            # чуть «живее» вступление
-            if len(top)==1:
-                parts.append(R(ru,f"По вашему вопросу — вот как это устроено:\n\n{body}",f"Here’s how that works:\n\n{body}"))
-            else:
-                parts.append(body)
+        parts=[AI_KB[t]["ru" if ru else "en"] for t in top]
         ans="\n\n—\n\n".join(parts)
-        ans += R(ru,
-            "\n\nЕсли нужно — уточните детали (номер GD, валюта, на каком шаге зависли), разберём точечно.",
-            "\n\nIf needed, add details (GD id, currency, which step you’re stuck on) and I’ll narrow it down.")
+        ans += R(ru,"\n\nМогу уточнить под ваш случай — напишите детали.","\n\nI can narrow it down — send details.")
         return ans[:3500]
 
-    # общие факты про площадку
-    if any(x in ql for x in ("eldorado","бот","площадк","маркет","гарант","что это")):
-        return R(ru,
-            "Eldorado GG (@EldoradoGGRobot) — гарант-маркетплейс в Telegram: NFT, Stars, Premium, крипта. "
-            "Комиссия 0%, сделки с GD29548+, 132.584 сделок, оборот $1.346.582. "
-            "Реквизиты → привязка карты или кошелька Tonkeeper. Споры — «Пожаловаться» (ящик маркетплейса). "
-            "Люди: @EldoradoGGSupport · @EldoradoGGManager · сайт eldorado.gg",
-            "Eldorado GG (@EldoradoGGRobot) is a Telegram escrow marketplace: NFT, Stars, Premium, crypto. "
-            "0% fee, deals from GD29548+, 132,584 deals, $1,346,582 turnover. "
-            "Bind card or Tonkeeper in Requisites. Disputes → Report (marketplace inbox). "
-            "Humans: @EldoradoGGSupport · @EldoradoGGManager · eldorado.gg")
-
-    # свободный ответ: не отшиваем
+    # 3) Free-form helpful reply (never refuse with «только сделки»)
     return R(ru,
-        f"Принял вопрос: «{q[:180]}».\n\n"
-        "По Eldorado GG могу подробно: создать/войти в сделку, типы (NFT/Stars/Premium/крипта), "
-        "пополнение (мин. Stars 700 / RUB 400 / TON 3 / USDT 9), вывод, привязка Tonkeeper, "
-        "безопасность, жалобы, рефералы 3%, отзывы, статусы «Я оплатил/передал».\n\n"
-        "Сформулируйте чуть конкретнее (например: «как привязать Tonkeeper» или «баланс не пришёл») — "
-        "дам пошаговый ответ. Сложный кейс: @EldoradoGGSupport / @EldoradoGGManager.",
-        f"Got it: “{q[:180]}”.\n\n"
-        "On Eldorado GG I can detail: create/join deals, types, top-up mins, withdraw, Tonkeeper bind, "
-        "safety, reports, 3% referrals, reviews, I paid/transferred statuses.\n\n"
-        "Be a bit more specific (e.g. “how to bind Tonkeeper” or “balance didn’t arrive”) — "
-        "I’ll give steps. Hard case: @EldoradoGGSupport / @EldoradoGGManager.")
+        f"Вопрос: «{q[:200]}».\n\n"
+        "Отвечаю своими знаниями:\n"
+        "• Если это про Eldorado GG — уточните: сделка / пополнение / вывод / Tonkeeper / жалоба / рефералы.\n"
+        "• Если общий вопрос — переформулируйте короче (кто/что/как/зачем), и я разберу точнее.\n"
+        "• Сложный личный кейс по деньгам/спору: @EldoradoGGSupport или @EldoradoGGManager.\n\n"
+        "Примеры: «что такое блокчейн», «как привязать карту», «фотосинтез», «3% рефералка».",
+        f"Question: “{q[:200]}”.\n\n"
+        "• For Eldorado GG, specify: deal / top-up / withdraw / Tonkeeper / report / referrals.\n"
+        "• For general topics, ask shorter who/what/how/why.\n"
+        "• Money disputes: @EldoradoGGSupport or @EldoradoGGManager.\n\n"
+        "Examples: “what is blockchain”, “how to bind a card”, “photosynthesis”, “3% referrals”.")
 
 async def ai_chat(question, lang="ru", history=None):
     """Gemini/Groq/OpenAI если есть ключ; иначе локальный умный ответ — пользователю без лекций про API."""
@@ -2061,7 +2105,6 @@ async def ai_chat(question, lang="ru", history=None):
             return await _ai_call_openai_compatible(system, msgs, provider)
         except Exception as e:
             logger.error(f"ai_chat provider={provider}: {e}", exc_info=True)
-            # тихо откатываемся на локальный ответ
     return ai_local_answer(question, lang, history)
 
 async def show_ai(update, context):
@@ -2400,10 +2443,15 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("skip_req_"):
             bank=card_bank(lang)
-            kb=currency_requisites_kb(None, lang)
+            kb=InlineKeyboardMarkup([
+                [InlineKeyboardButton(R(ru,f"Привязать карту / телефон {bank}",f"Bind card / phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
+                [InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
+                [InlineKeyboardButton(R(ru,"Привязать Звёзды","Bind Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
+                [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
+            ])
             await send_section(
                 update,
-                f"{Ewrn} <b>{R(ru,'Без кошелька Tonkeeper создать сделку нельзя. Привяжите через приложение.','You cannot create a deal without a Tonkeeper wallet. Bind it via the app.')}</b>",
+                f"{Ewrn} <b>{R(ru,'Без реквизитов создать сделку нельзя. Привяжите реквизиты.','You cannot create a deal without requisites. Bind them first.')}</b>",
                 kb,section="deal"); return
 
         TYPE_MAP={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium"}
@@ -2519,17 +2567,52 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raw=d[9:]
             if raw.endswith("_buyer"):
                 field=raw[:-6]
-            else:
-                field=raw
-            if field!="ton":
-                # карта/звёзды больше не привязываем — только Tonkeeper
+                if field not in REQ_FIELDS:
+                    await update.effective_chat.send_message(
+                        f"{Ewrn} <b>{R(ru,'Неизвестный тип реквизитов.','Unknown requisite type.')}</b>",
+                        parse_mode="HTML"); return
+                if field=="ton" and TONCONNECT_MINIAPP_URL:
+                    ud["req_after_buyer_deal"]=True
+                    await send_section(update,req_prompt_text("ton",lang),
+                        InlineKeyboardMarkup([
+                            [InlineKeyboardButton(R(ru,"Открыть Tonkeeper","Open Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
+                            [InlineKeyboardButton(R(ru,"Ввести адрес вручную","Enter address manually"),callback_data="req_edit_ton_buyer_manual",icon_custom_emoji_id="5879841310902324730")],
+                            [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
+                        ]),section="req"); return
+                ud["req_step"]=field; ud["req_after_buyer_deal"]=True
+                for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
+                set_req_input_state(
+                    uid, field, mode="deal_create", after_buyer=True,
+                    req_resume=ud.get("req_resume"), req_return=None)
+                await send_section(update,req_prompt_text(field,lang),
+                    InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+            if raw=="ton_buyer_manual":
+                field="ton"
+                ud["req_step"]=field; ud["req_after_buyer_deal"]=True
+                for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
+                set_req_input_state(uid, field, mode="deal_create", after_buyer=True, req_resume=ud.get("req_resume"), req_return=None)
+                await send_section(update,req_prompt_text(field,lang),
+                    InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+            field=raw
+            if field not in REQ_FIELDS:
                 await show_req(update,context); return
-            if TONCONNECT_MINIAPP_URL:
-                await send_section(
-                    update,req_prompt_text("ton",lang),
-                    tonconnect_bind_kb(lang),section="req"); return
-            ud["req_step"]="ton"
+            if field=="ton" and TONCONNECT_MINIAPP_URL:
+                await send_section(update,req_prompt_text("ton",lang),
+                    InlineKeyboardMarkup([
+                        [InlineKeyboardButton(R(ru,"Открыть Tonkeeper","Open Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
+                        [InlineKeyboardButton(R(ru,"Ввести адрес вручную","Enter address manually"),callback_data="req_ton_manual",icon_custom_emoji_id="5879841310902324730")],
+                        [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")],
+                    ]),section="req"); return
+            ud["req_step"]=field
             ud["req_return"]="menu_req"
+            for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
+            set_req_input_state(uid, field, mode="profile", req_return="menu_req", after_buyer=False)
+            await send_section(update,req_prompt_text(field,lang),
+                InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+
+        if d=="req_ton_manual":
+            ud["req_step"]="ton"; ud["req_return"]="menu_req"
+            for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
             set_req_input_state(uid, "ton", mode="profile", req_return="menu_req", after_buyer=False)
             await send_section(update,req_prompt_text("ton",lang),
                 InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
@@ -2667,9 +2750,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not any(reqs.get(f) for f in REQ_FIELDS):
                 ud["req_return"]="withdraw"
                 await send_section(update,
-                    f"{Ewrn} <b>{R(ru,'Для вывода привяжите кошелёк Tonkeeper.','Bind a Tonkeeper wallet to withdraw.')}</b>",
-                    tonconnect_bind_kb(lang) if TONCONNECT_MINIAPP_URL else InlineKeyboardMarkup([
+                    f"{Ewrn} <b>{R(ru,'Для вывода привяжите реквизиты.','Bind requisites to withdraw.')}</b>",
+                    InlineKeyboardMarkup([
+                        [InlineKeyboardButton(R(ru,"Привязать карту/телефон","Bind card/phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
                         [InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
+                        [InlineKeyboardButton(R(ru,"Привязать @username","Bind @username"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
                     ]),section="balance"); return
             await show_withdraw(update,context); return
@@ -3569,28 +3654,40 @@ async def show_req(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); ru=lang=="ru"; reqs=u.get("requisites",{})
-        ton=reqs.get("ton")
+        card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
+        bank=card_bank(lang)
 
         lines=[f"{Ecwn} <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n"]
-        lines.append(f"{Eton} <b>{R(ru,'Кошелёк Tonkeeper','Tonkeeper wallet')}:</b>")
-        if ton:
-            lines.append(f"<blockquote><code>{H(ton)}</code></blockquote>")
+        lines.append(f"{Ecrd} <b>{R(ru,'Карта / Телефон','Card / Phone')}:</b>")
+        if card:
+            if "|" in card:
+                card_num,card_bnk=card.split("|",1)
+            else:
+                card_num=card; card_bnk=bank
+            lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card_num}</code>\n{R(ru,'Банк','Bank')}: {card_bnk}</blockquote>")
         else:
-            lines.append(f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
-        lines.append(
-            f"\n<blockquote>{R(ru,'Привязка только через приложение Tonkeeper — адрес подставится сам.','Bind only via the Tonkeeper app — the address is filled automatically.')}</blockquote>"
-        )
+            lines.append(f"<blockquote>{R(ru,'Не привязана','Not bound')}</blockquote>")
+        lines.append(f"\n{Eton} <b>{R(ru,'Tonkeeper','Tonkeeper')}:</b>")
+        lines.append(f"<blockquote><code>{H(ton)}</code></blockquote>" if ton else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
+        lines.append(f"\n{Est} <b>{R(ru,'Звёзды','Stars')}:</b>")
+        lines.append(f"<blockquote><code>{H(stars)}</code></blockquote>" if stars else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
 
         rows=[]
-        if ton:
-            if TONCONNECT_MINIAPP_URL:
-                rows.append([InlineKeyboardButton(R(ru,"Сменить через Tonkeeper","Change via Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")])
-            rows.append([InlineKeyboardButton(R(ru,"Отвязать Tonkeeper","Unbind Tonkeeper"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
+        if card:
+            rows.append([InlineKeyboardButton(R(ru,"Изменить карту","Edit card"),callback_data="req_edit_card",icon_custom_emoji_id="5879841310902324730"),
+                         InlineKeyboardButton(R(ru,"Отвязать карту","Unbind card"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
         else:
-            if TONCONNECT_MINIAPP_URL:
-                rows.append([InlineKeyboardButton(R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")])
-            else:
-                rows.append([InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
+            rows.append([InlineKeyboardButton(R(ru,"Привязать карту / телефон","Bind card / phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")])
+        if ton:
+            rows.append([InlineKeyboardButton(R(ru,"Изменить Tonkeeper","Edit Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5879841310902324730"),
+                         InlineKeyboardButton(R(ru,"Отвязать Tonkeeper","Unbind Tonkeeper"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
+        else:
+            rows.append([InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
+        if stars:
+            rows.append([InlineKeyboardButton(R(ru,"Изменить Звёзды","Edit Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5879841310902324730"),
+                         InlineKeyboardButton(R(ru,"Отвязать Звёзды","Unbind Stars"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
+        else:
+            rows.append([InlineKeyboardButton(R(ru,"Привязать Звёзды","Bind Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")])
         rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,"\n".join(lines),InlineKeyboardMarkup(rows),section="req")
     except Exception as e:
