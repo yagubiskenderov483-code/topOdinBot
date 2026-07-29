@@ -422,6 +422,13 @@ window.REVIEWS_DATA={"average":4.8,"count":43829,"baseCount":43829,"growthEpochM
     }
   }
 
+  function totalDisplay() {
+    var n = Number(data.displayCount);
+    if (!(n > 0)) n = Number(data.count);
+    if (!(n > 0)) n = 43829;
+    return n;
+  }
+
   function applyFilter() {
     if (activeFilter === "all") filtered = source.slice();
     else if (activeFilter === "low") filtered = source.filter(function (r) { return r.stars <= 3; });
@@ -453,10 +460,15 @@ window.REVIEWS_DATA={"average":4.8,"count":43829,"baseCount":43829,"growthEpochM
     }
     feed.insertAdjacentHTML("beforeend", html.join(""));
     shown += slice.length;
+    var total = totalDisplay();
+    // For star filters, scale the public total roughly by filter share
+    if (activeFilter !== "all" && source.length) {
+      total = Math.max(shown, Math.round(totalDisplay() * (filtered.length / source.length)));
+    }
     loadMore.hidden = shown >= filtered.length;
     if (!filtered.length) loadStatus.textContent = "Пока нет отзывов в этом фильтре";
-    else if (shown >= filtered.length) loadStatus.textContent = "Показаны все " + filtered.length;
-    else loadStatus.textContent = "Показано " + shown + " из " + filtered.length;
+    else if (shown >= filtered.length) loadStatus.textContent = "Показано " + total + " из " + total;
+    else loadStatus.textContent = "Показано " + Math.min(shown, total) + " из " + total;
   }
 
   function nextWakeDelay() {
