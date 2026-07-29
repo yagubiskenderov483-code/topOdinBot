@@ -259,7 +259,8 @@ def user_has_requisites_for(u, currency):
 
 def req_need_label(field, lang="ru"):
     ru=lang=="ru"
-    if field=="ton": return "TON"
+    if field=="ton": return R(ru,"кошелёк Tonkeeper","Tonkeeper wallet")
+
     if field=="stars": return R(ru,"@username для звёзд","@username for Stars")
     return R(ru,"карту / телефон","card / phone")
 
@@ -272,8 +273,12 @@ def req_prompt_text(field, lang="ru"):
                 f"<code>+79041751408</code>\n<code>+380501234567</code>\n"
                 f"<code>4276123456781234</code></blockquote>")
     if field=="ton":
-        return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>TON</b>\n\n"
-                f"<blockquote>{R(ru,'Отправьте адрес одним сообщением.','Send the address in one message.')}\n"
+        return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>{R(ru,'Кошелёк Tonkeeper','Tonkeeper wallet')}</b>\n\n"
+                f"<blockquote>{R(ru,'Привяжите адрес из Tonkeeper одним сообщением.','Bind your Tonkeeper address in one message.')}\n"
+                f"{R(ru,'Можно:','You can send:')}\n"
+                f"• UQ… / EQ…\n"
+                f"• ton://transfer/UQ…\n"
+                f"• https://app.tonkeeper.com/transfer/UQ…\n\n"
                 f"{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>")
     if field=="stars":
         return (f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n"
@@ -966,15 +971,19 @@ def validate_card(text, lang="ru"):
     return None
 
 def validate_ton_address(text):
-    """Return cleaned address or None."""
+    """Return cleaned Tonkeeper/TON address or None. Accepts UQ/EQ, ton://, tonkeeper links."""
     import re
     t=(text or "").strip().replace(" ","").replace("\n","").replace("\r","")
     if not t: return None
-    # ton://transfer/<addr>?...
-    m=re.search(r"(?:ton://transfer/)?(UQ|EQ)([A-Za-z0-9_\-]{46})", t)
+    m=re.search(
+        r"(?:(?:https?://)?(?:app\.)?tonkeeper\.com/transfer/|ton://transfer/)?"
+        r"(UQ|EQ)([A-Za-z0-9_\-]{46})",
+        t, re.I)
     if not m: return None
-    addr=m.group(1)+m.group(2)
+    prefix="UQ" if m.group(1).upper().startswith("U") else "EQ"
+    addr=prefix+m.group(2)
     if len(addr)!=48: return None
+    if not re.fullmatch(r"(UQ|EQ)[A-Za-z0-9_\-]{46}", addr): return None
     return addr
 
 def validate_bank_name(text):
@@ -1325,27 +1334,65 @@ def validate_complaint_username(text):
     t=(text or "").strip()
     if not t: return None
     if not t.startswith("@"): t="@"+t
+    # только латиница/цифры/_ , 4–32 символа после @
     if not re.fullmatch(r"@[A-Za-z0-9_]{4,32}", t):
         return None
+    # отсечь мусор вроде @aaaa / @1111
+    body=t[1:]
+    if len(set(body.lower()))<2: return None
+    if body.isdigit(): return None
     return t
 
 def validate_complaint_deal_id(text):
     import re
     t=(text or "").strip().upper().replace(" ","")
     if not t: return None
-    if re.fullmatch(r"GD\d{3,10}", t): return t
-    if re.fullmatch(r"[A-Z]{1,4}\d{3,10}", t): return t
-    if re.fullmatch(r"\d{3,10}", t): return f"GD{int(t)}"
+    m=re.fullmatch(r"(?:GD)?(\d{3,10})", t)
+    if m:
+        n=int(m.group(1))
+        if n < DEAL_COUNTER_START: return None
+        return f"GD{n}"
+    if re.fullmatch(r"GD\d{3,10}", t):
+        n=int(t[2:])
+        if n < DEAL_COUNTER_START: return None
+        return t
     return None
 
 def validate_complaint_time(text):
+    import re
     t=(text or "").strip()
-    if len(t)<4 or len(t)>80: return None
+    if not t or len(t)>80: return None
+    # DD.MM.YYYY [HH:MM] / DD/MM/YYYY / YYYY-MM-DD [HH:MM]
+    patterns=(
+        r"^\d{1,2}[./]\d{1,2}[./]\d{2,4}(?:[ T]\d{1,2}:\d{2})?$",
+        r"^\d{4}-\d{2}-\d{2}(?:[ T]\d{1,2}:\d{2})?$",
+        r"^\d{1,2}[./]\d{1,2}[./]\d{2,4}\s+\d{1,2}:\d{2}$",
+    )
+    if any(re.fullmatch(p, t) for p in patterns):
+        return t
+    return None
+
+def validate_complaint_topic(text):
+    import re
+    t=(text or "").strip()
+    if len(t)<8 or len(t)>200: return None
+    letters=re.findall(r"[A-Za-zА-Яа-яЁёІіЇїЄєҐґ]", t)
+    if len(letters)<5: return None
+    if len(set(t.lower().replace(" ","")))<4: return None
+    # не одно слово-мусор
+    if re.fullmatch(r"[a-zA-Zа-яА-ЯёЁ]{1,7}", t): return None
     return t
 
 def validate_complaint_evidence(text):
+    import re
     t=(text or "").strip()
-    if len(t)<8 or len(t)>1500: return None
+    if len(t)<15 or len(t)>1500: return None
+    letters=re.findall(r"[A-Za-zА-Яа-яЁёІіЇїЄєҐґ0-9]", t)
+    if len(letters)<10: return None
+    if len(set(t.lower().replace(" ","")))<5: return None
+    # хотя бы 2 «слова» / токена
+    parts=re.findall(r"[A-Za-zА-Яа-яЁё0-9@./_:-]{2,}", t)
+    if len(parts)<2: return None
     return t
 
 def complaint_prompt(step, ctype, lang="ru"):
@@ -1454,8 +1501,7 @@ async def finish_complaint(update, context):
     await notify_admins(context, body)
     clear_complaint_state(ud)
     await update.message.reply_text(
-        f"{Ech} <b>{R(ru,'Жалоба отправлена админам.','Report sent to admins.')}</b>",
-        parse_mode="HTML",
+        R(ru,"Жалоба ушла в ящик маркетплейса.","Complaint sent to the marketplace inbox."),
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,'Главное меню','Main menu'),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]))
 
 # Большая база знаний ИИ-помощника Eldorado GG (RU/EN)
@@ -2501,7 +2547,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{R(ru,'Для вывода привяжите реквизиты.','Bind requisites to withdraw.')}</b>",
                     InlineKeyboardMarkup([
                         [InlineKeyboardButton(R(ru,"Привязать карту/телефон","Bind card/phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
-                        [InlineKeyboardButton(R(ru,"Привязать TON","Bind TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
+                        [InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(R(ru,"Привязать @username","Bind @username"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
                     ]),section="balance"); return
@@ -2598,12 +2644,12 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud["cmp_username"]=ok; ud["complaint_step"]="deal"
                 await update.message.reply_text(complaint_prompt("deal",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
             if step=="topic":
-                t=(text or "").strip()
-                if len(t)<4 or len(t)>200:
+                ok=validate_complaint_topic(text)
+                if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Опишите тему короче/подробнее (4–200 символов).','Describe the topic (4–200 chars).')}</b>",
+                        f"{Ewrn} <b>{R(ru,'Тема слишком короткая или непонятная. Минимум 8 символов, нормальный текст.','Topic too short or unclear. Min 8 chars, real text.')}</b>",
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
-                ud["cmp_topic"]=t; ud["complaint_step"]="deal"
+                ud["cmp_topic"]=ok; ud["complaint_step"]="deal"
                 await update.message.reply_text(complaint_prompt("deal",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
             if step=="deal":
                 raw=(text or "").strip()
@@ -2613,7 +2659,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ok=validate_complaint_deal_id(raw)
                 if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Неверный номер сделки. Пример: GD29548','Invalid deal ID. Example: GD29548')}</b>"
+                        f"{Ewrn} <b>{R(ru,'Неверный номер сделки. Нужен GD29548 или больше. Пример: GD29548','Invalid deal ID. Need GD29548 or higher. Example: GD29548')}</b>"
                         + (R(ru,"\nИли «-» если сделки нет.","\nOr «-» if none.") if ctype=="market" else ""),
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
                 ud["cmp_deal"]=ok; ud["complaint_step"]="time"
@@ -2622,7 +2668,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ok=validate_complaint_time(text)
                 if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Укажите время сделки. Пример: 29.07.2026 15:30','Enter deal time. Example: 29.07.2026 15:30')}</b>",
+                        f"{Ewrn} <b>{R(ru,'Неверный формат времени. Пример: 29.07.2026 15:30','Invalid time format. Example: 29.07.2026 15:30')}</b>",
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
                 ud["cmp_time"]=ok; ud["complaint_step"]="evidence"
                 await update.message.reply_text(complaint_prompt("evidence",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
@@ -2630,7 +2676,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ok=validate_complaint_evidence(text)
                 if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Доказательства слишком короткие. Минимум 8 символов.','Evidence too short. Min 8 chars.')}</b>",
+                        f"{Ewrn} <b>{R(ru,'Доказательства слишком слабые. Минимум 15 символов: факты, чек, ссылка.','Evidence too weak. Min 15 chars: facts, receipt, link.')}</b>",
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
                 ud["cmp_evidence"]=ok
                 await finish_complaint(update,context); return
@@ -3415,7 +3461,7 @@ async def show_req(update, context):
             lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card_num}</code>\n{R(ru,'Банк','Bank')}: {card_bnk}</blockquote>")
         else:
             lines.append(f"<blockquote>{R(ru,'Не привязана','Not bound')}</blockquote>")
-        lines.append(f"\n{Eton} <b>TON:</b>")
+        lines.append(f"\n{Eton} <b>{R(ru,'Tonkeeper','Tonkeeper')}:</b>")
         lines.append(f"<blockquote><code>{ton}</code></blockquote>" if ton else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
         lines.append(f"\n{Est} <b>{R(ru,'Звёзды','Stars')}:</b>")
         lines.append(f"<blockquote><code>{stars}</code></blockquote>" if stars else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
@@ -3427,10 +3473,10 @@ async def show_req(update, context):
         else:
             rows.append([InlineKeyboardButton(R(ru,"Привязать карту / телефон","Bind card / phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")])
         if ton:
-            rows.append([InlineKeyboardButton(R(ru,"Изменить TON","Edit TON"),callback_data="req_edit_ton",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Отвязать TON","Unbind TON"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
+            rows.append([InlineKeyboardButton(R(ru,"Изменить Tonkeeper","Edit Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5879841310902324730"),
+                         InlineKeyboardButton(R(ru,"Отвязать Tonkeeper","Unbind Tonkeeper"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
         else:
-            rows.append([InlineKeyboardButton(R(ru,"Привязать TON-кошелёк","Bind TON wallet"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
+            rows.append([InlineKeyboardButton(R(ru,"Привязать кошелёк Tonkeeper","Bind Tonkeeper wallet"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
         if stars:
             rows.append([InlineKeyboardButton(R(ru,"Изменить Звёзды","Edit Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5879841310902324730"),
                          InlineKeyboardButton(R(ru,"Отвязать Звёзды","Unbind Stars"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
