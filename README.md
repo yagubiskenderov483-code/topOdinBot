@@ -41,15 +41,15 @@ REVIEWS_MINIAPP_URL=https://<сервис>.onrender.com/index.html
 TONCONNECT_MINIAPP_URL=https://<сервис>.onrender.com/tonconnect.html
 ```
 
-### ИИ-помощник
+### Eldorado AI
 
-По умолчанию отвечает через **ChatGPT (g4f)** на любые вопросы — ключ не обязателен.
+По умолчанию **Eldorado AI** отвечает через живой LLM (`g4f`) на любые вопросы — ключ не обязателен.
 
 Опционально на Render (стабильнее):
 ```
 GEMINI_API_KEY=...          # Google AI Studio
 # или
-OPENAI_API_KEY=sk-...       # ChatGPT официально
+OPENAI_API_KEY=sk-...       # официальный OpenAI
 AI_PROVIDER=auto
 ```
 

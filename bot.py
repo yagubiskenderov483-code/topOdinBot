@@ -38,7 +38,7 @@ TONCONNECT_MINIAPP_URL = (
         if REVIEWS_MINIAPP_URL.endswith("/index.html") else "")
 ).strip()
 
-# ИИ: Gemini / ChatGPT (OpenAI) / Groq по ключу, иначе бесплатный ChatGPT через g4f.
+# Eldorado AI: Gemini / OpenAI / Groq по ключу, иначе живой LLM через g4f (без ключа).
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
 # AI_PROVIDER=gemini|openai|groq|g4f|auto
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
@@ -384,7 +384,7 @@ async def notify_admins(context, text, reply_markup=None):
 BANNER_SECTIONS = {
     "main":"Главное меню","deal":"Создать сделку","balance":"Пополнить/Вывод",
     "profile":"Профиль","req":"Реквизиты","top":"Топ","my_deals":"Мои сделки",
-    "info":"Информация","complaint":"Жалоба","ai":"ИИ-помощник",
+    "info":"Информация","complaint":"Жалоба","ai":"Eldorado AI",
     "deal_card":"Карточка сделки","deal_join":"Присоединение к сделке",
     "deal_forward":"Пересылка сделки","ref":"Рефералы",
 }
@@ -696,7 +696,7 @@ def main_kb(lang):
         [InlineKeyboardButton(R(ru,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
         [InlineKeyboardButton(R(ru,'Пожаловаться','Report'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882"),
-         InlineKeyboardButton(R(ru,'ИИ-помощник','AI Helper'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
+         InlineKeyboardButton(R(ru,'Eldorado AI','Eldorado AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
         [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
          InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),web_app=WebAppInfo(url="https://www.eldorado.gg/"),icon_custom_emoji_id="5983580310292402968")],
         [InlineKeyboardButton(R(ru,'Информация','Information'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
@@ -1810,7 +1810,7 @@ AI_KB = {
             "• Менеджер сделок: @EldoradoGGManager\n"
             "• Сайт: eldorado.gg (кнопка «Наш сайт»)\n"
             "• Информация: Telegraph «Как проходят сделки» + отзывы Mini App\n"
-            "• ИИ-помощник: быстрые ответы по боту; сложные кейсы — людям в поддержку.\n"
+            "• Eldorado AI: быстрые ответы по боту и любым темам; сложные кейсы — людям в поддержку.\n"
             "Бот: @EldoradoGGRobot"
         ),
         "en": (
@@ -1819,7 +1819,7 @@ AI_KB = {
             "• Deal manager: @EldoradoGGManager\n"
             "• Website: eldorado.gg (Our Website button)\n"
             "• Information: Telegraph how-deals guide + Reviews Mini App\n"
-            "• AI Helper: quick bot answers; hard cases go to human support.\n"
+            "• Eldorado AI: quick bot answers on any topic; hard cases go to human support.\n"
             "Bot: @EldoradoGGRobot"
         ),
     },
@@ -1883,13 +1883,13 @@ def resolve_ai_provider():
     if p=="gemini" and GEMINI_API_KEY: return "gemini"
     if p=="openai" and OPENAI_API_KEY: return "openai"
     if p=="groq" and GROQ_API_KEY: return "groq"
-    if p=="g4f" or p=="chatgpt": return "g4f"
+    if p in ("g4f","chatgpt","eldorado"): return "g4f"
     if GEMINI_API_KEY: return "gemini"
     if OPENAI_API_KEY: return "openai"
     if GROQ_API_KEY: return "groq"
-    return "g4f"  # ChatGPT без ключа (g4f) — по умолчанию всегда онлайн
+    return "g4f"  # Eldorado AI без ключа (g4f) — по умолчанию онлайн
 
-# Модели ChatGPT/совместимые, которые реально отвечают с cloud (Render и т.п.)
+# Модели LLM, которые стабильно отвечают с cloud (Render и т.п.)
 _G4F_MODELS = [
     m for m in [
         (AI_MODEL or "").strip(),
@@ -1900,7 +1900,7 @@ _G4F_MODELS = [
 ]
 
 async def _ai_call_g4f(system, messages):
-    """Живой ChatGPT-ответ без API-ключа (g4f), с ретраями по моделям."""
+    """Живой ответ Eldorado AI без API-ключа (g4f), с ретраями по моделям."""
     import asyncio
     errs=[]
     def _run(model):
@@ -1923,22 +1923,21 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """Всегда живой ChatGPT (g4f) / Gemini / OpenAI — любые темы."""
+    """Eldorado AI: Gemini / OpenAI / Groq / g4f — живые ответы на любые темы."""
     provider=resolve_ai_provider()
     system=build_ai_system_prompt(lang)
     msgs=[]
-    for h in (history or [])[-8:]:
+    for h in (history or [])[-12:]:
         if h.get("role") in ("user","assistant") and h.get("content"):
-            msgs.append({"role":h["role"],"content":str(h["content"])[:1500]})
+            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
     msgs.append({"role":"user","content":str(question or "")[:2000]})
-    # Цепочка: выбранный провайдер → ChatGPT(g4f) → локальная база
+    # Цепочка: выбранный провайдер → g4f → локальная база (AI_KB + ai_knowledge.json)
     chain=[]
     if provider=="gemini":
         chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
     elif provider in ("openai","groq"):
         chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
     chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
-    # убрать дубликаты имён
     seen=set(); uniq=[]
     for name,fn in chain:
         if name in seen: continue
@@ -1954,30 +1953,37 @@ async def ai_chat(question, lang="ru", history=None):
 
 def build_ai_system_prompt(lang="ru"):
     ru=lang=="ru"
-    # Короче — быстрее и стабильнее для ChatGPT/Gemini; детали бота — по делу
-    kb_bits=[]
-    for key in ("deal","join","req","complaint","fee","ref","support"):
-        entry=AI_KB.get(key)
-        if entry:
-            kb_bits.append(entry["ru" if ru else "en"])
-    kb="\n".join(kb_bits[:6])
+    # Полная база знаний бота (все топики AI_KB) — ничего не вырезаем
+    kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
     if ru:
         return (
-            "Ты — ChatGPT-помощник платформы Eldorado GG (Telegram @EldoradoGGRobot). "
-            "Отвечай живо и по делу на ЛЮБЫЕ вопросы: наука, учёба, крипта, быт, код, и про бот. "
-            "Если вопрос про Eldorado GG — используй факты ниже. "
-            "Обычный текст без HTML/Markdown. Язык: русский.\n\n"
-            "Факты: 132.584 сделок · оборот $1.346.582 · комиссия 0% · рефералка 3% · "
-            "сделки GD29548+ · поддержка @EldoradoGGSupport · менеджер @EldoradoGGManager · eldorado.gg\n"
-            f"{kb}"
+            "Ты — Eldorado AI, умный помощник платформы Eldorado GG (Telegram-бот @EldoradoGGRobot). "
+            "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
+            "и про бот/сделки, и общие. Если вопрос про Eldorado GG — опирайся на базу знаний ниже. "
+            "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
+            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
+            "Факты платформы:\n"
+            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
+            "• Комиссия сервиса: 0%\n"
+            "• Рефералка: 3% с сделок приглашённых\n"
+            "• Поддержка: @EldoradoGGSupport · менеджер: @EldoradoGGManager\n"
+            "• Сайт: eldorado.gg\n"
+            "• Номера сделок вида GD29548+\n\n"
+            f"База знаний бота:\n{kb}"
         )
     return (
-        "You are the ChatGPT helper for Eldorado GG (Telegram @EldoradoGGRobot). "
-        "Answer any topic freely and clearly: science, study, crypto, daily life, code, and the bot. "
-        "For Eldorado GG use the facts below. Plain text only. Language: English.\n\n"
-        "Facts: 132,584 deals · $1,346,582 turnover · 0% fee · 3% referrals · "
-        "deals GD29548+ · support @EldoradoGGSupport · manager @EldoradoGGManager · eldorado.gg\n"
-        f"{kb}"
+        "You are Eldorado AI, the smart helper for Eldorado GG (Telegram bot @EldoradoGGRobot). "
+        "Answer like a live assistant: freely, on any user question — bot/deals and general. "
+        "For Eldorado GG questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
+        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
+        "Platform facts:\n"
+        "• Stats: 132,584 deals, turnover $1,346,582\n"
+        "• Service fee: 0%\n"
+        "• Referrals: 3% from invited users’ deals\n"
+        "• Support: @EldoradoGGSupport · manager: @EldoradoGGManager\n"
+        "• Website: eldorado.gg\n"
+        "• Deal IDs like GD29548+\n\n"
+        f"Bot knowledge base:\n{kb}"
     )
 
 async def _ai_call_gemini(system, messages):
@@ -2052,12 +2058,12 @@ def ai_local_answer(question, lang="ru", history=None):
 
     if any(x in ql for x in ("привет","здравств","хай","hello","hi","йо ","добрый")):
         return R(ru,
-            "Привет! Я ИИ Eldorado GG. Могу ответить почти на что угодно: сделки и бот, крипта, наука, учёба, бытовые вопросы. Спрашивайте свободно.",
-            "Hi! I’m Eldorado GG AI. Ask about the bot/deals, crypto, science, study, everyday topics — anything.")
+            "Привет! Я Eldorado AI. Могу ответить почти на что угодно: сделки и бот, крипта, наука, учёба, бытовые вопросы. Спрашивайте свободно.",
+            "Hi! I’m Eldorado AI. Ask about the bot/deals, crypto, science, study, everyday topics — anything.")
     if any(x in ql for x in ("как дела","how are you","что умеешь","кто ты")):
         return R(ru,
-            "На связи. Отвечаю как помощник: Eldorado GG (@EldoradoGGRobot) + общие знания. Сделки GD29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
-            "Here. I cover Eldorado GG (@EldoradoGGRobot) plus general knowledge. Deals GD29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
+            "На связи — Eldorado AI (@EldoradoGGRobot) + общие знания. Сделки GD29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
+            "Here — Eldorado AI (@EldoradoGGRobot) plus general knowledge. Deals GD29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
         return R(ru,"Пожалуйста! Если ещё вопрос — пишите.","You’re welcome! Ask more anytime.")
 
@@ -2151,8 +2157,8 @@ async def show_ai(update, context):
         ud["ai_ask"]=True
         ud.setdefault("ai_history",[])
         text=(
-            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник · ChatGPT','AI Helper · ChatGPT')}</b>\n\n"
-            f"<blockquote>{R(ru,'ChatGPT подключён. Пишите любой вопрос — отвечаю на любые темы, не только про бота. Можно продолжать диалог.','ChatGPT is connected. Ask anything — any topic, not only the bot. You can keep chatting.')}</blockquote>"
+            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>Eldorado AI</b>\n\n"
+            f"<blockquote>{R(ru,'Eldorado AI на связи. Пишите любой вопрос — отвечаю на любые темы, не только про бота. Можно продолжать диалог.','Eldorado AI is online. Ask anything — any topic, not only the bot. You can keep chatting.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
@@ -2449,8 +2455,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["ai_history"]=[]
             await send_section(
                 update,
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'Чат очищен','Chat cleared')}</b>\n\n"
-                f"<blockquote>{R(ru,'Пишите следующий вопрос.','Write your next question.')}</blockquote>",
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>Eldorado AI</b>\n\n"
+                f"<blockquote>{R(ru,'Чат очищен. Пишите следующий вопрос.','Chat cleared. Write your next question.')}</blockquote>",
                 ai_kb(lang),section="ai"); return
         if d=="menu_req":
             for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
@@ -2858,7 +2864,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if ud.get("ai_ask"):
             wait=await update.message.reply_text(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <i>{R(ru,'ChatGPT думает…','ChatGPT is thinking…')}</i>",
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <i>{R(ru,'Eldorado AI думает…','Eldorado AI is thinking…')}</i>",
                 parse_mode="HTML")
             hist=ud.setdefault("ai_history",[])
             ans=await ai_chat(text,lang,hist)
@@ -2868,7 +2874,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # keep chat open for follow-ups
             ud["ai_ask"]=True
             body=(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ChatGPT','ChatGPT')}</b>\n\n"
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>Eldorado AI</b>\n\n"
                 f"<blockquote>{H(ans)}</blockquote>"
             )
             try: await wait.edit_text(body,parse_mode="HTML",reply_markup=ai_kb(lang))
@@ -4431,6 +4437,7 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION,handle_adm_msg))
 
     print(f"Bot @{BOT_USERNAME} started!")
+    print(f"AI provider: {resolve_ai_provider()} (Eldorado AI via g4f if no API keys)")
     print(f"Reviews Mini App: {REVIEWS_MINIAPP_URL}")
     print(f"TonConnect Mini App: {TONCONNECT_MINIAPP_URL}")
     app.run_polling()
