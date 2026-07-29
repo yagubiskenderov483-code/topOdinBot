@@ -1883,85 +1883,101 @@ def resolve_ai_provider():
     if p=="gemini" and GEMINI_API_KEY: return "gemini"
     if p=="openai" and OPENAI_API_KEY: return "openai"
     if p=="groq" and GROQ_API_KEY: return "groq"
-    if p=="g4f": return "g4f"
+    if p=="g4f" or p=="chatgpt": return "g4f"
     if GEMINI_API_KEY: return "gemini"
     if OPENAI_API_KEY: return "openai"
     if GROQ_API_KEY: return "groq"
-    return "g4f"  # ChatGPT-совместимый бесплатный провайдер по умолчанию
+    return "g4f"  # ChatGPT без ключа (g4f) — по умолчанию всегда онлайн
+
+# Модели ChatGPT/совместимые, которые реально отвечают с cloud (Render и т.п.)
+_G4F_MODELS = [
+    m for m in [
+        (AI_MODEL or "").strip(),
+        "gpt-4o-mini",
+        "gpt-4o",
+        "command-r",
+    ] if m
+]
 
 async def _ai_call_g4f(system, messages):
-    """Живой ChatGPT-ответ без ключа (g4f)."""
+    """Живой ChatGPT-ответ без API-ключа (g4f), с ретраями по моделям."""
     import asyncio
-    def _run():
+    errs=[]
+    def _run(model):
         from g4f.client import Client
         client=Client()
-        model=AI_MODEL or "gpt-4o-mini"
         msgs=[{"role":"system","content":system}]+list(messages)
         r=client.chat.completions.create(model=model, messages=msgs)
         text=(r.choices[0].message.content or "").strip()
         if not text:
             raise RuntimeError("empty g4f response")
         return text
-    return await asyncio.to_thread(_run)
+    for model in _G4F_MODELS:
+        try:
+            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=55)
+            logger.info(f"ai g4f ok model={model}")
+            return text
+        except Exception as e:
+            errs.append(f"{model}: {e}")
+            logger.warning(f"ai g4f fail model={model}: {e}")
+    raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """Gemini / ChatGPT / Groq / g4f — живые ответы на любые вопросы."""
+    """Всегда живой ChatGPT (g4f) / Gemini / OpenAI — любые темы."""
     provider=resolve_ai_provider()
     system=build_ai_system_prompt(lang)
     msgs=[]
-    for h in (history or [])[-12:]:
+    for h in (history or [])[-8:]:
         if h.get("role") in ("user","assistant") and h.get("content"):
-            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
+            msgs.append({"role":h["role"],"content":str(h["content"])[:1500]})
     msgs.append({"role":"user","content":str(question or "")[:2000]})
-    try:
-        if provider=="gemini":
-            return await _ai_call_gemini(system, msgs)
-        if provider in ("openai","groq"):
-            return await _ai_call_openai_compatible(system, msgs, provider)
-        if provider=="g4f":
-            return await _ai_call_g4f(system, msgs)
-    except Exception as e:
-        logger.error(f"ai_chat provider={provider}: {e}", exc_info=True)
-        # fallback chain
-        if provider!="g4f":
-            try:
-                return await _ai_call_g4f(system, msgs)
-            except Exception as e2:
-                logger.error(f"ai_chat g4f fallback: {e2}", exc_info=True)
+    # Цепочка: выбранный провайдер → ChatGPT(g4f) → локальная база
+    chain=[]
+    if provider=="gemini":
+        chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
+    elif provider in ("openai","groq"):
+        chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
+    chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
+    # убрать дубликаты имён
+    seen=set(); uniq=[]
+    for name,fn in chain:
+        if name in seen: continue
+        seen.add(name); uniq.append((name,fn))
+    for name,fn in uniq:
+        try:
+            ans=await fn()
+            if ans and str(ans).strip():
+                return str(ans).strip()
+        except Exception as e:
+            logger.error(f"ai_chat provider={name}: {e}", exc_info=True)
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
     ru=lang=="ru"
-    kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
+    # Короче — быстрее и стабильнее для ChatGPT/Gemini; детали бота — по делу
+    kb_bits=[]
+    for key in ("deal","join","req","complaint","fee","ref","support"):
+        entry=AI_KB.get(key)
+        if entry:
+            kb_bits.append(entry["ru" if ru else "en"])
+    kb="\n".join(kb_bits[:6])
     if ru:
         return (
-            "Ты — умный ИИ-помощник платформы Eldorado GG (Telegram-бот @EldoradoGGRobot). "
-            "Отвечай как живой ассистент (как Gemini/Cursor): свободно, по делу, на любые вопросы пользователя — "
-            "и про бот/сделки, и общие. Если вопрос про Eldorado GG — опирайся на базу знаний ниже. "
-            "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
-            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
-            "Факты платформы:\n"
-            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
-            "• Комиссия сервиса: 0%\n"
-            "• Рефералка: 3% с сделок приглашённых\n"
-            "• Поддержка: @EldoradoGGSupport · менеджер: @EldoradoGGManager\n"
-            "• Сайт: eldorado.gg\n"
-            "• Номера сделок вида GD29548+\n\n"
-            f"База знаний бота:\n{kb}"
+            "Ты — ChatGPT-помощник платформы Eldorado GG (Telegram @EldoradoGGRobot). "
+            "Отвечай живо и по делу на ЛЮБЫЕ вопросы: наука, учёба, крипта, быт, код, и про бот. "
+            "Если вопрос про Eldorado GG — используй факты ниже. "
+            "Обычный текст без HTML/Markdown. Язык: русский.\n\n"
+            "Факты: 132.584 сделок · оборот $1.346.582 · комиссия 0% · рефералка 3% · "
+            "сделки GD29548+ · поддержка @EldoradoGGSupport · менеджер @EldoradoGGManager · eldorado.gg\n"
+            f"{kb}"
         )
     return (
-        "You are the smart AI helper for Eldorado GG (Telegram bot @EldoradoGGRobot). "
-        "Answer like a live assistant (Gemini/Cursor): freely, on any user question — bot/deals and general. "
-        "For Eldorado GG questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
-        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
-        "Platform facts:\n"
-        "• Stats: 132,584 deals, turnover $1,346,582\n"
-        "• Service fee: 0%\n"
-        "• Referrals: 3% from invited users’ deals\n"
-        "• Support: @EldoradoGGSupport · manager: @EldoradoGGManager\n"
-        "• Website: eldorado.gg\n"
-        "• Deal IDs like GD29548+\n\n"
-        f"Bot knowledge base:\n{kb}"
+        "You are the ChatGPT helper for Eldorado GG (Telegram @EldoradoGGRobot). "
+        "Answer any topic freely and clearly: science, study, crypto, daily life, code, and the bot. "
+        "For Eldorado GG use the facts below. Plain text only. Language: English.\n\n"
+        "Facts: 132,584 deals · $1,346,582 turnover · 0% fee · 3% referrals · "
+        "deals GD29548+ · support @EldoradoGGSupport · manager @EldoradoGGManager · eldorado.gg\n"
+        f"{kb}"
     )
 
 async def _ai_call_gemini(system, messages):
@@ -2135,8 +2151,8 @@ async def show_ai(update, context):
         ud["ai_ask"]=True
         ud.setdefault("ai_history",[])
         text=(
-            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
-            f"<blockquote>{R(ru,'Пишите любой вопрос — отвечаю через ChatGPT/Gemini на любые темы, не только про бота. Можно продолжать диалог.','Ask anything — I answer via ChatGPT/Gemini on any topic, not only the bot. You can keep chatting.')}</blockquote>"
+            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник · ChatGPT','AI Helper · ChatGPT')}</b>\n\n"
+            f"<blockquote>{R(ru,'ChatGPT подключён. Пишите любой вопрос — отвечаю на любые темы, не только про бота. Можно продолжать диалог.','ChatGPT is connected. Ask anything — any topic, not only the bot. You can keep chatting.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
@@ -2842,7 +2858,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if ud.get("ai_ask"):
             wait=await update.message.reply_text(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <i>{R(ru,'Думаю…','Thinking…')}</i>",
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <i>{R(ru,'ChatGPT думает…','ChatGPT is thinking…')}</i>",
                 parse_mode="HTML")
             hist=ud.setdefault("ai_history",[])
             ans=await ai_chat(text,lang,hist)
@@ -2852,7 +2868,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # keep chat open for follow-ups
             ud["ai_ask"]=True
             body=(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ИИ-помощник','AI Helper')}</b>\n\n"
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>{R(ru,'ChatGPT','ChatGPT')}</b>\n\n"
                 f"<blockquote>{H(ans)}</blockquote>"
             )
             try: await wait.edit_text(body,parse_mode="HTML",reply_markup=ai_kb(lang))
