@@ -1,4 +1,4 @@
-import logging, json, os, math, html, time
+import logging, json, os, math, html, time, re
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN    = "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4"
+BOT_TOKEN    = "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ"
 ADMIN_IDS    = {8726084830, 90283607, 7186944876}
 BOT_USERNAME = "EldoradoGGRobot"
 MANAGER_URL  = "https://t.me/EldoradoGGManager"
@@ -30,6 +30,16 @@ REVIEWS_MINIAPP_URL = (
     or (f"{_RENDER_URL}/index.html" if _RENDER_URL else "")
     or "https://litter.catbox.moe/8n77lf.htm"
 ).strip()
+
+# ИИ-помощник: живые ответы через LLM (не шаблоны).
+# На Render добавь один из ключей: GEMINI_API_KEY (бесплатно) / GROQ_API_KEY / OPENAI_API_KEY
+# Опционально: AI_PROVIDER=gemini|groq|openai  AI_MODEL=...  AI_BASE_URL=...
+AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
+AI_MODEL = (os.getenv("AI_MODEL") or "").strip()
+AI_BASE_URL = (os.getenv("AI_BASE_URL") or "").rstrip("/")
+GEMINI_API_KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
+GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()
+OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
 
@@ -371,10 +381,17 @@ BANNER_SECTIONS = {
 # ─── DB ───────────────────────────────────────────────────────────────────────
 def load_db():
     if os.path.exists(DB_FILE):
-        with open(DB_FILE,"r",encoding="utf-8") as f: return json.load(f)
-    return {"users":{},"deals":{},"banner":None,"banner_photo":None,"banner_video":None,
-            "banner_gif":None,"menu_description":None,"deal_counter":1,"banners":{},
+        with open(DB_FILE,"r",encoding="utf-8") as f: db=json.load(f)
+    else:
+        db={"users":{},"deals":{},"banner":None,"banner_photo":None,"banner_video":None,
+            "banner_gif":None,"menu_description":None,"deal_counter":DEAL_COUNTER_START,"banners":{},
             "logs":[],"log_chat_id":None,"log_hidden":False,"log_templates":{},"log_banners":{},"extra_group_id":None}
+    try:
+        if int(db.get("deal_counter") or 0) < DEAL_COUNTER_START:
+            db["deal_counter"]=DEAL_COUNTER_START
+    except Exception:
+        db["deal_counter"]=DEAL_COUNTER_START
+    return db
 
 def save_db(db):
     with open(DB_FILE,"w",encoding="utf-8") as f: json.dump(db, f, ensure_ascii=False, indent=2)
@@ -482,8 +499,15 @@ def get_lang(uid):
     try: return get_user(load_db(), uid).get("lang","ru")
     except: return "ru"
 
+DEAL_COUNTER_START = 29548
+
 def gen_deal_id(db):
-    n=db.get("deal_counter",1); db["deal_counter"]=n+1; save_db(db); return f"GD{n:05d}"
+    n=int(db.get("deal_counter") or DEAL_COUNTER_START)
+    if n < DEAL_COUNTER_START:
+        n = DEAL_COUNTER_START
+    db["deal_counter"]=n+1
+    save_db(db)
+    return f"GD{n}"
 
 def add_log(db, event, deal_id=None, uid=None, username=None, extra=""):
     if "logs" not in db: db["logs"]=[]
@@ -1309,7 +1333,7 @@ def validate_complaint_username(text):
     t=(text or "").strip()
     if not t: return None
     if not t.startswith("@"): t="@"+t
-    if not re.fullmatch(r"@[A-Za-z0-9_]{5,32}", t):
+    if not re.fullmatch(r"@[A-Za-z0-9_]{4,32}", t):
         return None
     return t
 
@@ -1317,9 +1341,9 @@ def validate_complaint_deal_id(text):
     import re
     t=(text or "").strip().upper().replace(" ","")
     if not t: return None
-    if re.fullmatch(r"GD\d{3,8}", t): return t
+    if re.fullmatch(r"GD\d{3,10}", t): return t
     if re.fullmatch(r"[A-Z]{1,4}\d{3,10}", t): return t
-    if re.fullmatch(r"\d{3,10}", t): return f"GD{int(t):05d}" if len(t)<=5 else t
+    if re.fullmatch(r"\d{3,10}", t): return f"GD{int(t)}"
     return None
 
 def validate_complaint_time(text):
@@ -1349,7 +1373,7 @@ def complaint_prompt(step, ctype, lang="ru"):
             ),
             "deal":(
                 f"<b>2. {R(ru,'Номер сделки (если есть)','Deal ID (if any)')}</b>\n"
-                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD00042</code>\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD29548</code>\n"
                 f"{R(ru,'Если сделки нет — напишите','If no deal — write')}: <code>-</code></blockquote>"
             ),
             "time":(
@@ -1373,7 +1397,7 @@ def complaint_prompt(step, ctype, lang="ru"):
         ),
         "deal":(
             f"<b>2. {R(ru,'Номер сделки','Deal ID')}</b>\n"
-            f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD00042</code></blockquote>"
+            f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD29548</code></blockquote>"
         ),
         "time":(
             f"<b>3. {R(ru,'Время сделки','Deal time')}</b>\n"
@@ -2527,7 +2551,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ok=validate_complaint_username(text)
                 if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Неверный юзернейм. Пример: @username (5–32 символа).','Invalid username. Example: @username (5–32 chars).')}</b>",
+                        f"{Ewrn} <b>{R(ru,'Неверный юзернейм. Пример: @user (4–32 символа).','Invalid username. Example: @user (4–32 chars).')}</b>",
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
                 ud["cmp_username"]=ok; ud["complaint_step"]="deal"
                 await update.message.reply_text(complaint_prompt("deal",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
@@ -2547,7 +2571,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ok=validate_complaint_deal_id(raw)
                 if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Неверный номер сделки. Пример: GD00042','Invalid deal ID. Example: GD00042')}</b>"
+                        f"{Ewrn} <b>{R(ru,'Неверный номер сделки. Пример: GD29548','Invalid deal ID. Example: GD29548')}</b>"
                         + (R(ru,"\nИли «-» если сделки нет.","\nOr «-» if none.") if ctype=="market" else ""),
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
                 ud["cmp_deal"]=ok; ud["complaint_step"]="time"
