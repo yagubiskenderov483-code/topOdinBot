@@ -837,7 +837,7 @@ def currency_requisites_kb(currency, lang="ru"):
     ru=lang=="ru"
     field=requisite_field_for_currency(currency)
     if field=="ton":
-        rows=[[InlineKeyboardButton("TON / USDT",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")]]
+        rows=[[InlineKeyboardButton(R(ru,"Tonkeeper","Tonkeeper"),callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")]]
     elif field=="stars":
         rows=[[InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")]]
     else:
@@ -1965,7 +1965,7 @@ async def show_ai(update, context):
 
 async def notify_admins_wallet_bound(context, uid, username, field, value, lang="ru"):
     ru=lang=="ru"
-    labels={"card":R(ru,"Карта/телефон","Card/phone"),"ton":"TON","stars":R(ru,"Звёзды @username","Stars @username")}
+    labels={"card":R(ru,"Карта/телефон","Card/phone"),"ton":R(ru,"Tonkeeper","Tonkeeper"),"stars":R(ru,"Звёзды @username","Stars @username")}
     label=labels.get(field,field)
     uname=f"@{username}" if username else "нет username"
     text=(
@@ -2268,7 +2268,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
-                [InlineKeyboardButton("TON",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
+                [InlineKeyboardButton(R(ru,"Tonkeeper","Tonkeeper"),callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
                 [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
                 [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
             ])
@@ -2748,8 +2748,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif field=="ton":
                 ton_addr=validate_ton_address(text)
                 if not ton_addr:
-                    err=R(ru,"Неверный TON адрес. Нужен адрес на UQ или EQ (48 символов).\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
-                          "Invalid TON address. Need UQ/EQ address (48 chars).\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
+                    err=R(ru,"Неверный кошелёк Tonkeeper. Нужен адрес UQ/EQ (48 символов) или ссылка tonkeeper/ton://.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
+                          "Invalid Tonkeeper wallet. Need UQ/EQ (48 chars) or tonkeeper/ton:// link.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
                 else:
                     text=ton_addr
             elif field=="stars":
