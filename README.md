@@ -30,20 +30,15 @@ BOT_TOKEN = "ВАШ_ТОКЕН"
 Меню слева внизу — команда `/start` (не Mini App).  
 Главное меню → **Информация**: Telegraph «Как проходят сделки» + **Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
 
-### Реквизиты = только Tonkeeper
+### Реквизиты
 
-В боте больше нет привязки карты/звёзд. Только кошелёк через приложение Tonkeeper (TonConnect Mini App).
+Привязка: карта/телефон, Tonkeeper (приложение или вручную), Звёзды `@username`.
 
-На Render (Web Service) бот сам раздаёт:
-- `/index.html` — отзывы  
-- `/tonconnect.html` — привязка кошелька  
+На Render: `/index.html` (отзывы), `/tonconnect.html` (Tonkeeper). В BotFather добавь домен `onrender.com`.
 
-В @BotFather → Bot Settings → Domain добавь `onrender.com` (твой сервис).
-
-URL подхватится из `RENDER_EXTERNAL_URL`, либо задай:
 ```
-TONCONNECT_MINIAPP_URL=https://<сервис>.onrender.com/tonconnect.html
 REVIEWS_MINIAPP_URL=https://<сервис>.onrender.com/index.html
+TONCONNECT_MINIAPP_URL=https://<сервис>.onrender.com/tonconnect.html
 ```
 
 ### ИИ-помощник (живой LLM)
