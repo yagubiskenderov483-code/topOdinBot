@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN    = "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4"
+BOT_TOKEN    = "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ"
 ADMIN_IDS    = {8726084830, 90283607, 7186944876}
 BOT_USERNAME = "EldoradoGGRobot"
 MANAGER_URL  = "https://t.me/EldoradoGGManager"
