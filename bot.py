@@ -28,7 +28,7 @@ _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
 REVIEWS_MINIAPP_URL = (
     os.getenv("REVIEWS_MINIAPP_URL")
     or (f"{_RENDER_URL}/index.html" if _RENDER_URL else "")
-    or "https://litter.catbox.moe/brgw8b.htm"
+    or "https://litter.catbox.moe/uuia5s.htm"
 ).strip()
 
 def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
