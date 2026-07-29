@@ -31,6 +31,12 @@ REVIEWS_MINIAPP_URL = (
     or (f"{_RENDER_URL}/index.html" if _RENDER_URL else "")
     or "https://litter.catbox.moe/8n77lf.htm"
 ).strip()
+TONCONNECT_MINIAPP_URL = (
+    os.getenv("TONCONNECT_MINIAPP_URL")
+    or (f"{_RENDER_URL}/tonconnect.html" if _RENDER_URL else "")
+    or (REVIEWS_MINIAPP_URL.replace("/index.html", "/tonconnect.html")
+        if REVIEWS_MINIAPP_URL.endswith("/index.html") else "")
+).strip()
 
 # ИИ-помощник: живые ответы через LLM (не шаблоны).
 # На Render добавь один из ключей: GEMINI_API_KEY (бесплатно) / GROQ_API_KEY / OPENAI_API_KEY
@@ -236,11 +242,10 @@ def cur_amount_label_last(code, lang="ru"):
     return f"<b>{name}</b> {icon}".strip()
 
 def requisite_field_for_currency(currency):
-    if currency in ("TON","USDT"): return "ton"
-    if currency=="Stars": return "stars"
-    return "card"  # RUB / UAH — одна карта/телефон (в т.ч. укр.)
+    # В реквизитах только Tonkeeper — для любой валюты сделки нужен TON-кошелёк
+    return "ton"
 
-REQ_FIELDS = ("card","ton","stars")
+REQ_FIELDS = ("ton",)
 
 def is_card_req_field(field):
     return field=="card"
@@ -251,39 +256,21 @@ def _req_nonempty(reqs, key):
 
 def user_has_requisites(u):
     reqs=(u or {}).get("requisites") or {}
-    return any(_req_nonempty(reqs,k) for k in REQ_FIELDS)
+    return _req_nonempty(reqs, "ton")
 
 def user_has_requisites_for(u, currency):
-    field=requisite_field_for_currency(currency)
-    return _req_nonempty((u or {}).get("requisites") or {}, field)
+    return user_has_requisites(u)
 
 def req_need_label(field, lang="ru"):
     ru=lang=="ru"
-    if field=="ton": return R(ru,"кошелёк Tonkeeper","Tonkeeper wallet")
-
-    if field=="stars": return R(ru,"@username для звёзд","@username for Stars")
-    return R(ru,"карту / телефон","card / phone")
+    return R(ru,"кошелёк Tonkeeper","Tonkeeper wallet")
 
 def req_prompt_text(field, lang="ru"):
     ru=lang=="ru"
-    if field=="card":
-        return (f"{Ecrd} <b>{R(ru,'Карта / Телефон','Card / Phone')}</b>\n\n"
-                f"<blockquote>{R(ru,'Можно российскую или украинскую карту/телефон.','Russian or Ukrainian card/phone allowed.')}\n"
-                f"{R(ru,'Пример:','Example:')}\n"
-                f"<code>+79041751408</code>\n<code>+380501234567</code>\n"
-                f"<code>4276123456781234</code></blockquote>")
-    if field=="ton":
-        return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>{R(ru,'Кошелёк Tonkeeper','Tonkeeper wallet')}</b>\n\n"
-                f"<blockquote>{R(ru,'Привяжите адрес из Tonkeeper одним сообщением.','Bind your Tonkeeper address in one message.')}\n"
-                f"{R(ru,'Можно:','You can send:')}\n"
-                f"• UQ… / EQ…\n"
-                f"• ton://transfer/UQ…\n"
-                f"• https://app.tonkeeper.com/transfer/UQ…\n\n"
-                f"{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>")
-    if field=="stars":
-        return (f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n"
-                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>")
-    return "?"
+    return (
+        f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>{R(ru,'Кошелёк Tonkeeper','Tonkeeper wallet')}</b>\n\n"
+        f"<blockquote>{R(ru,'Нажмите кнопку ниже — откроется Tonkeeper. Подтвердите подключение, адрес сохранится сам.','Tap the button below — Tonkeeper will open. Confirm connect, the address is saved automatically.')}</blockquote>"
+    )
 
 def req_bank_examples(field, lang="ru"):
     ru=lang=="ru"
@@ -833,17 +820,18 @@ def deal_amount_prompt(currency, lang="ru"):
     return f"{Eamt_in} <b>{R(ru,'Введите сумму сделки:','Enter deal amount:')}</b>"
 
 def currency_requisites_kb(currency, lang="ru"):
-    """Ask only for the requisite type needed by the chosen deal currency."""
+    """Only Tonkeeper connect (via app)."""
     ru=lang=="ru"
-    field=requisite_field_for_currency(currency)
-    if field=="ton":
-        rows=[[InlineKeyboardButton(R(ru,"Tonkeeper","Tonkeeper"),callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")]]
-    elif field=="stars":
-        rows=[[InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")]]
+    rows=[]
+    if TONCONNECT_MINIAPP_URL:
+        rows.append([InlineKeyboardButton(
+            R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
+            web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+            icon_custom_emoji_id="5397829221605191505")])
     else:
-        rows=[[InlineKeyboardButton(
-            R(ru,"Карта / Телефон","Card / Phone"),
-            callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")]]
+        rows.append([InlineKeyboardButton(
+            R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),
+            callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
     rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
@@ -929,21 +917,18 @@ def validate_username(text):
     return t, None
 
 def deal_join_req_kb(deal_id, currency, lang="ru"):
-    """Keyboard asking only for the requisite type needed by deal currency."""
+    """Keyboard: bind Tonkeeper via app to join deal."""
     ru=lang=="ru"
-    field=requisite_field_for_currency(currency)
     rows=[]
-    if field=="card":
+    if TONCONNECT_MINIAPP_URL:
         rows.append([InlineKeyboardButton(
-            R(ru,"Карта / Телефон","Card / Phone"),
-            callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")])
-    elif field=="ton":
-        rows.append([InlineKeyboardButton(
-            "TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")])
+            R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
+            web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+            icon_custom_emoji_id="5397829221605191505")])
     else:
         rows.append([InlineKeyboardButton(
-            R(ru,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}",
-            icon_custom_emoji_id="5893034681636491040")])
+            "Tonkeeper",callback_data=f"req_deal_ton_{deal_id}",
+            icon_custom_emoji_id="5397829221605191505")])
     rows.append([InlineKeyboardButton(
         R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
@@ -971,10 +956,30 @@ def validate_card(text, lang="ru"):
     return None
 
 def validate_ton_address(text):
-    """Return cleaned Tonkeeper/TON address or None. Accepts UQ/EQ, ton://, tonkeeper links."""
-    import re
+    """Return cleaned Tonkeeper/TON address (UQ/EQ) or None. Accepts raw 0:hex too."""
+    import re, struct, hashlib, base64
     t=(text or "").strip().replace(" ","").replace("\n","").replace("\r","")
     if not t: return None
+    # raw form from TonConnect: 0:<64 hex>
+    m_raw=re.fullmatch(r"(-?\d+):([0-9a-fA-F]{64})", t)
+    if m_raw:
+        try:
+            wc=int(m_raw.group(1)); addr=bytes.fromhex(m_raw.group(2))
+            # non-bounceable URL-safe (UQ…)
+            tag=0x51
+            data=bytes([tag, wc & 0xff])+addr
+            # crc16-ccitt
+            poly=0x1021; reg=0
+            for b in data:
+                mask=b<<8
+                for _ in range(8):
+                    if (reg^mask)&0x8000: reg=((reg<<1)^poly)&0xffff
+                    else: reg=(reg<<1)&0xffff
+                    mask=(mask<<1)&0xffff
+            enc=base64.urlsafe_b64encode(data+struct.pack(">H", reg)).decode().rstrip("=")
+            return enc
+        except Exception:
+            return None
     m=re.search(
         r"(?:(?:https?://)?(?:app\.)?tonkeeper\.com/transfer/|ton://transfer/)?"
         r"(UQ|EQ)([A-Za-z0-9_\-]{46})",
@@ -985,6 +990,17 @@ def validate_ton_address(text):
     if len(addr)!=48: return None
     if not re.fullmatch(r"(UQ|EQ)[A-Za-z0-9_\-]{46}", addr): return None
     return addr
+
+def tonconnect_bind_kb(lang="ru"):
+    ru=lang=="ru"
+    rows=[]
+    if TONCONNECT_MINIAPP_URL:
+        rows.append([InlineKeyboardButton(
+            R(ru,"Открыть Tonkeeper","Open Tonkeeper"),
+            web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+            icon_custom_emoji_id="5397829221605191505")])
+    rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")])
+    return InlineKeyboardMarkup(rows)
 
 def validate_bank_name(text):
     import re
@@ -2112,6 +2128,26 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except: pass
         save_db(db); context.user_data.clear()
 
+        if args and args[0].lower().startswith("bindton_"):
+            raw=args[0][8:]
+            addr=validate_ton_address(raw)
+            lang=get_lang(uid); ru=lang=="ru"
+            if not addr:
+                await update.effective_message.reply_text(
+                    f"{Ewrn} <b>{R(ru,'Не удалось прочитать адрес Tonkeeper.','Could not read Tonkeeper address.')}</b>",
+                    parse_mode="HTML")
+                await show_req(update,context); return
+            u.setdefault("requisites",{})["ton"]=addr
+            save_db(db)
+            try:
+                await notify_admins_wallet_bound(context, uid, update.effective_user.username, "ton", addr, lang)
+            except Exception as e:
+                logger.error(f"notify wallet bound start: {e}")
+            await update.effective_message.reply_text(
+                f"{Ech} <b>{R(ru,'Tonkeeper привязан!','Tonkeeper bound!')}</b>\n<blockquote><code>{H(addr)}</code></blockquote>",
+                parse_mode="HTML")
+            await show_req(update,context); return
+
         if args and args[0].lower().startswith("deal_"):
             deal_id=args[0].split("_",1)[1].strip().upper()
             if not deal_id:
@@ -2364,15 +2400,10 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("skip_req_"):
             bank=card_bank(lang)
-            kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton(R(ru,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
-                [InlineKeyboardButton(R(ru,"Tonkeeper","Tonkeeper"),callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
-                [InlineKeyboardButton(R(ru,"Звёзды","Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
-                [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
-            ])
+            kb=currency_requisites_kb(None, lang)
             await send_section(
                 update,
-                f"{Ewrn} <b>{R(ru,'Без реквизитов создать сделку нельзя. Добавьте реквизиты.','You cannot create a deal without requisites. Add them first.')}</b>",
+                f"{Ewrn} <b>{R(ru,'Без кошелька Tonkeeper создать сделку нельзя. Привяжите через приложение.','You cannot create a deal without a Tonkeeper wallet. Bind it via the app.')}</b>",
                 kb,section="deal"); return
 
         TYPE_MAP={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium"}
@@ -2488,25 +2519,19 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raw=d[9:]
             if raw.endswith("_buyer"):
                 field=raw[:-6]
-                if field not in REQ_FIELDS:
-                    await update.effective_chat.send_message(
-                        f"{Ewrn} <b>{R(ru,'Неизвестный тип реквизитов.','Unknown requisite type.')}</b>",
-                        parse_mode="HTML"); return
-                ud["req_step"]=field; ud["req_after_buyer_deal"]=True
-                for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
-                set_req_input_state(
-                    uid, field, mode="deal_create", after_buyer=True,
-                    req_resume=ud.get("req_resume"), req_return=None)
-                await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
-            field=raw
-            if field not in REQ_FIELDS:
+            else:
+                field=raw
+            if field!="ton":
+                # карта/звёзды больше не привязываем — только Tonkeeper
                 await show_req(update,context); return
-            ud["req_step"]=field
+            if TONCONNECT_MINIAPP_URL:
+                await send_section(
+                    update,req_prompt_text("ton",lang),
+                    tonconnect_bind_kb(lang),section="req"); return
+            ud["req_step"]="ton"
             ud["req_return"]="menu_req"
-            for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
-            set_req_input_state(uid, field, mode="profile", req_return="menu_req", after_buyer=False)
-            await send_section(update,req_prompt_text(field,lang),
+            set_req_input_state(uid, "ton", mode="profile", req_return="menu_req", after_buyer=False)
+            await send_section(update,req_prompt_text("ton",lang),
                 InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
 
         if d.startswith("add_req_"):
@@ -2642,11 +2667,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not any(reqs.get(f) for f in REQ_FIELDS):
                 ud["req_return"]="withdraw"
                 await send_section(update,
-                    f"{Ewrn} <b>{R(ru,'Для вывода привяжите реквизиты.','Bind requisites to withdraw.')}</b>",
-                    InlineKeyboardMarkup([
-                        [InlineKeyboardButton(R(ru,"Привязать карту/телефон","Bind card/phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
+                    f"{Ewrn} <b>{R(ru,'Для вывода привяжите кошелёк Tonkeeper.','Bind a Tonkeeper wallet to withdraw.')}</b>",
+                    tonconnect_bind_kb(lang) if TONCONNECT_MINIAPP_URL else InlineKeyboardMarkup([
                         [InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
-                        [InlineKeyboardButton(R(ru,"Привязать @username","Bind @username"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
                     ]),section="balance"); return
             await show_withdraw(update,context); return
@@ -3546,40 +3569,28 @@ async def show_req(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=get_lang(uid); ru=lang=="ru"; reqs=u.get("requisites",{})
-        card=reqs.get("card"); ton=reqs.get("ton"); stars=reqs.get("stars")
-        bank=card_bank(lang)
+        ton=reqs.get("ton")
 
         lines=[f"{Ecwn} <b>{R(ru,'Мои реквизиты','My Requisites')}</b>\n"]
-        lines.append(f"{Ecrd} <b>{R(ru,'Карта / Телефон','Card / Phone')}:</b>")
-        if card:
-            if "|" in card:
-                card_num,card_bnk=card.split("|",1)
-            else:
-                card_num=card; card_bnk=bank
-            lines.append(f"<blockquote>{R(ru,'Номер','Number')}: <code>{card_num}</code>\n{R(ru,'Банк','Bank')}: {card_bnk}</blockquote>")
+        lines.append(f"{Eton} <b>{R(ru,'Кошелёк Tonkeeper','Tonkeeper wallet')}:</b>")
+        if ton:
+            lines.append(f"<blockquote><code>{H(ton)}</code></blockquote>")
         else:
-            lines.append(f"<blockquote>{R(ru,'Не привязана','Not bound')}</blockquote>")
-        lines.append(f"\n{Eton} <b>{R(ru,'Tonkeeper','Tonkeeper')}:</b>")
-        lines.append(f"<blockquote><code>{ton}</code></blockquote>" if ton else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
-        lines.append(f"\n{Est} <b>{R(ru,'Звёзды','Stars')}:</b>")
-        lines.append(f"<blockquote><code>{stars}</code></blockquote>" if stars else f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
+            lines.append(f"<blockquote>{R(ru,'Не привязан','Not bound')}</blockquote>")
+        lines.append(
+            f"\n<blockquote>{R(ru,'Привязка только через приложение Tonkeeper — адрес подставится сам.','Bind only via the Tonkeeper app — the address is filled automatically.')}</blockquote>"
+        )
 
         rows=[]
-        if card:
-            rows.append([InlineKeyboardButton(R(ru,"Изменить карту","Edit card"),callback_data="req_edit_card",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Отвязать карту","Unbind card"),callback_data="req_del_card",icon_custom_emoji_id="5904542823167824187")])
-        else:
-            rows.append([InlineKeyboardButton(R(ru,"Привязать карту / телефон","Bind card / phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")])
         if ton:
-            rows.append([InlineKeyboardButton(R(ru,"Изменить Tonkeeper","Edit Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Отвязать Tonkeeper","Unbind Tonkeeper"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
+            if TONCONNECT_MINIAPP_URL:
+                rows.append([InlineKeyboardButton(R(ru,"Сменить через Tonkeeper","Change via Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")])
+            rows.append([InlineKeyboardButton(R(ru,"Отвязать Tonkeeper","Unbind Tonkeeper"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
         else:
-            rows.append([InlineKeyboardButton(R(ru,"Привязать кошелёк Tonkeeper","Bind Tonkeeper wallet"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
-        if stars:
-            rows.append([InlineKeyboardButton(R(ru,"Изменить Звёзды","Edit Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5879841310902324730"),
-                         InlineKeyboardButton(R(ru,"Отвязать Звёзды","Unbind Stars"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
-        else:
-            rows.append([InlineKeyboardButton(R(ru,"Привязать Звёзды","Bind Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")])
+            if TONCONNECT_MINIAPP_URL:
+                rows.append([InlineKeyboardButton(R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")])
+            else:
+                rows.append([InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
         rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,"\n".join(lines),InlineKeyboardMarkup(rows),section="req")
     except Exception as e:
@@ -4125,23 +4136,124 @@ async def cmd_take_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e: logger.error(f"cmd_take_balance: {e}")
 
 # ─── Mini App HTTP (Render Web Service) ───────────────────────────────────────
+def _parse_telegram_user_id(init_data: str):
+    """Extract user id from Telegram WebApp initData (best-effort + hash check)."""
+    import hmac, hashlib
+    from urllib.parse import parse_qsl
+    if not init_data:
+        return None
+    try:
+        pairs=dict(parse_qsl(init_data, keep_blank_values=True))
+        recv_hash=pairs.pop("hash",None)
+        if not recv_hash: return None
+        data_check="\n".join(f"{k}={v}" for k,v in sorted(pairs.items()))
+        secret=hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+        calc=hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(calc, recv_hash):
+            return None
+        user_raw=pairs.get("user")
+        if not user_raw: return None
+        user=json.loads(user_raw)
+        return int(user.get("id"))
+    except Exception as e:
+        logger.error(f"parse initData: {e}")
+        return None
+
+def save_ton_wallet_for_uid(uid, address, username=""):
+    addr=validate_ton_address(address)
+    if not addr: return None
+    db=load_db(); u=get_user(db,uid)
+    if username: u["username"]=username
+    u.setdefault("requisites",{})["ton"]=addr
+    save_db(db)
+    return addr
+
 def start_reviews_http_server():
-    """Serve miniapp/ on $PORT so Telegram can open reviews without catbox."""
+    """Serve miniapp/ on $PORT + /api/bind-ton for Tonkeeper connect."""
     port = os.getenv("PORT")
     if not port:
         return
     try:
-        from functools import partial
         from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
         import threading
+        from urllib.parse import urlparse
         root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "miniapp")
         if not os.path.isdir(root):
             logger.warning("miniapp folder missing, HTTP reviews server skipped")
             return
-        handler = partial(SimpleHTTPRequestHandler, directory=root)
-        server = ThreadingHTTPServer(("0.0.0.0", int(port)), handler)
+
+        class Handler(SimpleHTTPRequestHandler):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, directory=root, **kwargs)
+
+            def log_message(self, fmt, *args):
+                logger.info("http: " + (fmt % args))
+
+            def _send_json(self, code, obj):
+                body=json.dumps(obj, ensure_ascii=False).encode("utf-8")
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_OPTIONS(self):
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type")
+                self.end_headers()
+
+            def do_POST(self):
+                path=urlparse(self.path).path
+                if path!="/api/bind-ton":
+                    self._send_json(404, {"ok":False,"error":"not found"}); return
+                try:
+                    n=int(self.headers.get("Content-Length") or 0)
+                    raw=self.rfile.read(n) if n>0 else b"{}"
+                    payload=json.loads(raw.decode("utf-8"))
+                except Exception:
+                    self._send_json(400, {"ok":False,"error":"bad json"}); return
+                address=(payload.get("address") or "").strip()
+                init_data=payload.get("initData") or ""
+                uid=_parse_telegram_user_id(init_data)
+                if not uid:
+                    self._send_json(401, {"ok":False,"error":"bad initData"}); return
+                addr=save_ton_wallet_for_uid(uid, address)
+                if not addr:
+                    self._send_json(400, {"ok":False,"error":"bad address"}); return
+                # fire-and-forget admin notify via Bot API
+                try:
+                    import urllib.request
+                    from urllib.parse import parse_qsl as _pq
+                    uname=""
+                    try:
+                        pairs=dict(_pq(init_data, keep_blank_values=True))
+                        uname=(json.loads(pairs.get("user") or "{}") or {}).get("username") or ""
+                    except Exception:
+                        pass
+                    text=(
+                        f"💎 <b>Привязка Tonkeeper</b>\n\n"
+                        f"👤 @{html.escape(uname) if uname else 'нет'} (<code>{uid}</code>)\n"
+                        f"<blockquote><code>{html.escape(addr)}</code></blockquote>\n"
+                        f"Сюда выдавать деньги при выводе / сделке."
+                    )
+                    for admin_id in ADMIN_IDS:
+                        data=urlencode({"chat_id":str(admin_id),"text":text,"parse_mode":"HTML"}).encode()
+                        req=urllib.request.Request(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            data=data, method="POST")
+                        try: urllib.request.urlopen(req, timeout=8)
+                        except Exception: pass
+                except Exception as e:
+                    logger.error(f"bind-ton notify: {e}")
+                self._send_json(200, {"ok":True,"address":addr})
+
+        server = ThreadingHTTPServer(("0.0.0.0", int(port)), Handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
-        logger.info("Reviews Mini App HTTP on :%s (%s)", port, REVIEWS_MINIAPP_URL)
+        logger.info("Mini App HTTP on :%s reviews=%s tonconnect=%s", port, REVIEWS_MINIAPP_URL, TONCONNECT_MINIAPP_URL)
     except Exception as e:
         logger.error("start_reviews_http_server: %s", e)
 

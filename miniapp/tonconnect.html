@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Tonkeeper — Eldorado GG</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #1a3a2a 0%, #0b0f0c 55%, #070907 100%);
+      color: #e8f0ea; display: flex; align-items: center; justify-content: center;
+      padding: 24px 16px;
+    }
+    .card {
+      width: min(420px, 100%);
+      background: rgba(18, 28, 22, 0.92);
+      border: 1px solid rgba(120, 180, 140, 0.18);
+      border-radius: 18px;
+      padding: 22px 18px 18px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.35);
+    }
+    h1 { margin: 0 0 8px; font-size: 1.35rem; font-weight: 700; }
+    p { margin: 0 0 16px; opacity: .82; line-height: 1.45; font-size: .95rem; }
+    #ton-connect { display: flex; justify-content: center; margin: 18px 0 8px; min-height: 48px; }
+    .status { margin-top: 14px; font-size: .9rem; line-height: 1.4; min-height: 1.4em; opacity: .9; }
+    .ok { color: #7dffa7; }
+    .err { color: #ff8f8f; }
+    .addr { word-break: break-all; font-family: ui-monospace, monospace; font-size: .8rem; opacity: .85; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Привязка Tonkeeper</h1>
+    <p>Откройте Tonkeeper, подтвердите подключение — адрес сохранится в боте автоматически.</p>
+    <div id="ton-connect"></div>
+    <div id="status" class="status"></div>
+    <div id="addr" class="addr"></div>
+  </div>
+  <script>
+    (function () {
+      var tg = window.Telegram && window.Telegram.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        try { tg.setHeaderColor("#0b0f0c"); tg.setBackgroundColor("#0b0f0c"); } catch (e) {}
+      }
+      var statusEl = document.getElementById("status");
+      var addrEl = document.getElementById("addr");
+      function setStatus(text, cls) {
+        statusEl.textContent = text || "";
+        statusEl.className = "status " + (cls || "");
+      }
+      function crc16(data) {
+        var poly = 0x1021, reg = 0;
+        for (var i = 0; i < data.length; i++) {
+          var mask = data[i] << 8;
+          for (var j = 0; j < 8; j++) {
+            if ((reg ^ mask) & 0x8000) reg = ((reg << 1) ^ poly) & 0xffff;
+            else reg = (reg << 1) & 0xffff;
+            mask = (mask << 1) & 0xffff;
+          }
+        }
+        return [(reg >> 8) & 0xff, reg & 0xff];
+      }
+      function b64url(bytes) {
+        var bin = "";
+        for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+      }
+      function friendlyFromRaw(raw) {
+        if (!raw) return "";
+        if (/^(UQ|EQ)[A-Za-z0-9_-]{46}$/.test(raw)) return raw;
+        var m = String(raw).match(/^(-?\d+):([0-9a-fA-F]{64})$/);
+        if (!m) return raw;
+        var wc = parseInt(m[1], 10) & 0xff;
+        var hex = m[2];
+        var addr = [];
+        for (var i = 0; i < 64; i += 2) addr.push(parseInt(hex.substr(i, 2), 16));
+        // non-bounceable tag 0x51 → UQ…
+        var data = [0x51, wc].concat(addr);
+        var full = data.concat(crc16(data));
+        return b64url(full);
+      }
+      async function bindAddress(address) {
+        var clean = friendlyFromRaw(address);
+        if (!clean) throw new Error("empty address");
+        addrEl.textContent = clean;
+        setStatus("Сохраняю в боте…", "");
+        var initData = (tg && tg.initData) || "";
+        var res = await fetch("/api/bind-ton", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address: clean, initData: initData })
+        });
+        var data = {};
+        try { data = await res.json(); } catch (e) {}
+        if (!res.ok || !data.ok) {
+          throw new Error((data && data.error) || ("HTTP " + res.status));
+        }
+        setStatus("Готово! Кошелёк привязан. Можно закрыть окно.", "ok");
+        try { if (tg) tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
+        setTimeout(function () { try { tg.close(); } catch (e) {} }, 1200);
+      }
+      var manifestUrl = new URL("tonconnect-manifest.json", window.location.href).toString();
+      var ui = new TON_CONNECT_UI.TonConnectUI({
+        manifestUrl: manifestUrl,
+        buttonRootId: "ton-connect"
+      });
+      ui.onStatusChange(function (wallet) {
+        if (!wallet || !wallet.account) return;
+        var address = wallet.account.address;
+        bindAddress(address).catch(function (err) {
+          console.error(err);
+          setStatus("Не удалось сохранить: " + (err && err.message ? err.message : err), "err");
+          // fallback: deep-link back into bot with start param (friendly only)
+          try {
+            if (/^(UQ|EQ)[A-Za-z0-9_-]{46}$/.test(address) && tg) {
+              var link = "https://t.me/EldoradoGGRobot?start=bindton_" + address;
+              tg.openTelegramLink(link);
+            }
+          } catch (e) {}
+        });
+      });
+      setStatus("Нажмите Connect и подтвердите в Tonkeeper.", "");
+    })();
+  </script>
+</body>
+</html>
