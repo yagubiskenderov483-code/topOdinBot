@@ -8,7 +8,14 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN    = "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ"
+# Актуальный токен. Старый AAGO3vi... отозван — если он в Render Env, игнорируем.
+_BOT_TOKEN_DEFAULT = "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ"
+_BOT_TOKEN_REVOKED = "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4"
+_tok = (os.getenv("BOT_TOKEN") or "").strip()
+if (not _tok) or (_tok == _BOT_TOKEN_REVOKED) or ("AAGO3viGf3PERRFA" in _tok):
+    BOT_TOKEN = _BOT_TOKEN_DEFAULT
+else:
+    BOT_TOKEN = _tok
 ADMIN_IDS    = {8726084830, 90283607, 7186944876}
 BOT_USERNAME = "EldoradoGGRobot"
 MANAGER_URL  = "https://t.me/EldoradoGGManager"
@@ -21,7 +28,30 @@ CARD_NUM     = "+79041751408"
 CARD_NAME    = "Александр Ф."
 CARD_BANK_RU = "ВТБ"
 CARD_BANK_EN = "VTB"
-DB_FILE      = "db.json"
+
+def _resolve_data_dir():
+    """Каталог для db/баннеров: Render Disk (/data) или рядом с bot.py."""
+    candidates=[]
+    env_dir=(os.getenv("DATA_DIR") or "").strip()
+    if env_dir: candidates.append(env_dir)
+    candidates.extend(["/data", "/var/data", os.path.dirname(os.path.abspath(__file__))])
+    for d in candidates:
+        try:
+            os.makedirs(d, exist_ok=True)
+            probe=os.path.join(d, ".eldorado_write_test")
+            with open(probe, "w", encoding="utf-8") as f: f.write("ok")
+            os.remove(probe)
+            return d
+        except Exception:
+            continue
+    return os.path.dirname(os.path.abspath(__file__))
+
+DATA_DIR = _resolve_data_dir()
+DB_FILE = (os.getenv("DB_FILE") or "").strip() or os.path.join(DATA_DIR, "db.json")
+BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "banners_seed.json")
+# Копия сида на постоянном диске (переживает redeploy при Disk на /data)
+BANNERS_SEED_DATA = os.path.join(DATA_DIR, "banners_seed.json")
 DEAL_COUNTER_START = 29548
 # Reviews Mini App (self-contained HTML). Do not use BrewPage — it shows a side panel in Telegram.
 # Prefer explicit env, then Render public URL, then temporary litterbox host.
@@ -390,6 +420,75 @@ BANNER_SECTIONS = {
 }
 
 # ─── DB ───────────────────────────────────────────────────────────────────────
+def _banner_entry_filled(b):
+    if not isinstance(b, dict): return False
+    return bool(b.get("photo") or b.get("video") or b.get("gif") or (b.get("text") or "").strip())
+
+def load_banners_seed():
+    """Читает сохранённые баннеры (репо + /data), чтобы не ставить заново после деплоя."""
+    for path in (BANNERS_SEED_DATA, BANNERS_SEED_FILE):
+        try:
+            if not os.path.exists(path): continue
+            with open(path, "r", encoding="utf-8") as f:
+                data=json.load(f)
+            if isinstance(data, dict) and data.get("banners") is not None:
+                return data
+            if isinstance(data, dict) and any(k in BANNER_SECTIONS for k in data):
+                return {"banners": data, "log_banners": {}, "menu_description": None}
+        except Exception as e:
+            logger.error(f"load_banners_seed {path}: {e}")
+    # Env JSON (опционально)
+    raw=(os.getenv("BANNERS_SEED_JSON") or "").strip()
+    if raw:
+        try:
+            data=json.loads(raw)
+            if isinstance(data, dict):
+                if data.get("banners") is None and any(k in BANNER_SECTIONS for k in data):
+                    data={"banners": data}
+                return data
+        except Exception as e:
+            logger.error(f"BANNERS_SEED_JSON: {e}")
+    return None
+
+def save_banners_seed(db):
+    """Пишет баннеры в seed-файлы — после деплоя подтянутся сами."""
+    payload={
+        "banners": db.get("banners") or {},
+        "log_banners": db.get("log_banners") or {},
+        "menu_description": db.get("menu_description"),
+        "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    for path in {BANNERS_SEED_FILE, BANNERS_SEED_DATA}:
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            logger.info(f"banners seed saved: {path}")
+        except Exception as e:
+            logger.error(f"save_banners_seed {path}: {e}")
+
+def apply_banners_seed(db):
+    """Если в db пусто — восстанавливает баннеры из seed (после fresh deploy)."""
+    seed=load_banners_seed()
+    if not seed: return db, False
+    changed=False
+    if not db.get("banners"): db["banners"]={}
+    for key, val in (seed.get("banners") or {}).items():
+        if key not in BANNER_SECTIONS: continue
+        if _banner_entry_filled(val) and not _banner_entry_filled(db["banners"].get(key)):
+            db["banners"][key]=val
+            changed=True
+    if seed.get("log_banners"):
+        if not db.get("log_banners"): db["log_banners"]={}
+        for key, val in seed["log_banners"].items():
+            if key not in db["log_banners"] and val:
+                db["log_banners"][key]=val
+                changed=True
+    if seed.get("menu_description") and not db.get("menu_description"):
+        db["menu_description"]=seed["menu_description"]
+        changed=True
+    return db, changed
+
 def load_db():
     if os.path.exists(DB_FILE):
         with open(DB_FILE,"r",encoding="utf-8") as f: db=json.load(f)
@@ -402,10 +501,21 @@ def load_db():
             db["deal_counter"]=DEAL_COUNTER_START
     except Exception:
         db["deal_counter"]=DEAL_COUNTER_START
+    if "banners" not in db or db["banners"] is None: db["banners"]={}
     return db
 
 def save_db(db):
+    try:
+        os.makedirs(os.path.dirname(DB_FILE) or ".", exist_ok=True)
+    except Exception:
+        pass
     with open(DB_FILE,"w",encoding="utf-8") as f: json.dump(db, f, ensure_ascii=False, indent=2)
+    # Баннеры всегда дублируем в seed — чтобы не слетали после деплоя
+    try:
+        if db.get("banners") or db.get("log_banners") or db.get("menu_description"):
+            save_banners_seed(db)
+    except Exception as e:
+        logger.error(f"save_db seed: {e}")
 
 def get_user(db, uid):
     k=str(uid)
@@ -4399,6 +4509,10 @@ def start_reviews_http_server():
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
+    logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
+    if "AAGO3viGf3PERRFA" in BOT_TOKEN:
+        raise SystemExit("Revoked Telegram bot token in use. Set BOT_TOKEN to the new token from BotFather.")
+
     db=load_db()
     if not db.get("banners"): db["banners"]={}
     lp=db.get("banner_photo"); lv=db.get("banner_video"); lg=db.get("banner_gif"); lt=db.get("banner") or ""
@@ -4406,6 +4520,16 @@ def main():
         db["banners"]["main"]={"photo":lp,"video":lv,"gif":lg,"text":lt}
         db["banner_photo"]=db["banner_video"]=db["banner_gif"]=db["banner"]=None
         save_db(db)
+
+    # После деплоя db пустой — поднимаем баннеры из seed (/data или banners_seed.json)
+    db, restored = apply_banners_seed(db)
+    if restored:
+        save_db(db)
+        logger.info("Restored banners from seed (%s sections)",
+                    sum(1 for v in (db.get("banners") or {}).values() if _banner_entry_filled(v)))
+    elif any(_banner_entry_filled(v) for v in (db.get("banners") or {}).values()):
+        # Уже есть баннеры в db — закрепим seed на диск
+        save_banners_seed(db)
 
     start_reviews_http_server()
 
@@ -4437,6 +4561,8 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION,handle_adm_msg))
 
     print(f"Bot @{BOT_USERNAME} started!")
+    print(f"DB: {DB_FILE}")
+    print(f"Banners seed: {BANNERS_SEED_FILE}")
     print(f"AI provider: {resolve_ai_provider()} (Eldorado AI via g4f if no API keys)")
     print(f"Reviews Mini App: {REVIEWS_MINIAPP_URL}")
     print(f"TonConnect Mini App: {TONCONNECT_MINIAPP_URL}")

@@ -1,5 +1,23 @@
 services:
   - type: web
+    name: eldorado-bot
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    disk:
+      name: eldorado-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DB_FILE
+        value: /data/db.json
+      - key: DATA_DIR
+        value: /data
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  - type: web
     name: eldorado-reviews-miniapp
     runtime: static
     buildCommand: python3 miniapp/build.py

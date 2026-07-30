@@ -11,12 +11,24 @@ python bot.py
 
 ## ⚙️ Настройка
 
-Вставь свой токен в `bot.py`:
-```python
-BOT_TOKEN = "ВАШ_ТОКЕН"
-```
+Токен берётся из env `BOT_TOKEN` или из актуального значения в `bot.py`.  
+Старый токен `...AAGO3vi...` отозван — если он висит в Render → Environment, **удали** его (или поставь новый из @BotFather).
 
-Токен получить: @BotFather → /newbot
+### Баннеры после деплоя
+
+Баннеры пишутся в `db.json` и дублируются в `banners_seed.json`.  
+На Render нужен **Disk** (mount `/data`), иначе после Redeploy база снова пустая:
+
+1. Render → Web Service бота → **Disks** → Add Disk  
+2. Mount path: `/data`, Size: 1 GB  
+3. Environment:
+```
+DATA_DIR=/data
+DB_FILE=/data/db.json
+```
+4. Manual Deploy ветки **`main`**
+
+После одного выставления баннеров в `/admin` они переживают рестарты и деплои.
 
 ## 📁 Файлы
 
