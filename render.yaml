@@ -5,6 +5,7 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
+    healthCheckPath: /health
     disk:
       name: eldorado-data
       mountPath: /data
@@ -14,6 +15,10 @@ services:
         value: /data/db.json
       - key: DATA_DIR
         value: /data
+      - key: RENDER_KEEPALIVE
+        value: "1"
+      - key: KEEPALIVE_INTERVAL_SEC
+        value: "480"
       - key: PYTHON_VERSION
         value: "3.11.0"
 

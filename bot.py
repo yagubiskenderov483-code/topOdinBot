@@ -4419,22 +4419,24 @@ def save_ton_wallet_for_uid(uid, address, username=""):
     return addr
 
 def start_reviews_http_server():
-    """Serve miniapp/ on $PORT + /api/bind-ton for Tonkeeper connect."""
+    """Always bind $PORT on Render: /health + miniapp + /api/bind-ton."""
     port = os.getenv("PORT")
     if not port:
+        logger.warning("PORT not set — HTTP skipped (ok locally)")
         return
     try:
         from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
         import threading
         from urllib.parse import urlparse
         root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "miniapp")
-        if not os.path.isdir(root):
-            logger.warning("miniapp folder missing, HTTP reviews server skipped")
-            return
+        has_miniapp = os.path.isdir(root)
+        if not has_miniapp:
+            logger.warning("miniapp folder missing — still serving /health on :%s", port)
 
         class Handler(SimpleHTTPRequestHandler):
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, directory=root, **kwargs)
+                directory = root if has_miniapp else os.path.dirname(os.path.abspath(__file__))
+                super().__init__(*args, directory=directory, **kwargs)
 
             def log_message(self, fmt, *args):
                 logger.info("http: " + (fmt % args))
@@ -4446,15 +4448,40 @@ def start_reviews_http_server():
                 self.send_header("Content-Length", str(len(body)))
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.send_header("Access-Control-Allow-Headers", "Content-Type")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def _send_text(self, code, text):
+                body=(text or "").encode("utf-8")
+                self.send_response(code)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
                 self.end_headers()
                 self.wfile.write(body)
 
             def do_OPTIONS(self):
                 self.send_response(204)
                 self.send_header("Access-Control-Allow-Origin", "*")
-                self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
                 self.send_header("Access-Control-Allow-Headers", "Content-Type")
                 self.end_headers()
+
+            def do_GET(self):
+                path=urlparse(self.path).path or "/"
+                if path in ("/health", "/healthz", "/ping", "/status"):
+                    self._send_json(200, {"ok":True,"bot":BOT_USERNAME,"service":"eldorado"})
+                    return
+                if path == "/":
+                    index=os.path.join(root, "index.html") if has_miniapp else ""
+                    if index and os.path.isfile(index):
+                        return SimpleHTTPRequestHandler.do_GET(self)
+                    self._send_text(200, "Eldorado GG bot OK")
+                    return
+                if has_miniapp:
+                    return SimpleHTTPRequestHandler.do_GET(self)
+                self._send_json(404, {"ok":False,"error":"not found"})
 
             def do_POST(self):
                 path=urlparse(self.path).path
@@ -4471,19 +4498,18 @@ def start_reviews_http_server():
                 uid=_parse_telegram_user_id(init_data)
                 if not uid:
                     self._send_json(401, {"ok":False,"error":"bad initData"}); return
-                addr=save_ton_wallet_for_uid(uid, address)
+                uname=""
+                try:
+                    from urllib.parse import parse_qsl as _pq
+                    pairs=dict(_pq(init_data, keep_blank_values=True))
+                    uname=(json.loads(pairs.get("user") or "{}") or {}).get("username") or ""
+                except Exception:
+                    pass
+                addr=save_ton_wallet_for_uid(uid, address, username=uname)
                 if not addr:
                     self._send_json(400, {"ok":False,"error":"bad address"}); return
-                # fire-and-forget admin notify via Bot API
                 try:
                     import urllib.request
-                    from urllib.parse import parse_qsl as _pq
-                    uname=""
-                    try:
-                        pairs=dict(_pq(init_data, keep_blank_values=True))
-                        uname=(json.loads(pairs.get("user") or "{}") or {}).get("username") or ""
-                    except Exception:
-                        pass
                     text=(
                         f"💎 <b>Привязка Tonkeeper</b>\n\n"
                         f"👤 @{html.escape(uname) if uname else 'нет'} (<code>{uid}</code>)\n"
@@ -4502,10 +4528,40 @@ def start_reviews_http_server():
                 self._send_json(200, {"ok":True,"address":addr})
 
         server = ThreadingHTTPServer(("0.0.0.0", int(port)), Handler)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
-        logger.info("Mini App HTTP on :%s reviews=%s tonconnect=%s", port, REVIEWS_MINIAPP_URL, TONCONNECT_MINIAPP_URL)
+        threading.Thread(target=server.serve_forever, daemon=True, name="http-health").start()
+        logger.info("HTTP on :%s /health miniapp=%s reviews=%s", port, has_miniapp, REVIEWS_MINIAPP_URL)
+        start_render_keepalive()
     except Exception as e:
         logger.error("start_reviews_http_server: %s", e)
+
+def start_render_keepalive():
+    """Render Free sleep ~15 мин без HTTP — пинг публичного /health каждые ~8 мин."""
+    import threading, urllib.request
+    enabled=(os.getenv("RENDER_KEEPALIVE") or "1").strip().lower()
+    if enabled in ("0","false","no","off"):
+        logger.info("RENDER_KEEPALIVE disabled"); return
+    base=(os.getenv("KEEPALIVE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
+    if not base:
+        logger.warning("No RENDER_EXTERNAL_URL — keepalive off. Set it or use UptimeRobot → /health")
+        return
+    url=base + "/health"
+    try: interval=int(os.getenv("KEEPALIVE_INTERVAL_SEC") or "480")
+    except Exception: interval=480
+    interval=max(180, min(interval, 840))
+
+    def _loop():
+        time.sleep(45)
+        while True:
+            try:
+                req=urllib.request.Request(url, headers={"User-Agent":"EldoradoKeepAlive/1.0"})
+                with urllib.request.urlopen(req, timeout=25) as r:
+                    logger.info("keepalive %s -> %s", url, getattr(r, "status", "?"))
+            except Exception as e:
+                logger.warning("keepalive fail %s: %s", url, e)
+            time.sleep(interval)
+
+    threading.Thread(target=_loop, daemon=True, name="render-keepalive").start()
+    logger.info("keepalive every %ss -> %s", interval, url)
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
@@ -4537,9 +4593,16 @@ def main():
     async def post_init(application):
         await application.bot.set_my_commands([BotCommand("start","Главное меню")])
         await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
-        # Bottom-left menu = /start commands, not Mini App
         await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+        try:
+            await application.bot.delete_webhook(drop_pending_updates=True)
+        except Exception as e:
+            logger.warning("delete_webhook: %s", e)
     app.post_init=post_init
+
+    async def on_error(update, context):
+        logger.error("handler error: %s", context.error, exc_info=context.error)
+    app.add_error_handler(on_error)
 
     app.add_handler(CommandHandler("start",cmd_start))
     app.add_handler(CommandHandler("admin",cmd_admin))
@@ -4547,7 +4610,7 @@ def main():
     app.add_handler(CommandHandler("sendbalance",cmd_sendbalance))
     app.add_handler(CommandHandler("setdeals",cmd_setdeals))
     app.add_handler(CommandHandler("setturnover",cmd_setturnover))
-    app.add_handler(CommandHandler("addrep",cmd_addrep))       # FIX: добавлена регистрация
+    app.add_handler(CommandHandler("addrep",cmd_addrep))
     app.add_handler(CommandHandler("buy",cmd_buy))
     app.add_handler(CommandHandler("set_my_deals",cmd_set_deals))
     app.add_handler(CommandHandler("set_my_amount",cmd_set_amount))
@@ -4566,7 +4629,12 @@ def main():
     print(f"AI provider: {resolve_ai_provider()} (Eldorado AI via g4f if no API keys)")
     print(f"Reviews Mini App: {REVIEWS_MINIAPP_URL}")
     print(f"TonConnect Mini App: {TONCONNECT_MINIAPP_URL}")
-    app.run_polling()
+    # drop_pending_updates + retries: меньше падений от Conflict/сети на Render
+    app.run_polling(
+        drop_pending_updates=True,
+        bootstrap_retries=-1,
+        close_loop=False,
+    )
 
 if __name__=="__main__":
     main()
