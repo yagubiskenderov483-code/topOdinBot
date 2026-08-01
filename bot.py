@@ -21,6 +21,21 @@ else:
     BOT_TOKEN = _tok
 ADMIN_IDS    = {8726084830, 90283607, 7186944876}
 BOT_USERNAME = "EldoradoGG_Robot"
+
+def _bot_mention_fix(text):
+    """Любые старые юзы бота → актуальный BOT_USERNAME."""
+    if not isinstance(text, str) or not text:
+        return text
+    out=text
+    for old in ("EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot"):
+        out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
+        out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
+        # bare username only when clearly bot mention contexts already handled above
+    # also normalize accidental wrong casing of current name
+    out=out.replace("@EldoradoGG_robot", f"@{BOT_USERNAME}")
+    out=out.replace("t.me/EldoradoGG_robot", f"t.me/{BOT_USERNAME}")
+    return out
+
 MANAGER_URL  = "https://t.me/EldoradoGGManager"
 MANAGER_TAG  = "@EldoradoGGManager"
 SUPPORT_URL  = "https://t.me/EldoradoGGSupport"
@@ -2069,8 +2084,8 @@ def build_ai_system_prompt(lang="ru"):
     # Полная база знаний бота (все топики AI_KB) — ничего не вырезаем
     kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
     if ru:
-        return (
-            "Ты — Eldorado AI, умный помощник платформы Eldorado GG (Telegram-бот @EldoradoGG_Robot). "
+        prompt=(
+            f"Ты — Eldorado AI, умный помощник платформы Eldorado GG (Telegram-бот @{BOT_USERNAME}). "
             "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
             "и про бот/сделки, и общие. Если вопрос про Eldorado GG — опирайся на базу знаний ниже. "
             "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
@@ -2084,20 +2099,22 @@ def build_ai_system_prompt(lang="ru"):
             "• Номера сделок вида GD29548+\n\n"
             f"База знаний бота:\n{kb}"
         )
-    return (
-        "You are Eldorado AI, the smart helper for Eldorado GG (Telegram bot @EldoradoGG_Robot). "
-        "Answer like a live assistant: freely, on any user question — bot/deals and general. "
-        "For Eldorado GG questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
-        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
-        "Platform facts:\n"
-        "• Stats: 132,584 deals, turnover $1,346,582\n"
-        "• Service fee: 0%\n"
-        "• Referrals: 3% from invited users’ deals\n"
-        "• Support: @EldoradoGGSupport · manager: @EldoradoGGManager\n"
-        "• Website: eldorado.gg\n"
-        "• Deal IDs like GD29548+\n\n"
-        f"Bot knowledge base:\n{kb}"
-    )
+    else:
+        prompt=(
+            f"You are Eldorado AI, the smart helper for Eldorado GG (Telegram bot @{BOT_USERNAME}). "
+            "Answer like a live assistant: freely, on any user question — bot/deals and general. "
+            "For Eldorado GG questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
+            "Plain text only, no HTML/Markdown. Answer in English.\n\n"
+            "Platform facts:\n"
+            "• Stats: 132,584 deals, turnover $1,346,582\n"
+            "• Service fee: 0%\n"
+            "• Referrals: 3% from invited users’ deals\n"
+            "• Support: @EldoradoGGSupport · manager: @EldoradoGGManager\n"
+            "• Website: eldorado.gg\n"
+            "• Deal IDs like GD29548+\n\n"
+            f"Bot knowledge base:\n{kb}"
+        )
+    return _bot_mention_fix(prompt)
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -2159,6 +2176,21 @@ def _load_extra_ai_knowledge():
         return []
 
 AI_EXTRA_KB = _load_extra_ai_knowledge()
+
+def _rewrite_kb_bot_mentions():
+    """Подменить старый юз бота во всех текстовых базах знаний."""
+    for entry in AI_KB.values():
+        for k in ("ru","en"):
+            if k in entry and isinstance(entry[k], str):
+                entry[k]=_bot_mention_fix(entry[k])
+    for entry in AI_EXTRA_KB:
+        if not isinstance(entry, dict):
+            continue
+        for k in ("ru","en"):
+            if k in entry and isinstance(entry[k], str):
+                entry[k]=_bot_mention_fix(entry[k])
+_rewrite_kb_bot_mentions()
+
 
 def ai_local_answer(question, lang="ru", history=None):
     """Отвечает на любые вопросы: общая база + Eldorado GG. Без лекций про API-ключи."""
