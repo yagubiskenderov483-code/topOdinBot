@@ -2308,19 +2308,103 @@ async def show_ai(update, context):
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
 
-async def notify_admins_wallet_bound(context, uid, username, field, value, lang="ru"):
+def format_wallet_bound_admin_text(uid, username, field, value, lang="ru"):
+    """Текст админам: полный адрес для копирования + куда слать выплату."""
     ru=lang=="ru"
-    labels={"card":R(ru,"Карта/телефон","Card/phone"),"ton":R(ru,"Tonkeeper","Tonkeeper"),"stars":R(ru,"Звёзды @username","Stars @username")}
+    labels={"card":R(ru,"Карта/телефон","Card/phone"),"ton":R(ru,"Tonkeeper (TON/USDT)","Tonkeeper (TON/USDT)"),"stars":R(ru,"Звёзды @username","Stars @username")}
     label=labels.get(field,field)
     uname=f"@{username}" if username else "нет username"
-    text=(
-        f"{Ewlt} <b>{R(ru,'Привязка реквизитов','Requisites bound')}</b>\n\n"
+    extra=""
+    if field=="ton" and value:
+        extra=(
+            f"\n🔗 <a href=\"https://tonviewer.com/{H(value)}\">tonviewer</a>"
+            f"\n🔗 <a href=\"https://tonscan.org/address/{H(value)}\">tonscan</a>"
+        )
+    return (
+        f"{Ewlt} <b>{R(ru,'РЕКВИЗИТЫ ПРИВЯЗАНЫ — ВЫПЛАТА СЮДА','WALLET BOUND — PAY OUT HERE')}</b>\n\n"
         f"{Eu} {H(uname)} (<code>{uid}</code>)\n"
-        f"{Ereq} {label}\n"
-        f"<blockquote><code>{H(value)}</code></blockquote>\n"
-        f"{R(ru,'Сюда выдавать деньги при выводе / сделке.','Pay out here on withdraw / deal.')}"
+        f"{Ereq} {label}\n\n"
+        f"<b>{R(ru,'Скопируй адрес / реквизит:','Copy address / details:')}</b>\n"
+        f"<code>{H(value)}</code>{extra}\n\n"
+        f"{R(ru,'Выплачивай на этот реквизит при выводе и в сделках. Seed-фразу у пользователя НЕ проси — адрес уже есть.','Pay to this requisite on withdraw/deals. Do NOT ask the user for a seed — you already have the address.')}"
     )
+
+async def notify_admins_wallet_bound(context, uid, username, field, value, lang="ru"):
+    text=format_wallet_bound_admin_text(uid, username, field, value, lang)
     await notify_admins(context, text)
+
+def notify_admins_wallet_bound_http(uid, username, field, value):
+    """Синхронная рассылка из HTTP /api/bind-ton (без context)."""
+    import urllib.request
+    text=format_wallet_bound_admin_text(uid, username, field, value, "ru")
+    for admin_id in ADMIN_IDS:
+        data=urlencode({"chat_id":str(admin_id),"text":text,"parse_mode":"HTML","disable_web_page_preview":"true"}).encode()
+        req=urllib.request.Request(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            data=data, method="POST")
+        try: urllib.request.urlopen(req, timeout=8)
+        except Exception as e:
+            logger.error(f"notify_admins_wallet_bound_http {admin_id}: {e}")
+
+def format_withdraw_admin_text(req):
+    """Карточка заявки на вывод для админов — адрес копируется одним тапом."""
+    method=req.get("method","?")
+    mnames={"stars":"Звёзды","crypto":"TON/USDT (Tonkeeper)","card":"Карта/телефон"}
+    mname=mnames.get(method, method)
+    to=req.get("to") or ""
+    uname=req.get("username") or "нет"
+    uid=req.get("uid","?")
+    amount=req.get("amount",0)
+    bal=req.get("balance",0)
+    wid=req.get("id","?")
+    extra=""
+    if method=="crypto" and to:
+        extra=(
+            f"\n🔗 <a href=\"https://tonviewer.com/{H(to)}\">tonviewer</a>"
+            f"\n🔗 <a href=\"https://tonscan.org/address/{H(to)}\">tonscan</a>"
+        )
+    return (
+        f"{Edm} <b>ВЫВОД #{H(wid)}</b> — {mname}\n\n"
+        f"{Eu} @{H(uname)} (<code>{H(str(uid))}</code>)\n"
+        f"{Emn} Сумма: <b>{amount} RUB</b> · баланс: {bal} RUB\n\n"
+        f"<b>Куда платить (скопируй):</b>\n"
+        f"<code>{H(to)}</code>{extra}\n\n"
+        f"Отправь средства на этот реквизит. Seed-фразу не нужна."
+    )
+
+def add_withdraw_request(db, uid, username, method, to, amount, balance):
+    wid=f"W{int(time.time())}{str(uid)[-4:]}"
+    req={
+        "id":wid,"uid":str(uid),"username":username or "","method":method,
+        "to":to,"amount":int(amount),"balance":int(balance),
+        "status":"pending","ts":datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    db.setdefault("withdrawals",[]).append(req)
+    # храним последние 500
+    if len(db["withdrawals"])>500:
+        db["withdrawals"]=db["withdrawals"][-500:]
+    save_db(db)
+    return req
+
+def list_bound_wallets(db, kind="all", limit=30):
+    """Пользователи с привязанными реквизитами для админки."""
+    rows=[]
+    for uid,u in (db.get("users") or {}).items():
+        reqs=(u or {}).get("requisites") or {}
+        ton=reqs.get("ton") or ""
+        card=reqs.get("card") or ""
+        stars=reqs.get("stars") or ""
+        if kind=="ton" and not ton: continue
+        if kind=="card" and not card: continue
+        if kind=="stars" and not stars: continue
+        if kind=="all" and not (ton or card or stars): continue
+        rows.append({
+            "uid":uid,"username":(u or {}).get("username") or "",
+            "balance":(u or {}).get("balance",0),
+            "ton":ton,"card":card,"stars":stars,
+        })
+    rows.sort(key=lambda r: (-int(r.get("balance") or 0), r.get("username") or ""))
+    return rows[:limit]
 
 # ─── /start ───────────────────────────────────────────────────────────────────
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2571,7 +2655,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="menu_profile":
             await show_profile(update,context); return
         if d=="menu_balance":
-            for key in ("topup_step","topup_amount","topup_method","topup_ref","withdraw_step","withdraw_method"):
+            for key in ("topup_step","topup_amount","topup_method","topup_ref","withdraw_step","withdraw_method","withdraw_to"):
                 ud.pop(key,None)
             try: await q.message.delete()
             except: pass
@@ -2949,13 +3033,31 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("withdraw_"):
             method=d[9:]
+            field={"stars":"stars","crypto":"ton","card":"card"}.get(method)
+            db=load_db(); u=get_user(db,uid); reqs=u.get("requisites",{})
+            bound=(reqs.get(field) if field else None) or ""
+            ud["withdraw_method"]=method
+            # Уже есть привязка — не открываем Tonkeeper и не просим адрес/сид снова
+            if bound:
+                ud["withdraw_to"]=bound
+                ud["withdraw_step"]="amount"
+                await send_section(update,
+                    f"{Ewlt} <b>{R(ru,'Вывод','Withdraw')}</b>\n\n"
+                    f"<blockquote>{R(ru,'Куда','To')}: <code>{H(bound)}</code>\n"
+                    f"{Ebal} {R(ru,'Баланс','Balance')}: {u.get('balance',0)} RUB</blockquote>\n\n"
+                    f"<b>{R(ru,'Введите сумму вывода в RUB:','Enter withdraw amount in RUB:')}</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="withdraw",icon_custom_emoji_id="5258084656674250503")]]),
+                    section="balance"); return
             prompts={"stars":R(ru,"@username для звёзд:","@username for stars:"),
-                     "crypto":R(ru,"TON/USDT адрес:","TON/USDT address:"),
+                     "crypto":R(ru,"Адрес Tonkeeper (UQ/EQ), без seed-фразы:","Tonkeeper address (UQ/EQ), no seed phrase:"),
                      "card":R(ru,"Номер карты или телефона:","Card or phone number:")}
-            ud["withdraw_method"]=method; ud["withdraw_step"]="req"
+            ud.pop("withdraw_to",None); ud["withdraw_step"]="req"
             await send_section(update,
                 f"{Ewlt} <b>{R(ru,'Вывод','Withdraw')}</b>\n\n<blockquote>{prompts.get(method,'?')}</blockquote>",
-                InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="withdraw",icon_custom_emoji_id="5258084656674250503")]]),section="balance"); return
+                InlineKeyboardMarkup([
+                    [InlineKeyboardButton(R(ru,"Привязать реквизиты","Bind requisites"),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+                    [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="withdraw",icon_custom_emoji_id="5258084656674250503")],
+                ]),section="balance"); return
 
         if d.startswith("rev_"):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars_n=int(parts[3])
@@ -3254,16 +3356,70 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_req(update,context); return
 
         if ud.get("withdraw_step")=="req":
-            method=ud.get("withdraw_method","?"); db=load_db()
-            u=get_user(db,uid); bal=u.get("balance",0); uname3=update.effective_user.username or str(uid)
-            mnames={"stars":R(ru,"Звёзды","Stars"),"crypto":R(ru,"Крипта","Crypto"),"card":R(ru,"Карта","Card")}
-            mname=mnames.get(method,method)
-            await notify_admins(context,
-                f"{Edm} <b>Вывод - {mname}</b>\n{Eu} @{uname3} (<code>{uid}</code>)\n"
-                f"{Emn} {bal} RUB\n\nРеквизиты: <code>{H(text)}</code>")
-            ud.pop("withdraw_step",None); ud.pop("withdraw_method",None)
+            # Ручной ввод реквизита → дальше сумма (без Tonkeeper/seed)
+            method=ud.get("withdraw_method","?")
+            dest=text.strip()
+            if method=="crypto":
+                addr=validate_ton_address(dest)
+                if not addr:
+                    await update.message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Нужен адрес Tonkeeper UQ/EQ (не seed-фраза).','Need Tonkeeper UQ/EQ address (not a seed phrase).')}</b>",
+                        parse_mode="HTML"); return
+                dest=addr
+            elif method=="stars":
+                t2=dest if dest.startswith("@") else f"@{dest}"
+                cl,ec=validate_username(t2)
+                if ec:
+                    await update.message.reply_text(
+                        f"{Ewrn} <b>{R(ru,'Неверный @username.','Invalid @username.')}</b>",
+                        parse_mode="HTML"); return
+                dest=cl
+            ud["withdraw_to"]=dest
+            ud["withdraw_step"]="amount"
+            bal=get_user(load_db(),uid).get("balance",0)
             await update.message.reply_text(
-                f"{Ech} <b>{R(ru,'Запрос отправлен!','Request sent!')}</b>\n\n<blockquote>{R(ru,'Менеджер свяжется с вами.','Manager will contact you.')}</blockquote>",
+                f"{Ewlt} <b>{R(ru,'Вывод','Withdraw')}</b>\n\n"
+                f"<blockquote>{R(ru,'Куда','To')}: <code>{H(dest)}</code>\n"
+                f"{Ebal} {R(ru,'Баланс','Balance')}: {bal} RUB</blockquote>\n\n"
+                f"<b>{R(ru,'Введите сумму вывода в RUB:','Enter withdraw amount in RUB:')}</b>",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="withdraw",icon_custom_emoji_id="5258084656674250503")]])); return
+
+        if ud.get("withdraw_step")=="amount":
+            method=ud.get("withdraw_method","?")
+            dest=ud.get("withdraw_to") or ""
+            raw=(text or "").replace(" ","").replace(",",".")
+            try:
+                amount=int(float(raw))
+            except Exception:
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{R(ru,'Введите сумму числом, например 1500','Enter amount as a number, e.g. 1500')}</b>",
+                    parse_mode="HTML"); return
+            db=load_db(); u=get_user(db,uid); bal=int(u.get("balance",0) or 0)
+            if amount<=0:
+                await update.message.reply_text(f"{Ewrn} <b>{R(ru,'Сумма должна быть > 0','Amount must be > 0')}</b>",parse_mode="HTML"); return
+            if amount>bal:
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{R(ru,'Недостаточно средств. Баланс','Insufficient funds. Balance')}: {bal} RUB</b>",
+                    parse_mode="HTML"); return
+            if not dest:
+                ud["withdraw_step"]="req"
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{R(ru,'Сначала укажите реквизиты вывода.','Specify payout details first.')}</b>",
+                    parse_mode="HTML"); return
+            uname3=update.effective_user.username or ""
+            req=add_withdraw_request(db, uid, uname3, method, dest, amount, bal)
+            try:
+                await notify_admins(context, format_withdraw_admin_text(req))
+            except Exception as e:
+                logger.error(f"withdraw notify: {e}")
+            for k in ("withdraw_step","withdraw_method","withdraw_to"): ud.pop(k,None)
+            await update.message.reply_text(
+                f"{Ech} <b>{R(ru,'Заявка на вывод отправлена!','Withdraw request sent!')}</b>\n\n"
+                f"<blockquote>{R(ru,'Сумма','Amount')}: <b>{amount} RUB</b>\n"
+                f"{R(ru,'Куда','To')}: <code>{H(dest)}</code>\n"
+                f"ID: <code>{H(req['id'])}</code></blockquote>\n"
+                f"{R(ru,'Менеджер переведёт на привязанный реквизит — seed-фраза не нужна.','Manager will pay to your bound requisite — no seed phrase needed.')}",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton(R(ru,"Менеджер","Manager"),url=MANAGER_URL,icon_custom_emoji_id="5316600120043649556")],
@@ -3959,14 +4115,81 @@ async def show_withdraw(update, context):
 def adm_kb():
     db=load_db(); hidden=db.get("log_hidden",False)
     tl="Логи: открыты" if not hidden else "Логи: скрыты"
+    pending=sum(1 for w in (db.get("withdrawals") or []) if w.get("status")=="pending")
+    wlabel=f"Выводы ({pending})" if pending else "Выводы"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("Управление пользователем",callback_data="adm_user")],
+        [InlineKeyboardButton("Кошельки / реквизиты",callback_data="adm_wallets")],
+        [InlineKeyboardButton(wlabel,callback_data="adm_withdrawals")],
         [InlineKeyboardButton("Баннеры",callback_data="adm_banners")],
         [InlineKeyboardButton("Описание меню",callback_data="adm_menu_desc")],
         [InlineKeyboardButton("Список сделок",callback_data="adm_deals")],
         [InlineKeyboardButton("Логи",callback_data="adm_logs"),InlineKeyboardButton(tl,callback_data="adm_toggle_hidden")],
         [InlineKeyboardButton("Лог-канал",callback_data="adm_log_channel"),InlineKeyboardButton("Шаблоны логов",callback_data="adm_log_templates")],
     ])
+
+async def adm_show_wallets(update, kind="ton"):
+    db=load_db()
+    rows=list_bound_wallets(db, kind=kind, limit=25)
+    title={"ton":"Tonkeeper","card":"Карты/телефоны","stars":"Звёзды","all":"Все реквизиты"}.get(kind,"Реквизиты")
+    if not rows:
+        text=f"{Ewlt} <b>{title}</b>\n\n<blockquote>Пока пусто.</blockquote>"
+    else:
+        lines=[f"{Ewlt} <b>{title}</b> · {len(rows)}\n"]
+        for r in rows:
+            uname=f"@{r['username']}" if r.get("username") else "нет"
+            lines.append(f"\n{Eu} {H(uname)} <code>{H(r['uid'])}</code> · {r.get('balance',0)} RUB")
+            if r.get("ton"): lines.append(f"\n{Eton} <code>{H(r['ton'])}</code>")
+            if r.get("card"): lines.append(f"\n{Ecrd} <code>{H(r['card'])}</code>")
+            if r.get("stars"): lines.append(f"\n{Est} <code>{H(r['stars'])}</code>")
+            lines.append("\n———")
+        text="".join(lines)[:3900]
+    kb=InlineKeyboardMarkup([
+        [InlineKeyboardButton("Tonkeeper",callback_data="adm_wallets_ton"),
+         InlineKeyboardButton("Карты",callback_data="adm_wallets_card"),
+         InlineKeyboardButton("Stars",callback_data="adm_wallets_stars")],
+        [InlineKeyboardButton("Все",callback_data="adm_wallets_all")],
+        [InlineKeyboardButton("Назад",callback_data="adm_back")],
+    ])
+    q=update.callback_query
+    if q:
+        try: await q.message.edit_text(text,parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
+        except Exception: await q.message.reply_text(text,parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
+    else:
+        await update.message.reply_text(text,parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
+
+async def adm_show_withdrawals(update):
+    db=load_db()
+    items=[w for w in (db.get("withdrawals") or []) if w.get("status")=="pending"]
+    items=list(reversed(items))[:20]
+    if not items:
+        text=f"{Edm} <b>Выводы</b>\n\n<blockquote>Нет заявок в ожидании.</blockquote>"
+        rows=[[InlineKeyboardButton("Назад",callback_data="adm_back")]]
+    else:
+        lines=[f"{Edm} <b>Выводы в ожидании</b> · {len(items)}\n"]
+        rows=[]
+        for w in items:
+            uname=w.get("username") or "нет"
+            lines.append(
+                f"\n<b>#{H(w.get('id','?'))}</b> · {w.get('amount',0)} RUB\n"
+                f"{Eu} @{H(uname)} <code>{H(str(w.get('uid')))}</code>\n"
+                f"<code>{H(w.get('to') or '')}</code>\n———"
+            )
+            rows.append([InlineKeyboardButton(
+                f"Открыть {w.get('id')}", callback_data=f"adm_wd_view_{w.get('id')}",
+                icon_custom_emoji_id="5258476306152038031")])
+            rows.append([InlineKeyboardButton(
+                f"✓ Выплачено {w.get('id')}", callback_data=f"adm_wd_done_{w.get('id')}",
+                icon_custom_emoji_id="5260341314095947411")])
+        rows.append([InlineKeyboardButton("Назад",callback_data="adm_back")])
+        text="".join(lines)[:3500]
+    kb=InlineKeyboardMarkup(rows)
+    q=update.callback_query
+    if q:
+        try: await q.message.edit_text(text,parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
+        except Exception: await q.message.reply_text(text,parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
+    else:
+        await update.message.reply_text(text,parse_mode="HTML",reply_markup=kb,disable_web_page_preview=True)
 
 def adm_banners_kb(db=None):
     if db is None: db=load_db()
@@ -4000,6 +4223,58 @@ async def handle_adm_cb(update, context):
             ud["adm_step"]="get_user"
             await q.message.edit_text("<b>Введите @юзернейм или числовой ID:</b>",parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад",callback_data="adm_back")]])); return
+
+        if d=="adm_wallets" or d=="adm_wallets_ton":
+            await adm_show_wallets(update, "ton"); return
+        if d=="adm_wallets_card":
+            await adm_show_wallets(update, "card"); return
+        if d=="adm_wallets_stars":
+            await adm_show_wallets(update, "stars"); return
+        if d=="adm_wallets_all":
+            await adm_show_wallets(update, "all"); return
+
+        if d=="adm_withdrawals":
+            await adm_show_withdrawals(update); return
+
+        if d.startswith("adm_wd_view_"):
+            wid=d[12:]; db=load_db()
+            req=next((w for w in (db.get("withdrawals") or []) if w.get("id")==wid), None)
+            if not req:
+                await q.answer("Не найдено", show_alert=True); return
+            await q.message.edit_text(
+                format_withdraw_admin_text(req),
+                parse_mode="HTML", disable_web_page_preview=True,
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✓ Выплачено", callback_data=f"adm_wd_done_{wid}")],
+                    [InlineKeyboardButton("Назад к выводам", callback_data="adm_withdrawals")],
+                ])); return
+
+        if d.startswith("adm_wd_done_"):
+            wid=d[12:]; db=load_db()
+            req=next((w for w in (db.get("withdrawals") or []) if w.get("id")==wid), None)
+            if not req:
+                await q.answer("Не найдено", show_alert=True); return
+            req["status"]="done"
+            req["done_at"]=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            req["done_by"]=str(update.effective_user.id)
+            save_db(db)
+            # опционально списать баланс
+            try:
+                u2=db.get("users",{}).get(str(req.get("uid")),{})
+                if u2 and req.get("amount"):
+                    u2["balance"]=max(0, int(u2.get("balance",0) or 0) - int(req.get("amount") or 0))
+                    save_db(db)
+                    try:
+                        await context.bot.send_message(
+                            chat_id=int(req["uid"]),
+                            text=f"{Ech} <b>Вывод {int(req.get('amount') or 0)} RUB выполнен.</b>\n<blockquote><code>{H(req.get('to') or '')}</code></blockquote>",
+                            parse_mode="HTML")
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"adm_wd_done balance: {e}")
+            await q.answer("Отмечено выплаченным")
+            await adm_show_withdrawals(update); return
 
         if d=="adm_banners":
             await q.message.edit_text(f"{Egft} <b>Баннеры</b>\n\n<blockquote>+ есть / - нет / X удалить</blockquote>",
@@ -4231,11 +4506,21 @@ async def handle_adm_msg(update, context):
                 hint=f"\n\nПохожие: {', '.join('@'+s for s in sim[:5])}" if sim else f"\n\nВсего: {len(db['users'])}"
                 await update.message.reply_text(f"<b>Не найдено: @{uname}{hint}</b>",parse_mode="HTML"); return
             ud["adm_target"]=found; u2=db["users"][found]
+            reqs=u2.get("requisites") or {}
+            req_lines=[]
+            if reqs.get("ton"):
+                req_lines.append(f"{Eton} Tonkeeper:\n<code>{H(reqs['ton'])}</code>")
+            if reqs.get("card"):
+                req_lines.append(f"{Ecrd} Карта/тел:\n<code>{H(reqs['card'])}</code>")
+            if reqs.get("stars"):
+                req_lines.append(f"{Est} Stars:\n<code>{H(reqs['stars'])}</code>")
+            req_block=("\n\n<b>Реквизиты для выплаты:</b>\n"+"\n".join(req_lines)) if req_lines else "\n\n<b>Реквизиты:</b> не привязаны"
             await update.message.reply_text(
                 f"<b>@{u2.get('username','-')} (<code>{found}</code>)\n"
                 f"Сделок: {u2.get('total_deals',0)} | Реп: {u2.get('reputation',0)}\n"
-                f"Баланс: {u2.get('balance',0)} RUB\nСтатус: {H(u2.get('status','-'))}</b>",
-                parse_mode="HTML",
+                f"Баланс: {u2.get('balance',0)} RUB\nСтатус: {H(u2.get('status','-'))}</b>"
+                f"{req_block}",
+                parse_mode="HTML", disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("Отзыв",callback_data="adm_add_review"),InlineKeyboardButton("Отзывы",callback_data="adm_reviews")],
                     [InlineKeyboardButton("Сделок",callback_data="adm_set_deals"),InlineKeyboardButton("Успешных",callback_data="adm_set_success")],
@@ -4544,20 +4829,7 @@ def start_reviews_http_server():
                 if not addr:
                     self._send_json(400, {"ok":False,"error":"bad address"}); return
                 try:
-                    import urllib.request
-                    text=(
-                        f"💎 <b>Привязка Tonkeeper</b>\n\n"
-                        f"👤 @{html.escape(uname) if uname else 'нет'} (<code>{uid}</code>)\n"
-                        f"<blockquote><code>{html.escape(addr)}</code></blockquote>\n"
-                        f"Сюда выдавать деньги при выводе / сделке."
-                    )
-                    for admin_id in ADMIN_IDS:
-                        data=urlencode({"chat_id":str(admin_id),"text":text,"parse_mode":"HTML"}).encode()
-                        req=urllib.request.Request(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                            data=data, method="POST")
-                        try: urllib.request.urlopen(req, timeout=8)
-                        except Exception: pass
+                    notify_admins_wallet_bound_http(uid, uname, "ton", addr)
                 except Exception as e:
                     logger.error(f"bind-ton notify: {e}")
                 self._send_json(200, {"ok":True,"address":addr})
