@@ -8,16 +8,19 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Актуальный токен. Старый AAGO3vi... отозван — если он в Render Env, игнорируем.
-_BOT_TOKEN_DEFAULT = "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ"
-_BOT_TOKEN_REVOKED = "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4"
+# Актуальный бот @EldoradoGG_Robot. Старые токены игнорируем, если висят в Render Env.
+_BOT_TOKEN_DEFAULT = "8804596421:AAHTQN-bfrnTcyU1PlozD0u4MM5a0SrE5iE"
+_BOT_TOKEN_REVOKED = {
+    "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4",
+    "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ",
+}
 _tok = (os.getenv("BOT_TOKEN") or "").strip()
-if (not _tok) or (_tok == _BOT_TOKEN_REVOKED) or ("AAGO3viGf3PERRFA" in _tok):
+if (not _tok) or (_tok in _BOT_TOKEN_REVOKED) or ("AAGO3viGf3PERRFA" in _tok) or _tok.startswith("8879343383:"):
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 else:
     BOT_TOKEN = _tok
 ADMIN_IDS    = {8726084830, 90283607, 7186944876}
-BOT_USERNAME = "EldoradoGGRobot"
+BOT_USERNAME = "EldoradoGG_Robot"
 MANAGER_URL  = "https://t.me/EldoradoGGManager"
 MANAGER_TAG  = "@EldoradoGGManager"
 SUPPORT_URL  = "https://t.me/EldoradoGGSupport"
@@ -1680,7 +1683,7 @@ AI_KB = {
             "5) Для NFT — ссылка; для Username — t.me/… или @username; для Stars — количество; для Premium — срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида t.me/EldoradoGGRobot?start=deal_GDxxxxx.\n\n"
+            "8) Отправьте партнёру ссылку вида t.me/EldoradoGG_Robot?start=deal_GDxxxxx.\n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -1693,7 +1696,7 @@ AI_KB = {
             "5) NFT needs a link; Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link: t.me/EldoradoGGRobot?start=deal_GDxxxxx.\n\n"
+            "8) Send the partner link: t.me/EldoradoGG_Robot?start=deal_GDxxxxx.\n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -1702,7 +1705,7 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_GDxxxxx) в боте @EldoradoGGRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_GDxxxxx) в боте @EldoradoGG_Robot.\n"
             "Если реквизитов нет — бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
             "Продавец передаёт товар менеджеру @EldoradoGGManager и жмёт «Я передал».\n"
@@ -1711,7 +1714,7 @@ AI_KB = {
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_GDxxxxx) in @EldoradoGGRobot.\n"
+            "Open the partner link (start=deal_GDxxxxx) in @EldoradoGG_Robot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
             "Seller transfers the item to manager @EldoradoGGManager and presses I transferred.\n"
@@ -1882,14 +1885,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/EldoradoGGRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/EldoradoGG_Robot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате — менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/EldoradoGGRobot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/EldoradoGG_Robot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions — ask the manager."
@@ -1921,7 +1924,7 @@ AI_KB = {
             "• Сайт: eldorado.gg (кнопка «Наш сайт»)\n"
             "• Информация: Telegraph «Как проходят сделки» + отзывы Mini App\n"
             "• Eldorado AI: быстрые ответы по боту и любым темам; сложные кейсы — людям в поддержку.\n"
-            "Бот: @EldoradoGGRobot"
+            "Бот: @EldoradoGG_Robot"
         ),
         "en": (
             "Contacts and help\n\n"
@@ -1930,7 +1933,7 @@ AI_KB = {
             "• Website: eldorado.gg (Our Website button)\n"
             "• Information: Telegraph how-deals guide + Reviews Mini App\n"
             "• Eldorado AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @EldoradoGGRobot"
+            "Bot: @EldoradoGG_Robot"
         ),
     },
     "fee": {
@@ -2067,7 +2070,7 @@ def build_ai_system_prompt(lang="ru"):
     kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
     if ru:
         return (
-            "Ты — Eldorado AI, умный помощник платформы Eldorado GG (Telegram-бот @EldoradoGGRobot). "
+            "Ты — Eldorado AI, умный помощник платформы Eldorado GG (Telegram-бот @EldoradoGG_Robot). "
             "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
             "и про бот/сделки, и общие. Если вопрос про Eldorado GG — опирайся на базу знаний ниже. "
             "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
@@ -2082,7 +2085,7 @@ def build_ai_system_prompt(lang="ru"):
             f"База знаний бота:\n{kb}"
         )
     return (
-        "You are Eldorado AI, the smart helper for Eldorado GG (Telegram bot @EldoradoGGRobot). "
+        "You are Eldorado AI, the smart helper for Eldorado GG (Telegram bot @EldoradoGG_Robot). "
         "Answer like a live assistant: freely, on any user question — bot/deals and general. "
         "For Eldorado GG questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
         "Plain text only, no HTML/Markdown. Answer in English.\n\n"
@@ -2172,8 +2175,8 @@ def ai_local_answer(question, lang="ru", history=None):
             "Hi! I’m Eldorado AI. Ask about the bot/deals, crypto, science, study, everyday topics — anything.")
     if any(x in ql for x in ("как дела","how are you","что умеешь","кто ты")):
         return R(ru,
-            "На связи — Eldorado AI (@EldoradoGGRobot) + общие знания. Сделки GD29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
-            "Here — Eldorado AI (@EldoradoGGRobot) plus general knowledge. Deals GD29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
+            "На связи — Eldorado AI (@EldoradoGG_Robot) + общие знания. Сделки GD29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
+            "Here — Eldorado AI (@EldoradoGG_Robot) plus general knowledge. Deals GD29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
         return R(ru,"Пожалуйста! Если ещё вопрос — пишите.","You’re welcome! Ask more anytime.")
 
@@ -4566,8 +4569,8 @@ def start_render_keepalive():
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
-    if "AAGO3viGf3PERRFA" in BOT_TOKEN:
-        raise SystemExit("Revoked Telegram bot token in use. Set BOT_TOKEN to the new token from BotFather.")
+    if BOT_TOKEN.startswith("8879343383:") or "AAGO3viGf3PERRFA" in BOT_TOKEN:
+        raise SystemExit("Old Telegram bot token in use. Deploy @EldoradoGG_Robot token.")
 
     db=load_db()
     if not db.get("banners"): db["banners"]={}
