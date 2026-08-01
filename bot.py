@@ -19,7 +19,7 @@ if (not _tok) or (_tok in _BOT_TOKEN_REVOKED) or ("AAGO3viGf3PERRFA" in _tok) or
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 else:
     BOT_TOKEN = _tok
-ADMIN_IDS    = {8726084830, 90283607, 7186944876}
+ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672}
 BOT_USERNAME = "EldoradoGG_Robot"
 
 def _bot_mention_fix(text):
