@@ -52,6 +52,8 @@ DB_FILE=/data/db.json
 Меню слева внизу — команда `/start` (не Mini App).  
 Главное меню → **Информация**: Telegraph «Как проходят сделки» + **Отзывы** (Mini App, `REVIEWS_MINIAPP_URL`).
 
+Если в Mini App на **1–3★** всё ещё «30 из 4216» — на Render не подтянулся `main`. Сделай **Manual Deploy → Deploy latest commit**. Пока можно открыть актуальный HTML: `https://litter.catbox.moe/i58txn.html` (должно быть «30 из 528»).
+
 ### Реквизиты
 
 Привязка: карта/телефон, Tonkeeper (приложение или вручную), Звёзды `@username`.
