@@ -72,12 +72,15 @@ BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.jo
 BANNERS_SEED_DATA = os.path.join(DATA_DIR, "banners_seed.json")
 DEAL_COUNTER_START = 29548
 # Reviews Mini App (self-contained HTML). Do not use BrewPage — it shows a side panel in Telegram.
-# Prefer explicit env, then Render public URL, then temporary litterbox host.
+# Prefer explicit env, then fixed hosted HTML (always up to date), then Render public URL.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
+# Hosted copy with 1–3★ counter fix (lowDisplayCount=528). Override via REVIEWS_MINIAPP_URL / REVIEWS_HTML_REMOTE.
+_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/i58txn.html").strip()
 REVIEWS_MINIAPP_URL = (
     os.getenv("REVIEWS_MINIAPP_URL")
+    or _REVIEWS_HTML_HOSTED
     or (f"{_RENDER_URL}/index.html" if _RENDER_URL else "")
-    or "https://litter.catbox.moe/8n77lf.htm"
+    or "https://litter.catbox.moe/i58txn.html"
 ).strip()
 TONCONNECT_MINIAPP_URL = (
     os.getenv("TONCONNECT_MINIAPP_URL")
@@ -85,6 +88,66 @@ TONCONNECT_MINIAPP_URL = (
     or (REVIEWS_MINIAPP_URL.replace("/index.html", "/tonconnect.html")
         if REVIEWS_MINIAPP_URL.endswith("/index.html") else "")
 ).strip()
+
+def patch_reviews_html(html: str) -> str:
+    """Hot-fix stale Mini App builds that still scale 1–3★ off displayCount (~4216)."""
+    if not html:
+        return html
+    old = (
+        "var total = totalDisplay();\n"
+        "    // For star filters, scale the public total roughly by filter share\n"
+        "    if (activeFilter !== \"all\" && source.length) {\n"
+        "      total = Math.max(shown, Math.round(totalDisplay() * (filtered.length / source.length)));\n"
+        "    }"
+    )
+    new = (
+        "// build: low-count-v3-hotpatch\n"
+        "    var total;\n"
+        "    if (activeFilter === \"all\") {\n"
+        "      total = totalDisplay();\n"
+        "    } else if (activeFilter === \"low\") {\n"
+        "      var lowFixed = Number((window.REVIEWS_DATA || {}).lowDisplayCount);\n"
+        "      if (!(lowFixed > 0)) lowFixed = 528;\n"
+        "      total = lowFixed;\n"
+        "      if (shown > total) total = shown;\n"
+        "    } else {\n"
+        "      total = filtered.length;\n"
+        "    }"
+    )
+    if old in html:
+        html = html.replace(old, new, 1)
+    if '"lowDisplayCount"' not in html and "window.REVIEWS_DATA=" in html:
+        html = html.replace(
+            "window.REVIEWS_DATA={\"average\"",
+            "window.REVIEWS_DATA={\"lowDisplayCount\":528,\"average\"",
+            1,
+        )
+        html = html.replace(
+            'window.REVIEWS_DATA={"average"',
+            'window.REVIEWS_DATA={"lowDisplayCount":528,"average"',
+            1,
+        )
+    return html
+
+def load_reviews_index_html(local_root: str) -> bytes:
+    """Prefer remote fixed HTML; else local file with hot-patch for old counter logic."""
+    import urllib.request
+    remote = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
+    if remote:
+        try:
+            req = urllib.request.Request(remote, headers={"User-Agent": "EldoradoReviews/1.0", "Cache-Control": "no-cache"})
+            with urllib.request.urlopen(req, timeout=12) as r:
+                data = r.read().decode("utf-8", errors="replace")
+            if "REVIEWS_DATA" in data or "loadStatus" in data:
+                return patch_reviews_html(data).encode("utf-8")
+        except Exception as e:
+            logger.warning("reviews remote html fetch failed: %s", e)
+    path = os.path.join(local_root, "index.html")
+    if os.path.isfile(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return patch_reviews_html(f.read()).encode("utf-8")
+    return b""
+
 
 # Eldorado AI: Gemini / OpenAI / Groq по ключу, иначе живой LLM через g4f (без ключа).
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
@@ -4797,14 +4860,26 @@ def start_reviews_http_server():
                 self.send_header("Access-Control-Allow-Headers", "Content-Type")
                 self.end_headers()
 
+            def _send_html(self, body: bytes):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+                self.end_headers()
+                self.wfile.write(body)
+
             def do_GET(self):
                 path=urlparse(self.path).path or "/"
                 if path in ("/health", "/healthz", "/ping", "/status"):
                     self._send_json(200, {"ok":True,"bot":BOT_USERNAME,"service":"eldorado"})
                     return
-                if path == "/":
-                    index=os.path.join(root, "index.html") if has_miniapp else ""
-                    if index and os.path.isfile(index):
+                if path in ("/", "/index.html"):
+                    body = load_reviews_index_html(root) if has_miniapp else b""
+                    if body:
+                        return self._send_html(body)
+                    if has_miniapp:
                         return SimpleHTTPRequestHandler.do_GET(self)
                     self._send_text(200, "Eldorado GG bot OK")
                     return
