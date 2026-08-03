@@ -4761,6 +4761,15 @@ def start_reviews_http_server():
             def log_message(self, fmt, *args):
                 logger.info("http: " + (fmt % args))
 
+            def end_headers(self):
+                # Mini App HTML must not be cached — otherwise 1–3★ counter stays stale in Telegram/WebView
+                path=(urlparse(self.path).path or "/").split("?")[0]
+                if path in ("/", "/index.html") or path.endswith(".html"):
+                    self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                    self.send_header("Pragma", "no-cache")
+                    self.send_header("Expires", "0")
+                super().end_headers()
+
             def _send_json(self, code, obj):
                 body=json.dumps(obj, ensure_ascii=False).encode("utf-8")
                 self.send_response(code)
