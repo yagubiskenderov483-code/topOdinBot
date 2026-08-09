@@ -2016,7 +2016,7 @@ AI_KB = {
             "• Техподдержка: https://support.funpay.com/tickets\n"
             "• Менеджер сделок: @FunPayDeaIManager\n"
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
-            "• Информация: Telegraph «Как проходят сделки» + отзывы Mini App\n"
+            "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы — людям в поддержку.\n"
             "Бот: @FunPayDealsOTCRobot"
         ),
@@ -2025,7 +2025,7 @@ AI_KB = {
             "• Support: https://support.funpay.com/tickets\n"
             "• Deal manager: @FunPayDeaIManager\n"
             "• Website: funpay.com · reviews moved into this bot\n"
-            "• Information: Telegraph how-deals guide + Reviews Mini App\n"
+            "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
             "Bot: @FunPayDealsOTCRobot"
         ),
