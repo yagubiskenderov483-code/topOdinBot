@@ -935,7 +935,6 @@ def info_kb(lang):
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url=SITE_URL,icon_custom_emoji_id="5409181322679706928"),
          InlineKeyboardButton(R(ru,'Отзывы','Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL),icon_custom_emoji_id="5778145208411624388")],
-        [InlineKeyboardButton(R(ru,'Поддержка FunPay','FunPay Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799")],
         [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
@@ -1582,9 +1581,7 @@ async def show_info(update, context):
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
         text=(
             f"{Eln} <b>{R(ru,'Информация','Information')}</b>\n\n"
-            f"<blockquote>{R(ru,'FunPay Saving — безопасные сделки в Telegram. Отзывы с сайта перенесены в этого бота. Менеджер: @FunPayDeaIManager. Поддержка: support.funpay.com/tickets.','FunPay Saving — safe deals in Telegram. Site reviews moved into this bot. Manager: @FunPayDeaIManager. Support: support.funpay.com/tickets.')}</blockquote>\n\n"
-            f"<blockquote>{R(ru,'Ссылка на сделку выглядит так:','Deal link looks like:')}\n"
-            f"<code>https://t.me/{BOT_USERNAME}?start=deal_FP…</code></blockquote>"
+            f"<blockquote>{R(ru,'Здесь можно узнать, как проходят сделки на платформе, и посмотреть отзывы пользователей.','Here you can learn how deals work on the platform and browse user reviews.')}</blockquote>"
         )
         await send_section(update,text,info_kb(lang),section="info")
     except Exception as e: logger.error(f"show_info: {e}")
