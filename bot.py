@@ -8,28 +8,36 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Бот @FunPaySavingRobot. Токен задай в env BOT_TOKEN (Render). Старые токены Eldorado игнорируем.
-_BOT_TOKEN_DEFAULT = "8804596421:AAHTQN-bfrnTcyU1PlozD0u4MM5a0SrE5iE"
+# Актуальный токен бота. Env BOT_TOKEN на Render; старые Eldorado-токены игнорируем.
+_BOT_TOKEN_DEFAULT = "8397181335:AAHQEE0EdR7n5XTXWLEdV2Gk0Ql-fl3weic"
 _BOT_TOKEN_REVOKED = {
     "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4",
     "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ",
+    "8804596421:AAHTQN-bfrnTcyU1PlozD0u4MM5a0SrE5iE",
 }
 _tok = (os.getenv("BOT_TOKEN") or "").strip()
-if (not _tok) or (_tok in _BOT_TOKEN_REVOKED) or ("AAGO3viGf3PERRFA" in _tok) or _tok.startswith("8879343383:"):
+if (
+    (not _tok)
+    or (_tok in _BOT_TOKEN_REVOKED)
+    or ("AAGO3viGf3PERRFA" in _tok)
+    or _tok.startswith("8879343383:")
+    or _tok.startswith("8804596421:")
+):
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 else:
     BOT_TOKEN = _tok
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184}
-BOT_USERNAME = "FunPaySavingRobot"
+# Юзернейм должен совпадать с BotFather для этого токена (сейчас @dfijgdjbot).
+BOT_USERNAME = "dfijgdjbot"
 
 def _bot_mention_fix(text):
-    """Старые юзы Eldorado / опечатки → актуальный @FunPaySavingRobot."""
+    """Старые юзы → актуальный BOT_USERNAME."""
     if not isinstance(text, str) or not text:
         return text
     out=text
     for old in (
         "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
-        "FunPaySaving_Robot", "funpaysavingrobot",
+        "FunPaySavingRobot", "FunPaySaving_Robot", "funpaysavingrobot",
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
         out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
@@ -1771,7 +1779,7 @@ AI_KB = {
             "5) Для NFT — ссылка; для Username — t.me/… или @username; для Stars — количество; для Premium — срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида t.me/FunPaySavingRobot?start=deal_FPxxxxx.\n\n"
+            "8) Отправьте партнёру ссылку вида t.me/dfijgdjbot?start=deal_FPxxxxx.\n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -1784,7 +1792,7 @@ AI_KB = {
             "5) NFT needs a link; Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link: t.me/FunPaySavingRobot?start=deal_FPxxxxx.\n\n"
+            "8) Send the partner link: t.me/dfijgdjbot?start=deal_FPxxxxx.\n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -1793,7 +1801,7 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPaySavingRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @dfijgdjbot.\n"
             "Если реквизитов нет — бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
             "Продавец передаёт товар менеджеру @FunPaySavingManager и жмёт «Я передал».\n"
@@ -1802,7 +1810,7 @@ AI_KB = {
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_FPxxxxx) in @FunPaySavingRobot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @dfijgdjbot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
             "Seller transfers the item to manager @FunPaySavingManager and presses I transferred.\n"
@@ -1973,14 +1981,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPaySavingRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/dfijgdjbot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате — менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPaySavingRobot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/dfijgdjbot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions — ask the manager."
@@ -2012,7 +2020,7 @@ AI_KB = {
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация: Telegraph «Как проходят сделки» + отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы — людям в поддержку.\n"
-            "Бот: @FunPaySavingRobot"
+            "Бот: @dfijgdjbot"
         ),
         "en": (
             "Contacts and help\n\n"
@@ -2021,7 +2029,7 @@ AI_KB = {
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information: Telegraph how-deals guide + Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @FunPaySavingRobot"
+            "Bot: @dfijgdjbot"
         ),
     },
     "fee": {
@@ -2280,8 +2288,8 @@ def ai_local_answer(question, lang="ru", history=None):
             "Hi! I’m FunPay AI. Ask about the bot/deals, crypto, science, study, everyday topics — anything.")
     if any(x in ql for x in ("как дела","how are you","что умеешь","кто ты")):
         return R(ru,
-            "На связи — FunPay AI (@FunPaySavingRobot) + общие знания. Сделки FP29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
-            "Here — FunPay AI (@FunPaySavingRobot) plus general knowledge. Deals FP29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
+            "На связи — FunPay AI (@dfijgdjbot) + общие знания. Сделки FP29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
+            "Here — FunPay AI (@dfijgdjbot) plus general knowledge. Deals FP29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
         return R(ru,"Пожалуйста! Если ещё вопрос — пишите.","You’re welcome! Ask more anytime.")
 
@@ -4968,7 +4976,7 @@ def start_render_keepalive():
 def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
     if BOT_TOKEN.startswith("8879343383:") or "AAGO3viGf3PERRFA" in BOT_TOKEN:
-        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPaySavingRobot.")
+        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @dfijgdjbot.")
 
     db=load_db()
     if not db.get("banners"): db["banners"]={}
