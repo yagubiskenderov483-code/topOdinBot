@@ -1,6 +1,6 @@
-# FunPay Saving Bot
+# FunPay Deals OTC Bot
 
-Безопасные сделки в Telegram в стиле FunPay.
+Безопасные сделки в Telegram FunPay Deals OTC.
 
 ## Бот
 

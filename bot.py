@@ -55,7 +55,7 @@ MANAGER_URL  = "https://t.me/FunPayDeaIManager"
 MANAGER_TAG  = "@FunPayDeaIManager"
 SUPPORT_URL  = "https://support.funpay.com/tickets"
 SITE_URL     = "https://funpay.com/"
-BRAND_NAME   = "FunPay Saving"
+BRAND_NAME   = "FunPay Deals OTC"
 CRYPTO_ADDR  = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
 CRYPTO_BOT   = "https://t.me/send?start=IVbfPL7Tk4XA"
 USDT_MASTER  = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
@@ -794,8 +794,8 @@ async def send_log_msg(context, db, entry):
             text=(f"{header}{deal_line}{user_line}{extra_line}")
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
-                "Хочешь такие профиты? Тебе к нам!",
-                url="https://t.me/NeptunTeamBack_Robot?start=start",
+                "Безопасные сделки — FunPay Deals OTC",
+                url="https://t.me/FunPayDealsOTCRobot?start=start",
                 icon_custom_emoji_id="5877465816030515018"
             )
         ]])
@@ -1278,12 +1278,12 @@ def get_welcome(lang):
     if ru:
         pts=["Безопасные сделки как на FunPay: NFT, подарки, звёзды, крипта","Оплата через гаранта — без риска для сторон",
              "Деньги и товар не встречаются напрямую",f"Менеджер сделки: {MANAGER_TAG}"]
-        intro="FunPay Saving — безопасные сделки в Telegram"
+        intro="FunPay Deals OTC — безопасные сделки в Telegram"
         footer="Выберите действие ниже"; stats="132.584 сделок · оборот $1.346.582"
     else:
         pts=["Safe FunPay-style deals: NFTs, gifts, Stars, crypto","Escrow payment — no risk for either side",
              "Money and goods never meet directly",f"Deal manager: {MANAGER_TAG}"]
-        intro="FunPay Saving — safe deals in Telegram"
+        intro="FunPay Deals OTC — safe deals in Telegram"
         footer="Choose an action below"; stats="132,584 deals · $1,346,582 turnover"
     nums=[En1,En2,En3,En4]
     lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
@@ -1920,7 +1920,7 @@ AI_KB = {
             "• Кнопки «Я передал» / «Я оплатил» фиксируют шаги; финал подтверждает админ/менеджер.\n"
             "• Средства/товар защищены до завершения сделки.\n"
             "• Смотрите рейтинг, сделки и отзывы партнёра в карточке.\n"
-            "• Спор → «Пожаловаться» (на покупателя / продавца / маркетплейс) или поддержка @FunPayDeaIManager."
+            "• Спор → «Пожаловаться» (на покупателя / продавца / маркетплейс) или поддержка https://support.funpay.com/tickets."
         ),
         "en": (
             "Deal safety (FunPay escrow)\n\n"
@@ -1930,7 +1930,7 @@ AI_KB = {
             "• I transferred / I paid track steps; admin/manager confirms the finish.\n"
             "• Funds/item stay protected until completion.\n"
             "• Check partner stats and reviews on the deal card.\n"
-            "• Dispute → Report (buyer / seller / marketplace) or @FunPayDeaIManager."
+            "• Dispute → Report (buyer / seller / marketplace) or https://support.funpay.com/tickets."
         ),
     },
     "complaint": {
@@ -2164,9 +2164,9 @@ def build_ai_system_prompt(lang="ru"):
     kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
     if ru:
         prompt=(
-            f"Ты — FunPay AI, умный помощник FunPay Saving (Telegram-бот @{BOT_USERNAME}). "
+            f"Ты — FunPay AI, умный помощник FunPay Deals OTC (Telegram-бот @{BOT_USERNAME}). "
             "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
-            "и про бот/сделки, и общие. Если вопрос про FunPay Saving / сделки — опирайся на базу знаний ниже. "
+            "и про бот/сделки, и общие. Если вопрос про FunPay Deals OTC / сделки — опирайся на базу знаний ниже. "
             "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
             "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
             "Факты платформы:\n"
@@ -2180,9 +2180,9 @@ def build_ai_system_prompt(lang="ru"):
         )
     else:
         prompt=(
-            f"You are FunPay AI, the smart helper for FunPay Saving (Telegram bot @{BOT_USERNAME}). "
+            f"You are FunPay AI, the smart helper for FunPay Deals OTC (Telegram bot @{BOT_USERNAME}). "
             "Answer like a live assistant: freely, on any user question — bot/deals and general. "
-            "For FunPay Saving / deal questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
+            "For FunPay Deals OTC / deal questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
             "Plain text only, no HTML/Markdown. Answer in English.\n\n"
             "Platform facts:\n"
             "• Stats: 132,584 deals, turnover $1,346,582\n"
@@ -2605,7 +2605,7 @@ async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not update.message: return
         lang=get_lang(update.effective_user.id); ru=lang=="ru"
         text=(
-            f"{Ecwn} <b>{R(ru,'FunPay Saving — Команды','FunPay Saving — Commands')}</b>\n\n"
+            f"{Ecwn} <b>{R(ru,'FunPay Deals OTC — Команды','FunPay Deals OTC — Commands')}</b>\n\n"
             f"<blockquote>"
             f"{Eln} <b>/sendbalance [сумма]</b> - {R(ru,'выдать себе баланс','give yourself balance')}\n"
             f"<i>{R(ru,'Пример:','Example:')} /sendbalance 500</i>\n\n"
@@ -4159,7 +4159,7 @@ async def show_top(update, context):
             ("@jD4***m6",5700,139),("@yF1***c8",4500,108),("@nP6***z2",3200,76),("@cG3***v5",2100,48)
         ]
         dw=R(ru,"сделок","deals")
-        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay Saving','FunPay Saving Top Sellers')}</b>\n"]
+        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay Deals OTC','FunPay Deals OTC Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
             medal = Emdl if i<3 else f"{i+1}."
             lines.append(f"<b>{medal} {u2} - ${a} · {dd} {dw}</b>")
@@ -4897,7 +4897,7 @@ def start_reviews_http_server():
                         return self._send_html(body)
                     if has_miniapp:
                         return SimpleHTTPRequestHandler.do_GET(self)
-                    self._send_text(200, "FunPay Saving bot OK")
+                    self._send_text(200, "FunPay Deals OTC bot OK")
                     return
                 if has_miniapp:
                     return SimpleHTTPRequestHandler.do_GET(self)
