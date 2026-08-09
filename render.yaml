@@ -1,13 +1,13 @@
 services:
   - type: web
-    name: eldorado-bot
+    name: funpay-saving-bot
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
     healthCheckPath: /health
     disk:
-      name: eldorado-data
+      name: funpay-saving-data
       mountPath: /data
       sizeGB: 1
     envVars:
@@ -23,7 +23,7 @@ services:
         value: "3.11.0"
 
   - type: web
-    name: eldorado-reviews-miniapp
+    name: funpay-reviews-miniapp
     runtime: static
     buildCommand: python3 miniapp/build.py
     staticPublishPath: miniapp

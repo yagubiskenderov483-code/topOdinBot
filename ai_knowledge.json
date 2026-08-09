@@ -100,8 +100,8 @@
       "eq адрес",
       "привяз.*тон"
     ],
-    "ru": "Tonkeeper — кошелёк сети TON. В Eldorado GG: Реквизиты → Привязать Tonkeeper (через приложение или вручную UQ/EQ). Адрес нужен для TON/USDT сделок и вывода.",
-    "en": "Tonkeeper is a TON wallet. In Eldorado GG: Requisites → Bind Tonkeeper (app or manual UQ/EQ). Needed for TON/USDT deals and withdraw."
+    "ru": "Tonkeeper — кошелёк сети TON. В FunPay Saving: Реквизиты → Привязать Tonkeeper (через приложение или вручную UQ/EQ). Адрес нужен для TON/USDT сделок и вывода.",
+    "en": "Tonkeeper is a TON wallet. In FunPay Saving: Requisites → Bind Tonkeeper (app or manual UQ/EQ). Needed for TON/USDT deals and withdraw."
   },
   {
     "keys": [
@@ -117,8 +117,8 @@
       "nft",
       "нфт"
     ],
-    "ru": "NFT — уникальный токен (часто картинка/подарок/username). В Eldorado GG есть сделки NFT Gift и NFT Username через гаранта.",
-    "en": "NFTs are unique tokens. Eldorado GG supports NFT Gift and NFT Username escrow deals."
+    "ru": "NFT — уникальный токен (часто картинка/подарок/username). В FunPay Saving есть сделки NFT Gift и NFT Username через гаранта.",
+    "en": "NFTs are unique tokens. FunPay Saving supports NFT Gift and NFT Username escrow deals."
   },
   {
     "keys": [
@@ -126,8 +126,8 @@
       "gas fee",
       "комиссия сети"
     ],
-    "ru": "Сетевая комиссия (gas) — плата блокчейну за транзакцию. Это не комиссия Eldorado GG (у сервиса 0%).",
-    "en": "Network gas is paid to the blockchain. Eldorado GG service fee is still 0%."
+    "ru": "Сетевая комиссия (gas) — плата блокчейну за транзакцию. Это не комиссия FunPay Saving (у сервиса 0%).",
+    "en": "Network gas is paid to the blockchain. FunPay Saving service fee is still 0%."
   },
   {
     "keys": [
@@ -160,8 +160,8 @@
       "phishing",
       "развод"
     ],
-    "ru": "Фишинг — обман ради паролей/сидов/оплаты. Не переходите по сомнительным ссылкам и не уводите сделку Eldorado GG в «лишку вне бота».",
-    "en": "Phishing steals logins/seeds. Don’t leave Eldorado GG escrow for random DMs."
+    "ru": "Фишинг — обман ради паролей/сидов/оплаты. Не переходите по сомнительным ссылкам и не уводите сделку FunPay Saving в «лишку вне бота».",
+    "en": "Phishing steals logins/seeds. Don’t leave FunPay Saving escrow for random DMs."
   },
   {
     "keys": [
@@ -169,8 +169,8 @@
       "seed phrase",
       "мнемоник"
     ],
-    "ru": "Seed-фраза — ключ к криптокошельку. Никому не отправляйте. Админы Eldorado GG её не просят.",
-    "en": "A seed phrase controls your wallet. Never share it. Eldorado admins never ask for it."
+    "ru": "Seed-фраза — ключ к криптокошельку. Никому не отправляйте. Админы FunPay Saving её не просят.",
+    "en": "A seed phrase controls your wallet. Never share it. FunPay admins never ask for it."
   },
   {
     "keys": [
@@ -257,19 +257,19 @@
   {
     "keys": [
       "кто такой менеджер",
-      "eldoradogmanager"
+      "funpaysavingmanager"
     ],
-    "ru": "Менеджер сделок Eldorado GG: @EldoradoGGManager. Товар передают ему, он подтверждает шаги сделки.",
-    "en": "Deal manager: @EldoradoGGManager. Items go through him; he confirms deal steps."
+    "ru": "Менеджер сделок FunPay Saving: @FunPayGGManager. Товар передают ему, он подтверждает шаги сделки.",
+    "en": "Deal manager: @FunPayGGManager. Items go through him; he confirms deal steps."
   },
   {
     "keys": [
       "поддержка бота",
-      "саппорт eldorado",
-      "eldoradogsupport"
+      "саппорт funpay",
+      "funpaysupport"
     ],
-    "ru": "Техподдержка: @EldoradoGGSupport. Жалобы также уходят в ящик маркетплейса через кнопку «Пожаловаться».",
-    "en": "Support: @EldoradoGGSupport. Reports also go to the marketplace inbox via Report."
+    "ru": "Техподдержка: @FunPayGGSupport. Жалобы также уходят в ящик маркетплейса через кнопку «Пожаловаться».",
+    "en": "Support: @FunPayGGSupport. Reports also go to the marketplace inbox via Report."
   },
   {
     "keys": [
@@ -277,8 +277,8 @@
       "искусственн.*интеллект",
       "нейросет"
     ],
-    "ru": "ИИ — системы, которые решают задачи, похожие на «умные»: ответы, перевод, поиск закономерностей. Я здесь помогаю с Eldorado GG и общими вопросами.",
-    "en": "AI systems solve tasks like answering and pattern finding. I help with Eldorado GG and general questions."
+    "ru": "ИИ — системы, которые решают задачи, похожие на «умные»: ответы, перевод, поиск закономерностей. Я здесь помогаю с FunPay Saving и общими вопросами.",
+    "en": "AI systems solve tasks like answering and pattern finding. I help with FunPay Saving and general questions."
   },
   {
     "keys": [
@@ -301,8 +301,8 @@
       "bitcoin",
       "биткоин"
     ],
-    "ru": "Bitcoin — первая крупная криптовалюта, сеть без банка, ограниченная эмиссия. Волатильна; это не «гарант-сделка» Eldorado GG.",
-    "en": "Bitcoin is the first major cryptocurrency. Volatile; separate from Eldorado escrow."
+    "ru": "Bitcoin — первая крупная криптовалюта, сеть без банка, ограниченная эмиссия. Волатильна; это не «гарант-сделка» FunPay Saving.",
+    "en": "Bitcoin is the first major cryptocurrency. Volatile; separate from FunPay escrow."
   },
   {
     "keys": [
@@ -359,7 +359,7 @@
       "gd29548",
       "номер сделки gd"
     ],
-    "ru": "Номера сделок Eldorado GG начинаются с GD29548 и дальше (GD29549…). В жалобе указывайте именно такой номер.",
+    "ru": "Номера сделок FunPay Saving начинаются с GD29548 и дальше (GD29549…). В жалобе указывайте именно такой номер.",
     "en": "Deal IDs start at GD29548+. Use that format in reports."
   },
   {
@@ -475,8 +475,8 @@
       "escrow",
       "гарант сделк"
     ],
-    "ru": "Эскроу/гарант — посредник держит актив/деньгии до выполнения условий. Eldorado GG работает как гарант в Telegram.",
-    "en": "Escrow holds value until conditions are met. Eldorado GG is Telegram escrow."
+    "ru": "Эскроу/гарант — посредник держит актив/деньгии до выполнения условий. FunPay Saving работает как гарант в Telegram.",
+    "en": "Escrow holds value until conditions are met. FunPay Saving is Telegram escrow."
   },
   {
     "keys": [
@@ -507,8 +507,8 @@
       "п2п",
       "p2p"
     ],
-    "ru": "P2P — обмен напрямую между людьми. Без гаранта выше риск кидка; в Eldorado GG лучше через сделку в боте.",
-    "en": "P2P is direct person-to-person trade. Escrow in Eldorado GG is safer."
+    "ru": "P2P — обмен напрямую между людьми. Без гаранта выше риск кидка; в FunPay Saving лучше через сделку в боте.",
+    "en": "P2P is direct person-to-person trade. Escrow in FunPay Saving is safer."
   },
   {
     "keys": [

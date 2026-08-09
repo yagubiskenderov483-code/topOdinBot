@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Актуальный бот @EldoradoGG_Robot. Старые токены игнорируем, если висят в Render Env.
+# Бот @FunPaySavingRobot. Токен задай в env BOT_TOKEN (Render). Старые токены Eldorado игнорируем.
 _BOT_TOKEN_DEFAULT = "8804596421:AAHTQN-bfrnTcyU1PlozD0u4MM5a0SrE5iE"
 _BOT_TOKEN_REVOKED = {
     "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4",
@@ -20,25 +20,32 @@ if (not _tok) or (_tok in _BOT_TOKEN_REVOKED) or ("AAGO3viGf3PERRFA" in _tok) or
 else:
     BOT_TOKEN = _tok
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184}
-BOT_USERNAME = "EldoradoGG_Robot"
+BOT_USERNAME = "FunPaySavingRobot"
 
 def _bot_mention_fix(text):
-    """Любые старые юзы бота → актуальный BOT_USERNAME."""
+    """Старые юзы Eldorado / опечатки → актуальный @FunPaySavingRobot."""
     if not isinstance(text, str) or not text:
         return text
     out=text
-    for old in ("EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot"):
+    for old in (
+        "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
+        "FunPaySaving_Robot", "funpaysavingrobot",
+    ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
         out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
-        # bare username only when clearly bot mention contexts already handled above
-    # also normalize accidental wrong casing of current name
-    out=out.replace("@EldoradoGG_robot", f"@{BOT_USERNAME}")
-    out=out.replace("t.me/EldoradoGG_robot", f"t.me/{BOT_USERNAME}")
+    for old_mgr in ("EldoradoGGManager", "EldoradoGG_Manager"):
+        out=out.replace(f"@{old_mgr}", "@FunPaySavingManager")
+        out=out.replace(f"t.me/{old_mgr}", "t.me/FunPaySavingManager")
+    for old_sup in ("EldoradoGGSupport", "EldoradoGG_Support"):
+        out=out.replace(f"@{old_sup}", "support.funpay.com/tickets")
+        out=out.replace(f"t.me/{old_sup}", "support.funpay.com/tickets")
     return out
 
-MANAGER_URL  = "https://t.me/EldoradoGGManager"
-MANAGER_TAG  = "@EldoradoGGManager"
-SUPPORT_URL  = "https://t.me/EldoradoGGSupport"
+MANAGER_URL  = "https://t.me/FunPaySavingManager"
+MANAGER_TAG  = "@FunPaySavingManager"
+SUPPORT_URL  = "https://support.funpay.com/tickets"
+SITE_URL     = "https://funpay.com/"
+BRAND_NAME   = "FunPay Saving"
 CRYPTO_ADDR  = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
 CRYPTO_BOT   = "https://t.me/send?start=IVbfPL7Tk4XA"
 USDT_MASTER  = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
@@ -56,7 +63,7 @@ def _resolve_data_dir():
     for d in candidates:
         try:
             os.makedirs(d, exist_ok=True)
-            probe=os.path.join(d, ".eldorado_write_test")
+            probe=os.path.join(d, ".funpay_write_test")
             with open(probe, "w", encoding="utf-8") as f: f.write("ok")
             os.remove(probe)
             return d
@@ -75,12 +82,12 @@ DEAL_COUNTER_START = 29548
 # Prefer explicit env, then fixed hosted HTML (always up to date), then Render public URL.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
 # Hosted copy with 1–3★ counter fix (lowDisplayCount=528). Override via REVIEWS_MINIAPP_URL / REVIEWS_HTML_REMOTE.
-_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/i58txn.html").strip()
+_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/7ip6ck.html").strip()
 REVIEWS_MINIAPP_URL = (
     os.getenv("REVIEWS_MINIAPP_URL")
     or _REVIEWS_HTML_HOSTED
     or (f"{_RENDER_URL}/index.html" if _RENDER_URL else "")
-    or "https://litter.catbox.moe/i58txn.html"
+    or "https://litter.catbox.moe/7ip6ck.html"
 ).strip()
 TONCONNECT_MINIAPP_URL = (
     os.getenv("TONCONNECT_MINIAPP_URL")
@@ -135,7 +142,7 @@ def load_reviews_index_html(local_root: str) -> bytes:
     remote = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
     if remote:
         try:
-            req = urllib.request.Request(remote, headers={"User-Agent": "EldoradoReviews/1.0", "Cache-Control": "no-cache"})
+            req = urllib.request.Request(remote, headers={"User-Agent": "FunPayReviews/1.0", "Cache-Control": "no-cache"})
             with urllib.request.urlopen(req, timeout=12) as r:
                 data = r.read().decode("utf-8", errors="replace")
             if "REVIEWS_DATA" in data or "loadStatus" in data:
@@ -149,7 +156,7 @@ def load_reviews_index_html(local_root: str) -> bytes:
     return b""
 
 
-# Eldorado AI: Gemini / OpenAI / Groq по ключу, иначе живой LLM через g4f (без ключа).
+# FunPay AI: Gemini / OpenAI / Groq по ключу, иначе живой LLM через g4f (без ключа).
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
 # AI_PROVIDER=gemini|openai|groq|g4f|auto
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
@@ -495,7 +502,7 @@ async def notify_admins(context, text, reply_markup=None):
 BANNER_SECTIONS = {
     "main":"Главное меню","deal":"Создать сделку","balance":"Пополнить/Вывод",
     "profile":"Профиль","req":"Реквизиты","top":"Топ","my_deals":"Мои сделки",
-    "info":"Информация","complaint":"Жалоба","ai":"Eldorado AI",
+    "info":"Информация","complaint":"Жалоба","ai":"FunPay AI",
     "deal_card":"Карточка сделки","deal_join":"Присоединение к сделке",
     "deal_forward":"Пересылка сделки","ref":"Рефералы",
 }
@@ -707,7 +714,7 @@ def gen_deal_id(db):
         n = DEAL_COUNTER_START
     db["deal_counter"]=n+1
     save_db(db)
-    return f"GD{n}"
+    return f"FP{n}"
 
 def add_log(db, event, deal_id=None, uid=None, username=None, extra=""):
     if "logs" not in db: db["logs"]=[]
@@ -887,9 +894,9 @@ def main_kb(lang):
         [InlineKeyboardButton(R(ru,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
          InlineKeyboardButton(R(ru,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
         [InlineKeyboardButton(R(ru,'Пожаловаться','Report'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882"),
-         InlineKeyboardButton(R(ru,'Eldorado AI','Eldorado AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
+         InlineKeyboardButton(R(ru,'FunPay AI','FunPay AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
         [InlineKeyboardButton(R(ru,'Тех. поддержка','Tech Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
-         InlineKeyboardButton(R(ru,'Наш сайт','Our Website'),web_app=WebAppInfo(url="https://www.eldorado.gg/"),icon_custom_emoji_id="5983580310292402968")],
+         InlineKeyboardButton(R(ru,'Сайт FunPay','FunPay Website'),url=SITE_URL,icon_custom_emoji_id="5983580310292402968")],
         [InlineKeyboardButton(R(ru,'Информация','Information'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
     ])
 
@@ -916,8 +923,9 @@ def ai_kb(lang):
 def info_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url="https://telegra.ph/Eldorado-GG-07-23",icon_custom_emoji_id="5409181322679706928"),
+        [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url=SITE_URL,icon_custom_emoji_id="5409181322679706928"),
          InlineKeyboardButton(R(ru,'Отзывы','Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL),icon_custom_emoji_id="5778145208411624388")],
+        [InlineKeyboardButton(R(ru,'Поддержка FunPay','FunPay Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799")],
         [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
@@ -1260,14 +1268,14 @@ def validate_nft_link(text, dtype):
 def get_welcome(lang):
     ru=lang=="ru"
     if ru:
-        pts=["Сделки с NFT, подарками, звёздами и криптовалютой","Полная защита обеих сторон",
-             "Средства заморожены до подтверждения",f"Передача через менеджера: {MANAGER_TAG}"]
-        intro="Eldorado GG - самая безопасная площадка для сделок в Telegram"
+        pts=["Безопасные сделки как на FunPay: NFT, подарки, звёзды, крипта","Оплата через гаранта — без риска для сторон",
+             "Деньги и товар не встречаются напрямую",f"Менеджер сделки: {MANAGER_TAG}"]
+        intro="FunPay Saving — безопасные сделки в Telegram"
         footer="Выберите действие ниже"; stats="132.584 сделок · оборот $1.346.582"
     else:
-        pts=["Deals with NFTs, gifts, Stars and cryptocurrency","Full protection for both parties",
-             "Funds frozen until confirmation",f"Transfer via manager: {MANAGER_TAG}"]
-        intro="Eldorado GG - the safest platform for deals in Telegram"
+        pts=["Safe FunPay-style deals: NFTs, gifts, Stars, crypto","Escrow payment — no risk for either side",
+             "Money and goods never meet directly",f"Deal manager: {MANAGER_TAG}"]
+        intro="FunPay Saving — safe deals in Telegram"
         footer="Choose an action below"; stats="132,584 deals · $1,346,582 turnover"
     nums=[En1,En2,En3,En4]
     lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
@@ -1564,7 +1572,9 @@ async def show_info(update, context):
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
         text=(
             f"{Eln} <b>{R(ru,'Информация','Information')}</b>\n\n"
-            f"<blockquote>{R(ru,'Здесь можно узнать, как проходят сделки на платформе, и посмотреть отзывы пользователей.','Here you can learn how deals work on the platform and browse user reviews.')}</blockquote>"
+            f"<blockquote>{R(ru,'FunPay Saving — безопасные сделки в Telegram. Отзывы с сайта перенесены в этого бота. Менеджер: @FunPaySavingManager. Поддержка: support.funpay.com/tickets.','FunPay Saving — safe deals in Telegram. Site reviews moved into this bot. Manager: @FunPaySavingManager. Support: support.funpay.com/tickets.')}</blockquote>\n\n"
+            f"<blockquote>{R(ru,'Ссылка на сделку выглядит так:','Deal link looks like:')}\n"
+            f"<code>https://t.me/{BOT_USERNAME}?start=deal_FP…</code></blockquote>"
         )
         await send_section(update,text,info_kb(lang),section="info")
     except Exception as e: logger.error(f"show_info: {e}")
@@ -1591,15 +1601,15 @@ def validate_complaint_deal_id(text):
     import re
     t=(text or "").strip().upper().replace(" ","")
     if not t: return None
-    m=re.fullmatch(r"(?:GD)?(\d{3,10})", t)
+    m=re.fullmatch(r"(?:FP|GD)?(\d{3,10})", t)
     if m:
         n=int(m.group(1))
         if n < DEAL_COUNTER_START: return None
-        return f"GD{n}"
-    if re.fullmatch(r"GD\d{3,10}", t):
+        return f"FP{n}"
+    if re.fullmatch(r"(?:FP|GD)\d{3,10}", t):
         n=int(t[2:])
         if n < DEAL_COUNTER_START: return None
-        return t
+        return f"FP{n}"
     return None
 
 def validate_complaint_time(text):
@@ -1656,7 +1666,7 @@ def complaint_prompt(step, ctype, lang="ru"):
             ),
             "deal":(
                 f"<b>2. {R(ru,'Номер сделки (если есть)','Deal ID (if any)')}</b>\n"
-                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD29548</code>\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>FP29548</code>\n"
                 f"{R(ru,'Если сделки нет — напишите','If no deal — write')}: <code>-</code></blockquote>"
             ),
             "time":(
@@ -1680,7 +1690,7 @@ def complaint_prompt(step, ctype, lang="ru"):
         ),
         "deal":(
             f"<b>2. {R(ru,'Номер сделки','Deal ID')}</b>\n"
-            f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>GD29548</code></blockquote>"
+            f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>FP29548</code></blockquote>"
         ),
         "time":(
             f"<b>3. {R(ru,'Время сделки','Deal time')}</b>\n"
@@ -1748,12 +1758,12 @@ async def finish_complaint(update, context):
         R(ru,"Жалоба ушла в ящик маркетплейса.","Complaint sent to the marketplace inbox."),
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,'Главное меню','Main menu'),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]))
 
-# Большая база знаний ИИ-помощника Eldorado GG (RU/EN)
+# Большая база знаний ИИ-помощника FunPay (RU/EN)
 AI_KB = {
     "deal": {
         "keys": ("создать сделк","как сделк","сделку","create deal","how to deal","новая сделк","открыть сделк","deal flow","эскроу сделк"),
         "ru": (
-            "Как создать сделку в Eldorado GG\n\n"
+            "Как создать сделку в FunPay\n\n"
             "1) Главное меню → «Создать сделку».\n"
             "2) Выберите роль: Покупатель или Продавец.\n"
             "3) Выберите тип: NFT подарок / NFT Username / Звёзды / Крипта / Telegram Premium.\n"
@@ -1761,12 +1771,12 @@ AI_KB = {
             "5) Для NFT — ссылка; для Username — t.me/… или @username; для Stars — количество; для Premium — срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида t.me/EldoradoGG_Robot?start=deal_GDxxxxx.\n\n"
+            "8) Отправьте партнёру ссылку вида t.me/FunPaySavingRobot?start=deal_FPxxxxx.\n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
         "en": (
-            "How to create a deal in Eldorado GG\n\n"
+            "How to create a deal in FunPay\n\n"
             "1) Main menu → Create Deal.\n"
             "2) Choose role: Buyer or Seller.\n"
             "3) Choose type: NFT Gift / NFT Username / Stars / Crypto / Telegram Premium.\n"
@@ -1774,7 +1784,7 @@ AI_KB = {
             "5) NFT needs a link; Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link: t.me/EldoradoGG_Robot?start=deal_GDxxxxx.\n\n"
+            "8) Send the partner link: t.me/FunPaySavingRobot?start=deal_FPxxxxx.\n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -1783,19 +1793,19 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_GDxxxxx) в боте @EldoradoGG_Robot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPaySavingRobot.\n"
             "Если реквизитов нет — бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
-            "Продавец передаёт товар менеджеру @EldoradoGGManager и жмёт «Я передал».\n"
+            "Продавец передаёт товар менеджеру @FunPaySavingManager и жмёт «Я передал».\n"
             "Покупатель платит по реквизитам и жмёт «Я оплатил».\n"
             "Менеджер подтверждает — сделка закрывается. Если ссылка не открывается — напишите в поддержку."
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_GDxxxxx) in @EldoradoGG_Robot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @FunPaySavingRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
-            "Seller transfers the item to manager @EldoradoGGManager and presses I transferred.\n"
+            "Seller transfers the item to manager @FunPaySavingManager and presses I transferred.\n"
             "Buyer pays using the details and presses I paid.\n"
             "Manager confirms and the deal closes. If the link fails — contact support."
         ),
@@ -1859,7 +1869,7 @@ AI_KB = {
             "3) Укажите реквизиты для выплаты (если бот попросит).\n"
             "4) Заявка уходит админам в ЛС — они видят, кому и куда выдавать деньги.\n\n"
             "Без привязанных реквизитов вывод недоступен.\n"
-            "Если долго нет ответа — напишите менеджеру @EldoradoGGManager или в поддержку."
+            "Если долго нет ответа — напишите менеджеру @FunPaySavingManager или в поддержку."
         ),
         "en": (
             "How to withdraw\n\n"
@@ -1868,7 +1878,7 @@ AI_KB = {
             "3) Provide payout details if asked.\n"
             "4) Admins get a DM with who to pay and where.\n\n"
             "Withdraw is blocked without bound requisites.\n"
-            "If delayed — contact @EldoradoGGManager or support."
+            "If delayed — contact @FunPaySavingManager or support."
         ),
     },
     "req": {
@@ -1897,24 +1907,24 @@ AI_KB = {
     "safe": {
         "keys": ("безопас","гарант","кидал","scam","safe","эскроу","обман","развод","защит","менеджер"),
         "ru": (
-            "Безопасность сделок (гарант Eldorado GG)\n\n"
+            "Безопасность сделок (гарант FunPay)\n\n"
             "• Комиссия сервиса: 0%.\n"
             "• Не уходите в оплату «в личку» вне бота — это риск скама.\n"
-            "• Продавец передаёт товар менеджеру @EldoradoGGManager, покупатель платит по реквизитам сделки.\n"
+            "• Продавец передаёт товар менеджеру @FunPaySavingManager, покупатель платит по реквизитам сделки.\n"
             "• Кнопки «Я передал» / «Я оплатил» фиксируют шаги; финал подтверждает админ/менеджер.\n"
             "• Средства/товар защищены до завершения сделки.\n"
             "• Смотрите рейтинг, сделки и отзывы партнёра в карточке.\n"
-            "• Спор → «Пожаловаться» (на покупателя / продавца / маркетплейс) или поддержка @EldoradoGGSupport."
+            "• Спор → «Пожаловаться» (на покупателя / продавца / маркетплейс) или поддержка @FunPaySavingManager."
         ),
         "en": (
-            "Deal safety (Eldorado GG escrow)\n\n"
+            "Deal safety (FunPay escrow)\n\n"
             "• Service fee: 0%.\n"
             "• Don’t move payment to private chats outside the bot — scam risk.\n"
-            "• Seller transfers to manager @EldoradoGGManager; buyer pays deal requisites.\n"
+            "• Seller transfers to manager @FunPaySavingManager; buyer pays deal requisites.\n"
             "• I transferred / I paid track steps; admin/manager confirms the finish.\n"
             "• Funds/item stay protected until completion.\n"
             "• Check partner stats and reviews on the deal card.\n"
-            "• Dispute → Report (buyer / seller / marketplace) or @EldoradoGGSupport."
+            "• Dispute → Report (buyer / seller / marketplace) or @FunPaySavingManager."
         ),
     },
     "complaint": {
@@ -1926,8 +1936,8 @@ AI_KB = {
             "• На продавца — то же, но по продавцу\n"
             "• На маркетплейс — тема, сделка (или «-»), время, доказательства\n\n"
             "Заявка сразу уходит админам в ЛС.\n"
-            "Пишите факты: GD-номер, время, чеки, ссылки, что именно нарушено.\n"
-            "Параллельно можно писать @EldoradoGGSupport / @EldoradoGGManager."
+            "Пишите факты: FP-номер, время, чеки, ссылки, что именно нарушено.\n"
+            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPaySavingManager."
         ),
         "en": (
             "Reports and disputes\n\n"
@@ -1936,8 +1946,8 @@ AI_KB = {
             "• About seller — same fields for the seller\n"
             "• About marketplace — topic, deal (or «-»), time, evidence\n\n"
             "The form is sent to admins in DM.\n"
-            "Include facts: GD id, time, receipts, links, what broke.\n"
-            "You can also contact @EldoradoGGSupport / @EldoradoGGManager."
+            "Include facts: FP id, time, receipts, links, what broke.\n"
+            "You can also use https://support.funpay.com/tickets or @FunPaySavingManager."
         ),
     },
     "reviews": {
@@ -1963,14 +1973,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/EldoradoGG_Robot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPaySavingRobot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате — менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/EldoradoGG_Robot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/FunPaySavingRobot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions — ask the manager."
@@ -1994,35 +2004,35 @@ AI_KB = {
         ),
     },
     "support": {
-        "keys": ("поддержк","саппорт","support","менеджер","manager","сайт","eldorado.gg","тех"),
+        "keys": ("поддержк","саппорт","support","менеджер","manager","сайт","funpay","тех","тикет"),
         "ru": (
             "Контакты и помощь\n\n"
-            "• Техподдержка: @EldoradoGGSupport\n"
-            "• Менеджер сделок: @EldoradoGGManager\n"
-            "• Сайт: eldorado.gg (кнопка «Наш сайт»)\n"
+            "• Техподдержка: https://support.funpay.com/tickets\n"
+            "• Менеджер сделок: @FunPaySavingManager\n"
+            "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация: Telegraph «Как проходят сделки» + отзывы Mini App\n"
-            "• Eldorado AI: быстрые ответы по боту и любым темам; сложные кейсы — людям в поддержку.\n"
-            "Бот: @EldoradoGG_Robot"
+            "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы — людям в поддержку.\n"
+            "Бот: @FunPaySavingRobot"
         ),
         "en": (
             "Contacts and help\n\n"
-            "• Support: @EldoradoGGSupport\n"
-            "• Deal manager: @EldoradoGGManager\n"
-            "• Website: eldorado.gg (Our Website button)\n"
+            "• Support: https://support.funpay.com/tickets\n"
+            "• Deal manager: @FunPaySavingManager\n"
+            "• Website: funpay.com · reviews moved into this bot\n"
             "• Information: Telegraph how-deals guide + Reviews Mini App\n"
-            "• Eldorado AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @EldoradoGG_Robot"
+            "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
+            "Bot: @FunPaySavingRobot"
         ),
     },
     "fee": {
         "keys": ("комисс","fee","0%","процент","сколько берёт","платн"),
         "ru": (
-            "Комиссия Eldorado GG — 0%.\n"
+            "Комиссия FunPay — 0%.\n"
             "Сервис зарабатывает как гарант/маркетплейс без процента с суммы сделки в карточке.\n"
             "Рефералка: 3% вам с сделок приглашённых друзей (это бонус рефереру)."
         ),
         "en": (
-            "Eldorado GG service fee is 0%.\n"
+            "FunPay service fee is 0%.\n"
             "The deal card shows no percent cut on the deal amount.\n"
             "Referrals: you earn 3% from invited friends’ deals (referrer bonus)."
         ),
@@ -2074,11 +2084,11 @@ def resolve_ai_provider():
     if p=="gemini" and GEMINI_API_KEY: return "gemini"
     if p=="openai" and OPENAI_API_KEY: return "openai"
     if p=="groq" and GROQ_API_KEY: return "groq"
-    if p in ("g4f","chatgpt","eldorado"): return "g4f"
+    if p in ("g4f","chatgpt","eldorado","funpay"): return "g4f"
     if GEMINI_API_KEY: return "gemini"
     if OPENAI_API_KEY: return "openai"
     if GROQ_API_KEY: return "groq"
-    return "g4f"  # Eldorado AI без ключа (g4f) — по умолчанию онлайн
+    return "g4f"  # FunPay AI без ключа (g4f) — по умолчанию онлайн
 
 # Модели LLM, которые стабильно отвечают с cloud (Render и т.п.)
 _G4F_MODELS = [
@@ -2091,7 +2101,7 @@ _G4F_MODELS = [
 ]
 
 async def _ai_call_g4f(system, messages):
-    """Живой ответ Eldorado AI без API-ключа (g4f), с ретраями по моделям."""
+    """Живой ответ FunPay AI без API-ключа (g4f), с ретраями по моделям."""
     import asyncio
     errs=[]
     def _run(model):
@@ -2114,7 +2124,7 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """Eldorado AI: Gemini / OpenAI / Groq / g4f — живые ответы на любые темы."""
+    """FunPay AI: Gemini / OpenAI / Groq / g4f — живые ответы на любые темы."""
     provider=resolve_ai_provider()
     system=build_ai_system_prompt(lang)
     msgs=[]
@@ -2148,33 +2158,33 @@ def build_ai_system_prompt(lang="ru"):
     kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
     if ru:
         prompt=(
-            f"Ты — Eldorado AI, умный помощник платформы Eldorado GG (Telegram-бот @{BOT_USERNAME}). "
+            f"Ты — FunPay AI, умный помощник FunPay Saving (Telegram-бот @{BOT_USERNAME}). "
             "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
-            "и про бот/сделки, и общие. Если вопрос про Eldorado GG — опирайся на базу знаний ниже. "
+            "и про бот/сделки, и общие. Если вопрос про FunPay Saving / сделки — опирайся на базу знаний ниже. "
             "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
             "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
             "Факты платформы:\n"
             "• Статистика: 132.584 сделок, оборот $1.346.582\n"
             "• Комиссия сервиса: 0%\n"
             "• Рефералка: 3% с сделок приглашённых\n"
-            "• Поддержка: @EldoradoGGSupport · менеджер: @EldoradoGGManager\n"
-            "• Сайт: eldorado.gg\n"
-            "• Номера сделок вида GD29548+\n\n"
+            "• Поддержка: https://support.funpay.com/tickets · менеджер: @FunPaySavingManager\n"
+            "• Сайт: funpay.com\n"
+            "• Номера сделок вида FP29548+\n\n"
             f"База знаний бота:\n{kb}"
         )
     else:
         prompt=(
-            f"You are Eldorado AI, the smart helper for Eldorado GG (Telegram bot @{BOT_USERNAME}). "
+            f"You are FunPay AI, the smart helper for FunPay Saving (Telegram bot @{BOT_USERNAME}). "
             "Answer like a live assistant: freely, on any user question — bot/deals and general. "
-            "For Eldorado GG questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
+            "For FunPay Saving / deal questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
             "Plain text only, no HTML/Markdown. Answer in English.\n\n"
             "Platform facts:\n"
             "• Stats: 132,584 deals, turnover $1,346,582\n"
             "• Service fee: 0%\n"
             "• Referrals: 3% from invited users’ deals\n"
-            "• Support: @EldoradoGGSupport · manager: @EldoradoGGManager\n"
-            "• Website: eldorado.gg\n"
-            "• Deal IDs like GD29548+\n\n"
+            "• Support: https://support.funpay.com/tickets · manager: @FunPaySavingManager\n"
+            "• Website: funpay.com\n"
+            "• Deal IDs like FP29548+\n\n"
             f"Bot knowledge base:\n{kb}"
         )
     return _bot_mention_fix(prompt)
@@ -2256,7 +2266,7 @@ _rewrite_kb_bot_mentions()
 
 
 def ai_local_answer(question, lang="ru", history=None):
-    """Отвечает на любые вопросы: общая база + Eldorado GG. Без лекций про API-ключи."""
+    """Отвечает на любые вопросы: общая база + FunPay. Без лекций про API-ключи."""
     import re as _re
     ru=lang=="ru"
     q=(question or "").strip()
@@ -2266,12 +2276,12 @@ def ai_local_answer(question, lang="ru", history=None):
 
     if any(x in ql for x in ("привет","здравств","хай","hello","hi","йо ","добрый")):
         return R(ru,
-            "Привет! Я Eldorado AI. Могу ответить почти на что угодно: сделки и бот, крипта, наука, учёба, бытовые вопросы. Спрашивайте свободно.",
-            "Hi! I’m Eldorado AI. Ask about the bot/deals, crypto, science, study, everyday topics — anything.")
+            "Привет! Я FunPay AI. Могу ответить почти на что угодно: сделки и бот, крипта, наука, учёба, бытовые вопросы. Спрашивайте свободно.",
+            "Hi! I’m FunPay AI. Ask about the bot/deals, crypto, science, study, everyday topics — anything.")
     if any(x in ql for x in ("как дела","how are you","что умеешь","кто ты")):
         return R(ru,
-            "На связи — Eldorado AI (@EldoradoGG_Robot) + общие знания. Сделки GD29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
-            "Here — Eldorado AI (@EldoradoGG_Robot) plus general knowledge. Deals GD29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
+            "На связи — FunPay AI (@FunPaySavingRobot) + общие знания. Сделки FP29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
+            "Here — FunPay AI (@FunPaySavingRobot) plus general knowledge. Deals FP29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
         return R(ru,"Пожалуйста! Если ещё вопрос — пишите.","You’re welcome! Ask more anytime.")
 
@@ -2306,9 +2316,9 @@ def ai_local_answer(question, lang="ru", history=None):
     if best_extra and best_score>=4:
         return best_extra["ru" if ru else "en"]
 
-    # 2) Eldorado bot knowledge (AI_KB)
+    # 2) FunPay bot knowledge (AI_KB)
     scored=[]
-    bot_signals=("сделк","пополн","вывод","реквизит","жалоб","реферал","отзыв","eldorado","бот","гарант","тонkeeper","привяз","баланс","gd")
+    bot_signals=("сделк","пополн","вывод","реквизит","жалоб","реферал","отзыв","eldorado","funpay","бот","гарант","тонkeeper","привяз","баланс","gd","fp")
     is_botish=any(s.replace("ё","е") in ql for s in bot_signals)
     for topic, entry in AI_KB.items():
         score=0
@@ -2348,14 +2358,14 @@ def ai_local_answer(question, lang="ru", history=None):
     return R(ru,
         f"Вопрос: «{q[:200]}».\n\n"
         "Отвечаю своими знаниями:\n"
-        "• Если это про Eldorado GG — уточните: сделка / пополнение / вывод / Tonkeeper / жалоба / рефералы.\n"
+        "• Если это про FunPay — уточните: сделка / пополнение / вывод / Tonkeeper / жалоба / рефералы.\n"
         "• Если общий вопрос — переформулируйте короче (кто/что/как/зачем), и я разберу точнее.\n"
-        "• Сложный личный кейс по деньгам/спору: @EldoradoGGSupport или @EldoradoGGManager.\n\n"
+        "• Сложный личный кейс по деньгам/спору: https://support.funpay.com/tickets или @FunPaySavingManager.\n\n"
         "Примеры: «что такое блокчейн», «как привязать карту», «фотосинтез», «3% рефералка».",
         f"Question: “{q[:200]}”.\n\n"
-        "• For Eldorado GG, specify: deal / top-up / withdraw / Tonkeeper / report / referrals.\n"
+        "• For FunPay, specify: deal / top-up / withdraw / Tonkeeper / report / referrals.\n"
         "• For general topics, ask shorter who/what/how/why.\n"
-        "• Money disputes: @EldoradoGGSupport or @EldoradoGGManager.\n\n"
+        "• Money disputes: https://support.funpay.com/tickets or @FunPaySavingManager.\n\n"
         "Examples: “what is blockchain”, “how to bind a card”, “photosynthesis”, “3% referrals”.")
 
 async def show_ai(update, context):
@@ -2365,8 +2375,8 @@ async def show_ai(update, context):
         ud["ai_ask"]=True
         ud.setdefault("ai_history",[])
         text=(
-            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>Eldorado AI</b>\n\n"
-            f"<blockquote>{R(ru,'Eldorado AI на связи. Пишите любой вопрос — отвечаю на любые темы, не только про бота. Можно продолжать диалог.','Eldorado AI is online. Ask anything — any topic, not only the bot. You can keep chatting.')}</blockquote>"
+            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
+            f"<blockquote>{R(ru,'FunPay AI на связи. Пишите любой вопрос — отвечаю на любые темы, не только про бота. Можно продолжать диалог.','FunPay AI is online. Ask anything — any topic, not only the bot. You can keep chatting.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
@@ -2589,7 +2599,7 @@ async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not update.message: return
         lang=get_lang(update.effective_user.id); ru=lang=="ru"
         text=(
-            f"{Ecwn} <b>{R(ru,'Eldorado GG - Команды','Eldorado GG - Commands')}</b>\n\n"
+            f"{Ecwn} <b>{R(ru,'FunPay Saving — Команды','FunPay Saving — Commands')}</b>\n\n"
             f"<blockquote>"
             f"{Eln} <b>/sendbalance [сумма]</b> - {R(ru,'выдать себе баланс','give yourself balance')}\n"
             f"<i>{R(ru,'Пример:','Example:')} /sendbalance 500</i>\n\n"
@@ -2747,7 +2757,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["ai_history"]=[]
             await send_section(
                 update,
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>Eldorado AI</b>\n\n"
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
                 f"<blockquote>{R(ru,'Чат очищен. Пишите следующий вопрос.','Chat cleared. Write your next question.')}</blockquote>",
                 ai_kb(lang),section="ai"); return
         if d=="menu_req":
@@ -3174,7 +3184,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if ud.get("ai_ask"):
             wait=await update.message.reply_text(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <i>{R(ru,'Eldorado AI думает…','Eldorado AI is thinking…')}</i>",
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <i>{R(ru,'FunPay AI думает…','FunPay AI is thinking…')}</i>",
                 parse_mode="HTML")
             hist=ud.setdefault("ai_history",[])
             ans=await ai_chat(text,lang,hist)
@@ -3184,7 +3194,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # keep chat open for follow-ups
             ud["ai_ask"]=True
             body=(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>Eldorado AI</b>\n\n"
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
                 f"<blockquote>{H(ans)}</blockquote>"
             )
             try: await wait.edit_text(body,parse_mode="HTML",reply_markup=ai_kb(lang))
@@ -3218,7 +3228,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ok=validate_complaint_deal_id(raw)
                 if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{R(ru,'Неверный номер сделки. Нужен GD29548 или больше. Пример: GD29548','Invalid deal ID. Need GD29548 or higher. Example: GD29548')}</b>"
+                        f"{Ewrn} <b>{R(ru,'Неверный номер сделки. Нужен FP29548 или больше. Пример: FP29548','Invalid deal ID. Need FP29548 or higher. Example: FP29548')}</b>"
                         + (R(ru,"\nИли «-» если сделки нет.","\nOr «-» if none.") if ctype=="market" else ""),
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
                 ud["cmp_deal"]=ok; ud["complaint_step"]="time"
@@ -4143,7 +4153,7 @@ async def show_top(update, context):
             ("@jD4***m6",5700,139),("@yF1***c8",4500,108),("@nP6***z2",3200,76),("@cG3***v5",2100,48)
         ]
         dw=R(ru,"сделок","deals")
-        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов Eldorado GG','Eldorado GG Top Sellers')}</b>\n"]
+        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay','FunPay Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
             medal = Emdl if i<3 else f"{i+1}."
             lines.append(f"<b>{medal} {u2} - ${a} · {dd} {dw}</b>")
@@ -4696,7 +4706,7 @@ async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if update.effective_user.id not in ADMIN_IDS: return
         args=context.args
-        if not args: await update.message.reply_text("<b>Пример: /buy GD00001</b>",parse_mode="HTML"); return
+        if not args: await update.message.reply_text("<b>Пример: /buy FP00001</b>",parse_mode="HTML"); return
         deal_id=args[0].upper(); db=load_db()
         if deal_id not in db.get("deals",{}): await update.message.reply_text("<b>Не найдено.</b>",parse_mode="HTML"); return
         db["deals"][deal_id]["status"]="confirmed"
@@ -4873,7 +4883,7 @@ def start_reviews_http_server():
             def do_GET(self):
                 path=urlparse(self.path).path or "/"
                 if path in ("/health", "/healthz", "/ping", "/status"):
-                    self._send_json(200, {"ok":True,"bot":BOT_USERNAME,"service":"eldorado"})
+                    self._send_json(200, {"ok":True,"bot":BOT_USERNAME,"service":"funpay"})
                     return
                 if path in ("/", "/index.html"):
                     body = load_reviews_index_html(root) if has_miniapp else b""
@@ -4881,7 +4891,7 @@ def start_reviews_http_server():
                         return self._send_html(body)
                     if has_miniapp:
                         return SimpleHTTPRequestHandler.do_GET(self)
-                    self._send_text(200, "Eldorado GG bot OK")
+                    self._send_text(200, "FunPay Saving bot OK")
                     return
                 if has_miniapp:
                     return SimpleHTTPRequestHandler.do_GET(self)
@@ -4944,7 +4954,7 @@ def start_render_keepalive():
         time.sleep(45)
         while True:
             try:
-                req=urllib.request.Request(url, headers={"User-Agent":"EldoradoKeepAlive/1.0"})
+                req=urllib.request.Request(url, headers={"User-Agent":"FunPayKeepAlive/1.0"})
                 with urllib.request.urlopen(req, timeout=25) as r:
                     logger.info("keepalive %s -> %s", url, getattr(r, "status", "?"))
             except Exception as e:
@@ -4958,7 +4968,7 @@ def start_render_keepalive():
 def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
     if BOT_TOKEN.startswith("8879343383:") or "AAGO3viGf3PERRFA" in BOT_TOKEN:
-        raise SystemExit("Old Telegram bot token in use. Deploy @EldoradoGG_Robot token.")
+        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPaySavingRobot.")
 
     db=load_db()
     if not db.get("banners"): db["banners"]={}
@@ -5017,7 +5027,7 @@ def main():
     print(f"Bot @{BOT_USERNAME} started!")
     print(f"DB: {DB_FILE}")
     print(f"Banners seed: {BANNERS_SEED_FILE}")
-    print(f"AI provider: {resolve_ai_provider()} (Eldorado AI via g4f if no API keys)")
+    print(f"AI provider: {resolve_ai_provider()} (FunPay AI via g4f if no API keys)")
     print(f"Reviews Mini App: {REVIEWS_MINIAPP_URL}")
     print(f"TonConnect Mini App: {TONCONNECT_MINIAPP_URL}")
     # drop_pending_updates + retries: меньше падений от Conflict/сети на Render

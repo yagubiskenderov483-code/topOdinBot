@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Tonkeeper — Eldorado GG</title>
+  <title>Tonkeeper — FunPay Saving</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
   <style>
@@ -120,7 +120,7 @@
           // fallback: deep-link back into bot with start param (friendly only)
           try {
             if (/^(UQ|EQ)[A-Za-z0-9_-]{46}$/.test(address) && tg) {
-              var link = "https://t.me/EldoradoGG_Robot?start=bindton_" + address;
+              var link = "https://t.me/FunPaySavingRobot?start=bindton_" + address;
               tg.openTelegramLink(link);
             }
           } catch (e) {}
