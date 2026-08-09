@@ -933,8 +933,7 @@ def ai_kb(lang):
 def info_kb(lang):
     ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,'Как проходят сделки','How deals work'),url=SITE_URL,icon_custom_emoji_id="5409181322679706928"),
-         InlineKeyboardButton(R(ru,'Отзывы','Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL),icon_custom_emoji_id="5778145208411624388")],
+        [InlineKeyboardButton(R(ru,'Отзывы','Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL),icon_custom_emoji_id="5778145208411624388")],
         [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
