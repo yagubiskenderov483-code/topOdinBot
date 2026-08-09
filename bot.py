@@ -4153,7 +4153,7 @@ async def show_top(update, context):
             ("@jD4***m6",5700,139),("@yF1***c8",4500,108),("@nP6***z2",3200,76),("@cG3***v5",2100,48)
         ]
         dw=R(ru,"сделок","deals")
-        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay','FunPay Top Sellers')}</b>\n"]
+        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay Saving','FunPay Saving Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
             medal = Emdl if i<3 else f"{i+1}."
             lines.append(f"<b>{medal} {u2} - ${a} · {dd} {dw}</b>")
