@@ -100,7 +100,7 @@
       "eq адрес",
       "привяз.*тон"
     ],
-    "ru": "Tonkeeper — кошелёк сети TON. В FunPay: Реквизиты → Привязать Tonkeeper (через приложение или вручную UQ/EQ). Адрес нужен для TON/USDT сделок и вывода.",
+    "ru": "Tonkeeper — кошелёк сети TON. В FunPay: Реквизиты → Привязать кошелёк. Адрес нужен для TON/USDT сделок и вывода.",
     "en": "Tonkeeper is a TON wallet. In FunPay: Requisites → Bind Tonkeeper (app or manual UQ/EQ). Needed for TON/USDT deals and withdraw."
   },
   {

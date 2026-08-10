@@ -91,20 +91,34 @@ DEAL_COUNTER_START = 29548
 # Reviews Mini App (self-contained HTML). Do not use BrewPage — it shows a side panel in Telegram.
 # Prefer explicit env, then fixed hosted HTML (always up to date), then Render public URL.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
-# Hosted copy with 1–3★ counter fix (lowDisplayCount=528). Override via REVIEWS_MINIAPP_URL / REVIEWS_HTML_REMOTE.
+# Stale litterbox fallback only. Prefer env or this Render service (/index.html).
 _REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/7ip6ck.html").strip()
-REVIEWS_MINIAPP_URL = (
-    os.getenv("REVIEWS_MINIAPP_URL")
-    or _REVIEWS_HTML_HOSTED
-    or (f"{_RENDER_URL}/index.html" if _RENDER_URL else "")
-    or "https://litter.catbox.moe/7ip6ck.html"
-).strip()
-TONCONNECT_MINIAPP_URL = (
-    os.getenv("TONCONNECT_MINIAPP_URL")
-    or (f"{_RENDER_URL}/tonconnect.html" if _RENDER_URL else "")
-    or (REVIEWS_MINIAPP_URL.replace("/index.html", "/tonconnect.html")
-        if REVIEWS_MINIAPP_URL.endswith("/index.html") else "")
-).strip()
+
+def reviews_miniapp_url() -> str:
+    """Resolve Mini App URL at call time so Render URL wins over stale hosted HTML."""
+    env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
+    if env:
+        return env
+    render = (os.getenv("RENDER_EXTERNAL_URL") or _RENDER_URL or "").rstrip("/")
+    if render:
+        return f"{render}/index.html"
+    return _REVIEWS_HTML_HOSTED or "https://litter.catbox.moe/7ip6ck.html"
+
+def tonconnect_miniapp_url() -> str:
+    env = (os.getenv("TONCONNECT_MINIAPP_URL") or "").strip()
+    if env:
+        return env
+    render = (os.getenv("RENDER_EXTERNAL_URL") or _RENDER_URL or "").rstrip("/")
+    if render:
+        return f"{render}/tonconnect.html"
+    reviews = reviews_miniapp_url()
+    if reviews.endswith("/index.html"):
+        return reviews[:-len("/index.html")] + "/tonconnect.html"
+    return ""
+
+# Back-compat aliases (re-read via helpers where buttons are built).
+REVIEWS_MINIAPP_URL = reviews_miniapp_url()
+TONCONNECT_MINIAPP_URL = tonconnect_miniapp_url()
 
 def patch_reviews_html(html: str) -> str:
     """Hot-fix stale Mini App builds to fixed star-filter totals."""
@@ -138,9 +152,9 @@ def patch_reviews_html(html: str) -> str:
         "    if (activeFilter === \"all\") {\n"
         "      total = totalDisplay();\n"
         "    } else if (activeFilter === \"5\") {\n"
-        "      total = Number(data.fiveDisplayCount) || 37852;\n"
+        "      total = Number(data.fiveDisplayCount) || 37500;\n"
         "    } else if (activeFilter === \"4\") {\n"
-        "      total = Number(data.fourDisplayCount) || 4500;\n"
+        "      total = Number(data.fourDisplayCount) || 6700;\n"
         "    } else if (activeFilter === \"low\") {\n"
         "      total = Number(data.lowDisplayCount) || 528;\n"
         "    } else {\n"
@@ -172,9 +186,20 @@ def patch_reviews_html(html: str) -> str:
     if '"fiveDisplayCount"' not in html and "window.REVIEWS_DATA=" in html:
         html = html.replace(
             'window.REVIEWS_DATA={"average"',
-            'window.REVIEWS_DATA={"fiveDisplayCount":37852,"fourDisplayCount":4500,"lowDisplayCount":528,"displayCount":42880,"average"',
+            'window.REVIEWS_DATA={"fiveDisplayCount":37500,"fourDisplayCount":6700,"lowDisplayCount":528,"displayCount":44728,"average"',
             1,
         )
+    # Stale litterbox totals
+    for old_n, new_n in (
+        ('"displayCount":45553', '"displayCount":44728'),
+        ('"displayCount":42880', '"displayCount":44728'),
+        ('"fiveDisplayCount":37852', '"fiveDisplayCount":37500'),
+        ('"fourDisplayCount":4500', '"fourDisplayCount":6700'),
+        ('"count":45553', '"count":44728'),
+        ('"count":42880', '"count":44728'),
+    ):
+        if old_n in html:
+            html = html.replace(old_n, new_n)
     return html
 
 def load_reviews_index_html(local_root: str) -> bytes:
@@ -961,10 +986,12 @@ def ai_kb(lang):
 
 def info_kb(lang):
     ru=lang=="ru"
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(R(ru,'Отзывы','Reviews'),web_app=WebAppInfo(url=REVIEWS_MINIAPP_URL),icon_custom_emoji_id="5778145208411624388")],
-        [InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
-    ])
+    rows=[]
+    reviews_url=reviews_miniapp_url()
+    if reviews_url:
+        rows.append([InlineKeyboardButton(R(ru,'Отзывы','Reviews'),web_app=WebAppInfo(url=reviews_url),icon_custom_emoji_id="5778145208411624388")])
+    rows.append([InlineKeyboardButton(R(ru,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
+    return InlineKeyboardMarkup(rows)
 
 def topup_methods_kb(lang):
     ru=lang=="ru"
@@ -1078,15 +1105,17 @@ def currency_requisites_kb(currency, lang="ru"):
     ru=lang=="ru"
     field=requisite_field_for_currency(currency)
     rows=[]
+    ton_url=tonconnect_miniapp_url()
     if field=="ton":
-        if TONCONNECT_MINIAPP_URL:
+        if ton_url:
             rows.append([InlineKeyboardButton(
-                R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
-                web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+                R(ru,"Привязать кошелёк","Bind wallet"),
+                web_app=WebAppInfo(url=ton_url),
                 icon_custom_emoji_id="5397829221605191505")])
-        rows.append([InlineKeyboardButton(
-            R(ru,"Привязать Tonkeeper вручную","Bind Tonkeeper manually"),
-            callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")])
+        else:
+            rows.append([InlineKeyboardButton(
+                R(ru,"Привязать","Bind"),
+                callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")])
     elif field=="stars":
         rows.append([InlineKeyboardButton(
             R(ru,"Привязать Звёзды","Bind Stars"),
@@ -1185,19 +1214,21 @@ def deal_join_req_kb(deal_id, currency, lang="ru"):
     ru=lang=="ru"
     field=requisite_field_for_currency(currency)
     rows=[]
+    ton_url=tonconnect_miniapp_url()
     if field=="card":
         rows.append([InlineKeyboardButton(
             R(ru,"Привязать карту / телефон","Bind card / phone"),
             callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")])
     elif field=="ton":
-        if TONCONNECT_MINIAPP_URL:
+        if ton_url:
             rows.append([InlineKeyboardButton(
-                R(ru,"Привязать через Tonkeeper","Bind via Tonkeeper"),
-                web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+                R(ru,"Привязать кошелёк","Bind wallet"),
+                web_app=WebAppInfo(url=ton_url),
                 icon_custom_emoji_id="5397829221605191505")])
-        rows.append([InlineKeyboardButton(
-            R(ru,"Привязать Tonkeeper вручную","Bind Tonkeeper manually"),
-            callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")])
+        else:
+            rows.append([InlineKeyboardButton(
+                R(ru,"Привязать","Bind"),
+                callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")])
     else:
         rows.append([InlineKeyboardButton(
             R(ru,"Привязать Звёзды","Bind Stars"),callback_data=f"req_deal_stars_{deal_id}",
@@ -1267,11 +1298,16 @@ def validate_ton_address(text):
 def tonconnect_bind_kb(lang="ru"):
     ru=lang=="ru"
     rows=[]
-    if TONCONNECT_MINIAPP_URL:
+    ton_url=tonconnect_miniapp_url()
+    if ton_url:
         rows.append([InlineKeyboardButton(
             R(ru,"Привязать кошелёк","Bind wallet"),
-            web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
+            web_app=WebAppInfo(url=ton_url),
             icon_custom_emoji_id="5397829221605191505")])
+    else:
+        rows.append([InlineKeyboardButton(
+            R(ru,"Привязать","Bind"),
+            callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
     rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
@@ -2836,7 +2872,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton(R(ru,f"Привязать карту / телефон {bank}",f"Bind card / phone {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
-                [InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
+                [InlineKeyboardButton(R(ru,"Привязать","Bind"),callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
                 [InlineKeyboardButton(R(ru,"Привязать Звёзды","Bind Stars"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
                 [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
             ])
@@ -2962,11 +2998,12 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.effective_chat.send_message(
                         f"{Ewrn} <b>{R(ru,'Неизвестный тип реквизитов.','Unknown requisite type.')}</b>",
                         parse_mode="HTML"); return
-                if field=="ton" and TONCONNECT_MINIAPP_URL:
+                ton_url=tonconnect_miniapp_url()
+                if field=="ton" and ton_url:
                     ud["req_after_buyer_deal"]=True
                     await send_section(update,req_prompt_text("ton",lang),
                         InlineKeyboardMarkup([
-                            [InlineKeyboardButton(R(ru,"Привязать кошелёк","Bind wallet"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
+                            [InlineKeyboardButton(R(ru,"Привязать кошелёк","Bind wallet"),web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
                             [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
                         ]),section="req"); return
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
@@ -2986,10 +3023,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             field=raw
             if field not in REQ_FIELDS:
                 await show_req(update,context); return
-            if field=="ton" and TONCONNECT_MINIAPP_URL:
+            ton_url=tonconnect_miniapp_url()
+            if field=="ton" and ton_url:
                 await send_section(update,req_prompt_text("ton",lang),
                     InlineKeyboardMarkup([
-                        [InlineKeyboardButton(R(ru,"Привязать кошелёк","Bind wallet"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
+                        [InlineKeyboardButton(R(ru,"Привязать кошелёк","Bind wallet"),web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")],
                     ]),section="req"); return
             ud["req_step"]=field
@@ -3142,7 +3180,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{R(ru,'Для вывода привяжите реквизиты.','Bind requisites to withdraw.')}</b>",
                     InlineKeyboardMarkup([
                         [InlineKeyboardButton(R(ru,"Привязать карту/телефон","Bind card/phone"),callback_data="req_edit_card",icon_custom_emoji_id="5902056028513505203")],
-                        [InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
+                        [InlineKeyboardButton(R(ru,"Привязать","Bind"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(R(ru,"Привязать @username","Bind @username"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
                     ]),section="balance"); return
@@ -4143,7 +4181,7 @@ async def show_req(update, context):
             rows.append([InlineKeyboardButton(R(ru,"Изменить Tonkeeper","Edit Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5879841310902324730"),
                          InlineKeyboardButton(R(ru,"Отвязать Tonkeeper","Unbind Tonkeeper"),callback_data="req_del_ton",icon_custom_emoji_id="5904542823167824187")])
         else:
-            rows.append([InlineKeyboardButton(R(ru,"Привязать Tonkeeper","Bind Tonkeeper"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
+            rows.append([InlineKeyboardButton(R(ru,"Привязать","Bind"),callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")])
         if stars:
             rows.append([InlineKeyboardButton(R(ru,"Изменить Звёзды","Edit Stars"),callback_data="req_edit_stars",icon_custom_emoji_id="5879841310902324730"),
                          InlineKeyboardButton(R(ru,"Отвязать Звёзды","Unbind Stars"),callback_data="req_del_stars",icon_custom_emoji_id="5904542823167824187")])
@@ -4202,15 +4240,18 @@ async def show_top(update, context):
             "5793942849745591465","5793926687783655907","5793979472931723221",
             "5794375786743995258",
         ]
+        PLACE_FB=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
         dw=R(ru,"сделок","deals")
-        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay','FunPay Top Sellers')}</b>\n"]
+        lines=[f"{Ecwn} <b>{R(ru,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
         for i,(u2,a,dd) in enumerate(TOP):
-            place=ce(PLACE_EMOJI[i], str(i+1))
-            lines.append(f"<b>{place} {u2} - ${a} · {dd} {dw}</b>")
-        lines.append(f"\n<b>{CF} {R(ru,'132.584 сделок · оборот $1.346.582','132,584 deals · $1,346,582 turnover')}</b>")
+            place=ce(PLACE_EMOJI[i], PLACE_FB[i])
+            lines.append(f"{place} <b>{u2}</b> - ${a} · {dd} {dw}")
+        lines.append("")
+        lines.append(f"{CF} <b>{R(ru,'132.584 сделок · оборот $1.346.582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")
+
 
 
 async def show_withdraw(update, context):
@@ -4981,7 +5022,7 @@ def start_reviews_http_server():
 
         server = ThreadingHTTPServer(("0.0.0.0", int(port)), Handler)
         threading.Thread(target=server.serve_forever, daemon=True, name="http-health").start()
-        logger.info("HTTP on :%s /health miniapp=%s reviews=%s", port, has_miniapp, REVIEWS_MINIAPP_URL)
+        logger.info("HTTP on :%s /health miniapp=%s reviews=%s", port, has_miniapp, reviews_miniapp_url())
         start_render_keepalive()
     except Exception as e:
         logger.error("start_reviews_http_server: %s", e)
@@ -5079,8 +5120,8 @@ def main():
     print(f"DB: {DB_FILE}")
     print(f"Banners seed: {BANNERS_SEED_FILE}")
     print(f"AI provider: {resolve_ai_provider()} (FunPay AI via g4f if no API keys)")
-    print(f"Reviews Mini App: {REVIEWS_MINIAPP_URL}")
-    print(f"TonConnect Mini App: {TONCONNECT_MINIAPP_URL}")
+    print(f"Reviews Mini App: {reviews_miniapp_url()}")
+    print(f"TonConnect Mini App: {tonconnect_miniapp_url()}")
     # drop_pending_updates + retries: меньше падений от Conflict/сети на Render
     app.run_polling(
         drop_pending_updates=True,
