@@ -1308,7 +1308,7 @@ def get_welcome(lang):
         pts=[
             "Сделки с NFT, подарками, звёздами и криптой",
             "Оплата через гаранта без риска",
-            "Товар сначала менеджеру, оплата после",
+            "Конфиденциально и безопасно",
             f"Менеджер: {MANAGER_TAG}",
         ]
         intro="FunPay"
@@ -1318,7 +1318,7 @@ def get_welcome(lang):
         pts=[
             "Deals with NFTs, gifts, Stars and crypto",
             "Escrow payment with no risk",
-            "Item to manager first, then payment",
+            "Confidential and secure",
             f"Manager: {MANAGER_TAG}",
         ]
         intro="FunPay"
