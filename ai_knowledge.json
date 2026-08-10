@@ -100,8 +100,8 @@
       "eq адрес",
       "привяз.*тон"
     ],
-    "ru": "Tonkeeper — кошелёк сети TON. В FunPay Deals OTC: Реквизиты → Привязать Tonkeeper (через приложение или вручную UQ/EQ). Адрес нужен для TON/USDT сделок и вывода.",
-    "en": "Tonkeeper is a TON wallet. In FunPay Deals OTC: Requisites → Bind Tonkeeper (app or manual UQ/EQ). Needed for TON/USDT deals and withdraw."
+    "ru": "Tonkeeper — кошелёк сети TON. В FunPay: Реквизиты → Привязать Tonkeeper (через приложение или вручную UQ/EQ). Адрес нужен для TON/USDT сделок и вывода.",
+    "en": "Tonkeeper is a TON wallet. In FunPay: Requisites → Bind Tonkeeper (app or manual UQ/EQ). Needed for TON/USDT deals and withdraw."
   },
   {
     "keys": [
@@ -117,8 +117,8 @@
       "nft",
       "нфт"
     ],
-    "ru": "NFT — уникальный токен (часто картинка/подарок/username). В FunPay Deals OTC есть сделки NFT Gift и NFT Username через гаранта.",
-    "en": "NFTs are unique tokens. FunPay Deals OTC supports NFT Gift and NFT Username escrow deals."
+    "ru": "NFT — уникальный токен (часто картинка/подарок/username). В FunPay есть сделки NFT Gift и NFT Username через гаранта.",
+    "en": "NFTs are unique tokens. FunPay supports NFT Gift and NFT Username escrow deals."
   },
   {
     "keys": [
@@ -126,8 +126,8 @@
       "gas fee",
       "комиссия сети"
     ],
-    "ru": "Сетевая комиссия (gas) — плата блокчейну за транзакцию. Это не комиссия FunPay Deals OTC (у сервиса 0%).",
-    "en": "Network gas is paid to the blockchain. FunPay Deals OTC service fee is still 0%."
+    "ru": "Сетевая комиссия (gas) — плата блокчейну за транзакцию. Это не комиссия FunPay (у сервиса 0%).",
+    "en": "Network gas is paid to the blockchain. FunPay service fee is still 0%."
   },
   {
     "keys": [
@@ -160,8 +160,8 @@
       "phishing",
       "развод"
     ],
-    "ru": "Фишинг — обман ради паролей/сидов/оплаты. Не переходите по сомнительным ссылкам и не уводите сделку FunPay Deals OTC в «лишку вне бота».",
-    "en": "Phishing steals logins/seeds. Don’t leave FunPay Deals OTC escrow for random DMs."
+    "ru": "Фишинг — обман ради паролей/сидов/оплаты. Не переходите по сомнительным ссылкам и не уводите сделку FunPay в «лишку вне бота».",
+    "en": "Phishing steals logins/seeds. Don’t leave FunPay escrow for random DMs."
   },
   {
     "keys": [
@@ -169,7 +169,7 @@
       "seed phrase",
       "мнемоник"
     ],
-    "ru": "Seed-фраза — ключ к криптокошельку. Никому не отправляйте. Админы FunPay Deals OTC её не просят.",
+    "ru": "Seed-фраза — ключ к криптокошельку. Никому не отправляйте. Админы FunPay её не просят.",
     "en": "A seed phrase controls your wallet. Never share it. FunPay admins never ask for it."
   },
   {
@@ -259,7 +259,7 @@
       "кто такой менеджер",
       "funpaysavingmanager"
     ],
-    "ru": "Менеджер сделок FunPay Deals OTC: @FunPayDeaIManager. Товар передают ему, он подтверждает шаги сделки.",
+    "ru": "Менеджер сделок FunPay: @FunPayDeaIManager. Товар передают ему, он подтверждает шаги сделки.",
     "en": "Deal manager: @FunPayDeaIManager. Items go through him; he confirms deal steps."
   },
   {
@@ -277,8 +277,8 @@
       "искусственн.*интеллект",
       "нейросет"
     ],
-    "ru": "ИИ — системы, которые решают задачи, похожие на «умные»: ответы, перевод, поиск закономерностей. Я здесь помогаю с FunPay Deals OTC и общими вопросами.",
-    "en": "AI systems solve tasks like answering and pattern finding. I help with FunPay Deals OTC and general questions."
+    "ru": "ИИ — системы, которые решают задачи, похожие на «умные»: ответы, перевод, поиск закономерностей. Я здесь помогаю с FunPay и общими вопросами.",
+    "en": "AI systems solve tasks like answering and pattern finding. I help with FunPay and general questions."
   },
   {
     "keys": [
@@ -301,7 +301,7 @@
       "bitcoin",
       "биткоин"
     ],
-    "ru": "Bitcoin — первая крупная криптовалюта, сеть без банка, ограниченная эмиссия. Волатильна; это не «гарант-сделка» FunPay Deals OTC.",
+    "ru": "Bitcoin — первая крупная криптовалюта, сеть без банка, ограниченная эмиссия. Волатильна; это не «гарант-сделка» FunPay.",
     "en": "Bitcoin is the first major cryptocurrency. Volatile; separate from FunPay escrow."
   },
   {
@@ -359,7 +359,7 @@
       "gd29548",
       "номер сделки gd"
     ],
-    "ru": "Номера сделок FunPay Deals OTC начинаются с FP29548 и дальше (FP29549…). В жалобе указывайте именно такой номер.",
+    "ru": "Номера сделок FunPay начинаются с FP29548 и дальше (FP29549…). В жалобе указывайте именно такой номер.",
     "en": "Deal IDs start at FP29548+. Use that format in reports."
   },
   {
@@ -475,8 +475,8 @@
       "escrow",
       "гарант сделк"
     ],
-    "ru": "Эскроу/гарант — посредник держит актив/деньгии до выполнения условий. FunPay Deals OTC работает как гарант в Telegram.",
-    "en": "Escrow holds value until conditions are met. FunPay Deals OTC is Telegram escrow."
+    "ru": "Эскроу/гарант — посредник держит актив/деньгии до выполнения условий. FunPay работает как гарант в Telegram.",
+    "en": "Escrow holds value until conditions are met. FunPay is Telegram escrow."
   },
   {
     "keys": [
@@ -507,8 +507,8 @@
       "п2п",
       "p2p"
     ],
-    "ru": "P2P — обмен напрямую между людьми. Без гаранта выше риск кидка; в FunPay Deals OTC лучше через сделку в боте.",
-    "en": "P2P is direct person-to-person trade. Escrow in FunPay Deals OTC is safer."
+    "ru": "P2P — обмен напрямую между людьми. Без гаранта выше риск кидка; в FunPay лучше через сделку в боте.",
+    "en": "P2P is direct person-to-person trade. Escrow in FunPay is safer."
   },
   {
     "keys": [

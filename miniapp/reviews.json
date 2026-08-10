@@ -1,6 +1,6 @@
 {
   "average": 4.9,
-  "count": 5554,
+  "count": 42880,
   "baseCount": 43829,
   "growthEpochMs": 1785063078774,
   "windowMs": 10800000,
@@ -41686,7 +41686,9 @@
       "text": "всё ок, за пару минут разобрался"
     }
   ],
-  "displayCount": 45553,
+  "displayCount": 42880,
   "actualCount": 3614,
-  "lowDisplayCount": 528
+  "lowDisplayCount": 528,
+  "fiveDisplayCount": 37852,
+  "fourDisplayCount": 4500
 }

