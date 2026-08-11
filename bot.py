@@ -326,29 +326,35 @@ TNAMES_RU = {
     "nft":      f"{Enft} NFT подарок",
     "username": "Username",
     "stars":    f"{Est} Звёзды Telegram",
-    "crypto":   f"{Edm} Крипта (TON/USDT)",
+    "crypto":   f"{Edm} Крипта TON/USDT",
     "premium":  f"{Egm} Telegram Premium",
 }
 TNAMES_EN = {
     "nft":      f"{Enft} NFT Gift",
     "username": "Username",
     "stars":    f"{Est} Telegram Stars",
-    "crypto":   f"{Edm} Crypto (TON/USDT)",
+    "crypto":   f"{Edm} Crypto TON/USDT",
     "premium":  f"{Egm} Telegram Premium",
 }
 TNAMES_PLAIN_RU = {
     "nft":"NFT подарок","username":"Username","stars":"Звёзды Telegram",
-    "crypto":"Крипта (TON/USDT)","premium":"Telegram Premium",
+    "crypto":"Крипта TON/USDT","premium":"Telegram Premium",
 }
 TNAMES_PLAIN_EN = {
     "nft":"NFT Gift","username":"Username","stars":"Telegram Stars",
-    "crypto":"Crypto (TON/USDT)","premium":"Telegram Premium",
+    "crypto":"Crypto TON/USDT","premium":"Telegram Premium",
 }
 TNAMES_UK = {
-    "nft":"NFT-подарунок","username":"Username","stars":"Telegram Stars",
-    "crypto":"Крипта (TON/USDT)","premium":"Telegram Premium",
+    "nft":      f"{Enft} NFT-подарунок",
+    "username": "Username",
+    "stars":    f"{Est} Зірки Telegram",
+    "crypto":   f"{Edm} Крипта TON/USDT",
+    "premium":  f"{Egm} Telegram Premium",
 }
-TNAMES_PLAIN_UK = TNAMES_UK
+TNAMES_PLAIN_UK = {
+    "nft":"NFT-подарунок","username":"Username","stars":"Зірки Telegram",
+    "crypto":"Крипта TON/USDT","premium":"Telegram Premium",
+}
 
 def tname(t, lang="ru"):
     if lang=="en": return TNAMES_EN.get(t, t)
@@ -364,17 +370,17 @@ def tname_plain(t, lang="ru"):
 CUR_PLAIN_RU = {
     "TON":"TON","USDT":"USDT","Stars":"Звёзды",
     "RUB":"Рубли","KZT":"Теңге","AZN":"Manat","KGS":"Сом",
-    "UZS":"So'm","TJS":"Сомонӣ","BYN":"Рубли (BYN)","UAH":"Гривні","GEL":"ლარი",
+    "UZS":"So'm","TJS":"Сомонӣ","BYN":"BYN","UAH":"Гривні","GEL":"ლარი",
 }
 CUR_PLAIN_EN = {
     "TON":"TON","USDT":"USDT","Stars":"Stars",
     "RUB":"Rubles","KZT":"Tenge","AZN":"Manat","KGS":"Som",
-    "UZS":"So'm","TJS":"Somoni","BYN":"Rubles (BYN)","UAH":"Hryvnia","GEL":"Lari",
+    "UZS":"So'm","TJS":"Somoni","BYN":"BYN","UAH":"Hryvnia","GEL":"Lari",
 }
 CUR_PLAIN_UK = {
     "TON":"TON","USDT":"USDT","Stars":"Зірки",
-    "RUB":"Рублі","KZT":"Тenge","AZN":"Manat","KGS":"Сом",
-    "UZS":"So'm","TJS":"Сомоні","BYN":"Рублі (BYN)","UAH":"Гривні","GEL":"Лari",
+    "RUB":"Рублі","KZT":"Tenge","AZN":"Manat","KGS":"Сом",
+    "UZS":"So'm","TJS":"Сомоні","BYN":"BYN","UAH":"Гривні","GEL":"Lari",
 }
 CUR_EMOJI = {
     "TON":"💎","USDT":"💵","Stars":"⭐","RUB":"🇷🇺","KZT":"🇰🇿",
@@ -472,10 +478,9 @@ def user_has_requisites_for(u, currency):
     return _req_nonempty((u or {}).get("requisites") or {}, field)
 
 def req_need_label(field, lang="ru"):
-    ru=lang=="ru"
-    if field=="ton": return L(lang,"кошелёк Tonkeeper","Tonkeeper wallet")
-    if field=="stars": return L(lang,"@username для звёзд","@username for Stars")
-    return L(lang,"карту / телефон","card / phone")
+    if field=="ton": return T(lang,"кошелёк Tonkeeper","Tonkeeper wallet","гаманець Tonkeeper")
+    if field=="stars": return T(lang,"@username для звёзд","@username for Stars","@username для зірок")
+    return T(lang,"карту / телефон","card / phone","картку / телефон")
 
 def req_prompt_text(field, lang="ru"):
     if field=="card":
@@ -1191,7 +1196,7 @@ def topup_details_text(method, amount, uid, lang="ru", payment_ref=None):
                 f"{MANAGER_TAG}\n\n{within}</blockquote>")
     if method=="rub":
         bank=card_bank(lang)
-        return (f"{Ecrd} <b>{L(lang,f'Пополнение - Карта / Телефон {bank}',f'Top up - Card / Phone {bank}')}</b>\n\n"
+        return (f"{Ecrd} <b>{T(lang,f'Пополнение - Карта / Телефон {bank}',f'Top up - Card / Phone {bank}',f'Поповнення - Картка / Телефон {bank}')}</b>\n\n"
                 f"<blockquote>{amount_line}\n\n{L(lang,'Номер','Number')}: <code>{CARD_NUM}</code>\n"
                 f"{L(lang,'Получатель','Recipient')}: {CARD_NAME}\n{L(lang,'Банк','Bank')}: {bank}\n\n{within}</blockquote>")
     if method=="ton_tonkeeper":
@@ -1218,12 +1223,10 @@ Eprof_user= ce("6035084557378654059", "🪙")
 Eprof_ok  = ce("5805550320985578625", "✅")
 
 def deal_currency_prompt(lang="ru"):
-    ru=lang=="ru"
-    return f"{Edeal_cur} <b>{L(lang,'Выберите валюту сделки:','Choose deal currency:')}</b>"
+    return f"{Edeal_cur} <b>{T(lang,'Выберите валюту сделки:','Choose deal currency:','Оберіть валюту угоди:')}</b>"
 
 def deal_amount_prompt(currency, lang="ru"):
-    ru=lang=="ru"
-    return f"{Eamt_in} <b>{L(lang,'Введите сумму сделки:','Enter deal amount:')}</b>"
+    return f"{Eamt_in} <b>{T(lang,'Введите сумму сделки:','Enter deal amount:','Введіть суму угоди:')}</b>"
 
 def currency_requisites_kb(currency, lang="ru"):
     """Ask for the requisite type needed by the chosen deal currency."""
@@ -1862,13 +1865,12 @@ def validate_complaint_evidence(text):
     return t
 
 def complaint_prompt(step, ctype, lang="ru"):
-    ru=lang=="ru"
     if ctype=="buyer":
-        who_ru,who_en="покупателя","buyer"
+        role_word=T(lang,"покупателя","buyer","покупця")
     elif ctype=="seller":
-        who_ru,who_en="продавца","seller"
+        role_word=T(lang,"продавца","seller","продавця")
     else:
-        who_ru,who_en="маркетплейса","marketplace"
+        role_word=T(lang,"маркетплейса","marketplace","маркетплейсу")
     if ctype=="market":
         prompts={
             "topic":(
@@ -1892,7 +1894,6 @@ def complaint_prompt(step, ctype, lang="ru"):
             ),
         }
         return prompts.get(step,"?")
-    role_word=L(lang,who_ru,who_en)
     emoji="5927118708873892465" if ctype=="buyer" else "6032914237389541410"
     prompts={
         "username":(
@@ -2771,7 +2772,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{L(get_lang(uid),'Сделка не найдена.','Deal not found.')}</b>",
                     parse_mode="HTML")
                 await show_main(update,context); return
-            creator_uid=d.get("user_id"); lang=u.get("lang","ru"); ru=lang=="ru"
+            creator_uid=d.get("user_id"); lang=get_lang(uid); ru=lang=="ru"
             deal_cur=d.get("currency") or d.get("deal_currency")
 
             if creator_uid and creator_uid==str(uid):
@@ -2865,7 +2866,7 @@ async def cmd_addrep(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Пример: /addrep 100','Example: /addrep 100')}</b>",parse_mode="HTML"); return
         amt=int(args[0]); u["reputation"]=u.get("reputation",0)+amt; save_db(db)
         rep_new=u["reputation"]
-        await update.message.reply_text(f"{Ech} <b>{L(lang,f'Репутация +{amt}!',f'Reputation +{amt}!')}</b>\n{Etph} <b>{L(lang,'Репутация','Reputation')}: {rep_new}</b>",parse_mode="HTML")
+        await update.message.reply_text(f"{Ech} <b>{T(lang,f'Репутация +{amt}!',f'Reputation +{amt}!',f'Репутація +{amt}!')}</b>\n{Etph} <b>{L(lang,'Репутация','Reputation')}: {rep_new}</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_addrep: {e}")
 
 async def cmd_setdeals(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2876,7 +2877,7 @@ async def cmd_setdeals(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not args or not args[0].isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Пример: /setdeals 50','Example: /setdeals 50')}</b>",parse_mode="HTML"); return
         n=int(args[0]); u["total_deals"]=n; u["success_deals"]=n; save_db(db)
-        await update.message.reply_text(f"{Ech} <b>{L(lang,f'Сделок: {n}',f'Deals: {n}')}</b>",parse_mode="HTML")
+        await update.message.reply_text(f"{Ech} <b>{T(lang,f'Сделок: {n}',f'Deals: {n}',f'Угод: {n}')}</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_setdeals: {e}")
 
 async def cmd_setturnover(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2914,7 +2915,7 @@ async def cmd_del_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Укажите номер: /delreview 1','Usage: /delreview 1')}</b>",parse_mode="HTML"); return
         idx=int(args[0])-1
         if idx<0 or idx>=len(reviews):
-            await update.message.reply_text(f"{Ewrn} <b>{L(lang,f'Нет отзыва №{idx+1}.',f'No review #{idx+1}.')}</b>",parse_mode="HTML"); return
+            await update.message.reply_text(f"{Ewrn} <b>{T(lang,f'Нет отзыва №{idx+1}.',f'No review #{idx+1}.',f'Немає відгуку №{idx+1}.')}</b>",parse_mode="HTML"); return
         removed=reviews.pop(idx); save_db(db)
         await update.message.reply_text(f"{Ech} <b>{L(lang,'Отзыв удалён!','Review deleted!')}</b>\n<blockquote>{H(removed)}</blockquote>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_del_review: {e}")
@@ -3203,10 +3204,10 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     deal_join_req_kb(deal_id, deal_cur, lang),section="deal_card"); return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton(L(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
+                [InlineKeyboardButton(T(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}",f"Картка / Телефон {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
                 [InlineKeyboardButton("TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")],
-                [InlineKeyboardButton(L(lang,"Звёзды","Stars"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
-                [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+                [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
+                [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
             ])
             await send_section(update,f"{Ewrn} <b>{L(lang,'Добавьте реквизиты:','Add requisites:')}</b>",kb,section="deal_card"); return
 
@@ -3400,7 +3401,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"on_cb ERROR d={q.data if 'q' in dir() else '?'}: {e}", exc_info=True)
         try:
-            await update.effective_chat.send_message(f"Ошибка кнопки: {e}")
+            lang=get_lang(update.effective_user.id)
+            await update.effective_chat.send_message(
+                f"{T(lang,'Ошибка кнопки','Button error','Помилка кнопки')}: {e}")
         except: pass
 
 # ─── Messages ─────────────────────────────────────────────────────────────────
@@ -3529,12 +3532,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     r=validate_card(text, lang)
                     if r is None:
-                        if ru:
+                        if lang=="uk":
+                            err=("Невірний формат.\n\n"
+                                 "<b>Приклад:</b>\n<code>+380501234567</code>\n<code>+12025550123</code>\n<code>5168745641234567</code>")
+                        elif lang=="en":
+                            err=("Invalid format.\n\n"
+                                 "<b>Example:</b>\n<code>+12025550123</code>\n<code>+79041751408</code>\n<code>4111111111111111</code>")
+                        else:
                             err=("Неверный формат.\n\n"
                                  "<b>Пример:</b>\n<code>+79041751408</code>\n<code>+12025550123</code>\n<code>4276123456781234</code>")
-                        else:
-                            err=("Invalid format.\n\n"
-                                 "<b>Example:</b>\n<code>+79041751408</code>\n<code>+12025550123</code>\n<code>4111111111111111</code>")
                     else:
                         ud["card_pending"]=r; ud["card_step"]="bank"
                         set_req_input_state(uid, field, card_step="bank", card_pending=r)
@@ -3545,15 +3551,19 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif field=="ton":
                 ton_addr=validate_ton_address(text)
                 if not ton_addr:
-                    err=L(lang,"Неверный адрес.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
-                          "Invalid Tonkeeper wallet. Need UQ/EQ (48 chars) or tonkeeper/ton:// link.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>")
+                    err=T(lang,
+                          "Неверный адрес.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
+                          "Invalid Tonkeeper wallet. Need UQ/EQ (48 chars) or tonkeeper/ton:// link.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>",
+                          "Невірна адреса.\n\n<b>Приклад:</b>\n<code>UQDxxx...xxx</code>")
                 else:
                     text=ton_addr
             elif field=="stars":
                 t2=text if text.startswith("@") else f"@{text}"
                 cl,ec=validate_username(t2)
-                if ec: err=L(lang,"Неверный @username.\n\n<b>Пример:</b>\n<code>@username</code>",
-                              "Invalid format. Enter @username (min 5 chars, latin letters, digits and _ only).\n\n<b>Example:</b>\n<code>@username</code>")
+                if ec: err=T(lang,
+                              "Неверный @username.\n\n<b>Пример:</b>\n<code>@username</code>",
+                              "Invalid format. Enter @username (min 5 chars, latin letters, digits and _ only).\n\n<b>Example:</b>\n<code>@username</code>",
+                              "Невірний @username.\n\n<b>Приклад:</b>\n<code>@username</code>")
                 else: text=cl
             if err:
                 await update.message.reply_text(f"{Ewrn} {err}",parse_mode="HTML"); return
@@ -4264,7 +4274,7 @@ async def show_profile(update, context):
                 stars_num=int(m.group(1)) if m else 5
                 star_str=ce("5321485469249198987","⭐")*stars_num
                 rv_lines.append(f"{star_str} {H(r)}")
-            rv=f"\n\n{Estr} <b>{L(lang,f'Отзывы ({len(reviews)})',f'Reviews ({len(reviews)})')}</b>\n<blockquote>"+'\n'.join(rv_lines)+'</blockquote>'
+            rv=f"\n\n{Estr} <b>{T(lang,f'Отзывы ({len(reviews)})',f'Reviews ({len(reviews)})',f'Відгуки ({len(reviews)})')}</b>\n<blockquote>"+'\n'.join(rv_lines)+'</blockquote>'
         text=(f"{Ecwn} <b>{T(lang,'Профиль','Profile','Профіль')}</b>{sl}\n\n"
               f"{Eprof_user} @{uname}\n"
               f"{Ebal} {T(lang,'Баланс','Balance','Баланс')}: <b>{fmt_balance(u.get('balance',0), lang)}</b>\n"
@@ -4336,9 +4346,10 @@ async def show_req(update, context):
     except Exception as e:
         logger.error(f"show_req: {e}", exc_info=True)
         try:
+            lang=get_lang(update.effective_user.id)
             await update.effective_chat.send_message(
-                "Реквизиты временно недоступны. Попробуйте ещё раз.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад",callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]))
+                T(lang,"Реквизиты временно недоступны. Попробуйте ещё раз.","Requisites temporarily unavailable. Try again.","Реквізити тимчасово недоступні. Спробуйте ще раз."),
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]))
         except: pass
 
 async def show_my_deals(update, context):
@@ -4356,8 +4367,8 @@ async def show_my_deals(update, context):
                 f"{Edl} <b>{L(lang,'Мои сделки','My Deals')}\n\n{L(lang,'Пока нет сделок.','No deals yet.')}</b>",
                 InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="my_deals"); return
         SNAMES={
-            "pending":   L(lang,f"{Esrk} Ожидает",  f"{Esrk} Pending"),
-            "confirmed": L(lang,f"{Ech} Завершена",  f"{Ech} Completed"),
+            "pending":   T(lang,f"{Esrk} Ожидает",  f"{Esrk} Pending",  f"{Esrk} Очікує"),
+            "confirmed": T(lang,f"{Ech} Завершена",  f"{Ech} Completed", f"{Ech} Завершена"),
         }
         lines=[f"{Edl} <b>{L(lang,'Мои сделки','My Deals')} ({len(deals)}):</b>\n"]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
