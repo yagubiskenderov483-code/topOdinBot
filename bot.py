@@ -588,17 +588,43 @@ async def tg_send_message_draft(chat_id, draft_id, text, parse_mode=None):
         return False
 
 async def stream_text_draft(bot, chat_id, full_text, draft_id=None, delay=0.35):
+    """Optional typing preview. Prefer a single final send_message to avoid duplicates."""
     draft_id=draft_id or _next_draft_id(chat_id)
-    chunks=split_stream_chunks(full_text)
-    if not chunks:
-        await tg_send_message_draft(chat_id, draft_id, full_text or "...")
-        return draft_id, full_text or ""
-    buf=""
-    for chunk in chunks:
-        buf=f"{buf} {chunk}".strip() if buf else chunk
-        await tg_send_message_draft(chat_id, draft_id, buf)
-        await asyncio.sleep(delay)
-    return draft_id, buf
+    text=(full_text or "").strip()
+    if text:
+        await tg_send_message_draft(chat_id, draft_id, text[:4096])
+    return draft_id, text
+
+def dedupe_ai_text(text):
+    """Collapse accidental repeated blocks/paragraphs in model output."""
+    text=(text or "").strip()
+    if not text:
+        return ""
+    # Drop leading ellipsis / dots after emoji leftovers
+    text=re.sub(r"^(?:🤖\s*)?[.]{2,}|…+\s*", "", text).strip()
+    text=re.sub(r"^(FunPay AI)\s*[.…]+\s*", r"\1\n", text, flags=re.I).strip()
+    parts=[p.strip() for p in re.split(r"\n{2,}", text) if p.strip()]
+    if len(parts)>=2 and len(parts)%2==0:
+        half=len(parts)//2
+        if parts[:half]==parts[half:]:
+            parts=parts[:half]
+    out=[]
+    prev=""
+    for p in parts:
+        if p==prev:
+            continue
+        # exact half-duplication inside one paragraph
+        mid=len(p)//2
+        if len(p)>40 and p[:mid].strip()==p[mid:].strip():
+            p=p[:mid].strip()
+        out.append(p)
+        prev=p
+    result="\n\n".join(out).strip()
+    # whole-text duplicated twice
+    mid=len(result)//2
+    if len(result)>60 and result[:mid].strip()==result[mid:].strip():
+        result=result[:mid].strip()
+    return result
 
 def deal_guarantee_lines(lang):
     return T(lang,
@@ -1742,24 +1768,7 @@ async def show_deal_confirmation(update, context):
     ud["_deal_confirm_token"]=f"{update.effective_user.id}-{time.time_ns()}"
     amount=ud.get("amount","-")
     currency=ud.get("currency","-")
-    plain_lines=[
-        T(lang,'Проверьте сделку','Review the deal','Перевірте угоду'),
-        "",
-        f"{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}",
-        f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}",
-        f"{T(lang,'Партнёр','Partner','Партнер')}: {ud.get('partner','-')}",
-        f"{T(lang,'Сумма','Amount','Сума')}: {amount} {cur_plain(currency,lang)}",
-        f"{T(lang,'Комиссия','Fee','Комісія')}: 0%",
-        "",
-        T(lang,
-          "Сначала продавец передаёт товар менеджеру, затем покупатель оплачивает.",
-          "The seller transfers the item to the manager first, then the buyer pays.",
-          "Спочатку продавець передає товар менеджеру, потім покупець оплачує."),
-    ]
     chat=update.effective_chat
-    draft_id=_next_draft_id(chat.id)
-    await tg_send_message_draft(chat.id, draft_id, T(lang,"Создаём сделку…","Creating deal…","Створюємо угоду…"))
-    await stream_text_draft(context.bot, chat.id, "\n".join(plain_lines), draft_id=draft_id, delay=0.3)
     text=(
         f"<tg-emoji emoji-id='{WAIT_ICON}'>📅</tg-emoji> <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
         f"<blockquote>{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}\n"
@@ -3296,7 +3305,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{Eln} Комментарий: <code>{payment_ref}</code>",
                 admin_kb)
             try: await q.edit_message_reply_markup(InlineKeyboardMarkup([
-                [InlineKeyboardButton(L(lang,'Ожидание подтверждения...','Waiting for confirmation...'),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
+                [InlineKeyboardButton(T(lang,'Ожидание подтверждения','Waiting for confirmation','Очікування підтвердження'),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
                 [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
             ]))
             except: pass
@@ -3417,15 +3426,12 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if ud.get("ai_ask"):
             chat=update.effective_chat
-            draft_id=_next_draft_id(chat.id)
-            await tg_send_message_draft(chat.id, draft_id, T(lang,"FunPay AI думает…","FunPay AI is thinking…","FunPay AI думає…"))
             hist=ud.setdefault("ai_history",[])
-            ans=await ai_chat(text,lang,hist)
+            ans=dedupe_ai_text(await ai_chat(text,lang,hist))
             hist.append({"role":"user","content":text})
             hist.append({"role":"assistant","content":ans})
             if len(hist)>24: ud["ai_history"]=hist[-24:]
             ud["ai_ask"]=True
-            await stream_text_draft(context.bot, chat.id, ans, draft_id=draft_id, delay=0.28)
             body=(
                 f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
                 f"<blockquote>{H(ans)}</blockquote>"
