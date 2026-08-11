@@ -2339,8 +2339,13 @@ async def ai_chat(question, lang="ru", history=None):
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
+    if lang=="uk":
+        kb="\n\n".join(entry.get("ru","") for entry in AI_KB.values())
+        return _bot_mention_fix(
+            f"Ти - FunPay AI, розумний помічник FunPay (Telegram-бот @{BOT_USERNAME}). "
+            "Відповідай коротко і ясно українською.\n\n"
+            f"База знань бота:\n{kb}")
     ru=lang=="ru"
-    # Полная база знаний бота (все топики AI_KB) - ничего не вырезаем
     kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
     if ru:
         prompt=(
