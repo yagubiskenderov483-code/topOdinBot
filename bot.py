@@ -666,10 +666,9 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
     return lines
 
 def my_deals_kb(lang="ru"):
-    ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(L(lang,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
-        [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
+        [InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+        [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
     ])
 
 async def notify_deal_event(bot, uid, text, lang="ru"):
@@ -893,8 +892,17 @@ def restore_join_req_state(ud, uid):
     restore_req_input_state(ud, uid)
 
 def get_lang(uid):
-    try: return get_user(load_db(), uid).get("lang","ru")
-    except: return "ru"
+    try:
+        lang = (get_user(load_db(), uid).get("lang") or "ru").lower().strip()
+        if lang in ("ua", "ukr", "ukraine", "ukrainian"):
+            return "uk"
+        if lang in ("en", "eng", "english"):
+            return "en"
+        if lang in ("ru", "rus", "russian"):
+            return "ru"
+        return lang if lang in ("ru", "en", "uk") else "ru"
+    except:
+        return "ru"
 
 def gen_deal_id(db):
     n=int(db.get("deal_counter") or DEAL_COUNTER_START)
@@ -1071,62 +1079,56 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
 
 # ─── Keyboards ────────────────────────────────────────────────────────────────
 def main_kb(lang):
-    ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(L(lang,'Создать сделку','Create Deal'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
-         InlineKeyboardButton(L(lang,'Профиль','Profile'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
-        [InlineKeyboardButton(L(lang,'Пополнить/Вывод','Top Up/Withdraw'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
-         InlineKeyboardButton(L(lang,'Мои сделки','My Deals'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
-        [InlineKeyboardButton(L(lang,'Язык','Language'),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212"),
-         InlineKeyboardButton(L(lang,'Топ продавцов','Top Sellers'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
-        [InlineKeyboardButton(L(lang,'Рефералы','Referrals'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
-         InlineKeyboardButton(L(lang,'Реквизиты','Requisites'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
-        [InlineKeyboardButton(L(lang,'Пожаловаться','Report'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882"),
-         InlineKeyboardButton(L(lang,'FunPay AI','FunPay AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
-        [InlineKeyboardButton(L(lang,'Тех. поддержка','Tech Support'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
-         InlineKeyboardButton(L(lang,'Сайт FunPay','FunPay Website'),url=SITE_URL,icon_custom_emoji_id="5983580310292402968")],
-        [InlineKeyboardButton(L(lang,'Информация','Information'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
+        [InlineKeyboardButton(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
+         InlineKeyboardButton(T(lang,'Профиль','Profile','Профіль'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
+        [InlineKeyboardButton(T(lang,'Пополнить/Вывод','Top Up/Withdraw','Поповнити/Вивід'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
+         InlineKeyboardButton(T(lang,'Мои сделки','My Deals','Мої угоди'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+        [InlineKeyboardButton(T(lang,'Язык','Language','Мова'),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212"),
+         InlineKeyboardButton(T(lang,'Топ продавцов','Top Sellers','Топ продавців'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
+        [InlineKeyboardButton(T(lang,'Рефералы','Referrals','Реферали'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
+         InlineKeyboardButton(T(lang,'Реквизиты','Requisites','Реквізити'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(T(lang,'Пожаловаться','Report','Поскаржитися'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882"),
+         InlineKeyboardButton(T(lang,'FunPay AI','FunPay AI','FunPay AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
+        [InlineKeyboardButton(T(lang,'Тех. поддержка','Tech Support','Тех. підтримка'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
+         InlineKeyboardButton(T(lang,'Сайт FunPay','FunPay Website','Сайт FunPay'),url=SITE_URL,icon_custom_emoji_id="5983580310292402968")],
+        [InlineKeyboardButton(T(lang,'Информация','Information','Інформація'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
     ])
 
 def complaint_kb(lang):
-    ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(L(lang,'На покупателя','About buyer'),callback_data="cmp_buyer",icon_custom_emoji_id="5927118708873892465")],
-        [InlineKeyboardButton(L(lang,'На продавца','About seller'),callback_data="cmp_seller",icon_custom_emoji_id="6032914237389541410")],
-        [InlineKeyboardButton(L(lang,'На маркетплейс','About marketplace'),callback_data="cmp_market",icon_custom_emoji_id="5920332557466997677")],
-        [InlineKeyboardButton(L(lang,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+        [InlineKeyboardButton(T(lang,'На покупателя','About buyer','На покупця'),callback_data="cmp_buyer",icon_custom_emoji_id="5927118708873892465")],
+        [InlineKeyboardButton(T(lang,'На продавца','About seller','На продавця'),callback_data="cmp_seller",icon_custom_emoji_id="6032914237389541410")],
+        [InlineKeyboardButton(T(lang,'На маркетплейс','About marketplace','На маркетплейс'),callback_data="cmp_market",icon_custom_emoji_id="5920332557466997677")],
+        [InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 def complaint_cancel_kb(lang, back="menu_complaint"):
-    ru=lang=="ru"
-    return InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,'Отмена','Cancel'),callback_data=back,icon_custom_emoji_id="5258084656674250503")]])
+    return InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,'Отмена','Cancel','Скасувати'),callback_data=back,icon_custom_emoji_id="5258084656674250503")]])
 
 def ai_kb(lang):
-    ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(L(lang,'Очистить чат','Clear chat'),callback_data="ai_clear",icon_custom_emoji_id="5904542823167824187")],
-        [InlineKeyboardButton(L(lang,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+        [InlineKeyboardButton(T(lang,'Очистить чат','Clear chat','Очистити чат'),callback_data="ai_clear",icon_custom_emoji_id="5904542823167824187")],
+        [InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 def info_kb(lang):
-    ru=lang=="ru"
     rows=[]
     reviews_url=reviews_miniapp_url()
     if reviews_url:
-        rows.append([InlineKeyboardButton(L(lang,'Отзывы','Reviews'),web_app=WebAppInfo(url=reviews_url),icon_custom_emoji_id="5778145208411624388")])
-    rows.append([InlineKeyboardButton(L(lang,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
+        rows.append([InlineKeyboardButton(T(lang,'Отзывы','Reviews','Відгуки'),web_app=WebAppInfo(url=reviews_url),icon_custom_emoji_id="5778145208411624388")])
+    rows.append([InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
 def topup_methods_kb(lang):
-    ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(L(lang,"Звёзды","Stars"),callback_data="topup_cur_stars",icon_custom_emoji_id="5893034681636491040")],
-        [InlineKeyboardButton(L(lang,"Карта / Телефон","Card / Phone"),callback_data="topup_cur_rub",icon_custom_emoji_id="5902056028513505203")],
+        [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data="topup_cur_stars",icon_custom_emoji_id="5893034681636491040")],
+        [InlineKeyboardButton(T(lang,"Карта / Телефон","Card / Phone","Картка / Телефон"),callback_data="topup_cur_rub",icon_custom_emoji_id="5902056028513505203")],
         [InlineKeyboardButton("TON - Tonkeeper",callback_data="topup_cur_ton_tonkeeper",icon_custom_emoji_id="5397829221605191505")],
         [InlineKeyboardButton("TON - Crypto Bot",callback_data="topup_cur_ton_only",icon_custom_emoji_id="5242606681166220600")],
         [InlineKeyboardButton("USDT - Tonkeeper",callback_data="topup_cur_usdt_tonkeeper",icon_custom_emoji_id="5406841020769936275")],
         [InlineKeyboardButton("USDT - Crypto Bot",callback_data="topup_cur_usdt_only",icon_custom_emoji_id="5242606681166220600")],
-        [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
+        [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 TOPUP_MINIMUMS = {
@@ -1284,22 +1286,20 @@ def parse_admin_deal_attempt(data, prefix):
     return suffix,None
 
 def role_kb(lang):
-    ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(L(lang,'Я покупатель','I am the Buyer'),callback_data="role_buyer",icon_custom_emoji_id="5893431652578758294")],
-        [InlineKeyboardButton(L(lang,'Я продавец','I am the Seller'),callback_data="role_seller",icon_custom_emoji_id="5893168654551355607")],
-        [InlineKeyboardButton(L(lang,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+        [InlineKeyboardButton(T(lang,'Я покупатель','I am the Buyer','Я покупець'),callback_data="role_buyer",icon_custom_emoji_id="5893431652578758294")],
+        [InlineKeyboardButton(T(lang,'Я продавец','I am the Seller','Я продавець'),callback_data="role_seller",icon_custom_emoji_id="5893168654551355607")],
+        [InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 def types_kb(lang):
-    ru=lang=="ru"
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(L(lang,'NFT подарок','NFT Gift'),callback_data="dt_nft",icon_custom_emoji_id="5906716471756593520"),
+        [InlineKeyboardButton(T(lang,'NFT подарок','NFT Gift','NFT-подарунок'),callback_data="dt_nft",icon_custom_emoji_id="5906716471756593520"),
          InlineKeyboardButton("NFT Username",callback_data="dt_usr",icon_custom_emoji_id="5906976471896824396")],
-        [InlineKeyboardButton(L(lang,'Звёзды','Stars'),callback_data="dt_str",icon_custom_emoji_id="5906478942885255780"),
-         InlineKeyboardButton(L(lang,'Крипта','Crypto'),callback_data="dt_cry",icon_custom_emoji_id="5904576890848419790")],
+        [InlineKeyboardButton(T(lang,'Звёзды','Stars','Зірки'),callback_data="dt_str",icon_custom_emoji_id="5906478942885255780"),
+         InlineKeyboardButton(T(lang,'Крипта','Crypto','Крипта'),callback_data="dt_cry",icon_custom_emoji_id="5904576890848419790")],
         [InlineKeyboardButton("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5906715307820456633")],
-        [InlineKeyboardButton(L(lang,'Назад','Back'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+        [InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 def pay_cur_kb(lang):
@@ -1307,7 +1307,6 @@ def pay_cur_kb(lang):
     return cur_kb(lang)
 
 def cur_kb(lang):
-    ru=lang=="ru"
     def btn(code, cb):
         return InlineKeyboardButton(
             cur_button_text(code,lang),callback_data=cb,
@@ -1316,7 +1315,7 @@ def cur_kb(lang):
         [btn("TON","cur_ton"), btn("USDT","cur_usdt")],
         [btn("RUB","cur_rub"), btn("Stars","cur_stars")],
         [btn("UAH","cur_uah")],
-        [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
+        [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
     ])
 
 # ─── Validation ───────────────────────────────────────────────────────────────
@@ -3042,9 +3041,12 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ── Период Premium ──
         if d in ("prm_3","prm_6","prm_12"):
-            prru={"prm_3":"3 месяца","prm_6":"6 месяцев","prm_12":"12 месяцев"}
-            pren={"prm_3":"3 months","prm_6":"6 months","prm_12":"12 months"}
-            ud["premium_period"]=(prru if ru else pren)[d]; ud["step"]="currency"
+            prmap={
+                "prm_3":T(lang,"3 месяца","3 months","3 місяці"),
+                "prm_6":T(lang,"6 месяцев","6 months","6 місяців"),
+                "prm_12":T(lang,"12 месяцев","12 months","12 місяців"),
+            }
+            ud["premium_period"]=prmap[d]; ud["step"]="currency"
             try: await q.message.delete()
             except: pass
             msg=await update.effective_chat.send_message(
@@ -3255,7 +3257,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud["topup_ref"]=f"EG-{uid}-{int(time.time())}"
                 unit=topup_unit(method,lang)
                 await send_section(update,
-                    f"{Emn} <b>{L(lang,'Введите сумму пополнения','Enter top-up amount')} ({unit}):</b>",
+                    f"{Emn} <b>{T(lang,f'Введите сумму пополнения {unit}:',f'Enter top-up amount {unit}:',f'Введіть суму поповнення {unit}:')}</b>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="topup_methods",icon_custom_emoji_id="5258084656674250503")]]),
                     section="balance"); return
             minimum=TOPUP_MINIMUMS.get(method)
@@ -4744,8 +4746,8 @@ async def handle_adm_cb(update, context):
             "adm_set_turnover":("turnover","Введите оборот:"),
             "adm_set_rep":("reputation","Введите репутацию:"),
             "adm_set_status":("status","Введите статус:"),
-            "adm_add_bal":("add_balance","Введите сумму для начисления (RUB):"),
-            "adm_take_bal":("take_balance","Введите сумму для списания (RUB):")}
+            "adm_add_bal":("add_balance","Введите сумму для начисления RUB:"),
+            "adm_take_bal":("take_balance","Введите сумму для списания RUB:")}
         if d in am:
             field,prompt=am[d]; ud["adm_field"]=field; ud["adm_step"]="set_value"
             await q.message.edit_text(f"<b>{prompt}</b>",parse_mode="HTML"); return
