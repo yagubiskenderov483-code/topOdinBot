@@ -27,7 +27,14 @@ services:
     runtime: static
     buildCommand: python3 miniapp/build.py
     staticPublishPath: miniapp
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-store
     routes:
       - type: rewrite
-        source: /*
+        source: /reviews
+        destination: /index.html
+      - type: rewrite
+        source: /reviews.html
         destination: /index.html

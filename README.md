@@ -30,6 +30,9 @@ python bot.py
 
 ## Mini App
 
-`REVIEWS_MINIAPP_URL` / `TONCONNECT_MINIAPP_URL` — как раньше, или пусто → `RENDER_EXTERNAL_URL`.
+- Отзывы: `REVIEWS_MINIAPP_URL` или `REVIEWS_HTML_REMOTE` (self-contained HTML), иначе `PUBLIC_BASE_URL` / `RENDER_EXTERNAL_URL` + `/index.html`.
+- TonConnect: `TONCONNECT_MINIAPP_URL` или тот же base + `/tonconnect.html` (нужен живой сервис бота с `/api/bind-ton`).
+- В `/admin` → **Mini App URL** — текущие ссылки.
+- В BotFather → Configure Mini App укажите домен Render (например `*.onrender.com`).
 
-В BotFather добавь домены `onrender.com` и `funpay.com`.
+Если отзывы 404 — обновите `REVIEWS_MINIAPP_URL` / `REVIEWS_HTML_REMOTE` на свежий HTTPS HTML.

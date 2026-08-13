@@ -92,31 +92,68 @@ BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.jo
 BANNERS_SEED_DATA = os.path.join(DATA_DIR, "banners_seed.json")
 DEAL_COUNTER_START = 29548
 # Reviews Mini App (self-contained HTML). Do not use BrewPage - it shows a side panel in Telegram.
-# Prefer explicit env, then fixed hosted HTML (always up to date), then Render public URL.
+# Prefer explicit env, then hosted HTML (self-contained), then Render. TonConnect needs bot origin.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
-# Stale litterbox fallback only. Prefer env or this Render service (/index.html).
-_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/7ip6ck.html").strip()
+# Hosted Reviews HTML (self-contained). Refresh via REVIEWS_HTML_REMOTE / litter upload when expired.
+_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/4nqqp4.html").strip()
+_DEAD_MINIAPP_MARKERS = (
+    "litter.catbox.moe/7ip6ck.html",
+    "7ip6ck.html",
+    "litter.catbox.moe/i58txn.html",
+    "litter.catbox.moe/8n77lf",
+    "litter.catbox.moe/brgw8b",
+    "litter.catbox.moe/v515tq.html",
+    "brewpage",
+    "example.com",
+)
+
+def _miniapp_url_dead(url: str) -> bool:
+    u = (url or "").strip().lower()
+    if not u:
+        return True
+    return any(m in u for m in _DEAD_MINIAPP_MARKERS)
+
+def _public_base_url() -> str:
+    """HTTPS origin of the running bot (Render / custom). Used for TonConnect + optional reviews."""
+    for key in ("PUBLIC_BASE_URL", "WEBAPP_URL", "RENDER_EXTERNAL_URL", "KEEPALIVE_URL"):
+        v = (os.getenv(key) or "").strip().rstrip("/")
+        if not v or _miniapp_url_dead(v):
+            continue
+        low = v.lower()
+        if "litter.catbox.moe" in low or "files.catbox.moe" in low:
+            continue
+        if v.endswith("/index.html"):
+            v = v[: -len("/index.html")]
+        if v.endswith("/tonconnect.html"):
+            v = v[: -len("/tonconnect.html")]
+        return v
+    base = (_RENDER_URL or "").rstrip("/")
+    if base and not _miniapp_url_dead(base):
+        return base
+    return ""
 
 def reviews_miniapp_url() -> str:
-    """Resolve Mini App URL at call time so Render URL wins over stale hosted HTML."""
+    """Reviews Mini App is self-contained HTML — prefer working hosted copy over a dead Render URL."""
     env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
-    if env:
+    if env and not _miniapp_url_dead(env):
         return env
-    render = (os.getenv("RENDER_EXTERNAL_URL") or _RENDER_URL or "").rstrip("/")
+    hosted = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
+    if hosted and not _miniapp_url_dead(hosted):
+        return hosted
+    render = _public_base_url()
     if render:
         return f"{render}/index.html"
-    return _REVIEWS_HTML_HOSTED or "https://litter.catbox.moe/7ip6ck.html"
+    return _REVIEWS_HTML_HOSTED or ""
 
 def tonconnect_miniapp_url() -> str:
+    """TonConnect Mini App — same origin as bot (needs POST /api/bind-ton)."""
     env = (os.getenv("TONCONNECT_MINIAPP_URL") or "").strip()
-    if env:
+    if env and not _miniapp_url_dead(env) and "litter.catbox.moe" not in env.lower() and "catbox.moe" not in env.lower():
         return env
-    render = (os.getenv("RENDER_EXTERNAL_URL") or _RENDER_URL or "").rstrip("/")
+    render = _public_base_url()
     if render:
-        return f"{render}/tonconnect.html"
-    reviews = reviews_miniapp_url()
-    if reviews.endswith("/index.html"):
-        return reviews[:-len("/index.html")] + "/tonconnect.html"
+        # api query helps if page is ever opened off-origin
+        return f"{render}/tonconnect.html?api={quote(render, safe='')}"
     return ""
 
 # Back-compat aliases (re-read via helpers where buttons are built).
@@ -4519,6 +4556,7 @@ def adm_kb():
         [InlineKeyboardButton("Кошельки / реквизиты",callback_data="adm_wallets")],
         [InlineKeyboardButton(wlabel,callback_data="adm_withdrawals")],
         [InlineKeyboardButton("Баннеры",callback_data="adm_banners")],
+        [InlineKeyboardButton("Mini App URL",callback_data="adm_miniapp_url")],
         [InlineKeyboardButton("Описание меню",callback_data="adm_menu_desc")],
         [InlineKeyboardButton("Список сделок",callback_data="adm_deals")],
         [InlineKeyboardButton("Логи",callback_data="adm_logs"),InlineKeyboardButton(tl,callback_data="adm_toggle_hidden")],
@@ -4754,6 +4792,29 @@ async def handle_adm_cb(update, context):
         if d=="adm_banners_export":
             await q.answer("Выгружаю…")
             await export_banners_seed_file(update, context)
+            return
+
+        if d=="adm_miniapp_url":
+            await q.answer()
+            ru=reviews_miniapp_url()
+            tu=tonconnect_miniapp_url()
+            base=_public_base_url()
+            port=(os.getenv("PORT") or "—")
+            tip=("✅ Отзывы: URL задан" if ru else "⚠️ Отзывы: URL пуст")
+            tip2=("✅ TonConnect: URL задан" if tu else "⚠️ TonConnect: нужен PUBLIC_BASE_URL / RENDER_EXTERNAL_URL сервиса бота")
+            await q.message.edit_text(
+                f"🌐 <b>Mini App</b>\n\n"
+                f"<blockquote>{tip}\n{tip2}</blockquote>\n\n"
+                f"<b>Отзывы</b>\n<code>{H(ru or '—')}</code>\n\n"
+                f"<b>TonConnect</b>\n<code>{H(tu or '—')}</code>\n\n"
+                f"<b>Base</b>\n<code>{H(base or '—')}</code>\n"
+                f"PORT=<code>{H(port)}</code>\n\n"
+                f"ENV: <code>REVIEWS_MINIAPP_URL</code>, <code>REVIEWS_HTML_REMOTE</code>, "
+                f"<code>PUBLIC_BASE_URL</code> / <code>RENDER_EXTERNAL_URL</code>, <code>TONCONNECT_MINIAPP_URL</code>\n"
+                f"В BotFather → Configure Mini App укажите домен вашего Render (не litterbox).",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад",callback_data="adm_back")]]),
+                disable_web_page_preview=True)
             return
 
         if d.startswith("adm_banner_del_"):
@@ -5280,22 +5341,61 @@ def start_reviews_http_server():
                 self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
                 self.send_header("Pragma", "no-cache")
                 self.send_header("Expires", "0")
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(body)
+
+            def do_HEAD(self):
+                path=urlparse(self.path).path or "/"
+                if path in ("/health", "/healthz", "/ping", "/status", "/", "/index.html", "/tonconnect.html", "/tonconnect-manifest.json"):
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain" if path.startswith("/health") else "text/html")
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    return
+                self.send_response(404); self.end_headers()
 
             def do_GET(self):
                 path=urlparse(self.path).path or "/"
                 if path in ("/health", "/healthz", "/ping", "/status"):
-                    self._send_json(200, {"ok":True,"bot":BOT_USERNAME,"service":"funpay"})
+                    self._send_json(200, {
+                        "ok": True,
+                        "bot": BOT_USERNAME,
+                        "service": "funpay",
+                        "reviews_miniapp": reviews_miniapp_url(),
+                        "tonconnect_miniapp": tonconnect_miniapp_url(),
+                        "render": _public_base_url(),
+                    })
                     return
-                if path in ("/", "/index.html"):
+                if path in ("/", "/index.html", "/reviews", "/reviews.html"):
                     body = load_reviews_index_html(root) if has_miniapp else b""
                     if body:
                         return self._send_html(body)
                     if has_miniapp:
                         return SimpleHTTPRequestHandler.do_GET(self)
-                    self._send_text(200, "FunPay bot OK")
+                    self._send_text(200, "FunPay bot OK — miniapp/index.html missing")
                     return
+                if path in ("/tonconnect.html", "/tonconnect"):
+                    ton_path=os.path.join(root, "tonconnect.html")
+                    if os.path.isfile(ton_path):
+                        with open(ton_path, "r", encoding="utf-8") as f:
+                            html=f.read()
+                        return self._send_html(html.encode("utf-8"))
+                    self._send_json(404, {"ok":False,"error":"tonconnect missing"}); return
+                if path == "/tonconnect-manifest.json":
+                    man=os.path.join(root, "tonconnect-manifest.json")
+                    if os.path.isfile(man):
+                        with open(man, "rb") as f:
+                            body=f.read()
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json; charset=utf-8")
+                        self.send_header("Content-Length", str(len(body)))
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.send_header("Cache-Control", "no-store")
+                        self.end_headers()
+                        self.wfile.write(body)
+                        return
+                    self._send_json(404, {"ok":False,"error":"manifest missing"}); return
                 if has_miniapp:
                     return SimpleHTTPRequestHandler.do_GET(self)
                 self._send_json(404, {"ok":False,"error":"not found"})

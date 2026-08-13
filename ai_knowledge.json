@@ -351,8 +351,8 @@
       "mini app",
       "отзывы не откры"
     ],
-    "ru": "Отзывы открываются как Mini App (Информация → Отзывы). Нужен HTTPS-хост (обычно onrender.com). Если 404 - админу обновить REVIEWS_MINIAPP_URL.",
-    "en": "Reviews open as a Mini App. Needs HTTPS host; if 404, admin must refresh REVIEWS_MINIAPP_URL."
+    "ru": "Отзывы — Mini App (Информация → Отзывы). URL берётся из REVIEWS_MINIAPP_URL / REVIEWS_HTML_REMOTE или с хоста бота. Если 404: /admin → Mini App URL и обновить ENV. TonConnect работает только с живым Render URL бота.",
+    "en": "Reviews open as a Mini App. If 404, admin: /admin → Mini App URL and refresh REVIEWS_MINIAPP_URL. TonConnect needs the live bot Render URL."
   },
   {
     "keys": [

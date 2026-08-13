@@ -92,7 +92,15 @@
         addrEl.textContent = clean;
         setStatus("Сохраняю в боте…", "");
         var initData = (tg && tg.initData) || "";
-        var res = await fetch("/api/bind-ton", {
+        var apiBase = "";
+        try {
+          var q = new URLSearchParams(location.search || "");
+          apiBase = (q.get("api") || "").replace(/\/$/, "");
+        } catch (e) {}
+        if (!apiBase && /onrender\.com$/i.test(location.hostname || "")) {
+          apiBase = location.origin;
+        }
+        var res = await fetch((apiBase || "") + "/api/bind-ton", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ address: clean, initData: initData })
