@@ -3,3 +3,4 @@ db.json
 __pycache__/
 *.pyc
 .eldorado_write_test
+assets/banners/
