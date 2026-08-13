@@ -906,6 +906,79 @@ def apply_banners_seed(db):
         changed=True
     return db, changed
 
+def force_apply_banners_seed_payload(db, seed):
+    """Полная замена баннеров из загруженного seed (админ прислал файл)."""
+    if not isinstance(seed, dict):
+        return db, 0
+    if not db.get("banners"):
+        db["banners"] = {}
+    n = 0
+    for key, val in (seed.get("banners") or {}).items():
+        if key not in BANNER_SECTIONS:
+            continue
+        if _banner_entry_filled(val):
+            db["banners"][key] = {
+                "photo": val.get("photo"),
+                "video": val.get("video"),
+                "gif": val.get("gif"),
+                "text": val.get("text") or "",
+            }
+            n += 1
+        else:
+            db["banners"][key] = {}
+    if "log_banners" in seed and isinstance(seed.get("log_banners"), dict):
+        db["log_banners"] = seed["log_banners"]
+    if seed.get("menu_description") is not None:
+        db["menu_description"] = seed.get("menu_description")
+    return db, n
+
+async def import_banners_seed_from_document(update, context):
+    """Админ прислал banners_seed.json — сохранить в репо/data и применить."""
+    msg = update.message
+    if not msg or not msg.document:
+        return False
+    doc = msg.document
+    name = (doc.file_name or "").lower()
+    if "banners_seed" not in name and name != "banners_seed.json":
+        if (doc.mime_type or "") != "application/json":
+            return False
+        # allow unnamed json only if caption mentions banners
+        cap = (msg.caption or "").lower()
+        if "banner" not in cap:
+            return False
+    try:
+        tg_file = await context.bot.get_file(doc.file_id)
+        raw = bytes(await tg_file.download_as_bytearray())
+        seed = json.loads(raw.decode("utf-8"))
+    except Exception as e:
+        await msg.reply_text(f"Не удалось прочитать JSON: {e}")
+        return True
+    if not isinstance(seed, dict) or "banners" not in seed:
+        await msg.reply_text("В файле нет ключа <code>banners</code>.", parse_mode="HTML")
+        return True
+    # Write seed files
+    for path in (BANNERS_SEED_FILE, BANNERS_SEED_DATA):
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(seed, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+        except Exception as e:
+            logger.error("write seed %s: %s", path, e)
+    db = load_db()
+    db, n = force_apply_banners_seed_payload(db, seed)
+    save_db(db)
+    save_banners_seed(db)
+    await msg.reply_text(
+        f"{Ech} <b>Баннеры загружены</b>\n\nСекций: <b>{n}</b>\nФайл сохранён как <code>banners_seed.json</code>.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("Баннеры", callback_data="adm_banners")],
+            [InlineKeyboardButton("Панель", callback_data="adm_back")],
+        ]),
+    )
+    return True
+
 def load_db():
     if os.path.exists(DB_FILE):
         with open(DB_FILE,"r",encoding="utf-8") as f: db=json.load(f)
@@ -1259,8 +1332,6 @@ def info_kb(lang):
     reviews_url=reviews_miniapp_url()
     if reviews_url:
         rows.append([InlineKeyboardButton(T(lang,'Отзывы','Reviews','Відгуки'),web_app=WebAppInfo(url=reviews_url),icon_custom_emoji_id="5778145208411624388")])
-        # Browser fallback if BotFather domain is not set yet
-        rows.append([InlineKeyboardButton(T(lang,'Отзывы (браузер)','Reviews (browser)','Відгуки (браузер)'),url=reviews_url)])
     rows.append([InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
@@ -4561,7 +4632,6 @@ def adm_kb():
         [InlineKeyboardButton("Кошельки / реквизиты",callback_data="adm_wallets")],
         [InlineKeyboardButton(wlabel,callback_data="adm_withdrawals")],
         [InlineKeyboardButton("Баннеры",callback_data="adm_banners")],
-        [InlineKeyboardButton("Mini App URL",callback_data="adm_miniapp_url")],
         [InlineKeyboardButton("Описание меню",callback_data="adm_menu_desc")],
         [InlineKeyboardButton("Список сделок",callback_data="adm_deals")],
         [InlineKeyboardButton("Логи",callback_data="adm_logs"),InlineKeyboardButton(tl,callback_data="adm_toggle_hidden")],
@@ -4797,29 +4867,6 @@ async def handle_adm_cb(update, context):
         if d=="adm_banners_export":
             await q.answer("Выгружаю…")
             await export_banners_seed_file(update, context)
-            return
-
-        if d=="adm_miniapp_url":
-            await q.answer()
-            ru=reviews_miniapp_url()
-            tu=tonconnect_miniapp_url()
-            base=_public_base_url()
-            port=(os.getenv("PORT") or "—")
-            tip=("✅ Отзывы: URL задан" if ru else "⚠️ Отзывы: URL пуст")
-            tip2=("✅ TonConnect: URL задан" if tu else "⚠️ TonConnect: нужен PUBLIC_BASE_URL / RENDER_EXTERNAL_URL сервиса бота")
-            await q.message.edit_text(
-                f"🌐 <b>Mini App</b>\n\n"
-                f"<blockquote>{tip}\n{tip2}</blockquote>\n\n"
-                f"<b>Отзывы</b>\n<code>{H(ru or '—')}</code>\n\n"
-                f"<b>TonConnect</b>\n<code>{H(tu or '—')}</code>\n\n"
-                f"<b>Base</b>\n<code>{H(base or '—')}</code>\n"
-                f"PORT=<code>{H(port)}</code>\n\n"
-                f"ENV: <code>REVIEWS_MINIAPP_URL</code>, <code>REVIEWS_HTML_REMOTE</code>, "
-                f"<code>PUBLIC_BASE_URL</code> / <code>RENDER_EXTERNAL_URL</code>, <code>TONCONNECT_MINIAPP_URL</code>\n"
-                f"В BotFather → Configure Mini App укажите домен вашего Render (не litterbox).",
-                parse_mode="HTML",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад",callback_data="adm_back")]]),
-                disable_web_page_preview=True)
             return
 
         if d.startswith("adm_banner_del_"):
