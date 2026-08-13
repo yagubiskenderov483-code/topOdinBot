@@ -1259,6 +1259,8 @@ def info_kb(lang):
     reviews_url=reviews_miniapp_url()
     if reviews_url:
         rows.append([InlineKeyboardButton(T(lang,'Отзывы','Reviews','Відгуки'),web_app=WebAppInfo(url=reviews_url),icon_custom_emoji_id="5778145208411624388")])
+        # Browser fallback if BotFather domain is not set yet
+        rows.append([InlineKeyboardButton(T(lang,'Отзывы (браузер)','Reviews (browser)','Відгуки (браузер)'),url=reviews_url)])
     rows.append([InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
