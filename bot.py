@@ -9,18 +9,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Бот @FunPayDealsOTCRobot. Env BOT_TOKEN на Render; старые токены игнорируем.
-_BOT_TOKEN_DEFAULT = "8218941253:AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk"
+_BOT_TOKEN_DEFAULT = "8218941253:AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng"
 _BOT_TOKEN_REVOKED = {
     "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4",
     "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ",
     "8804596421:AAHTQN-bfrnTcyU1PlozD0u4MM5a0SrE5iE",
     "8397181335:AAHQEE0EdR7n5XTXWLEdV2Gk0Ql-fl3weic",
+    "8218941253:AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk",
 }
 _tok = (os.getenv("BOT_TOKEN") or "").strip()
 if (
     (not _tok)
     or (_tok in _BOT_TOKEN_REVOKED)
     or ("AAGO3viGf3PERRFA" in _tok)
+    or ("AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in _tok)
     or _tok.startswith("8879343383:")
     or _tok.startswith("8804596421:")
     or _tok.startswith("8397181335:")
@@ -5222,7 +5224,12 @@ def start_render_keepalive():
 # ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
-    if BOT_TOKEN.startswith(("8879343383:","8804596421:","8397181335:")) or "AAGO3viGf3PERRFA" in BOT_TOKEN:
+    if (
+        BOT_TOKEN in _BOT_TOKEN_REVOKED
+        or BOT_TOKEN.startswith(("8879343383:","8804596421:","8397181335:"))
+        or "AAGO3viGf3PERRFA" in BOT_TOKEN
+        or "AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in BOT_TOKEN
+    ):
         raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDealsOTCRobot.")
 
     db=load_db()
