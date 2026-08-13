@@ -3600,9 +3600,23 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: pass
 
 # ─── Messages ─────────────────────────────────────────────────────────────────
+async def on_admin_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Админ присылает banners_seed.json — импорт без adm_step."""
+    try:
+        uid = update.effective_user.id if update.effective_user else 0
+        if uid not in ADMIN_IDS:
+            return
+        await import_banners_seed_from_document(update, context)
+    except Exception as e:
+        logger.error(f"on_admin_document: {e}")
+
 async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         ud=context.user_data; uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
+        # Document import (banners_seed.json) — even without adm_step
+        if uid in ADMIN_IDS and update.message and update.message.document:
+            if await import_banners_seed_from_document(update, context):
+                return
         text=update.message.text.strip() if update.message.text else ""
         if uid in ADMIN_IDS and ud.get("adm_step"): await handle_adm_msg(update,context); return
         # Restore requisite wizard if user_data was lost (profile / deal / join)
@@ -5635,6 +5649,7 @@ def main():
     app.add_handler(CommandHandler("delreview",cmd_del_review))
     app.add_handler(CommandHandler("my_reviews",cmd_my_reviews))
     app.add_handler(CallbackQueryHandler(on_cb))
+    app.add_handler(MessageHandler(filters.Document.ALL, on_admin_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,on_msg))
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION,handle_adm_msg))
 
