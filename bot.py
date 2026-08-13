@@ -5280,8 +5280,28 @@ def save_ton_wallet_for_uid(uid, address, username=""):
     save_db(db)
     return addr
 
+# Webhook bridge: HTTP thread → PTB application loop
+_PTB_APP = None
+_PTB_LOOP = None
+
+def _enqueue_telegram_update(raw: bytes) -> bool:
+    """Parse Telegram Update JSON and schedule process_update on the bot loop."""
+    global _PTB_APP, _PTB_LOOP
+    if not _PTB_APP or not _PTB_LOOP:
+        return False
+    try:
+        data = json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
+        update = Update.de_json(data, _PTB_APP.bot)
+        if not update:
+            return False
+        asyncio.run_coroutine_threadsafe(_PTB_APP.process_update(update), _PTB_LOOP)
+        return True
+    except Exception as e:
+        logger.error("enqueue update: %s", e)
+        return False
+
 def start_reviews_http_server():
-    """Always bind $PORT on Render: /health + miniapp + /api/bind-ton."""
+    """Always bind $PORT on Render: /health + miniapp + /api/bind-ton + /telegram webhook."""
     port = os.getenv("PORT")
     if not port:
         logger.warning("PORT not set - HTTP skipped (ok locally)")
@@ -5352,7 +5372,7 @@ def start_reviews_http_server():
 
             def do_HEAD(self):
                 path=urlparse(self.path).path or "/"
-                if path in ("/health", "/healthz", "/ping", "/status", "/", "/index.html", "/tonconnect.html", "/tonconnect-manifest.json"):
+                if path in ("/health", "/healthz", "/ping", "/status", "/", "/index.html", "/tonconnect.html", "/tonconnect-manifest.json", "/telegram", "/webhook"):
                     self.send_response(200)
                     self.send_header("Content-Type", "text/plain" if path.startswith("/health") else "text/html")
                     self.send_header("Cache-Control", "no-store")
@@ -5370,6 +5390,7 @@ def start_reviews_http_server():
                         "reviews_miniapp": reviews_miniapp_url(),
                         "tonconnect_miniapp": tonconnect_miniapp_url(),
                         "render": _public_base_url(),
+                        "webhook": bool(_PTB_APP),
                     })
                     return
                 if path in ("/", "/index.html", "/reviews", "/reviews.html"):
@@ -5407,6 +5428,17 @@ def start_reviews_http_server():
 
             def do_POST(self):
                 path=urlparse(self.path).path
+                if path in ("/telegram", "/webhook"):
+                    try:
+                        n=int(self.headers.get("Content-Length") or 0)
+                        raw=self.rfile.read(n) if n>0 else b"{}"
+                    except Exception:
+                        self._send_json(400, {"ok":False,"error":"bad body"}); return
+                    if _enqueue_telegram_update(raw):
+                        self._send_json(200, {"ok":True})
+                    else:
+                        self._send_json(503, {"ok":False,"error":"bot not ready"})
+                    return
                 if path!="/api/bind-ton":
                     self._send_json(404, {"ok":False,"error":"not found"}); return
                 try:
@@ -5505,14 +5537,34 @@ def main():
     start_reviews_http_server()
 
     app=Application.builder().token(BOT_TOKEN).build()
+    use_webhook = (
+        (os.getenv("USE_WEBHOOK") or "1").strip().lower() not in ("0", "false", "no", "off")
+        and bool(_public_base_url())
+    )
+
     async def post_init(application):
         await application.bot.set_my_commands([BotCommand("start","Главное меню")])
         await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
-        await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+        # Menu Web App → reviews (works when BotFather domain allows the host)
         try:
-            await application.bot.delete_webhook(drop_pending_updates=True)
+            ru = reviews_miniapp_url()
+            if ru:
+                from telegram import MenuButtonWebApp, WebAppInfo as _WAI
+                await application.bot.set_chat_menu_button(
+                    menu_button=MenuButtonWebApp(text="Отзывы", web_app=_WAI(url=ru)))
+            else:
+                await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
         except Exception as e:
-            logger.warning("delete_webhook: %s", e)
+            logger.warning("set menu webapp: %s", e)
+            try:
+                await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+            except Exception:
+                pass
+        if not use_webhook:
+            try:
+                await application.bot.delete_webhook(drop_pending_updates=True)
+            except Exception as e:
+                logger.warning("delete_webhook: %s", e)
     app.post_init=post_init
 
     async def on_error(update, context):
@@ -5545,6 +5597,53 @@ def main():
     print(f"AI provider: {resolve_ai_provider()} (FunPay AI via g4f if no API keys)")
     print(f"Reviews Mini App: {reviews_miniapp_url()}")
     print(f"TonConnect Mini App: {tonconnect_miniapp_url()}")
+
+    if use_webhook:
+        base = _public_base_url().rstrip("/")
+        wh_url = f"{base}/telegram"
+        print(f"Webhook mode: {wh_url}")
+
+        async def _webhook_main():
+            global _PTB_APP, _PTB_LOOP
+            await app.initialize()
+            await app.start()
+            _PTB_APP = app
+            _PTB_LOOP = asyncio.get_running_loop()
+            # post_init is not auto-called without run_polling — run menu setup here
+            await post_init(app)
+            await app.bot.set_webhook(
+                url=wh_url,
+                drop_pending_updates=True,
+                allowed_updates=Update.ALL_TYPES,
+            )
+            logger.info("webhook set → %s", wh_url)
+            # Notify admin that bot is live with working miniapp
+            try:
+                ru = reviews_miniapp_url()
+                for aid in (741904495,):
+                    try:
+                        await app.bot.send_message(
+                            aid,
+                            "✅ Бот онлайн (webhook). /start → Информация → Отзывы",
+                            reply_markup=InlineKeyboardMarkup([[
+                                InlineKeyboardButton("⭐ Отзывы", web_app=WebAppInfo(url=ru)),
+                                InlineKeyboardButton("Браузер", url=ru),
+                            ]]) if ru else None,
+                        )
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning("admin notify: %s", e)
+            # Idle forever while HTTP thread serves webhook + miniapp
+            stop = asyncio.Event()
+            await stop.wait()
+
+        try:
+            asyncio.run(_webhook_main())
+        except KeyboardInterrupt:
+            pass
+        return
+
     # drop_pending_updates + retries: меньше падений от Conflict/сети на Render
     app.run_polling(
         drop_pending_updates=True,
