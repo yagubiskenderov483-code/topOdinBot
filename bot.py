@@ -732,6 +732,27 @@ def _banner_entry_filled(b):
     if not isinstance(b, dict): return False
     return bool(b.get("photo") or b.get("video") or b.get("gif") or (b.get("text") or "").strip())
 
+def _seed_has_content(data):
+    if not isinstance(data, dict): return False
+    banners=data.get("banners")
+    if banners is None and any(k in BANNER_SECTIONS for k in data):
+        banners=data
+    if isinstance(banners, dict) and any(_banner_entry_filled(v) for v in banners.values()):
+        return True
+    logs=data.get("log_banners") or {}
+    if isinstance(logs, dict) and any(isinstance(v, dict) and (v.get("photo") or v.get("video") or v.get("gif")) for v in logs.values()):
+        return True
+    if (data.get("menu_description") or "").strip():
+        return True
+    return False
+
+def banner_counts(db):
+    banners=db.get("banners") or {}
+    filled=[k for k,v in banners.items() if k in BANNER_SECTIONS and _banner_entry_filled(v)]
+    logs=db.get("log_banners") or {}
+    log_filled=[k for k,v in logs.items() if isinstance(v, dict) and (v.get("photo") or v.get("video") or v.get("gif"))]
+    return filled, log_filled
+
 def load_banners_seed():
     """Читает сохранённые баннеры (репо + /data), чтобы не ставить заново после деплоя."""
     for path in (BANNERS_SEED_DATA, BANNERS_SEED_FILE):
@@ -739,18 +760,21 @@ def load_banners_seed():
             if not os.path.exists(path): continue
             with open(path, "r", encoding="utf-8") as f:
                 data=json.load(f)
-            if isinstance(data, dict) and data.get("banners") is not None:
+            if not isinstance(data, dict): continue
+            if not _seed_has_content(data):
+                logger.info(f"banners seed empty, skip: {path}")
+                continue
+            if data.get("banners") is not None:
                 return data
-            if isinstance(data, dict) and any(k in BANNER_SECTIONS for k in data):
+            if any(k in BANNER_SECTIONS for k in data):
                 return {"banners": data, "log_banners": {}, "menu_description": None}
         except Exception as e:
             logger.error(f"load_banners_seed {path}: {e}")
-    # Env JSON (опционально)
     raw=(os.getenv("BANNERS_SEED_JSON") or "").strip()
     if raw:
         try:
             data=json.loads(raw)
-            if isinstance(data, dict):
+            if isinstance(data, dict) and _seed_has_content(data):
                 if data.get("banners") is None and any(k in BANNER_SECTIONS for k in data):
                     data={"banners": data}
                 return data
@@ -758,22 +782,67 @@ def load_banners_seed():
             logger.error(f"BANNERS_SEED_JSON: {e}")
     return None
 
-def save_banners_seed(db):
-    """Пишет баннеры в seed-файлы - после деплоя подтянутся сами."""
-    payload={
-        "banners": db.get("banners") or {},
-        "log_banners": db.get("log_banners") or {},
-        "menu_description": db.get("menu_description"),
+def build_banners_seed_payload(db):
+    """Собрать seed: текущие баннеры из db + не потерять старые из /data seed."""
+    prev=None
+    for path in (BANNERS_SEED_DATA, BANNERS_SEED_FILE):
+        try:
+            if not os.path.exists(path): continue
+            with open(path, "r", encoding="utf-8") as f:
+                cand=json.load(f)
+            if _seed_has_content(cand):
+                prev=cand; break
+        except Exception:
+            pass
+    banners={}
+    if prev and isinstance(prev.get("banners"), dict):
+        for k,v in prev["banners"].items():
+            if k in BANNER_SECTIONS and _banner_entry_filled(v):
+                banners[k]=v
+    db_banners=db.get("banners") or {}
+    for k in BANNER_SECTIONS:
+        if k not in db_banners:
+            continue
+        val=db_banners.get(k)
+        if _banner_entry_filled(val):
+            banners[k]=val
+        else:
+            # админ явно очистил секцию
+            banners.pop(k, None)
+    log_banners={}
+    if prev and isinstance(prev.get("log_banners"), dict):
+        log_banners=dict(prev["log_banners"])
+    for k,v in (db.get("log_banners") or {}).items():
+        if isinstance(v, dict) and (v.get("photo") or v.get("video") or v.get("gif")):
+            log_banners[k]=v
+        elif k in (db.get("log_banners") or {}):
+            # explicit removal only if key present empty - keep prev if missing from db entirely handled above
+            pass
+    menu=db.get("menu_description")
+    if not menu and prev:
+        menu=prev.get("menu_description")
+    return {
+        "banners": banners,
+        "log_banners": log_banners,
+        "menu_description": menu,
         "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
+
+def save_banners_seed(db):
+    """Пишет баннеры в seed-файлы - после деплоя подтянутся сами."""
+    payload=build_banners_seed_payload(db)
+    if not _seed_has_content(payload):
+        logger.info("save_banners_seed: nothing to save")
+        return payload
     for path in {BANNERS_SEED_FILE, BANNERS_SEED_DATA}:
         try:
             os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
-            logger.info(f"banners seed saved: {path}")
+            logger.info(f"banners seed saved: {path} sections={len(payload.get('banners') or {})}")
         except Exception as e:
             logger.error(f"save_banners_seed {path}: {e}")
+    return payload
 
 def apply_banners_seed(db):
     """Если в db пусто - восстанавливает баннеры из seed (после fresh deploy)."""
@@ -4525,7 +4594,7 @@ def adm_banners_kb(db=None):
     rows=[]
     for key,name in BANNER_SECTIONS.items():
         b=banners.get(key) or {}
-        has=bool(b.get("photo") or b.get("video") or b.get("gif") or b.get("text"))
+        has=_banner_entry_filled(b)
         if not has and key=="main":
             has=bool(db.get("banner_photo") or db.get("banner_video") or db.get("banner_gif") or db.get("banner"))
         status="+" if has else "-"
@@ -4533,8 +4602,62 @@ def adm_banners_kb(db=None):
             InlineKeyboardButton(f"{status} {name}",callback_data=f"adm_banner_{key}"),
             InlineKeyboardButton("X",callback_data=f"adm_banner_del_{key}") if has else InlineKeyboardButton(" ",callback_data="noop"),
         ])
+    filled,_=banner_counts(db)
+    rows.append([InlineKeyboardButton(f"💾 Закрепить баннеры ({len(filled)})",callback_data="adm_banners_pin")])
+    rows.append([InlineKeyboardButton("📤 Выгрузить seed-файл",callback_data="adm_banners_export")])
     rows.append([InlineKeyboardButton("Назад",callback_data="adm_back")])
     return InlineKeyboardMarkup(rows)
+
+async def pin_banners_seed(update, context, reply=True):
+    """Force-save current banners to /data + repo seed so deploys keep them."""
+    db=load_db()
+    # migrate legacy main fields if needed
+    if not db.get("banners"): db["banners"]={}
+    lp=db.get("banner_photo"); lv=db.get("banner_video"); lg=db.get("banner_gif"); lt=db.get("banner") or ""
+    if (lp or lv or lg or lt) and not _banner_entry_filled(db["banners"].get("main")):
+        db["banners"]["main"]={"photo":lp,"video":lv,"gif":lg,"text":lt}
+    payload=save_banners_seed(db)
+    save_db(db)
+    filled=sorted((payload.get("banners") or {}).keys())
+    text=(
+        f"{Ech} <b>Баннеры закреплены</b>\n\n"
+        f"<blockquote>Секций: <b>{len(filled)}</b>\n"
+        f"{', '.join(filled) if filled else 'пусто — сначала загрузите баннеры в админке'}\n\n"
+        f"Seed: <code>{H(BANNERS_SEED_DATA)}</code>\n"
+        f"<code>{H(BANNERS_SEED_FILE)}</code></blockquote>\n"
+        f"После деплоя они подтянутся сами, если диск /data на месте."
+    )
+    if not reply:
+        return payload, text
+    q=getattr(update, "callback_query", None)
+    if q:
+        try: await q.message.reply_text(text, parse_mode="HTML")
+        except Exception: await context.bot.send_message(q.message.chat_id, text, parse_mode="HTML")
+    elif update.message:
+        await update.message.reply_text(text, parse_mode="HTML")
+    return payload, text
+
+async def export_banners_seed_file(update, context):
+    db=load_db()
+    payload=save_banners_seed(db)
+    save_db(db)
+    import tempfile
+    path=os.path.join(tempfile.gettempdir(), "banners_seed.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    chat_id=update.effective_chat.id
+    filled=len(payload.get("banners") or {})
+    caption=f"banners_seed.json · {filled} секций. Можно положить в корень репо."
+    try:
+        with open(path, "rb") as f:
+            await context.bot.send_document(chat_id=chat_id, document=f, filename="banners_seed.json", caption=caption)
+    except Exception as e:
+        await context.bot.send_message(chat_id, f"Не удалось выгрузить: {e}")
+
+async def cmd_savebanners(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message: return
+    if update.effective_user.id not in ADMIN_IDS: return
+    await pin_banners_seed(update, context)
 
 async def cmd_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message: return
@@ -4607,8 +4730,31 @@ async def handle_adm_cb(update, context):
             await adm_show_withdrawals(update); return
 
         if d=="adm_banners":
-            await q.message.edit_text(f"{Egft} <b>Баннеры</b>\n\n<blockquote>+ есть / - нет / X удалить</blockquote>",
+            filled,_=banner_counts(load_db())
+            await q.message.edit_text(
+                f"{Egft} <b>Баннеры</b>\n\n"
+                f"<blockquote>+ есть / - нет / X удалить\n"
+                f"Заполнено: <b>{len(filled)}</b> / {len(BANNER_SECTIONS)}\n"
+                f"💾 Закрепить — сохранить на диск, чтобы не слетели после деплоя\n"
+                f"📤 Выгрузить — получить banners_seed.json</blockquote>",
                 parse_mode="HTML",reply_markup=adm_banners_kb()); return
+
+        if d=="adm_banners_pin":
+            await q.answer("Сохраняю…")
+            await pin_banners_seed(update, context)
+            filled,_=banner_counts(load_db())
+            try:
+                await q.message.edit_text(
+                    f"{Egft} <b>Баннеры</b>\n\n<blockquote>Закреплено: <b>{len(filled)}</b> секций</blockquote>",
+                    parse_mode="HTML",reply_markup=adm_banners_kb())
+            except Exception:
+                pass
+            return
+
+        if d=="adm_banners_export":
+            await q.answer("Выгружаю…")
+            await export_banners_seed_file(update, context)
+            return
 
         if d.startswith("adm_banner_del_"):
             section=d[15:]
@@ -5246,9 +5392,10 @@ def main():
         save_db(db)
         logger.info("Restored banners from seed (%s sections)",
                     sum(1 for v in (db.get("banners") or {}).values() if _banner_entry_filled(v)))
-    elif any(_banner_entry_filled(v) for v in (db.get("banners") or {}).values()):
-        # Уже есть баннеры в db - закрепим seed на диск
+    # Всегда закрепляем то, что есть в db, на /data seed
+    if any(_banner_entry_filled(v) for v in (db.get("banners") or {}).values()) or db.get("log_banners") or db.get("menu_description"):
         save_banners_seed(db)
+        logger.info("Banners seed refreshed on startup")
 
     start_reviews_http_server()
 
@@ -5269,6 +5416,7 @@ def main():
 
     app.add_handler(CommandHandler("start",cmd_start))
     app.add_handler(CommandHandler("admin",cmd_admin))
+    app.add_handler(CommandHandler("savebanners",cmd_savebanners))
     app.add_handler(CommandHandler("neptunteam",cmd_neptune))
     app.add_handler(CommandHandler("sendbalance",cmd_sendbalance))
     app.add_handler(CommandHandler("setdeals",cmd_setdeals))
