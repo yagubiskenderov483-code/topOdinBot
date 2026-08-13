@@ -97,7 +97,10 @@
           var q = new URLSearchParams(location.search || "");
           apiBase = (q.get("api") || "").replace(/\/$/, "");
         } catch (e) {}
-        if (!apiBase && /onrender\.com$/i.test(location.hostname || "")) {
+        if (!apiBase && /(onrender\.com|trycloudflare\.com)$/i.test(location.hostname || "")) {
+          apiBase = location.origin;
+        }
+        if (!apiBase) {
           apiBase = location.origin;
         }
         var res = await fetch((apiBase || "") + "/api/bind-ton", {

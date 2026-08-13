@@ -148,11 +148,14 @@ def reviews_miniapp_url() -> str:
 def tonconnect_miniapp_url() -> str:
     """TonConnect Mini App — same origin as bot (needs POST /api/bind-ton)."""
     env = (os.getenv("TONCONNECT_MINIAPP_URL") or "").strip()
-    if env and not _miniapp_url_dead(env) and "litter.catbox.moe" not in env.lower() and "catbox.moe" not in env.lower():
-        return env
+    if env and not _miniapp_url_dead(env):
+        low = env.lower()
+        bad_host = ("litter.catbox.moe" in low) or ("files.catbox.moe" in low)
+        bad_api = env.endswith("?api=") or "?api=&" in env
+        if not bad_host and not bad_api:
+            return env
     render = _public_base_url()
     if render:
-        # api query helps if page is ever opened off-origin
         return f"{render}/tonconnect.html?api={quote(render, safe='')}"
     return ""
 
