@@ -1,8 +1,10 @@
-import logging, json, os, math, html, time, re, asyncio
+import logging, json, os, math, html, time, re, asyncio, sys
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands
+from telegram.constants import ChatAction
+from telegram.error import Conflict
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 logging.basicConfig(level=logging.INFO)
@@ -2495,10 +2497,22 @@ _G4F_MODELS = [
     m for m in [
         (AI_MODEL or "").strip(),
         "gpt-4o-mini",
-        "gpt-4o",
-        "command-r",
     ] if m
 ]
+
+def _ai_local_is_definitive(answer, lang="ru"):
+    """True when local KB already has a concrete answer (skip slow LLM)."""
+    if not (answer or "").strip():
+        return False
+    generic = (
+        "Отвечаю своими знаниями",
+        "Answer with my knowledge",
+        "переформулируйте короче",
+        "rephrase more briefly",
+        "Напишите вопрос",
+        "Write a question",
+    )
+    return not any(g in answer for g in generic)
 
 async def _ai_call_g4f(system, messages):
     """Живой ответ FunPay AI без API-ключа (g4f), с ретраями по моделям."""
@@ -2515,7 +2529,7 @@ async def _ai_call_g4f(system, messages):
         return text
     for model in _G4F_MODELS:
         try:
-            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=55)
+            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=28)
             logger.info(f"ai g4f ok model={model}")
             return text
         except Exception as e:
@@ -2524,7 +2538,10 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """FunPay AI: Gemini / OpenAI / Groq / g4f - живые ответы на любые темы."""
+    """FunPay AI: локальная база → Gemini / OpenAI / Groq / g4f."""
+    local = ai_local_answer(question, lang, history)
+    if _ai_local_is_definitive(local, lang):
+        return local.strip()
     provider=resolve_ai_provider()
     system=build_ai_system_prompt(lang)
     msgs=[]
@@ -3619,7 +3636,20 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ud.get("ai_ask"):
             chat=update.effective_chat
             hist=ud.setdefault("ai_history",[])
-            ans=dedupe_ai_text(await ai_chat(text,lang,hist))
+            think_body=(
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
+                f"<blockquote>{T(lang,'FunPay AI думает…','FunPay AI is thinking…','FunPay AI думає…')}</blockquote>"
+            )
+            thinking = await chat.send_message(think_body, parse_mode="HTML", reply_markup=ai_kb(lang))
+            try:
+                async with chat.action(ChatAction.TYPING):
+                    ans=dedupe_ai_text(await ai_chat(text,lang,hist))
+            except Exception as e:
+                logger.error("ai_ask: %s", e)
+                ans=T(lang,
+                    "Не удалось получить ответ. Попробуйте ещё раз.",
+                    "Could not get a reply. Try again.",
+                    "Не вдалося отримати відповідь. Спробуйте ще раз.")
             hist.append({"role":"user","content":text})
             hist.append({"role":"assistant","content":ans})
             if len(hist)>24: ud["ai_history"]=hist[-24:]
@@ -3628,7 +3658,10 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
                 f"<blockquote>{H(ans)}</blockquote>"
             )
-            await chat.send_message(body, parse_mode="HTML", reply_markup=ai_kb(lang))
+            try:
+                await thinking.edit_text(body, parse_mode="HTML", reply_markup=ai_kb(lang))
+            except Exception:
+                await chat.send_message(body, parse_mode="HTML", reply_markup=ai_kb(lang))
             return
 
         if ud.get("complaint_step"):
@@ -5524,6 +5557,15 @@ def start_reviews_http_server():
                 self._send_json(200, {"ok":True,"address":addr})
 
         server = ThreadingHTTPServer(("0.0.0.0", int(port)), Handler)
+        server.allow_reuse_address = True
+        try:
+            server.server_bind()
+            server.server_activate()
+        except OSError as e:
+            if getattr(e, "errno", None) in (98, 48):  # EADDRINUSE
+                logger.warning("HTTP port %s busy — skip (another instance?)", port)
+                return
+            raise
         threading.Thread(target=server.serve_forever, daemon=True, name="http-health").start()
         logger.info("HTTP on :%s /health miniapp=%s reviews=%s", port, has_miniapp, reviews_miniapp_url())
         start_render_keepalive()
@@ -5560,7 +5602,40 @@ def start_render_keepalive():
     logger.info("keepalive every %ss -> %s", interval, url)
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
+_BOT_LOCK_FD = None
+
+def _acquire_single_instance_lock(wait_sec=60):
+    """Один процесс бота. При redeploy новый ждёт, пока старый отпустит lock."""
+    global _BOT_LOCK_FD
+    path = os.path.join(DATA_DIR, ".bot.lock")
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        pass
+    _BOT_LOCK_FD = open(path, "w")
+    try:
+        import fcntl
+        deadline = time.time() + max(5, int(wait_sec or 60))
+        while True:
+            try:
+                fcntl.flock(_BOT_LOCK_FD.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.time() >= deadline:
+                    logger.error("Бот уже запущен (lock %s). Второй процесс остановлен.", path)
+                    raise SystemExit(0)
+                logger.warning("Жду освобождения lock %s…", path)
+                time.sleep(2)
+    except ImportError:
+        pass
+    try:
+        _BOT_LOCK_FD.write(str(os.getpid()))
+        _BOT_LOCK_FD.flush()
+    except Exception:
+        pass
+
 def main():
+    _acquire_single_instance_lock()
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
     if (
         BOT_TOKEN in _BOT_TOKEN_REVOKED
@@ -5596,28 +5671,18 @@ def main():
 
     app=Application.builder().token(BOT_TOKEN).build()
     use_webhook = (
-        (os.getenv("USE_WEBHOOK") or "1").strip().lower() not in ("0", "false", "no", "off")
+        (os.getenv("USE_WEBHOOK") or "").strip().lower() in ("1", "true", "yes", "on")
         and bool(_public_base_url())
     )
 
     async def post_init(application):
         await application.bot.set_my_commands([BotCommand("start","Главное меню")])
         await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
-        # Menu Web App → reviews (works when BotFather domain allows the host)
+        # Кнопка меню слева внизу = команды (/start), не Mini App
         try:
-            ru = reviews_miniapp_url()
-            if ru:
-                from telegram import MenuButtonWebApp, WebAppInfo as _WAI
-                await application.bot.set_chat_menu_button(
-                    menu_button=MenuButtonWebApp(text="Отзывы", web_app=_WAI(url=ru)))
-            else:
-                await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
+            await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
         except Exception as e:
-            logger.warning("set menu webapp: %s", e)
-            try:
-                await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
-            except Exception:
-                pass
+            logger.warning("set menu button: %s", e)
         if not use_webhook:
             try:
                 await application.bot.delete_webhook(drop_pending_updates=True)
@@ -5626,7 +5691,15 @@ def main():
     app.post_init=post_init
 
     async def on_error(update, context):
-        logger.error("handler error: %s", context.error, exc_info=context.error)
+        err = context.error
+        if isinstance(err, Conflict):
+            logger.error("Conflict: другой инстанс бота — этот процесс завершается")
+            try:
+                await context.application.stop()
+            except Exception:
+                pass
+            return
+        logger.error("handler error: %s", err, exc_info=err)
     app.add_error_handler(on_error)
 
     app.add_handler(CommandHandler("start",cmd_start))
@@ -5672,7 +5745,7 @@ def main():
             await post_init(app)
             await app.bot.set_webhook(
                 url=wh_url,
-                drop_pending_updates=True,
+                drop_pending_updates=False,
                 allowed_updates=Update.ALL_TYPES,
             )
             logger.info("webhook set → %s", wh_url)
