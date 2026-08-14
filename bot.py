@@ -269,10 +269,9 @@ def load_reviews_index_html(local_root: str) -> bytes:
     return b""
 
 
-# FunPay AI: Gemini / OpenAI / Groq по ключу, иначе g4f (живые ответы без ключа).
+# FunPay AI: Gemini / OpenAI / Groq по ключу, иначе живой ChatGPT через g4f (как в первой версии).
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
 # AI_PROVIDER=gemini|openai|groq|g4f|auto
-# AI_PROVIDER=local — только локальная база (без LLM)
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
 AI_MODEL = (os.getenv("AI_MODEL") or "").strip()
 AI_BASE_URL = (os.getenv("AI_BASE_URL") or "").rstrip("/")
@@ -2483,6 +2482,7 @@ AI_KB = {
 }
 
 def resolve_ai_provider():
+    """Gemini / ChatGPT / Groq по ключу, иначе живой g4f — как в первой версии ИИ."""
     p=(AI_PROVIDER or "auto").lower()
     if p=="gemini" and GEMINI_API_KEY: return "gemini"
     if p=="openai" and OPENAI_API_KEY: return "openai"
@@ -2494,33 +2494,35 @@ def resolve_ai_provider():
     return "g4f"
 
 async def _ai_call_g4f(system, messages):
-    """Живой ChatGPT/g4f без ключа — AnyProvider + command-r (стабильно на Render)."""
+    """Живой ChatGPT/Gemini-стиль без ключа (g4f AnyProvider), как при добавлении ИИ."""
     import asyncio
     from g4f.client import Client
     from g4f import Provider
     client=Client()
     errs=[]
-    attempts=[]
+    models=[]
     if (AI_MODEL or "").strip():
-        attempts.append(((AI_MODEL or "").strip(), None))
-    attempts.extend([
-        ("command-r", Provider.AnyProvider),
-        ("command-r-plus", Provider.AnyProvider),
-        ("gpt-4o-mini", None),
-    ])
-    def _run(model, provider):
-        kw={"model":model, "messages":[{"role":"system","content":system}]+list(messages), "timeout":55}
-        if provider is not None:
-            kw["provider"]=provider
-        r=client.chat.completions.create(**kw)
+        models.append((AI_MODEL or "").strip())
+    models.extend(["command-r", "command-r-plus", "gpt-4o-mini", "gpt-4o"])
+    seen=set(); uniq=[]
+    for m in models:
+        if m in seen: continue
+        seen.add(m); uniq.append(m)
+    def _run(model):
+        r=client.chat.completions.create(
+            model=model,
+            provider=Provider.AnyProvider,
+            messages=[{"role":"system","content":system}]+list(messages),
+            timeout=55,
+        )
         text=(r.choices[0].message.content or "").strip()
         if not text:
             raise RuntimeError("empty g4f response")
         return text
-    for model, provider in attempts:
+    for model in uniq:
         try:
-            text=await asyncio.wait_for(asyncio.to_thread(_run, model, provider), timeout=60)
-            logger.info("ai g4f ok model=%s provider=%s", model, getattr(provider, "__name__", "auto"))
+            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=60)
+            logger.info("ai g4f ok model=%s", model)
             return text
         except Exception as e:
             errs.append(f"{model}: {e}")
@@ -2528,7 +2530,7 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """Gemini / OpenAI / Groq / g4f — живые ответы на любые вопросы (как при добавлении)."""
+    """FunPay AI: Gemini / OpenAI / Groq / g4f — живые ответы на любые темы (как Eldorado AI)."""
     provider=resolve_ai_provider()
     system=build_ai_system_prompt(lang)
     msgs=[]
@@ -2536,52 +2538,71 @@ async def ai_chat(question, lang="ru", history=None):
         if h.get("role") in ("user","assistant") and h.get("content"):
             msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
     msgs.append({"role":"user","content":str(question or "")[:2000]})
-    try:
-        if provider=="gemini":
-            return await _ai_call_gemini(system, msgs)
-        if provider in ("openai","groq"):
-            return await _ai_call_openai_compatible(system, msgs, provider)
-        return await _ai_call_g4f(system, msgs)
-    except Exception as e:
-        logger.error("ai_chat provider=%s: %s", provider, e, exc_info=True)
-        if provider!="g4f":
-            try:
-                return await _ai_call_g4f(system, msgs)
-            except Exception as e2:
-                logger.error("ai_chat g4f fallback: %s", e2, exc_info=True)
+    chain=[]
+    if provider=="gemini":
+        chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
+    elif provider in ("openai","groq"):
+        chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
+    chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
+    seen=set(); uniq=[]
+    for name,fn in chain:
+        if name in seen: continue
+        seen.add(name); uniq.append((name,fn))
+    for name,fn in uniq:
+        try:
+            ans=await fn()
+            if ans and str(ans).strip():
+                return str(ans).strip()
+        except Exception as e:
+            logger.error("ai_chat provider=%s: %s", name, e, exc_info=True)
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
-    """Короткий промпт как в старом g4f-ИИ — отвечает на любые темы."""
-    kb_bits=[]
-    for key in ("deal","join","req","complaint","fee","ref","support","topup","withdraw"):
-        entry=AI_KB.get(key)
-        if entry:
-            kb_bits.append(_ai_kb_entry_text(entry, lang))
-    kb="\n".join(kb_bits[:8])
+    """Полный промпт как у Eldorado AI / первой версии — Gemini/ChatGPT на любые темы."""
     if lang=="uk":
+        kb="\n\n".join(_ai_kb_entry_text(entry, "ru") for entry in AI_KB.values())
         return _bot_mention_fix(
-            f"Ти — FunPay AI, розумний помічник FunPay (Telegram @{BOT_USERNAME}). "
-            "Відповідай живо на БУДЬ-ЯКІ питання: наука, побут, крипта, жарти, абсурд — і про бот. "
-            "Ніколи не відмовляй і не проси переформулювати — завжди давай змістовну відповідь. "
-            "Звичайний текст без HTML. Мова: українська.\n\n"
-            "Факти: 132.584 угод · оборот $1.346.582 · комісія 0% · рефералка 3% · "
-            f"угоди FP29548+ · @FunPayDeaIManager · funpay.com\n{kb}")
-    if lang=="ru":
+            f"Ти — FunPay AI, розумний помічник FunPay (Telegram-бот @{BOT_USERNAME}). "
+            "Відповідай як живий асистент (Gemini/ChatGPT): вільно, по суті, на будь-які питання — "
+            "і про бот/угоди, і загальні. Якщо питання про FunPay — спирайся на базу знань нижче. "
+            "Не відшивай шаблоном «не знаю тему» — допомагай, уточнюй і міркуй. "
+            "Звичайний текст без HTML/Markdown. Мова: українська.\n\n"
+            "Факти платформи:\n"
+            "• 132.584 угод, оборот $1.346.582\n"
+            "• Комісія 0%, рефералка 3%\n"
+            "• Підтримка: https://support.funpay.com/tickets · @FunPayDeaIManager\n"
+            "• funpay.com · угоди FP29548+\n\n"
+            f"База знань бота:\n{kb}")
+    ru=lang=="ru"
+    kb="\n\n".join(_ai_kb_entry_text(entry, lang) for entry in AI_KB.values())
+    if ru:
         return _bot_mention_fix(
-            f"Ты — FunPay AI, умный помощник FunPay (Telegram @{BOT_USERNAME}). "
-            "Отвечай живо и по делу на ЛЮБЫЕ вопросы: наука, учёба, крипта, быт, код, шутки, абсурд — и про бот. "
-            "Никогда не отказывай и не проси переформулировать — всегда давай содержательный ответ. "
-            "Обычный текст без HTML/Markdown. Язык: русский.\n\n"
-            "Факты: 132.584 сделок · оборот $1.346.582 · комиссия 0% · рефералка 3% · "
-            f"сделки FP29548+ · @FunPayDeaIManager · funpay.com\n{kb}")
+            f"Ты — FunPay AI, умный помощник FunPay (Telegram-бот @{BOT_USERNAME}). "
+            "Отвечай как живой ассистент (Gemini/ChatGPT): свободно, по делу, на любые вопросы пользователя — "
+            "и про бот/сделки, и общие. Если вопрос про FunPay — опирайся на базу знаний ниже. "
+            "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
+            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
+            "Факты платформы:\n"
+            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
+            "• Комиссия сервиса: 0%\n"
+            "• Рефералка: 3% с сделок приглашённых\n"
+            "• Поддержка: https://support.funpay.com/tickets · менеджер: @FunPayDeaIManager\n"
+            "• Сайт: funpay.com\n"
+            "• Номера сделок вида FP29548+\n\n"
+            f"База знаний бота:\n{kb}")
     return _bot_mention_fix(
-        f"You are FunPay AI, smart helper for FunPay (Telegram @{BOT_USERNAME}). "
-        "Answer ANY topic freely: science, study, crypto, daily life, jokes, nonsense — and the bot. "
-        "Never refuse or ask to rephrase — always give a substantive answer. "
-        "Plain text only. Language: English.\n\n"
-        "Facts: 132,584 deals · $1,346,582 turnover · 0% fee · 3% referrals · "
-        f"deals FP29548+ · @FunPayDeaIManager · funpay.com\n{kb}")
+        f"You are FunPay AI, the smart helper for FunPay (Telegram bot @{BOT_USERNAME}). "
+        "Answer like a live assistant (Gemini/ChatGPT): freely, on any user question — bot/deals and general. "
+        "For FunPay questions use the knowledge below. Don't brush off with canned refusals — help, clarify, reason. "
+        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
+        "Platform facts:\n"
+        "• Stats: 132,584 deals, turnover $1,346,582\n"
+        "• Service fee: 0%\n"
+        "• Referrals: 3% from invited users' deals\n"
+        "• Support: https://support.funpay.com/tickets · manager: @FunPayDeaIManager\n"
+        "• Website: funpay.com\n"
+        "• Deal IDs like FP29548+\n\n"
+        f"Bot knowledge base:\n{kb}")
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -2767,8 +2788,11 @@ def ai_local_answer(question, lang="ru", history=None):
         "Hard case: @FunPayDeaIManager / https://support.funpay.com/tickets")
 
 def ai_thinking_html(lang):
-    """Одна строка с premium-эмодзи — как раньше."""
-    return f"{E['premium']} <b>{T(lang,'FunPay AI думает…','FunPay AI is thinking…','FunPay AI думає…')}</b>"
+    """Одна строка как в первой версии: робот-эмодзи + FunPay AI думает…"""
+    return (
+        f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> "
+        f"<i>{T(lang,'FunPay AI думает…','FunPay AI is thinking…','FunPay AI думає…')}</i>"
+    )
 
 def ai_answer_html(ans, lang="ru"):
     return (
