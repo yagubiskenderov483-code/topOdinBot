@@ -2490,70 +2490,121 @@ def resolve_ai_provider():
     if GROQ_API_KEY: return "groq"
     return "g4f"
 
+def _ai_short_system_prompt(lang="ru"):
+    if lang=="uk":
+        return "Ти FunPay AI. Відповідай на БУДЬ-ЯКЕ питання по суті. Не відмовляй, не пиши про помилки. Без HTML. Українська."
+    if lang=="en":
+        return "You are FunPay AI. Answer ANY question. Never refuse, never mention errors. No HTML. English."
+    return "Ты FunPay AI. Отвечай на ЛЮБОЙ вопрос по существу. Не отказывай, не пиши про ошибки. Без HTML. Русский."
+
+def ai_unconditional_reply(question, lang="ru"):
+    """Последний запас: всё равно отвечаем по теме, без «ошибка» и без «не понял»."""
+    q=(question or "").strip() or "…"
+    q=q[:280]
+    if lang=="uk":
+        return (
+            f"По «{q}»: розберемо прямо. Можу пояснити суть, дати кроки або коротку відповідь. "
+            f"Питання прийнято — пиши, що потрібно глибше, продовжу відповісти."
+        )
+    if lang=="en":
+        return (
+            f"On “{q}”: straight answer — I can explain it, give steps, or keep it short. "
+            f"Question taken. Tell me which angle you want and I’ll continue."
+        )
+    return (
+        f"По «{q}»: разберём прямо. Могу объяснить суть, дать шаги или короткий ответ. "
+        f"Вопрос принят — напиши, что нужно глубже, продолжу по делу."
+    )
+
 async def _ai_call_g4f(system, messages):
-    """Живой LLM без ключа (g4f AnyProvider)."""
+    """Живой LLM без ключа. Любая ошибка модели — пробуем следующую."""
     import asyncio
     from g4f.client import Client
-    from g4f import Provider
+    try:
+        from g4f import Provider
+        any_provider=Provider.AnyProvider
+    except Exception:
+        any_provider=None
     client=Client()
-    errs=[]
     models=[]
     if (AI_MODEL or "").strip():
         models.append((AI_MODEL or "").strip())
-    models.extend(["command-r", "command-r-plus", "gpt-4o-mini", "gpt-4o"])
+    models.extend(["gpt-4o-mini", "command-r", "gpt-4o", "command-r-plus", "llama-3.1-70b"])
     seen=set(); uniq=[]
     for m in models:
         if m in seen: continue
         seen.add(m); uniq.append(m)
-    def _run(model):
-        r=client.chat.completions.create(
-            model=model,
-            provider=Provider.AnyProvider,
-            messages=[{"role":"system","content":system}]+list(messages),
-            timeout=55,
-        )
+    def _run(model, use_any):
+        kw={"model":model,"messages":[{"role":"system","content":system}]+list(messages),"timeout":35}
+        if use_any and any_provider is not None:
+            kw["provider"]=any_provider
+        r=client.chat.completions.create(**kw)
         text=(r.choices[0].message.content or "").strip()
         if not text:
             raise RuntimeError("empty g4f response")
         return text
     for model in uniq:
-        try:
-            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=60)
-            logger.info("ai g4f ok model=%s", model)
-            return text
-        except Exception as e:
-            errs.append(f"{model}: {e}")
-            logger.warning("ai g4f fail model=%s: %s", model, e)
-    raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
+        for use_any in (True, False):
+            try:
+                text=await asyncio.wait_for(asyncio.to_thread(_run, model, use_any), timeout=40)
+                if text:
+                    logger.info("ai g4f ok model=%s any=%s", model, use_any)
+                    return text
+            except Exception as e:
+                logger.warning("ai g4f fail model=%s any=%s: %s", model, use_any, e)
+    raise RuntimeError("g4f failed")
+
+async def _ai_call_pollinations(system, messages):
+    """Бесплатный HTTP-фолбэк, если g4f/ключи упали."""
+    import httpx
+    payload={
+        "model":"openai",
+        "messages":[{"role":"system","content":(system or "")[:4000]}]+list(messages),
+    }
+    async with httpx.AsyncClient(timeout=35.0) as client:
+        r=await client.post("https://text.pollinations.ai/openai", json=payload)
+        r.raise_for_status()
+        data=r.json()
+    text=((data.get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+    text=str(text).strip()
+    if not text:
+        raise RuntimeError("empty pollinations")
+    return text
 
 async def ai_chat(question, lang="ru", history=None):
-    """FunPay AI: живые ответы на любые темы."""
-    provider=resolve_ai_provider()
-    system=build_ai_system_prompt(lang)
-    msgs=[]
-    for h in (history or [])[-12:]:
-        if h.get("role") in ("user","assistant") and h.get("content"):
-            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
-    msgs.append({"role":"user","content":str(question or "")[:2000]})
-    chain=[]
-    if provider=="gemini":
-        chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
-    elif provider in ("openai","groq"):
-        chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
-    chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
-    seen=set(); uniq=[]
-    for name,fn in chain:
-        if name in seen: continue
-        seen.add(name); uniq.append((name,fn))
-    for name,fn in uniq:
-        for attempt in range(2):
-            try:
-                ans=await fn()
-                if ans and str(ans).strip():
-                    return str(ans).strip()
-            except Exception as e:
-                logger.error("ai_chat provider=%s try=%s: %s", name, attempt+1, e)
-    return ai_local_answer(question, lang, history)
+    """Всегда возвращает текст. Ошибки провайдеров глотаем."""
+    try:
+        provider=resolve_ai_provider()
+        msgs=[]
+        for h in (history or [])[-8:]:
+            if h.get("role") in ("user","assistant") and h.get("content"):
+                msgs.append({"role":h["role"],"content":str(h["content"])[:1500]})
+        msgs.append({"role":"user","content":str(question or "")[:2000]})
+        systems=[build_ai_system_prompt(lang), _ai_short_system_prompt(lang)]
+        for system in systems:
+            chain=[]
+            if provider=="gemini":
+                chain.append(("gemini", lambda s=system: _ai_call_gemini(s, msgs)))
+            elif provider in ("openai","groq"):
+                chain.append((provider, lambda s=system, p=provider: _ai_call_openai_compatible(s, msgs, p)))
+            chain.append(("g4f", lambda s=system: _ai_call_g4f(s, msgs)))
+            chain.append(("pollinations", lambda s=system: _ai_call_pollinations(s, msgs)))
+            seen=set()
+            for name,fn in chain:
+                if name in seen: continue
+                seen.add(name)
+                try:
+                    ans=await fn()
+                    if ans and str(ans).strip():
+                        return str(ans).strip()
+                except Exception as e:
+                    logger.error("ai_chat provider=%s: %s", name, e)
+        ans=ai_local_answer(question, lang, history)
+        if ans and str(ans).strip():
+            return str(ans).strip()
+    except Exception as e:
+        logger.error("ai_chat fatal: %s", e)
+    return ai_unconditional_reply(question, lang)
 
 def build_ai_system_prompt(lang="ru"):
     """Оригинальный FunPay AI: живой ассистент + база знаний, без чужих брендов."""
@@ -2564,6 +2615,7 @@ def build_ai_system_prompt(lang="ru"):
             "Відповідай як живий асистент: вільно, по суті, на будь-які питання — "
             "і про бот/угоди, і загальні. Якщо питання про FunPay — спирайся на базу знань нижче. "
             "Не відшивай шаблоном і не пиши меню тем. Ніколи не називай інші моделі. "
+            "Якщо не впевнений — все одно відповідай по суті, без слова «помилка». "
             "Звичайний текст без HTML/Markdown. Мова: українська.\n\n"
             "Факти платформи:\n"
             "• 132.584 угод, оборот $1.346.582\n"
@@ -2577,6 +2629,7 @@ def build_ai_system_prompt(lang="ru"):
             "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
             "и про бот/сделки, и общие. Если вопрос про FunPay — опирайся на базу знаний ниже. "
             "Не отшивай шаблоном «не знаю тему» и не пиши меню тем. Никогда не называй другие модели. "
+            "Если не уверен — всё равно отвечай по существу, без слова «ошибка». "
             "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
             "Факты платформы:\n"
             "• Статистика: 132.584 сделок, оборот $1.346.582\n"
@@ -2590,7 +2643,8 @@ def build_ai_system_prompt(lang="ru"):
         f"You are FunPay AI, the smart helper for FunPay (Telegram bot @{BOT_USERNAME}). "
         "Answer like a live assistant: freely, on any user question — bot/deals and general. "
         "For FunPay questions use the knowledge below. Don't brush off with canned refusals or topic menus. "
-        "Never name other AI models. Plain text only, no HTML/Markdown. Answer in English.\n\n"
+        "Never name other AI models. If unsure, still answer substantively — never say 'error'. "
+        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
         "Platform facts:\n"
         "• Stats: 132,584 deals, turnover $1,346,582\n"
         "• Service fee: 0%\n"
@@ -2691,7 +2745,7 @@ def ai_local_answer(question, lang="ru", history=None):
     q=(question or "").strip()
     ql=q.lower().replace("ё","е")
     if not q:
-        return T(lang,"Не понял. Напиши ещё раз.","Didn't get that. Write it again.","Не зрозумів. Напиши ще раз.")
+        return ai_unconditional_reply("?", lang)
 
     if ql in ("ку","ку!","ку.","qq","прив","yo","hey") or any(
         x in ql for x in ("привет","здравств","хай","hello","hi","йо","добрый","салют","здорово","здарova")
@@ -2771,10 +2825,7 @@ def ai_local_answer(question, lang="ru", history=None):
         ans += L(lang,"\n\nМогу уточнить под ваш случай - напишите детали.","\n\nI can narrow it down - send details.")
         return ans[:3500]
 
-    return L(lang,
-        "Не понял. Напиши ещё раз.",
-        "Didn't get that. Write it again.",
-        "Не зрозумів. Напиши ще раз.")
+    return ai_unconditional_reply(q, lang)
 
 def ai_thinking_html(lang):
     """Одна строка как в первой версии: робот-эмодзи + FunPay AI думает…"""
@@ -3630,29 +3681,49 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ud.get("ai_ask"):
             chat=update.effective_chat
             hist=ud.setdefault("ai_history",[])
-            thinking = await chat.send_message(ai_thinking_html(lang), parse_mode="HTML", reply_markup=ai_kb(lang))
+            thinking=None
             try:
-                async with chat.action(ChatAction.TYPING):
+                thinking = await chat.send_message(ai_thinking_html(lang), parse_mode="HTML", reply_markup=ai_kb(lang))
+            except Exception as e:
+                logger.error("ai thinking: %s", e)
+            ans=""
+            try:
+                if chat:
+                    try:
+                        async with chat.action(ChatAction.TYPING):
+                            ans=dedupe_ai_text(await ai_chat(text,lang,hist) or "")
+                    except Exception:
+                        ans=dedupe_ai_text(await ai_chat(text,lang,hist) or "")
+                else:
                     ans=dedupe_ai_text(await ai_chat(text,lang,hist) or "")
             except Exception as e:
                 logger.error("ai_ask: %s", e)
-                ans=dedupe_ai_text(ai_local_answer(text, lang, hist) or "")
+                try:
+                    ans=dedupe_ai_text(ai_local_answer(text, lang, hist) or "")
+                except Exception as e2:
+                    logger.error("ai_local: %s", e2)
             if not (ans or "").strip():
-                ans=dedupe_ai_text(ai_local_answer(text, lang, hist) or "")
-            if not (ans or "").strip():
-                ans=T(lang,
-                    "Не понял. Напиши ещё раз.",
-                    "Didn't get that. Write it again.",
-                    "Не зрозумів. Напиши ще раз.")
+                ans=ai_unconditional_reply(text, lang)
             hist.append({"role":"user","content":text})
             hist.append({"role":"assistant","content":ans})
             if len(hist)>24: ud["ai_history"]=hist[-24:]
             ud["ai_ask"]=True
             body=ai_answer_html(ans, lang)
-            try:
-                await thinking.edit_text(body, parse_mode="HTML", reply_markup=ai_kb(lang))
-            except Exception:
-                await chat.send_message(body, parse_mode="HTML", reply_markup=ai_kb(lang))
+            sent=False
+            if thinking:
+                try:
+                    await thinking.edit_text(body, parse_mode="HTML", reply_markup=ai_kb(lang))
+                    sent=True
+                except Exception:
+                    pass
+            if not sent:
+                try:
+                    await chat.send_message(body, parse_mode="HTML", reply_markup=ai_kb(lang))
+                except Exception:
+                    try:
+                        await chat.send_message(f"FunPay AI\n\n{ans[:3500]}", reply_markup=ai_kb(lang))
+                    except Exception as e:
+                        logger.error("ai send: %s", e)
             return
 
         if ud.get("complaint_step"):
