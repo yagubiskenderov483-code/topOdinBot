@@ -672,15 +672,15 @@ def dedupe_ai_text(text):
 
 def deal_guarantee_lines(lang):
     return T(lang,
-        "1. Комиссия сервиса: <b>0%</b>\n"
-        "2. Средства защищены до завершения сделки.\n"
-        "3. После оплаты ожидайте подтверждения менеджера.",
-        "1. Service fee: <b>0%</b>\n"
-        "2. Funds are protected until the deal completes.\n"
-        "3. After payment wait for manager confirmation.",
-        "1. Комісія сервісу: <b>0%</b>\n"
-        "2. Кошти захищені до завершення угоди.\n"
-        "3. Після оплати очікуйте підтвердження менеджера.")
+        "1. Средства защищены до завершения сделки.\n"
+        "2. Менеджер подтвердит автоматически после получения товара.\n"
+        "3. После оплаты ожидайте завершения сделки.",
+        "1. Funds are protected until the deal completes.\n"
+        "2. The manager confirms automatically after receiving the item.\n"
+        "3. After payment wait for the deal to complete.",
+        "1. Кошти захищені до завершення угоди.\n"
+        "2. Менеджер підтвердить автоматично після отримання товару.\n"
+        "3. Після оплати очікуйте завершення угоди.")
 def H(value): return html.escape(str(value))
 
 def deal_payment_details_lines(deal_id, d, lang="ru"):
@@ -1773,9 +1773,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if viewer_role=="seller":
                 if not d.get("item_transferred"):
                     joined_instr=T(lang,
-                        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». Товар передаёт только продавец.",
-                        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». Only the seller transfers the item.",
-                        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Товар передає лише продавець.")
+                        "Передайте товар и нажмите «Я передал». Менеджер подтвердит автоматически после получения товара.",
+                        "Transfer the item and press «I transferred». The manager confirms automatically after receiving it.",
+                        "Передайте товар і натисніть «Я передав». Менеджер підтвердить автоматично після отримання товару.")
                 elif d.get("payment_reported"):
                     joined_instr=T(lang,
                         "Товар передан, оплата получена. Ожидайте подтверждения менеджера.",
@@ -1789,9 +1789,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             elif viewer_role=="buyer":
                 if not d.get("item_transferred"):
                     joined_instr=T(lang,
-                        "Ожидайте: продавец должен передать товар менеджеру. Вам пока ничего делать не нужно.",
-                        "Please wait: the seller must transfer the item to the manager. You don't need to do anything yet.",
-                        "Очікуйте: продавець має передати товар менеджеру. Вам поки нічого робити не потрібно.")
+                        "Ожидайте передачи товара. Менеджер подтвердит автоматически после получения.",
+                        "Please wait for the item. The manager confirms automatically after receiving it.",
+                        "Очікуйте передачі товару. Менеджер підтвердить автоматично після отримання.")
                 else:
                     joined_instr=T(lang,
                         f"Продавец передал товар. Переведите <b>{amt_phrase}</b> по реквизитам ниже и нажмите «Я оплатил».",
@@ -1861,7 +1861,6 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
                 T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",
                 icon_custom_emoji_id=WAIT_ICON)])
     rows.extend([
-        [InlineKeyboardButton(T(lang,"Поддержка","Support","Підтримка"),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799")],
         [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
     ])
     return InlineKeyboardMarkup(rows)
@@ -1954,9 +1953,8 @@ async def show_deal_confirmation(update, context):
         f"<blockquote>{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}\n"
         f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}\n"
         f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}\n"
-        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}\n"
-        f"{T(lang,'Комиссия','Fee','Комісія')}: 0%</blockquote>\n\n"
-        f"<blockquote>{T(lang,'Сначала продавец передаёт товар менеджеру, затем покупатель оплачивает.','The seller transfers the item to the manager first, then the buyer pays.','Спочатку продавець передає товар менеджеру, потім покупець оплачує.')}</blockquote>"
+        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}</blockquote>\n\n"
+        f"<blockquote>{T(lang,'Сначала продавец передаёт товар, затем покупатель оплачивает. Менеджер подтвердит автоматически после получения товара.','The seller transfers the item first, then the buyer pays. The manager confirms automatically after receiving the item.','Спочатку продавець передає товар, потім покупець оплачує. Менеджер підтвердить автоматично після отримання товару.')}</blockquote>"
     )
     kb=InlineKeyboardMarkup([
         [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
@@ -2198,18 +2196,18 @@ AI_KB = {
             "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayDealsOTCRobot.\n"
             "Если реквизитов нет - бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
-            "Продавец передаёт товар менеджеру @FunPayDeaIManager и жмёт «Я передал».\n"
+            "Продавец передаёт товар и жмёт «Я передал». Менеджер подтвердит автоматически после получения товара.\n"
             "Покупатель платит по реквизитам и жмёт «Я оплатил».\n"
-            "Менеджер подтверждает - сделка закрывается. Если ссылка не открывается - напишите в поддержку."
+            "Если ссылка не открывается - напишите менеджеру."
         ),
         "en": (
             "How to join a deal\n\n"
             "Open the partner link (start=deal_FPxxxxx) in @FunPayDealsOTCRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
-            "Seller transfers the item to manager @FunPayDeaIManager and presses I transferred.\n"
+            "Seller transfers the item and presses I transferred. The manager confirms automatically after receiving it.\n"
             "Buyer pays using the details and presses I paid.\n"
-            "Manager confirms and the deal closes. If the link fails - contact support."
+            "If the link fails - message the manager."
         ),
     },
     "types": {
@@ -2312,8 +2310,8 @@ AI_KB = {
             "Безопасность сделок (гарант FunPay)\n\n"
             "• Комиссия сервиса: 0%.\n"
             "• Не уходите в оплату «в личку» вне бота - это риск скама.\n"
-            "• Продавец передаёт товар менеджеру @FunPayDeaIManager, покупатель платит по реквизитам сделки.\n"
-            "• Кнопки «Я передал» / «Я оплатил» фиксируют шаги; финал подтверждает админ/менеджер.\n"
+            "• Продавец передаёт товар и жмёт «Я передал»; менеджер подтвердит автоматически после получения.\n"
+            "• Кнопки «Я передал» / «Я оплатил» фиксируют шаги.\n"
             "• Средства/товар защищены до завершения сделки.\n"
             "• Смотрите рейтинг, сделки и отзывы партнёра в карточке.\n"
             "• Спор → «Пожаловаться» (на покупателя / продавца / маркетплейс) или поддержка https://support.funpay.com/tickets."
@@ -2322,8 +2320,8 @@ AI_KB = {
             "Deal safety (FunPay escrow)\n\n"
             "• Service fee: 0%.\n"
             "• Don’t move payment to private chats outside the bot - scam risk.\n"
-            "• Seller transfers to manager @FunPayDeaIManager; buyer pays deal requisites.\n"
-            "• I transferred / I paid track steps; admin/manager confirms the finish.\n"
+            "• Seller transfers the item and presses I transferred; manager confirms automatically after receiving it.\n"
+            "• I transferred / I paid track steps.\n"
             "• Funds/item stay protected until completion.\n"
             "• Check partner stats and reviews on the deal card.\n"
             "• Dispute → Report (buyer / seller / marketplace) or https://support.funpay.com/tickets."
@@ -2444,19 +2442,17 @@ AI_KB = {
         "ru": (
             "Статусы сделки\n\n"
             "1) Ожидание партнёра по ссылке.\n"
-            "2) Продавец → передаёт товар менеджеру → «Я передал».\n"
+            "2) Продавец передаёт товар → «Я передал». Менеджер подтвердит автоматически после получения.\n"
             "3) Покупатель → платит по реквизитам → «Я оплатил».\n"
-            "4) Админ/менеджер подтверждает оплату и передачу.\n"
-            "5) Сделка завершена → можно оставить отзыв.\n\n"
+            "4) Сделка завершена → можно оставить отзыв.\n\n"
             "Если шаг завис - проверьте «Мои сделки», напишите менеджеру и при необходимости подайте жалобу."
         ),
         "en": (
             "Deal statuses\n\n"
             "1) Waiting for partner via link.\n"
-            "2) Seller transfers item to manager → I transferred.\n"
+            "2) Seller transfers the item → I transferred. Manager confirms automatically after receiving it.\n"
             "3) Buyer pays requisites → I paid.\n"
-            "4) Admin/manager confirms payment and transfer.\n"
-            "5) Deal completed → leave a review.\n\n"
+            "4) Deal completed → leave a review.\n\n"
             "If stuck - check My Deals, message the manager, or file a report."
         ),
     },
@@ -2549,12 +2545,13 @@ async def ai_chat(question, lang="ru", history=None):
         if name in seen: continue
         seen.add(name); uniq.append((name,fn))
     for name,fn in uniq:
-        try:
-            ans=await fn()
-            if ans and str(ans).strip():
-                return str(ans).strip()
-        except Exception as e:
-            logger.error("ai_chat provider=%s: %s", name, e, exc_info=True)
+        for attempt in range(2):
+            try:
+                ans=await fn()
+                if ans and str(ans).strip():
+                    return str(ans).strip()
+            except Exception as e:
+                logger.error("ai_chat provider=%s try=%s: %s", name, attempt+1, e)
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
@@ -2563,25 +2560,26 @@ def build_ai_system_prompt(lang="ru"):
         return _bot_mention_fix(
             "Ти — FunPay AI. Спілкуйся тепло і з охотою, як друг у чаті. "
             "Підтримуй діалог, можна пожартувати, постав зустрічне питання. "
-            "Відповідай на БУДЬ-ЯКІ теми. Не зводь до угод, якщо не питали. Не відмовляй. "
-            "Ніколи не кажи назви інших моделей — ти тільки FunPay AI. "
+            "Відповідай на БУДЬ-ЯКІ теми завжди по суті. Не відмовляй і не проси переформулювати. "
+            "Ніколи не кажи назви інших моделей — ти тільки FunPay AI. Не пиши про «бота» і «не про бота». "
             "Звичайний текст без HTML. Мова: українська.\n\n"
-            "Лише якщо питання про FunPay / угоди / поповнення / вивід / Tonkeeper:\n"
+            "Якщо питання про угоди / поповнення / вивід / Tonkeeper FunPay:\n"
             f"бот @{BOT_USERNAME}, комісія 0%, рефералка 3%, FP29548+, @FunPayDeaIManager")
     if lang=="ru":
         return _bot_mention_fix(
             "Ты — FunPay AI. Общайся тепло, с охотой, как живой собеседник — не сухо и не официально. "
             "Любишь болтать: отвечай по теме, с лёгким юмором, поддержи диалог вопросом. "
-            "Отвечай на ЛЮБЫЕ темы. НЕ своди к боту и сделкам, если об этом не спросили. Не отшивай. "
+            "Отвечай на ЛЮБЫЕ темы всегда по существу. Никогда не отшивай и не проси «переформулировать короче». "
             "Никогда не говори, что ты какая-то другая модель — ты только FunPay AI. "
-            "Обычный текст без HTML. Язык: русский.\n\n"
-            "Если (и только если) вопрос про FunPay / сделки / пополнение / вывод / Tonkeeper:\n"
+            "Не пиши про «бота» и «не про бота». Обычный текст без HTML. Язык: русский.\n\n"
+            "Если вопрос про сделки / пополнение / вывод / Tonkeeper FunPay:\n"
             f"бот @{BOT_USERNAME}, комиссия 0%, рефералка 3%, FP29548+, @FunPayDeaIManager")
     return _bot_mention_fix(
         "You are FunPay AI. Be warm and chatty, like a friend in a messenger. "
-        "Keep the conversation going. Answer ANY topic. Do not steer to FunPay unless asked. "
-        "Never name other AI models — you are FunPay AI only. Never refuse. Plain text. English.\n\n"
-        "Only if asked about FunPay/deals/top-up/withdraw/Tonkeeper:\n"
+        "Keep the conversation going. Always answer ANY topic substantively. Never refuse or ask to rephrase. "
+        "Never name other AI models — you are FunPay AI only. Don't talk about 'the bot' vs 'not the bot'. "
+        "Plain text. English.\n\n"
+        "If asked about FunPay deals/top-up/withdraw/Tonkeeper:\n"
         f"bot @{BOT_USERNAME}, 0% fee, 3% referrals, FP29548+, @FunPayDeaIManager")
 
 async def _ai_call_gemini(system, messages):
@@ -2756,11 +2754,15 @@ def ai_local_answer(question, lang="ru", history=None):
         ans += L(lang,"\n\nМогу уточнить под ваш случай - напишите детали.","\n\nI can narrow it down - send details.")
         return ans[:3500]
 
-    # 3) не бот — не сводим к FunPay
+    # 3) короткий/любой вопрос — болтаем, без «переформулируйте» и без «не про бота»
+    ql_soft=ql.strip(" ?!.…")
+    if len(ql_soft)<=24 or ql_soft in ("о чем","о чём","чо","что","ну","ок","а","да","нет","хз","ну и","и","?"):
+        return L(lang,
+            "О чём угодно — давай. Шутки, учёба, крипта, фильмы, быт, код. Напиши тему, разберём.",
+            "Anything you want — jokes, study, crypto, movies, daily stuff, code. Drop a topic.")
     return L(lang,
-        f"«{q[:180]}» — понял. Спросите ещё раз чуть иначе, или напишите конкретнее: что / кто / как / зачем. "
-        "Отвечаю на любые темы, не только про бота.",
-        f"Got “{q[:180]}”. Rephrase a bit or add who/what/how — I answer any topic, not only the bot.")
+        f"«{q[:180]}» — ок, давай разберём. Если имелось в виду что-то конкретное, кинь ещё пару слов, отвечу сразу.",
+        f"Got “{q[:180]}” — let’s unpack it. Add a couple more words if you meant something specific.")
 
 def ai_thinking_html(lang):
     """Одна строка как в первой версии: робот-эмодзи + FunPay AI думает…"""
@@ -3627,9 +3629,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ans=dedupe_ai_text(ai_local_answer(text, lang, hist) or "")
             if not (ans or "").strip():
                 ans=T(lang,
-                    "На связи! Задайте вопрос про FunPay (сделки, пополнение, вывод) или любую другую тему.",
-                    "Online! Ask about FunPay (deals, top-up, withdraw) or any other topic.",
-                    "На зв'язку! Запитайте про FunPay (угоди, поповнення, вивід) або будь-яку іншу тему.")
+                    "На связи. Напишите ещё раз — отвечу.",
+                    "Online. Write again — I’ll answer.",
+                    "На зв'язку. Напишіть ще раз — відповім.")
             hist.append({"role":"user","content":text})
             hist.append({"role":"assistant","content":ans})
             if len(hist)>24: ud["ai_history"]=hist[-24:]
