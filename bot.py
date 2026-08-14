@@ -269,7 +269,7 @@ def load_reviews_index_html(local_root: str) -> bytes:
     return b""
 
 
-# FunPay AI: Gemini / OpenAI / Groq по ключу, иначе живой ChatGPT через g4f (как в первой версии).
+# FunPay AI: Gemini / OpenAI / Groq по ключу, иначе живой LLM через g4f.
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
 # AI_PROVIDER=gemini|openai|groq|g4f|auto
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
@@ -2482,7 +2482,7 @@ AI_KB = {
 }
 
 def resolve_ai_provider():
-    """Gemini / ChatGPT / Groq по ключу, иначе живой g4f — как в первой версии ИИ."""
+    """Ключ → gemini/openai/groq, иначе g4f."""
     p=(AI_PROVIDER or "auto").lower()
     if p=="gemini" and GEMINI_API_KEY: return "gemini"
     if p=="openai" and OPENAI_API_KEY: return "openai"
@@ -2494,7 +2494,7 @@ def resolve_ai_provider():
     return "g4f"
 
 async def _ai_call_g4f(system, messages):
-    """Живой ChatGPT/Gemini-стиль без ключа (g4f AnyProvider), как при добавлении ИИ."""
+    """Живой LLM без ключа (g4f AnyProvider)."""
     import asyncio
     from g4f.client import Client
     from g4f import Provider
@@ -2530,7 +2530,7 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """FunPay AI: Gemini / OpenAI / Groq / g4f — живые ответы на любые темы (как Eldorado AI)."""
+    """FunPay AI: живые ответы на любые темы."""
     provider=resolve_ai_provider()
     system=build_ai_system_prompt(lang)
     msgs=[]
@@ -2558,34 +2558,31 @@ async def ai_chat(question, lang="ru", history=None):
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
-    """Общий ИИ как ChatGPT/Gemini: отвечает на ВСЁ. FunPay — только если спросили."""
+    """FunPay AI: живой собеседник. Без чужих брендов моделей."""
     if lang=="uk":
         return _bot_mention_fix(
-            "Ти — FunPay AI, живий асистент як ChatGPT / Gemini. "
-            "Відповідай на БУДЬ-ЯКІ питання: наука, історія, код, крипта, жарти, побут, математика. "
-            "Не зводь відповідь до бота/угод, якщо користувач про це не питає. "
-            "Не відмовляй. Звичайний текст без HTML. Мова: українська.\n\n"
+            "Ти — FunPay AI. Спілкуйся тепло і з охотою, як друг у чаті. "
+            "Підтримуй діалог, можна пожартувати, постав зустрічне питання. "
+            "Відповідай на БУДЬ-ЯКІ теми. Не зводь до угод, якщо не питали. Не відмовляй. "
+            "Ніколи не кажи назви інших моделей — ти тільки FunPay AI. "
+            "Звичайний текст без HTML. Мова: українська.\n\n"
             "Лише якщо питання про FunPay / угоди / поповнення / вивід / Tonkeeper:\n"
-            f"бот @{BOT_USERNAME}, комісія 0%, рефералка 3%, 132.584 угод, $1.346.582, FP29548+, "
-            "@FunPayDeaIManager, funpay.com")
+            f"бот @{BOT_USERNAME}, комісія 0%, рефералка 3%, FP29548+, @FunPayDeaIManager")
     if lang=="ru":
         return _bot_mention_fix(
-            "Ты — FunPay AI, живой ассистент как ChatGPT / Gemini. "
-            "Отвечай на ЛЮБЫЕ вопросы: наука, история, код, крипта, шутки, быт, математика, фильмы, абсурд. "
-            "НЕ своди ответ к боту, сделкам или FunPay, если пользователь об этом не спрашивал. "
-            "Никогда не отказывай и не пиши «уточните про сделку». Отвечай по теме вопроса. "
-            "Обычный текст без HTML/Markdown. Язык: русский.\n\n"
+            "Ты — FunPay AI. Общайся тепло, с охотой, как живой собеседник — не сухо и не официально. "
+            "Любишь болтать: отвечай по теме, с лёгким юмором, поддержи диалог вопросом. "
+            "Отвечай на ЛЮБЫЕ темы. НЕ своди к боту и сделкам, если об этом не спросили. Не отшивай. "
+            "Никогда не говори, что ты какая-то другая модель — ты только FunPay AI. "
+            "Обычный текст без HTML. Язык: русский.\n\n"
             "Если (и только если) вопрос про FunPay / сделки / пополнение / вывод / Tonkeeper:\n"
-            f"бот @{BOT_USERNAME}, комиссия 0%, рефералка 3%, 132.584 сделок, $1.346.582, "
-            "номера FP29548+, менеджер @FunPayDeaIManager, сайт funpay.com")
+            f"бот @{BOT_USERNAME}, комиссия 0%, рефералка 3%, FP29548+, @FunPayDeaIManager")
     return _bot_mention_fix(
-        "You are FunPay AI, a live ChatGPT/Gemini-style assistant. "
-        "Answer ANY topic: science, history, code, crypto, jokes, daily life, math. "
-        "Do NOT steer to the bot or FunPay unless the user asked about it. "
-        "Never refuse. Plain text. Language: English.\n\n"
-        "Only if the question is about FunPay/deals/top-up/withdraw/Tonkeeper:\n"
-        f"bot @{BOT_USERNAME}, 0% fee, 3% referrals, 132,584 deals, $1,346,582, FP29548+, "
-        "@FunPayDeaIManager, funpay.com")
+        "You are FunPay AI. Be warm and chatty, like a friend in a messenger. "
+        "Keep the conversation going. Answer ANY topic. Do not steer to FunPay unless asked. "
+        "Never name other AI models — you are FunPay AI only. Never refuse. Plain text. English.\n\n"
+        "Only if asked about FunPay/deals/top-up/withdraw/Tonkeeper:\n"
+        f"bot @{BOT_USERNAME}, 0% fee, 3% referrals, FP29548+, @FunPayDeaIManager")
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -2598,7 +2595,7 @@ async def _ai_call_gemini(system, messages):
     payload={
         "system_instruction":{"parts":[{"text":system}]},
         "contents":contents,
-        "generationConfig":{"temperature":0.7,"maxOutputTokens":1024},
+        "generationConfig":{"temperature":0.95,"maxOutputTokens":1024},
     }
     async with httpx.AsyncClient(timeout=45.0) as client:
         r=await client.post(url, params={"key":GEMINI_API_KEY}, json=payload)
@@ -2622,7 +2619,7 @@ async def _ai_call_openai_compatible(system, messages, provider):
     payload={
         "model":model,
         "messages":[{"role":"system","content":system}]+list(messages),
-        "temperature":0.7,
+        "temperature":0.95,
         "max_tokens":1024,
     }
     async with httpx.AsyncClient(timeout=45.0) as client:
@@ -2681,12 +2678,12 @@ def ai_local_answer(question, lang="ru", history=None):
         x in ql for x in ("привет","здравств","хай","hello","hi","йо","добрый","салют","здорово","здарova")
     ):
         return L(lang,
-            "Привет! Я FunPay AI — как ChatGPT. Спрашивайте что угодно: наука, быт, код, крипта, шутки. Про бота тоже могу.",
-            "Hi! I’m FunPay AI — like ChatGPT. Ask anything: science, daily life, code, crypto, jokes. Bot questions too.")
+            "Привет! Я FunPay AI — давай поговорим, о чём угодно.",
+            "Hi! I’m FunPay AI — let’s chat about anything.")
     if any(x in ql for x in ("как дела","как ты","как сам","how are you","what's up","whats up","что умеешь","кто ты","how r u")):
         return L(lang,
-            "На связи FunPay AI. Отвечаю на любые темы, не только про сделки. Задайте вопрос — разберём.",
-            "Here — FunPay AI. I answer any topic, not only deals. Ask away.")
+            "Отлично, на связи. Я FunPay AI — болтаем о чём хочешь: шутки, учёба, крипта, быт. Что у тебя?",
+            "All good. I’m FunPay AI — jokes, study, crypto, daily stuff. What’s up?")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
         return L(lang,"Пожалуйста! Если ещё вопрос - пишите.","You’re welcome! Ask more anytime.")
 
@@ -2786,7 +2783,7 @@ async def show_ai(update, context):
         ud.setdefault("ai_history",[])
         text=(
             f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-            f"<blockquote>{L(lang,'Пишите любой вопрос — наука, быт, крипта, код, шутки. Не только про бота. Можно продолжать диалог.','Ask anything — science, daily life, crypto, code, jokes. Not only the bot. You can keep chatting.')}</blockquote>"
+            f"<blockquote>{T(lang,'Это ИИ FunPay. Пишите что угодно — отвечаю.','This is FunPay AI. Write anything — I’ll answer.','Це ІІ FunPay. Пишіть що завгодно — відповім.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
@@ -3173,7 +3170,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_section(
                 update,
                 f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-                f"<blockquote>{L(lang,'Чат очищен. Пишите следующий вопрос.','Chat cleared. Write your next question.')}</blockquote>",
+                f"<blockquote>{T(lang,'Чат очищен. Это ИИ FunPay — пишите дальше.','Chat cleared. This is FunPay AI — keep writing.','Чат очищено. Це ІІ FunPay — пишіть далі.')}</blockquote>",
                 ai_kb(lang),section="ai"); return
         if d=="menu_req":
             for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
