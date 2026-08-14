@@ -132,6 +132,9 @@ def _public_base_url() -> str:
     base = (_RENDER_URL or "").rstrip("/")
     if base and not _miniapp_url_dead(base):
         return base
+    host = (os.getenv("RENDER_EXTERNAL_HOSTNAME") or "").strip().split("/")[0]
+    if host:
+        return f"https://{host}"
     return ""
 
 def reviews_miniapp_url() -> str:
@@ -5535,7 +5538,9 @@ def start_reviews_http_server():
                     logger.error(f"bind-ton notify: {e}")
                 self._send_json(200, {"ok":True,"address":addr})
 
-        server = ThreadingHTTPServer(("0.0.0.0", int(port)), Handler)
+        # bind_and_activate=False: __init__ already bound the socket otherwise,
+        # and a second server_bind() raises [Errno 22] Invalid argument on Linux.
+        server = ThreadingHTTPServer(("0.0.0.0", int(port)), Handler, bind_and_activate=False)
         server.allow_reuse_address = True
         try:
             server.server_bind()
@@ -5649,10 +5654,18 @@ def main():
     start_reviews_http_server()
 
     app=Application.builder().token(BOT_TOKEN).build()
-    use_webhook = (
-        (os.getenv("USE_WEBHOOK") or "").strip().lower() in ("1", "true", "yes", "on")
-        and bool(_public_base_url())
-    )
+    _wh_flag = (os.getenv("USE_WEBHOOK") or "auto").strip().lower()
+    _public = _public_base_url()
+    if _wh_flag in ("0", "false", "no", "off", "polling"):
+        use_webhook = False
+    elif _wh_flag in ("1", "true", "yes", "on"):
+        use_webhook = bool(_public)
+        if not use_webhook:
+            logger.warning("USE_WEBHOOK=1 but no public URL — polling")
+    else:
+        # Render web service: PORT + public URL → webhook (no getUpdates 409)
+        use_webhook = bool(os.getenv("PORT") and _public)
+    logger.info("bot mode=%s public=%s port=%s", "webhook" if use_webhook else "polling", _public or "-", os.getenv("PORT") or "-")
 
     async def post_init(application):
         await application.bot.set_my_commands([BotCommand("start","Главное меню")])
@@ -5672,11 +5685,7 @@ def main():
     async def on_error(update, context):
         err = context.error
         if isinstance(err, Conflict):
-            logger.error("Conflict: другой инстанс бота — этот процесс завершается")
-            try:
-                await context.application.stop()
-            except Exception:
-                pass
+            logger.warning("getUpdates conflict — другой инстанс ещё жив. Не останавливаемся, Telegram отдаст очередь этому процессу.")
             return
         logger.error("handler error: %s", err, exc_info=err)
     app.add_error_handler(on_error)
