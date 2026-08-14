@@ -2494,10 +2494,13 @@ def resolve_ai_provider():
     if GROQ_API_KEY: return "groq"
     return "g4f"  # FunPay AI без ключа — как раньше, через g4f
 
-# Модели LLM, которые стабильно отвечают с cloud (Render и т.п.)
+# Модели g4f: command-r стабильно работает на Render без ключей
 _G4F_MODELS = [
     m for m in [
         (AI_MODEL or "").strip(),
+        "command-r",
+        "command-r-plus",
+        "command-r7b",
         "gpt-4o-mini",
         "gpt-4o",
     ] if m
@@ -2518,7 +2521,7 @@ async def _ai_call_g4f(system, messages):
         return text
     for model in _G4F_MODELS:
         try:
-            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=28)
+            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=55)
             logger.info(f"ai g4f ok model={model}")
             return text
         except Exception as e:
@@ -2527,80 +2530,66 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """FunPay AI: Gemini / OpenAI / Groq / g4f — живые ответы; локально если LLM недоступен."""
-    try:
-        provider=resolve_ai_provider()
-        if provider=="local":
-            return (ai_local_answer(question, lang, history) or "").strip()
-        system=build_ai_system_prompt(lang)
-        msgs=[]
-        for h in (history or [])[-12:]:
-            if h.get("role") in ("user","assistant") and h.get("content"):
-                msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
-        msgs.append({"role":"user","content":str(question or "")[:2000]})
-        chain=[]
-        if provider=="gemini":
-            chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
-        elif provider in ("openai","groq"):
-            chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
-        chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
-        seen=set(); uniq=[]
-        for name,fn in chain:
-            if name in seen: continue
-            seen.add(name); uniq.append((name,fn))
-        for name,fn in uniq:
-            try:
-                ans=await fn()
-                if ans and str(ans).strip():
-                    return str(ans).strip()
-            except Exception as e:
-                logger.warning(f"ai_chat provider={name}: {e}")
+    """Живой FunPay AI: Gemini / OpenAI / Groq / g4f — отвечает на любые темы."""
+    provider=resolve_ai_provider()
+    if provider=="local":
         return (ai_local_answer(question, lang, history) or "").strip()
-    except Exception as e:
-        logger.error("ai_chat: %s", e, exc_info=True)
-        return ai_local_answer(question, lang, history)
+    system=build_ai_system_prompt(lang)
+    msgs=[]
+    for h in (history or [])[-8:]:
+        if h.get("role") in ("user","assistant") and h.get("content"):
+            msgs.append({"role":h["role"],"content":str(h["content"])[:1500]})
+    msgs.append({"role":"user","content":str(question or "")[:2000]})
+    chain=[]
+    if provider=="gemini":
+        chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
+    elif provider in ("openai","groq"):
+        chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
+    chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
+    seen=set(); uniq=[]
+    for name,fn in chain:
+        if name in seen: continue
+        seen.add(name); uniq.append((name,fn))
+    for name,fn in uniq:
+        try:
+            ans=await fn()
+            if ans and str(ans).strip():
+                return str(ans).strip()
+        except Exception as e:
+            logger.warning(f"ai_chat provider={name}: {e}")
+    return (ai_local_answer(question, lang, history) or "").strip()
 
 def build_ai_system_prompt(lang="ru"):
+    """Короткий промпт как в старом g4f-ИИ — отвечает на любые темы."""
+    kb_bits=[]
+    for key in ("deal","join","req","complaint","fee","ref","support","topup","withdraw"):
+        entry=AI_KB.get(key)
+        if entry:
+            kb_bits.append(_ai_kb_entry_text(entry, lang))
+    kb="\n".join(kb_bits[:8])
     if lang=="uk":
-        kb="\n\n".join(entry.get("ru","") for entry in AI_KB.values())
         return _bot_mention_fix(
-            f"Ти - FunPay AI, розумний помічник FunPay (Telegram-бот @{BOT_USERNAME}). "
-            "Відповідай коротко і ясно українською.\n\n"
-            f"База знань бота:\n{kb}")
-    ru=lang=="ru"
-    kb="\n\n".join(entry["ru" if ru else "en"] for entry in AI_KB.values())
-    if ru:
-        prompt=(
-            f"Ты - FunPay AI, умный помощник FunPay (Telegram-бот @{BOT_USERNAME}). "
-            "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя - "
-            "и про бот/сделки, и общие. Если вопрос про FunPay / сделки - опирайся на базу знаний ниже. "
-            "Не отшивай шаблоном «не знаю тему» - помогай найти ответ, уточняй и рассуждай. "
-            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
-            "Факты платформы:\n"
-            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
-            "• Комиссия сервиса: 0%\n"
-            "• Рефералка: 3% с сделок приглашённых\n"
-            "• Поддержка: https://support.funpay.com/tickets · менеджер: @FunPayDeaIManager\n"
-            "• Сайт: funpay.com\n"
-            "• Номера сделок вида FP29548+\n\n"
-            f"База знаний бота:\n{kb}"
-        )
-    else:
-        prompt=(
-            f"You are FunPay AI, the smart helper for FunPay (Telegram bot @{BOT_USERNAME}). "
-            "Answer like a live assistant: freely, on any user question - bot/deals and general. "
-            "For FunPay / deal questions use the knowledge below. Don’t brush off with canned refusals - help, clarify, reason. "
-            "Plain text only, no HTML/Markdown. Answer in English.\n\n"
-            "Platform facts:\n"
-            "• Stats: 132,584 deals, turnover $1,346,582\n"
-            "• Service fee: 0%\n"
-            "• Referrals: 3% from invited users’ deals\n"
-            "• Support: https://support.funpay.com/tickets · manager: @FunPayDeaIManager\n"
-            "• Website: funpay.com\n"
-            "• Deal IDs like FP29548+\n\n"
-            f"Bot knowledge base:\n{kb}"
-        )
-    return _bot_mention_fix(prompt)
+            f"Ти — FunPay AI, розумний помічник FunPay (Telegram @{BOT_USERNAME}). "
+            "Відповідай живо на БУДЬ-ЯКІ питання: наука, побут, крипта, жарти, абсурд — і про бот. "
+            "Ніколи не відмовляй і не проси переформулювати — завжди давай змістовну відповідь. "
+            "Звичайний текст без HTML. Мова: українська.\n\n"
+            "Факти: 132.584 угод · оборот $1.346.582 · комісія 0% · рефералка 3% · "
+            f"угоди FP29548+ · @FunPayDeaIManager · funpay.com\n{kb}")
+    if lang=="ru":
+        return _bot_mention_fix(
+            f"Ты — FunPay AI, умный помощник FunPay (Telegram @{BOT_USERNAME}). "
+            "Отвечай живо и по делу на ЛЮБЫЕ вопросы: наука, учёба, крипта, быт, код, шутки, абсурд — и про бот. "
+            "Никогда не отказывай и не проси переформулировать — всегда давай содержательный ответ. "
+            "Обычный текст без HTML/Markdown. Язык: русский.\n\n"
+            "Факты: 132.584 сделок · оборот $1.346.582 · комиссия 0% · рефералка 3% · "
+            f"сделки FP29548+ · @FunPayDeaIManager · funpay.com\n{kb}")
+    return _bot_mention_fix(
+        f"You are FunPay AI, smart helper for FunPay (Telegram @{BOT_USERNAME}). "
+        "Answer ANY topic freely: science, study, crypto, daily life, jokes, nonsense — and the bot. "
+        "Never refuse or ask to rephrase — always give a substantive answer. "
+        "Plain text only. Language: English.\n\n"
+        "Facts: 132,584 deals · $1,346,582 turnover · 0% fee · 3% referrals · "
+        f"deals FP29548+ · @FunPayDeaIManager · funpay.com\n{kb}")
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -2774,19 +2763,12 @@ def ai_local_answer(question, lang="ru", history=None):
         ans += L(lang,"\n\nМогу уточнить под ваш случай - напишите детали.","\n\nI can narrow it down - send details.")
         return ans[:3500]
 
-    # 3) Free-form helpful reply (never refuse with «только сделки»)
+    # 3) LLM недоступен — без шаблона «переформулируйте»
     return L(lang,
-        f"Вопрос: «{q[:200]}».\n\n"
-        "Отвечаю своими знаниями:\n"
-        "• Если это про FunPay - уточните: сделка / пополнение / вывод / Tonkeeper / жалоба / рефералы.\n"
-        "• Если общий вопрос - переформулируйте короче (кто/что/как/зачем), и я разберу точнее.\n"
-        "• Сложный личный кейс по деньгам/спору: https://support.funpay.com/tickets или @FunPayDeaIManager.\n\n"
-        "Примеры: «что такое блокчейн», «как привязать карту», «фотосинтез», «3% рефералка».",
-        f"Question: “{q[:200]}”.\n\n"
-        "• For FunPay, specify: deal / top-up / withdraw / Tonkeeper / report / referrals.\n"
-        "• For general topics, ask shorter who/what/how/why.\n"
-        "• Money disputes: https://support.funpay.com/tickets or @FunPayDeaIManager.\n\n"
-        "Examples: “what is blockchain”, “how to bind a card”, “photosynthesis”, “3% referrals”.")
+        "Сейчас нейросеть временно недоступна — попробуйте через минуту. "
+        "Или напишите @FunPayDeaIManager / https://support.funpay.com/tickets",
+        "AI is temporarily unavailable — try again in a minute. "
+        "Or contact @FunPayDeaIManager / https://support.funpay.com/tickets")
 
 def ai_thinking_html(lang):
     """Одна строка с premium-эмодзи — как раньше."""
