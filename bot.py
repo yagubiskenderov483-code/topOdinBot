@@ -964,19 +964,11 @@ async def import_banners_seed_from_document(update, context):
     if not isinstance(seed, dict) or "banners" not in seed:
         await msg.reply_text("В файле нет ключа <code>banners</code>.", parse_mode="HTML")
         return True
-    # Write seed files
-    for path in (BANNERS_SEED_FILE, BANNERS_SEED_DATA):
-        try:
-            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(seed, f, ensure_ascii=False, indent=2)
-                f.write("\n")
-        except Exception as e:
-            logger.error("write seed %s: %s", path, e)
+    # Write seed files (canonical)
+    persist_banners_seed_files(seed)
     db = load_db()
     db, n = force_apply_banners_seed_payload(db, seed)
     save_db(db)
-    save_banners_seed(db)
     await msg.reply_text(
         f"{Ech} <b>Баннеры загружены</b>\n\nСекций: <b>{n}</b>\nФайл сохранён как <code>banners_seed.json</code>.",
         parse_mode="HTML",
