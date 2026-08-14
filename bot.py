@@ -1321,7 +1321,6 @@ def complaint_cancel_kb(lang, back="menu_complaint"):
 
 def ai_kb(lang):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(T(lang,'Очистить чат','Clear chat','Очистити чат'),callback_data="ai_clear",icon_custom_emoji_id="5904542823167824187")],
         [InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
@@ -1775,9 +1774,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if viewer_role=="seller":
                 if not d.get("item_transferred"):
                     joined_instr=T(lang,
-                        "Передайте товар и нажмите «Я передал». Сделка подтвердится автоматически после получения товара.",
-                        "Transfer the item and press «I transferred». The deal confirms automatically after the item is received.",
-                        "Передайте товар і натисніть «Я передав». Угода підтвердиться автоматично після отримання товару.")
+                        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». Вы сможете продолжить сделку дальше, передав товар.",
+                        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». You can continue the deal after transferring the item.",
+                        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Ви зможете продовжити угоду далі, передавши товар.")
                 elif d.get("payment_reported"):
                     joined_instr=T(lang,
                         "Товар передан, оплата получена. Ожидайте завершения сделки.",
@@ -1791,9 +1790,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             elif viewer_role=="buyer":
                 if not d.get("item_transferred"):
                     joined_instr=T(lang,
-                        "Ожидайте передачи товара. Сделка подтвердится автоматически после получения.",
-                        "Please wait for the item. The deal confirms automatically after it is received.",
-                        "Очікуйте передачі товару. Угода підтвердиться автоматично після отримання.")
+                        f"Ожидайте передачи товара менеджеру {MANAGER_TAG}.",
+                        f"Wait for the item to be transferred to manager {MANAGER_TAG}.",
+                        f"Очікуйте передачі товару менеджеру {MANAGER_TAG}.")
                 else:
                     joined_instr=T(lang,
                         f"Продавец передал товар. Переведите <b>{amt_phrase}</b> по реквизитам ниже и нажмите «Я оплатил».",
@@ -1961,7 +1960,7 @@ async def show_deal_confirmation(update, context):
         [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
         [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
     ])
-    await chat.send_message(text, parse_mode="HTML", reply_markup=kb)
+    await send_section(update,text,kb,section="deal")
 
 # ─── Show main ────────────────────────────────────────────────────────────────
 async def show_main(update, context):
