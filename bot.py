@@ -2558,51 +2558,34 @@ async def ai_chat(question, lang="ru", history=None):
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
-    """Полный промпт как у Eldorado AI / первой версии — Gemini/ChatGPT на любые темы."""
+    """Общий ИИ как ChatGPT/Gemini: отвечает на ВСЁ. FunPay — только если спросили."""
     if lang=="uk":
-        kb="\n\n".join(_ai_kb_entry_text(entry, "ru") for entry in AI_KB.values())
         return _bot_mention_fix(
-            f"Ти — FunPay AI, розумний помічник FunPay (Telegram-бот @{BOT_USERNAME}). "
-            "Відповідай як живий асистент (Gemini/ChatGPT): вільно, по суті, на будь-які питання — "
-            "і про бот/угоди, і загальні. Якщо питання про FunPay — спирайся на базу знань нижче. "
-            "Не відшивай шаблоном «не знаю тему» — допомагай, уточнюй і міркуй. "
-            "Звичайний текст без HTML/Markdown. Мова: українська.\n\n"
-            "Факти платформи:\n"
-            "• 132.584 угод, оборот $1.346.582\n"
-            "• Комісія 0%, рефералка 3%\n"
-            "• Підтримка: https://support.funpay.com/tickets · @FunPayDeaIManager\n"
-            "• funpay.com · угоди FP29548+\n\n"
-            f"База знань бота:\n{kb}")
-    ru=lang=="ru"
-    kb="\n\n".join(_ai_kb_entry_text(entry, lang) for entry in AI_KB.values())
-    if ru:
+            "Ти — FunPay AI, живий асистент як ChatGPT / Gemini. "
+            "Відповідай на БУДЬ-ЯКІ питання: наука, історія, код, крипта, жарти, побут, математика. "
+            "Не зводь відповідь до бота/угод, якщо користувач про це не питає. "
+            "Не відмовляй. Звичайний текст без HTML. Мова: українська.\n\n"
+            "Лише якщо питання про FunPay / угоди / поповнення / вивід / Tonkeeper:\n"
+            f"бот @{BOT_USERNAME}, комісія 0%, рефералка 3%, 132.584 угод, $1.346.582, FP29548+, "
+            "@FunPayDeaIManager, funpay.com")
+    if lang=="ru":
         return _bot_mention_fix(
-            f"Ты — FunPay AI, умный помощник FunPay (Telegram-бот @{BOT_USERNAME}). "
-            "Отвечай как живой ассистент (Gemini/ChatGPT): свободно, по делу, на любые вопросы пользователя — "
-            "и про бот/сделки, и общие. Если вопрос про FunPay — опирайся на базу знаний ниже. "
-            "Не отшивай шаблоном «не знаю тему» — помогай найти ответ, уточняй и рассуждай. "
-            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
-            "Факты платформы:\n"
-            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
-            "• Комиссия сервиса: 0%\n"
-            "• Рефералка: 3% с сделок приглашённых\n"
-            "• Поддержка: https://support.funpay.com/tickets · менеджер: @FunPayDeaIManager\n"
-            "• Сайт: funpay.com\n"
-            "• Номера сделок вида FP29548+\n\n"
-            f"База знаний бота:\n{kb}")
+            "Ты — FunPay AI, живой ассистент как ChatGPT / Gemini. "
+            "Отвечай на ЛЮБЫЕ вопросы: наука, история, код, крипта, шутки, быт, математика, фильмы, абсурд. "
+            "НЕ своди ответ к боту, сделкам или FunPay, если пользователь об этом не спрашивал. "
+            "Никогда не отказывай и не пиши «уточните про сделку». Отвечай по теме вопроса. "
+            "Обычный текст без HTML/Markdown. Язык: русский.\n\n"
+            "Если (и только если) вопрос про FunPay / сделки / пополнение / вывод / Tonkeeper:\n"
+            f"бот @{BOT_USERNAME}, комиссия 0%, рефералка 3%, 132.584 сделок, $1.346.582, "
+            "номера FP29548+, менеджер @FunPayDeaIManager, сайт funpay.com")
     return _bot_mention_fix(
-        f"You are FunPay AI, the smart helper for FunPay (Telegram bot @{BOT_USERNAME}). "
-        "Answer like a live assistant (Gemini/ChatGPT): freely, on any user question — bot/deals and general. "
-        "For FunPay questions use the knowledge below. Don't brush off with canned refusals — help, clarify, reason. "
-        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
-        "Platform facts:\n"
-        "• Stats: 132,584 deals, turnover $1,346,582\n"
-        "• Service fee: 0%\n"
-        "• Referrals: 3% from invited users' deals\n"
-        "• Support: https://support.funpay.com/tickets · manager: @FunPayDeaIManager\n"
-        "• Website: funpay.com\n"
-        "• Deal IDs like FP29548+\n\n"
-        f"Bot knowledge base:\n{kb}")
+        "You are FunPay AI, a live ChatGPT/Gemini-style assistant. "
+        "Answer ANY topic: science, history, code, crypto, jokes, daily life, math. "
+        "Do NOT steer to the bot or FunPay unless the user asked about it. "
+        "Never refuse. Plain text. Language: English.\n\n"
+        "Only if the question is about FunPay/deals/top-up/withdraw/Tonkeeper:\n"
+        f"bot @{BOT_USERNAME}, 0% fee, 3% referrals, 132,584 deals, $1,346,582, FP29548+, "
+        "@FunPayDeaIManager, funpay.com")
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -2698,12 +2681,12 @@ def ai_local_answer(question, lang="ru", history=None):
         x in ql for x in ("привет","здравств","хай","hello","hi","йо","добрый","салют","здорово","здарova")
     ):
         return L(lang,
-            "Привет! Я FunPay AI. Могу ответить почти на что угодно: сделки и бот, крипта, наука, учёба, бытовые вопросы. Спрашивайте свободно.",
-            "Hi! I’m FunPay AI. Ask about the bot/deals, crypto, science, study, everyday topics - anything.")
+            "Привет! Я FunPay AI — как ChatGPT. Спрашивайте что угодно: наука, быт, код, крипта, шутки. Про бота тоже могу.",
+            "Hi! I’m FunPay AI — like ChatGPT. Ask anything: science, daily life, code, crypto, jokes. Bot questions too.")
     if any(x in ql for x in ("как дела","как ты","как сам","how are you","what's up","whats up","что умеешь","кто ты","how r u")):
         return L(lang,
-            "На связи - FunPay AI (@FunPayDealsOTCRobot) + общие знания. Сделки FP29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
-            "Here - FunPay AI (@FunPayDealsOTCRobot) plus general knowledge. Deals FP29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
+            "На связи FunPay AI. Отвечаю на любые темы, не только про сделки. Задайте вопрос — разберём.",
+            "Here — FunPay AI. I answer any topic, not only deals. Ask away.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
         return L(lang,"Пожалуйста! Если ещё вопрос - пишите.","You’re welcome! Ask more anytime.")
 
@@ -2776,16 +2759,11 @@ def ai_local_answer(question, lang="ru", history=None):
         ans += L(lang,"\n\nМогу уточнить под ваш случай - напишите детали.","\n\nI can narrow it down - send details.")
         return ans[:3500]
 
-    # 3) если g4f недоступен — всё равно помогаем (как в первой версии)
+    # 3) не бот — не сводим к FunPay
     return L(lang,
-        f"Принял: «{q[:180]}».\n\n"
-        "По FunPay могу подробно: сделки, пополнение, вывод, Tonkeeper, жалобы, рефералы 3%, отзывы.\n"
-        "Сформулируйте чуть конкретнее — дам пошаговый ответ. "
-        "Сложный кейс: @FunPayDeaIManager / https://support.funpay.com/tickets",
-        f"Got it: “{q[:180]}”.\n\n"
-        "On FunPay: deals, top-up, withdraw, Tonkeeper, reports, 3% referrals, reviews.\n"
-        "Be more specific for step-by-step help. "
-        "Hard case: @FunPayDeaIManager / https://support.funpay.com/tickets")
+        f"«{q[:180]}» — понял. Спросите ещё раз чуть иначе, или напишите конкретнее: что / кто / как / зачем. "
+        "Отвечаю на любые темы, не только про бота.",
+        f"Got “{q[:180]}”. Rephrase a bit or add who/what/how — I answer any topic, not only the bot.")
 
 def ai_thinking_html(lang):
     """Одна строка как в первой версии: робот-эмодзи + FunPay AI думает…"""
@@ -2808,7 +2786,7 @@ async def show_ai(update, context):
         ud.setdefault("ai_history",[])
         text=(
             f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-            f"<blockquote>{L(lang,'FunPay AI на связи. Пишите любой вопрос - отвечаю на любые темы, не только про бота. Можно продолжать диалог.','FunPay AI is online. Ask anything - any topic, not only the bot. You can keep chatting.')}</blockquote>"
+            f"<blockquote>{L(lang,'Пишите любой вопрос — наука, быт, крипта, код, шутки. Не только про бота. Можно продолжать диалог.','Ask anything — science, daily life, crypto, code, jokes. Not only the bot. You can keep chatting.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
