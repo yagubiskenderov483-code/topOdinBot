@@ -269,10 +269,12 @@ def load_reviews_index_html(local_root: str) -> bytes:
     return b""
 
 
-# FunPay AI: Gemini / OpenAI / Groq по ключу, иначе живой LLM через g4f (без ключа).
+# FunPay AI: Gemini / OpenAI / Groq по ключу; без ключей — локальная база (стабильно на Render).
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
-# AI_PROVIDER=gemini|openai|groq|g4f|auto
+# AI_PROVIDER=gemini|openai|groq|g4f|local|auto
+# AI_USE_G4F=1 — включить g4f (нестабилен на облаке, по умолчанию выключен)
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
+AI_USE_G4F = (os.getenv("AI_USE_G4F") or "").strip().lower() in ("1", "true", "yes", "on")
 AI_MODEL = (os.getenv("AI_MODEL") or "").strip()
 AI_BASE_URL = (os.getenv("AI_BASE_URL") or "").rstrip("/")
 GEMINI_API_KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
@@ -2483,6 +2485,7 @@ AI_KB = {
 
 def resolve_ai_provider():
     p=(AI_PROVIDER or "auto").lower()
+    if p=="local": return "local"
     if p=="gemini" and GEMINI_API_KEY: return "gemini"
     if p=="openai" and OPENAI_API_KEY: return "openai"
     if p=="groq" and GROQ_API_KEY: return "groq"
@@ -2490,7 +2493,8 @@ def resolve_ai_provider():
     if GEMINI_API_KEY: return "gemini"
     if OPENAI_API_KEY: return "openai"
     if GROQ_API_KEY: return "groq"
-    return "g4f"  # FunPay AI без ключа (g4f) - по умолчанию онлайн
+    if AI_USE_G4F: return "g4f"
+    return "local"  # без ключей — локальная база, всегда отвечает
 
 # Модели LLM, которые стабильно отвечают с cloud (Render и т.п.)
 _G4F_MODELS = [
@@ -2538,36 +2542,42 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """FunPay AI: локальная база → Gemini / OpenAI / Groq / g4f."""
-    local = ai_local_answer(question, lang, history)
-    if _ai_local_is_definitive(local, lang):
-        return local.strip()
-    provider=resolve_ai_provider()
-    system=build_ai_system_prompt(lang)
-    msgs=[]
-    for h in (history or [])[-12:]:
-        if h.get("role") in ("user","assistant") and h.get("content"):
-            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
-    msgs.append({"role":"user","content":str(question or "")[:2000]})
-    # Цепочка: выбранный провайдер → g4f → локальная база (AI_KB + ai_knowledge.json)
-    chain=[]
-    if provider=="gemini":
-        chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
-    elif provider in ("openai","groq"):
-        chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
-    chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
-    seen=set(); uniq=[]
-    for name,fn in chain:
-        if name in seen: continue
-        seen.add(name); uniq.append((name,fn))
-    for name,fn in uniq:
-        try:
-            ans=await fn()
-            if ans and str(ans).strip():
-                return str(ans).strip()
-        except Exception as e:
-            logger.error(f"ai_chat provider={name}: {e}", exc_info=True)
-    return ai_local_answer(question, lang, history)
+    """FunPay AI: локальная база → Gemini / OpenAI / Groq / g4f → снова локально."""
+    try:
+        local = ai_local_answer(question, lang, history)
+        if _ai_local_is_definitive(local, lang):
+            return local.strip()
+        provider=resolve_ai_provider()
+        if provider=="local":
+            return (local or ai_local_answer(question, lang, history) or "").strip()
+        system=build_ai_system_prompt(lang)
+        msgs=[]
+        for h in (history or [])[-12:]:
+            if h.get("role") in ("user","assistant") and h.get("content"):
+                msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
+        msgs.append({"role":"user","content":str(question or "")[:2000]})
+        chain=[]
+        if provider=="gemini":
+            chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
+        elif provider in ("openai","groq"):
+            chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
+        elif provider=="g4f":
+            chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
+        seen=set(); uniq=[]
+        for name,fn in chain:
+            if name in seen: continue
+            seen.add(name); uniq.append((name,fn))
+        for name,fn in uniq:
+            try:
+                ans=await fn()
+                if ans and str(ans).strip():
+                    return str(ans).strip()
+            except Exception as e:
+                logger.warning(f"ai_chat provider={name}: {e}")
+        return (local or ai_local_answer(question, lang, history) or "").strip()
+    except Exception as e:
+        logger.error("ai_chat: %s", e, exc_info=True)
+        return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
     if lang=="uk":
@@ -2701,11 +2711,13 @@ def ai_local_answer(question, lang="ru", history=None):
     if not q:
         return L(lang,"Напишите вопрос - отвечу по любой теме.","Write a question - I’ll answer on any topic.")
 
-    if any(x in ql for x in ("привет","здравств","хай","hello","hi","йо ","добрый")):
+    if ql in ("ку","ку!","ку.","qq","прив","yo","hey") or any(
+        x in ql for x in ("привет","здравств","хай","hello","hi","йо","добрый","салют","здорово","здарova")
+    ):
         return L(lang,
             "Привет! Я FunPay AI. Могу ответить почти на что угодно: сделки и бот, крипта, наука, учёба, бытовые вопросы. Спрашивайте свободно.",
             "Hi! I’m FunPay AI. Ask about the bot/deals, crypto, science, study, everyday topics - anything.")
-    if any(x in ql for x in ("как дела","how are you","что умеешь","кто ты")):
+    if any(x in ql for x in ("как дела","как ты","как сам","how are you","what's up","whats up","что умеешь","кто ты","how r u")):
         return L(lang,
             "На связи - FunPay AI (@FunPayDealsOTCRobot) + общие знания. Сделки FP29548+, комиссия 0%, 132.584 сделок, оборот $1.346.582. Задайте любой вопрос.",
             "Here - FunPay AI (@FunPayDealsOTCRobot) plus general knowledge. Deals FP29548+, 0% fee, 132,584 deals, $1,346,582 turnover. Ask anything.")
@@ -3643,13 +3655,17 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             thinking = await chat.send_message(think_body, parse_mode="HTML", reply_markup=ai_kb(lang))
             try:
                 async with chat.action(ChatAction.TYPING):
-                    ans=dedupe_ai_text(await ai_chat(text,lang,hist))
+                    ans=dedupe_ai_text(await ai_chat(text,lang,hist) or "")
             except Exception as e:
                 logger.error("ai_ask: %s", e)
+                ans=dedupe_ai_text(ai_local_answer(text, lang, hist) or "")
+            if not (ans or "").strip():
+                ans=dedupe_ai_text(ai_local_answer(text, lang, hist) or "")
+            if not (ans or "").strip():
                 ans=T(lang,
-                    "Не удалось получить ответ. Попробуйте ещё раз.",
-                    "Could not get a reply. Try again.",
-                    "Не вдалося отримати відповідь. Спробуйте ще раз.")
+                    "На связи! Задайте вопрос про FunPay (сделки, пополнение, вывод) или любую другую тему.",
+                    "Online! Ask about FunPay (deals, top-up, withdraw) or any other topic.",
+                    "На зв'язку! Запитайте про FunPay (угоди, поповнення, вивід) або будь-яку іншу тему.")
             hist.append({"role":"user","content":text})
             hist.append({"role":"assistant","content":ans})
             if len(hist)>24: ud["ai_history"]=hist[-24:]
@@ -5726,7 +5742,8 @@ def main():
     print(f"Bot @{BOT_USERNAME} started!")
     print(f"DB: {DB_FILE}")
     print(f"Banners seed: {BANNERS_SEED_FILE}")
-    print(f"AI provider: {resolve_ai_provider()} (FunPay AI via g4f if no API keys)")
+    _ap=resolve_ai_provider()
+    print(f"AI provider: {_ap}" + (" (set GEMINI/OPENAI/GROQ key or AI_USE_G4F=1 for online LLM)" if _ap=="local" else ""))
     print(f"Reviews Mini App: {reviews_miniapp_url()}")
     print(f"TonConnect Mini App: {tonconnect_miniapp_url()}")
 
