@@ -2551,36 +2551,49 @@ async def ai_chat(question, lang="ru", history=None):
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
-    """FunPay AI. Без чужих брендов моделей. Без меню тем."""
-    unclear={
-        "uk": "Не зрозумів. Напиши ще раз.",
-        "ru": "Не понял. Напиши ещё раз.",
-        "en": "Didn't get that. Write it again.",
-    }
-    line=unclear.get(lang, unclear["ru"])
+    """Оригинальный FunPay AI: живой ассистент + база знаний, без чужих брендов."""
+    kb="\n\n".join(_ai_kb_entry_text(entry, lang) for entry in AI_KB.values())
     if lang=="uk":
         return _bot_mention_fix(
-            "Ти — FunPay AI. Відповідай на БУДЬ-ЯКІ теми по суті, без відмов. "
-            "Ніколи не називай інші моделі. Не пиши меню тем (жарти, навчання, крипта…). "
-            f"Якщо незрозуміло — тільки: {line} "
-            "Звичайний текст без HTML. Мова відповіді: українська.\n\n"
-            "Якщо питання про угоди / поповнення / вивід / Tonkeeper FunPay:\n"
-            f"бот @{BOT_USERNAME}, комісія 0%, рефералка 3%, FP29548+")
+            f"Ти — FunPay AI, розумний помічник FunPay (Telegram-бот @{BOT_USERNAME}). "
+            "Відповідай як живий асистент: вільно, по суті, на будь-які питання — "
+            "і про бот/угоди, і загальні. Якщо питання про FunPay — спирайся на базу знань нижче. "
+            "Не відшивай шаблоном і не пиши меню тем. Ніколи не називай інші моделі. "
+            "Звичайний текст без HTML/Markdown. Мова: українська.\n\n"
+            "Факти платформи:\n"
+            "• 132.584 угод, оборот $1.346.582\n"
+            "• Комісія 0%, рефералка 3%\n"
+            "• Підтримка: https://support.funpay.com/tickets\n"
+            "• funpay.com · угоди FP29548+\n\n"
+            f"База знань бота:\n{kb}")
     if lang=="ru":
         return _bot_mention_fix(
-            "Ты — FunPay AI. Отвечай на ЛЮБЫЕ темы по существу, без отказов. "
-            "Никогда не называй другие модели. Не пиши меню тем (шутки, учёба, крипта…). "
-            f"Если не понял — только: {line} "
-            "Обычный текст без HTML. Язык ответа: русский.\n\n"
-            "Если вопрос про сделки / пополнение / вывод / Tonkeeper FunPay:\n"
-            f"бот @{BOT_USERNAME}, комиссия 0%, рефералка 3%, FP29548+")
+            f"Ты — FunPay AI, умный помощник FunPay (Telegram-бот @{BOT_USERNAME}). "
+            "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
+            "и про бот/сделки, и общие. Если вопрос про FunPay — опирайся на базу знаний ниже. "
+            "Не отшивай шаблоном «не знаю тему» и не пиши меню тем. Никогда не называй другие модели. "
+            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
+            "Факты платформы:\n"
+            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
+            "• Комиссия сервиса: 0%\n"
+            "• Рефералка: 3% с сделок приглашённых\n"
+            "• Поддержка: https://support.funpay.com/tickets\n"
+            "• Сайт: funpay.com\n"
+            "• Номера сделок вида FP29548+\n\n"
+            f"База знаний бота:\n{kb}")
     return _bot_mention_fix(
-        "You are FunPay AI. Answer ANY topic substantively. Never refuse. "
-        "Never name other AI models. Do not dump a topic menu (jokes, study, crypto…). "
-        f"If unclear, reply only: {line} "
-        "Plain text. Answer in English.\n\n"
-        "If asked about FunPay deals/top-up/withdraw/Tonkeeper:\n"
-        f"bot @{BOT_USERNAME}, 0% fee, 3% referrals, FP29548+")
+        f"You are FunPay AI, the smart helper for FunPay (Telegram bot @{BOT_USERNAME}). "
+        "Answer like a live assistant: freely, on any user question — bot/deals and general. "
+        "For FunPay questions use the knowledge below. Don't brush off with canned refusals or topic menus. "
+        "Never name other AI models. Plain text only, no HTML/Markdown. Answer in English.\n\n"
+        "Platform facts:\n"
+        "• Stats: 132,584 deals, turnover $1,346,582\n"
+        "• Service fee: 0%\n"
+        "• Referrals: 3% from invited users' deals\n"
+        "• Support: https://support.funpay.com/tickets\n"
+        "• Website: funpay.com\n"
+        "• Deal IDs like FP29548+\n\n"
+        f"Bot knowledge base:\n{kb}")
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -2593,7 +2606,7 @@ async def _ai_call_gemini(system, messages):
     payload={
         "system_instruction":{"parts":[{"text":system}]},
         "contents":contents,
-        "generationConfig":{"temperature":0.95,"maxOutputTokens":1024},
+        "generationConfig":{"temperature":0.7,"maxOutputTokens":1024},
     }
     async with httpx.AsyncClient(timeout=45.0) as client:
         r=await client.post(url, params={"key":GEMINI_API_KEY}, json=payload)
@@ -2617,7 +2630,7 @@ async def _ai_call_openai_compatible(system, messages, provider):
     payload={
         "model":model,
         "messages":[{"role":"system","content":system}]+list(messages),
-        "temperature":0.95,
+        "temperature":0.7,
         "max_tokens":1024,
     }
     async with httpx.AsyncClient(timeout=45.0) as client:
@@ -2779,7 +2792,7 @@ async def show_ai(update, context):
         ud.setdefault("ai_history",[])
         text=(
             f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-            f"<blockquote>{T(lang,'Это ИИ FunPay. Пишите что угодно — отвечаю.','This is FunPay AI. Write anything — I’ll answer.','Це ІІ FunPay. Пишіть що завгодно — відповім.')}</blockquote>"
+            f"<blockquote>{T(lang,'FunPay AI на связи. Пишите любой вопрос — отвечаю.','FunPay AI is online. Ask anything — I’ll answer.','FunPay AI на зв’язку. Пишіть будь-яке питання — відповім.')}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
