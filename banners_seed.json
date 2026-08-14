@@ -1,85 +1,85 @@
 {
   "banners": {
     "main": {
-      "photo": "AgACAgEAAxkDAAICRWp-R1A0E-Sgmbf1kQjDgxz4eKbPAAJODGsbwTHwR8HRUknxb7w0AQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICgWp-S5e3isuetsutYgdb1bow_eFzAAIbEWsbI_X4V3Zs4rB8c7RiAQADAgADeAADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "deal": {
-      "photo": "AgACAgEAAxkDAAICSGp-R7QiK8ZwU-fKbxnK7y88WpF1AAJPDGsbwTHwR_RARRsfnE00AQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICYmp-Sbz8U0FdvbDgpRCM-y13Hc5PAAIMEWsbI_X4V5dDhgxBJcVXAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "balance": {
-      "photo": "AgACAgEAAxkDAAICSWp-R7a0JzWC0v2apo96Ia1pVvwGAAJQDGsbwTHwR6mv4bkqtuk4AQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICcGp-SxQUJrCgIGW0J1TADZ3nyN_0AAIUEWsbI_X4V8sIcvwVDmGwAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "profile": {
-      "photo": "AgACAgEAAxkDAAICSmp-R7ebDt4qpnq165gdLOskIpJNAAJRDGsbwTHwR71MWwrKQ-MVAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICZGp-SoHDK06BUIXSd4zXZ-4weyBWAAINEWsbI_X4V_IRK4HgWuQNAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "req": {
-      "photo": "AgACAgEAAxkDAAICS2p-R7jqzv9FxoDVK3qFictumZqqAAJSDGsbwTHwR5vi7GqPxdfwAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICZmp-SpJt40wEnKAL_x9IlwzThfsiAAIOEWsbI_X4V8gwIqNVIhsVAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "top": {
-      "photo": "AgACAgEAAxkDAAICTGp-R7p1ZjieMM1MP2DZBxWcnh9NAAJTDGsbwTHwR0k5x07Yayk_AQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICaGp-Sp2FWHna1Gu4v6V5YrS0e42jAAIPEWsbI_X4V1ZeqjBzOqwVAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "my_deals": {
-      "photo": "AgACAgEAAxkDAAICTWp-R7vP76pQTdPz3qWj2sVZ7WcfAAJUDGsbwTHwR8ovUZPnSgcPAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICamp-SraBWMTAu4ziNqg1hGuEiCIDAAIQEWsbI_X4V8hnZFbuthB7AQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "info": {
-      "photo": "AgACAgEAAxkDAAICTmp-R73I1y4xUogh3oSJQjleNj4SAAJVDGsbwTHwR-5eu2gAAU7iVgEAAwIAA3cAAz0E",
+      "photo": "AgACAgUAAxkBAAICbGp-StDP4zx69UQ_EiyQRmWe3u1VAAIREWsbI_X4V_OyFqjN70xdAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "complaint": {
-      "photo": "AgACAgEAAxkDAAICT2p-R775tRM7t9Rb4tSTUgABswkbYwACVgxrG8Ex8Ee0IBxfoVNBEQEAAwIAA3cAAz0E",
+      "photo": "AgACAgUAAxkBAAICbmp-SwqowVEtiM4Dht0FJMh8gd35AAITEWsbI_X4V4bu0xGwM8cOAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "ai": {
-      "photo": "AgACAgEAAxkDAAICUGp-R7-VXxIKSaIRfqwBQb7gTysjAAJXDGsbwTHwR-WcyPl_ywMXAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICcmp-SzGFrw4kYx2kK9uzrqx7CiocAAIVEWsbI_X4V0nIC1rxdk0mAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "deal_card": {
-      "photo": "AgACAgEAAxkDAAICUWp-R8Adxb8j_RWsU6Y3zTl_K0vqAAJYDGsbwTHwR_n_rdFpH3dxAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICdGp-S0D9T97d2XZcjvBnmIuK0RAbAAIWEWsbI_X4VyAxCVz9QrA7AQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "deal_join": {
-      "photo": "AgACAgEAAxkDAAICUWp-R8Adxb8j_RWsU6Y3zTl_K0vqAAJYDGsbwTHwR_n_rdFpH3dxAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICdmp-S1VwaZnQ4P2in1m0TUev_Wu1AAIXEWsbI_X4V5ytP0wONvhsAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "deal_forward": {
-      "photo": "AgACAgEAAxkDAAICUWp-R8Adxb8j_RWsU6Y3zTl_K0vqAAJYDGsbwTHwR_n_rdFpH3dxAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICeGp-S2MiphBAbcmOW8oRrtn6khaIAAIYEWsbI_X4VxdsG4svOxYpAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
     },
     "ref": {
-      "photo": "AgACAgEAAxkDAAICVGp-R8TgHkGjKii97pZkpqyIJSqOAAJZDGsbwTHwR5WWPvEMdFwSAQADAgADdwADPQQ",
+      "photo": "AgACAgUAAxkBAAICemp-S3tTZKpONnkox6NUNcJDRF_eAAIaEWsbI_X4V_x7hwKK2kZnAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": ""
@@ -87,5 +87,5 @@
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-13T22:40:04Z"
+  "updated_at": "2026-08-13T23:57:43Z"
 }

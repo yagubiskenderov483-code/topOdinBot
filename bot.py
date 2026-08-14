@@ -794,8 +794,8 @@ def banner_counts(db):
     return filled, log_filled
 
 def load_banners_seed():
-    """Читает сохранённые баннеры (репо + /data), чтобы не ставить заново после деплоя."""
-    for path in (BANNERS_SEED_DATA, BANNERS_SEED_FILE):
+    """Читает баннеры: сначала banners_seed.json в репо, потом /data (репо — источник правды)."""
+    for path in (BANNERS_SEED_FILE, BANNERS_SEED_DATA):
         try:
             if not os.path.exists(path): continue
             with open(path, "r", encoding="utf-8") as f:
@@ -868,6 +868,26 @@ def build_banners_seed_payload(db):
         "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
+def persist_banners_seed_files(seed):
+    """Записать canonical seed в оба файла без merge с db."""
+    if not isinstance(seed, dict) or not _seed_has_content(seed):
+        return False
+    payload = {
+        "banners": seed.get("banners") or {},
+        "log_banners": seed.get("log_banners") or {},
+        "menu_description": seed.get("menu_description"),
+        "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    for path in {BANNERS_SEED_FILE, BANNERS_SEED_DATA}:
+        try:
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+                f.write("\n")
+        except Exception as e:
+            logger.error(f"persist_banners_seed_files {path}: {e}")
+    return True
+
 def save_banners_seed(db):
     """Пишет баннеры в seed-файлы - после деплоя подтянутся сами."""
     payload=build_banners_seed_payload(db)
@@ -885,26 +905,14 @@ def save_banners_seed(db):
     return payload
 
 def apply_banners_seed(db):
-    """Если в db пусто - восстанавливает баннеры из seed (после fresh deploy)."""
-    seed=load_banners_seed()
-    if not seed: return db, False
-    changed=False
-    if not db.get("banners"): db["banners"]={}
-    for key, val in (seed.get("banners") or {}).items():
-        if key not in BANNER_SECTIONS: continue
-        if _banner_entry_filled(val) and not _banner_entry_filled(db["banners"].get(key)):
-            db["banners"][key]=val
-            changed=True
-    if seed.get("log_banners"):
-        if not db.get("log_banners"): db["log_banners"]={}
-        for key, val in seed["log_banners"].items():
-            if key not in db["log_banners"] and val:
-                db["log_banners"][key]=val
-                changed=True
-    if seed.get("menu_description") and not db.get("menu_description"):
-        db["menu_description"]=seed["menu_description"]
-        changed=True
-    return db, changed
+    """Всегда подтягивает баннеры из seed-файла (banners_seed.json), перезаписывая db."""
+    seed = load_banners_seed()
+    if not seed:
+        return db, False
+    before = json.dumps(db.get("banners") or {}, sort_keys=True, ensure_ascii=False)
+    db, _ = force_apply_banners_seed_payload(db, seed)
+    after = json.dumps(db.get("banners") or {}, sort_keys=True, ensure_ascii=False)
+    return db, before != after
 
 def force_apply_banners_seed_payload(db, seed):
     """Полная замена баннеров из загруженного seed (админ прислал файл)."""
@@ -1000,12 +1008,6 @@ def save_db(db):
     except Exception:
         pass
     with open(DB_FILE,"w",encoding="utf-8") as f: json.dump(db, f, ensure_ascii=False, indent=2)
-    # Баннеры всегда дублируем в seed - чтобы не слетали после деплоя
-    try:
-        if db.get("banners") or db.get("log_banners") or db.get("menu_description"):
-            save_banners_seed(db)
-    except Exception as e:
-        logger.error(f"save_db seed: {e}")
 
 def get_user(db, uid):
     k=str(uid)
@@ -5584,16 +5586,19 @@ def main():
         db["banner_photo"]=db["banner_video"]=db["banner_gif"]=db["banner"]=None
         save_db(db)
 
-    # После деплоя db пустой - поднимаем баннеры из seed (/data или banners_seed.json)
+    # banners_seed.json — единственный источник баннеров; всегда перезаписываем db из файла
     db, restored = apply_banners_seed(db)
+    seed = load_banners_seed()
+    if seed:
+        persist_banners_seed_files(seed)
     if restored:
         save_db(db)
-        logger.info("Restored banners from seed (%s sections)",
-                    sum(1 for v in (db.get("banners") or {}).values() if _banner_entry_filled(v)))
-    # Всегда закрепляем то, что есть в db, на /data seed
-    if any(_banner_entry_filled(v) for v in (db.get("banners") or {}).values()) or db.get("log_banners") or db.get("menu_description"):
-        save_banners_seed(db)
-        logger.info("Banners seed refreshed on startup")
+        logger.info(
+            "Banners synced from seed (%s sections)",
+            sum(1 for v in (db.get("banners") or {}).values() if _banner_entry_filled(v)),
+        )
+    elif seed:
+        logger.info("Banners already match banners_seed.json")
 
     start_reviews_http_server()
 
