@@ -533,7 +533,7 @@ def req_prompt_text(field, lang="ru"):
             title="Card / phone"
         elif lang=="uk":
             examples="<code>+380501234567</code>\n<code>5168745641234567</code>"
-            title="Карта / телефон"
+            title="Картка / телефон"
         else:
             examples="<code>+79041751408</code>\n<code>4276123456781234</code>"
             title="Карта / телефон"
@@ -549,10 +549,10 @@ def req_prompt_text(field, lang="ru"):
 
 def req_bank_examples(field, lang="ru"):
     if lang=="en":
-        return "Chase, Bank of America, Wells Fargo..."
+        return "Chase, Bank of America, Wells Fargo"
     if lang=="uk":
-        return "ПриватБанк, Monobank, Ощадбанк, Raiffeisen..."
-    return "Сбербанк, ВТБ, Тинькофф, Альфа..."
+        return "ПриватБанк, Monobank, Ощадбанк"
+    return "Сбербанк, ВТБ, Тинькофф, Альфа"
 
 def card_bank(lang="ru"):
     if lang=="en": return CARD_BANK_EN
@@ -673,14 +673,11 @@ def dedupe_ai_text(text):
 def deal_guarantee_lines(lang):
     return T(lang,
         "1. Средства защищены до завершения сделки.\n"
-        "2. Менеджер подтвердит автоматически после получения товара.\n"
-        "3. После оплаты ожидайте завершения сделки.",
+        "2. Все сделки зашифрованы.",
         "1. Funds are protected until the deal completes.\n"
-        "2. The manager confirms automatically after receiving the item.\n"
-        "3. After payment wait for the deal to complete.",
+        "2. All deals are encrypted.",
         "1. Кошти захищені до завершення угоди.\n"
-        "2. Менеджер підтвердить автоматично після отримання товару.\n"
-        "3. Після оплати очікуйте завершення угоди.")
+        "2. Усі угоди зашифровані.")
 def H(value): return html.escape(str(value))
 
 def deal_payment_details_lines(deal_id, d, lang="ru"):
@@ -729,7 +726,7 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
     elif pay_cur=="Stars":
         lines += [
             f"<b>{Est} {L(lang,'Звёзды','Stars')}:</b>",
-            f"<blockquote>{MANAGER_TAG}</blockquote>",
+            f"<blockquote>{T(lang,'Оплата Stars по реквизитам сделки.','Pay Stars using the deal details.','Оплата Stars за реквізитами угоди.')}</blockquote>",
         ]
     else:
         bank=card_bank(lang)
@@ -1546,7 +1543,7 @@ def deal_join_req_kb(deal_id, currency, lang="ru"):
     ton_url=tonconnect_miniapp_url()
     if field=="card":
         rows.append([InlineKeyboardButton(
-            T(lang,"Карта / телефон","Card / phone","Карта / телефон"),
+            T(lang,"Карта / телефон","Card / phone","Картка / телефон"),
             callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")])
     elif field=="ton":
         if ton_url:
@@ -1773,14 +1770,14 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if viewer_role=="seller":
                 if not d.get("item_transferred"):
                     joined_instr=T(lang,
-                        "Передайте товар и нажмите «Я передал». Менеджер подтвердит автоматически после получения товара.",
-                        "Transfer the item and press «I transferred». The manager confirms automatically after receiving it.",
-                        "Передайте товар і натисніть «Я передав». Менеджер підтвердить автоматично після отримання товару.")
+                        "Передайте товар и нажмите «Я передал». Сделка подтвердится автоматически после получения товара.",
+                        "Transfer the item and press «I transferred». The deal confirms automatically after the item is received.",
+                        "Передайте товар і натисніть «Я передав». Угода підтвердиться автоматично після отримання товару.")
                 elif d.get("payment_reported"):
                     joined_instr=T(lang,
-                        "Товар передан, оплата получена. Ожидайте подтверждения менеджера.",
-                        "Item transferred and payment received. Wait for manager confirmation.",
-                        "Товар передано, оплату отримано. Очікуйте підтвердження менеджера.")
+                        "Товар передан, оплата получена. Ожидайте завершения сделки.",
+                        "Item transferred and payment received. Wait for the deal to complete.",
+                        "Товар передано, оплату отримано. Очікуйте завершення угоди.")
                 else:
                     joined_instr=T(lang,
                         "Товар передан. Ожидайте оплату от покупателя.",
@@ -1789,9 +1786,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             elif viewer_role=="buyer":
                 if not d.get("item_transferred"):
                     joined_instr=T(lang,
-                        "Ожидайте передачи товара. Менеджер подтвердит автоматически после получения.",
-                        "Please wait for the item. The manager confirms automatically after receiving it.",
-                        "Очікуйте передачі товару. Менеджер підтвердить автоматично після отримання.")
+                        "Ожидайте передачи товара. Сделка подтвердится автоматически после получения.",
+                        "Please wait for the item. The deal confirms automatically after it is received.",
+                        "Очікуйте передачі товару. Угода підтвердиться автоматично після отримання.")
                 else:
                     joined_instr=T(lang,
                         f"Продавец передал товар. Переведите <b>{amt_phrase}</b> по реквизитам ниже и нажмите «Я оплатил».",
@@ -1833,7 +1830,7 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
     def add_pay_buttons():
         if deal.get("payment_reported"):
             rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте подтверждения менеджера","Waiting for manager confirmation","Очікуйте підтвердження менеджера"),callback_data="noop",
+                T(lang,"Ожидайте подтверждения","Waiting for confirmation","Очікуйте підтвердження"),callback_data="noop",
                 icon_custom_emoji_id=WAIT_ICON)])
         else:
             rows.append([InlineKeyboardButton(
@@ -1854,7 +1851,7 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
                 icon_custom_emoji_id="5316827280863934685")])
         elif deal.get("payment_reported"):
             rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте подтверждения менеджера","Waiting for manager confirmation","Очікуйте підтвердження менеджера"),callback_data="noop",
+                T(lang,"Ожидайте подтверждения","Waiting for confirmation","Очікуйте підтвердження"),callback_data="noop",
                 icon_custom_emoji_id=WAIT_ICON)])
         else:
             rows.append([InlineKeyboardButton(
@@ -1953,8 +1950,7 @@ async def show_deal_confirmation(update, context):
         f"<blockquote>{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}\n"
         f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}\n"
         f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}\n"
-        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}</blockquote>\n\n"
-        f"<blockquote>{T(lang,'Сначала продавец передаёт товар, затем покупатель оплачивает. Менеджер подтвердит автоматически после получения товара.','The seller transfers the item first, then the buyer pays. The manager confirms automatically after receiving the item.','Спочатку продавець передає товар, потім покупець оплачує. Менеджер підтвердить автоматично після отримання товару.')}</blockquote>"
+        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}</blockquote>"
     )
     kb=InlineKeyboardMarkup([
         [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
@@ -2063,21 +2059,21 @@ def complaint_prompt(step, ctype, lang="ru"):
             "topic":(
                 f"<tg-emoji emoji-id='5920332557466997677'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на маркетплейс','Marketplace report')}</b>\n\n"
                 f"<b>1. {L(lang,'Тема / что случилось','Topic / what happened')}</b>\n"
-                f"<blockquote>{L(lang,'Пример:','Example:')}\n<code>{L(lang,'Долго не подтверждают пополнение','Top-up not confirmed for too long')}</code></blockquote>"
+                f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Долго не подтверждают пополнение','Top-up not confirmed for too long')}</code></blockquote>"
             ),
             "deal":(
                 f"<b>2. {L(lang,'Номер сделки (если есть)','Deal ID (if any)')}</b>\n"
-                f"<blockquote>{L(lang,'Пример:','Example:')}\n<code>FP29548</code>\n"
+                f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>FP29548</code>\n"
                 f"{L(lang,'Если сделки нет - напишите','If no deal - write')}: <code>-</code></blockquote>"
             ),
             "time":(
                 f"<b>3. {L(lang,'Когда это произошло','When it happened')}</b>\n"
-                f"<blockquote>{L(lang,'Пример:','Example:')}\n<code>29.07.2026 18:40</code></blockquote>"
+                f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>29.07.2026 18:40</code></blockquote>"
             ),
             "evidence":(
                 f"<b>4. {L(lang,'Доказательства','Evidence')}</b>\n"
                 f"<blockquote>{L(lang,'Ссылки, скрины текстом, ID платежа.','Links, screenshot text, payment ID.')}\n"
-                f"{L(lang,'Пример:','Example:')}\n<code>{L(lang,'Чек EG-123, скрин отправил в поддержку','Receipt EG-123, screenshot sent to support')}</code></blockquote>"
+                f"{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Чек EG-123, скрин отправил в поддержку','Receipt EG-123, screenshot sent to support')}</code></blockquote>"
             ),
         }
         return prompts.get(step,"?")
@@ -2086,21 +2082,21 @@ def complaint_prompt(step, ctype, lang="ru"):
         "username":(
             f"<tg-emoji emoji-id='{emoji}'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на','Report about')} {role_word}</b>\n\n"
             f"<b>1. {L(lang,'Юзернейм','Username')} {role_word}</b>\n"
-            f"<blockquote>{L(lang,'Пример:','Example:')}\n<code>@username</code></blockquote>"
+            f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>@username</code></blockquote>"
         ),
         "deal":(
             f"<b>2. {L(lang,'Номер сделки','Deal ID')}</b>\n"
-            f"<blockquote>{L(lang,'Пример:','Example:')}\n<code>FP29548</code></blockquote>"
+            f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>FP29548</code></blockquote>"
         ),
         "time":(
             f"<b>3. {L(lang,'Время сделки','Deal time')}</b>\n"
             f"<blockquote>{L(lang,'Когда была сделка','When the deal happened')}\n"
-            f"{L(lang,'Пример:','Example:')}\n<code>29.07.2026 15:30</code></blockquote>"
+            f"{T(lang,'Пример:','Example:','Приклад:')}\n<code>29.07.2026 15:30</code></blockquote>"
         ),
         "evidence":(
             f"<b>4. {L(lang,'Доказательства','Evidence')}</b>\n"
             f"<blockquote>{L(lang,'Опишите проблему и приложите факты.','Describe the issue and include facts.')}\n"
-            f"{L(lang,'Пример:','Example:')}\n<code>{L(lang,'Оплата ушла, товар не отдали, чек: ...','Paid, item not delivered, receipt: ...')}</code></blockquote>"
+            f"{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Оплата ушла, товар не отдали, чек: ...','Paid, item not delivered, receipt: ...')}</code></blockquote>"
         ),
     }
     return prompts.get(step,"?")
@@ -2555,32 +2551,36 @@ async def ai_chat(question, lang="ru", history=None):
     return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
-    """FunPay AI: живой собеседник. Без чужих брендов моделей."""
+    """FunPay AI. Без чужих брендов моделей. Без меню тем."""
+    unclear={
+        "uk": "Не зрозумів. Напиши ще раз.",
+        "ru": "Не понял. Напиши ещё раз.",
+        "en": "Didn't get that. Write it again.",
+    }
+    line=unclear.get(lang, unclear["ru"])
     if lang=="uk":
         return _bot_mention_fix(
-            "Ти — FunPay AI. Спілкуйся тепло і з охотою, як друг у чаті. "
-            "Підтримуй діалог, можна пожартувати, постав зустрічне питання. "
-            "Відповідай на БУДЬ-ЯКІ теми завжди по суті. Не відмовляй і не проси переформулювати. "
-            "Ніколи не кажи назви інших моделей — ти тільки FunPay AI. Не пиши про «бота» і «не про бота». "
-            "Звичайний текст без HTML. Мова: українська.\n\n"
+            "Ти — FunPay AI. Відповідай на БУДЬ-ЯКІ теми по суті, без відмов. "
+            "Ніколи не називай інші моделі. Не пиши меню тем (жарти, навчання, крипта…). "
+            f"Якщо незрозуміло — тільки: {line} "
+            "Звичайний текст без HTML. Мова відповіді: українська.\n\n"
             "Якщо питання про угоди / поповнення / вивід / Tonkeeper FunPay:\n"
-            f"бот @{BOT_USERNAME}, комісія 0%, рефералка 3%, FP29548+, @FunPayDeaIManager")
+            f"бот @{BOT_USERNAME}, комісія 0%, рефералка 3%, FP29548+")
     if lang=="ru":
         return _bot_mention_fix(
-            "Ты — FunPay AI. Общайся тепло, с охотой, как живой собеседник — не сухо и не официально. "
-            "Любишь болтать: отвечай по теме, с лёгким юмором, поддержи диалог вопросом. "
-            "Отвечай на ЛЮБЫЕ темы всегда по существу. Никогда не отшивай и не проси «переформулировать короче». "
-            "Никогда не говори, что ты какая-то другая модель — ты только FunPay AI. "
-            "Не пиши про «бота» и «не про бота». Обычный текст без HTML. Язык: русский.\n\n"
+            "Ты — FunPay AI. Отвечай на ЛЮБЫЕ темы по существу, без отказов. "
+            "Никогда не называй другие модели. Не пиши меню тем (шутки, учёба, крипта…). "
+            f"Если не понял — только: {line} "
+            "Обычный текст без HTML. Язык ответа: русский.\n\n"
             "Если вопрос про сделки / пополнение / вывод / Tonkeeper FunPay:\n"
-            f"бот @{BOT_USERNAME}, комиссия 0%, рефералка 3%, FP29548+, @FunPayDeaIManager")
+            f"бот @{BOT_USERNAME}, комиссия 0%, рефералка 3%, FP29548+")
     return _bot_mention_fix(
-        "You are FunPay AI. Be warm and chatty, like a friend in a messenger. "
-        "Keep the conversation going. Always answer ANY topic substantively. Never refuse or ask to rephrase. "
-        "Never name other AI models — you are FunPay AI only. Don't talk about 'the bot' vs 'not the bot'. "
-        "Plain text. English.\n\n"
+        "You are FunPay AI. Answer ANY topic substantively. Never refuse. "
+        "Never name other AI models. Do not dump a topic menu (jokes, study, crypto…). "
+        f"If unclear, reply only: {line} "
+        "Plain text. Answer in English.\n\n"
         "If asked about FunPay deals/top-up/withdraw/Tonkeeper:\n"
-        f"bot @{BOT_USERNAME}, 0% fee, 3% referrals, FP29548+, @FunPayDeaIManager")
+        f"bot @{BOT_USERNAME}, 0% fee, 3% referrals, FP29548+")
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -2661,6 +2661,9 @@ _rewrite_kb_bot_mentions()
 def _ai_kb_entry_text(entry, lang):
     if lang == "en":
         return entry.get("en") or entry.get("ru", "")
+    if lang == "uk":
+        ru=entry.get("ru", "")
+        return entry.get("uk") or _load_uk_strings().get(ru) or ru
     return entry.get("ru", "")
 
 def ai_local_answer(question, lang="ru", history=None):
@@ -2670,20 +2673,16 @@ def ai_local_answer(question, lang="ru", history=None):
     q=(question or "").strip()
     ql=q.lower().replace("ё","е")
     if not q:
-        return L(lang,"Напишите вопрос - отвечу по любой теме.","Write a question - I’ll answer on any topic.")
+        return T(lang,"Не понял. Напиши ещё раз.","Didn't get that. Write it again.","Не зрозумів. Напиши ще раз.")
 
     if ql in ("ку","ку!","ку.","qq","прив","yo","hey") or any(
         x in ql for x in ("привет","здравств","хай","hello","hi","йо","добрый","салют","здорово","здарova")
     ):
-        return L(lang,
-            "Привет! Я FunPay AI — давай поговорим, о чём угодно.",
-            "Hi! I’m FunPay AI — let’s chat about anything.")
+        return T(lang,"Привет! Я FunPay AI.","Hi! I’m FunPay AI.","Привіт! Я FunPay AI.")
     if any(x in ql for x in ("как дела","как ты","как сам","how are you","what's up","whats up","что умеешь","кто ты","how r u")):
-        return L(lang,
-            "Отлично, на связи. Я FunPay AI — болтаем о чём хочешь: шутки, учёба, крипта, быт. Что у тебя?",
-            "All good. I’m FunPay AI — jokes, study, crypto, daily stuff. What’s up?")
+        return T(lang,"Я FunPay AI. На связи — пиши.","I’m FunPay AI. Online — write.","Я FunPay AI. На зв’язку — пиши.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
-        return L(lang,"Пожалуйста! Если ещё вопрос - пишите.","You’re welcome! Ask more anytime.")
+        return T(lang,"Пожалуйста! Если ещё вопрос — пишите.","You’re welcome! Ask more anytime.","Будь ласка! Якщо ще питання — пишіть.")
 
     m=_re.fullmatch(r"(?:сколько\s+(?:будет\s+)?)?(\d+)\s*([+\-*/x×:])\s*(\d+)\s*\??", ql)
     if m:
@@ -2754,15 +2753,10 @@ def ai_local_answer(question, lang="ru", history=None):
         ans += L(lang,"\n\nМогу уточнить под ваш случай - напишите детали.","\n\nI can narrow it down - send details.")
         return ans[:3500]
 
-    # 3) короткий/любой вопрос — болтаем, без «переформулируйте» и без «не про бота»
-    ql_soft=ql.strip(" ?!.…")
-    if len(ql_soft)<=24 or ql_soft in ("о чем","о чём","чо","что","ну","ок","а","да","нет","хз","ну и","и","?"):
-        return L(lang,
-            "О чём угодно — давай. Шутки, учёба, крипта, фильмы, быт, код. Напиши тему, разберём.",
-            "Anything you want — jokes, study, crypto, movies, daily stuff, code. Drop a topic.")
     return L(lang,
-        f"«{q[:180]}» — ок, давай разберём. Если имелось в виду что-то конкретное, кинь ещё пару слов, отвечу сразу.",
-        f"Got “{q[:180]}” — let’s unpack it. Add a couple more words if you meant something specific.")
+        "Не понял. Напиши ещё раз.",
+        "Didn't get that. Write it again.",
+        "Не зрозумів. Напиши ще раз.")
 
 def ai_thinking_html(lang):
     """Одна строка как в первой версии: робот-эмодзи + FunPay AI думает…"""
@@ -2989,7 +2983,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_new(
                     update,
                     f"{Ewrn} <b>{L(lang,'Чтобы присоединиться к сделке, добавьте реквизиты','To join the deal, add requisites')}: {need}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section="deal_card"); return
+                    deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
 
             clear_join_req_state(uid)
             ok=await complete_deal_join(update,context,deal_id)
@@ -3011,15 +3005,15 @@ async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{Ecwn} <b>{L(lang,'FunPay - Команды','FunPay - Commands')}</b>\n\n"
             f"<blockquote>"
             f"{Eln} <b>/sendbalance [сумма]</b> - {L(lang,'выдать себе баланс','give yourself balance')}\n"
-            f"<i>{L(lang,'Пример:','Example:')} /sendbalance 500</i>\n\n"
+            f"<i>{T(lang,'Пример:','Example:','Приклад:')} /sendbalance 500</i>\n\n"
             f"{Eln} <b>/addreview [текст]</b> - {L(lang,'добавить себе отзыв','add review to yourself')}\n"
-            f"<i>{L(lang,'Пример:','Example:')} /addreview Отличный продавец!</i>\n\n"
+            f"<i>{T(lang,'Пример:','Example:','Приклад:')} /addreview Отличный продавец!</i>\n\n"
             f"{Eln} <b>/delreview [номер]</b> - {L(lang,'удалить свой отзыв','delete your review')}\n"
-            f"<i>{L(lang,'Пример:','Example:')} /delreview 1</i>\n\n"
+            f"<i>{T(lang,'Пример:','Example:','Приклад:')} /delreview 1</i>\n\n"
             f"{Eln} <b>/setdeals [число]</b> - {L(lang,'установить кол-во сделок','set deals count')}\n"
-            f"<i>{L(lang,'Пример:','Example:')} /setdeals 50</i>\n\n"
+            f"<i>{T(lang,'Пример:','Example:','Приклад:')} /setdeals 50</i>\n\n"
             f"{Eln} <b>/setturnover [сумма]</b> - {L(lang,'установить оборот','set turnover')}\n"
-            f"<i>{L(lang,'Пример:','Example:')} /setturnover 15000</i>"
+            f"<i>{T(lang,'Пример:','Example:','Приклад:')} /setturnover 15000</i>"
             f"</blockquote>"
         )
         await update.message.reply_text(text,parse_mode="HTML",
@@ -3280,7 +3274,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(
                     update,
                     f"{Ewrn} <b>{L(lang,'Для этой валюты нужны подходящие реквизиты.','This currency needs matching requisites.')}</b>",
-                    currency_requisites_kb(cur,lang),section="deal"); return
+                    currency_requisites_kb(cur,lang),section="req"); return
             ud["currency"]=cur; ud["pay_currency"]=cur; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
@@ -3298,7 +3292,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(
                     update,
                     f"{Ewrn} <b>{L(lang,'Для валюты','For currency')} {cur_plain(cur_code,lang)} {L(lang,'нужны подходящие реквизиты.','matching requisites are required.')}</b>",
-                    currency_requisites_kb(cur_code,lang),section="deal"); return
+                    currency_requisites_kb(cur_code,lang),section="req"); return
             ud["currency"]=cur_code; ud["pay_currency"]=cur_code; ud["step"]="amount"
             try: await q.message.delete()
             except: pass
@@ -3387,7 +3381,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if deal_cur:
                 await send_section(
                     update,f"{Ewrn} <b>{L(lang,'Добавьте реквизиты:','Add requisites:')}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section="deal_card"); return
+                    deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}",f"Картка / Телефон {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
@@ -3395,7 +3389,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
                 [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
             ])
-            await send_section(update,f"{Ewrn} <b>{L(lang,'Добавьте реквизиты:','Add requisites:')}</b>",kb,section="deal_card"); return
+            await send_section(update,f"{Ewrn} <b>{L(lang,'Добавьте реквизиты:','Add requisites:')}</b>",kb,section="req"); return
 
         if d.startswith("req_deal_"):
             rest=d[len("req_deal_"):]
@@ -3411,7 +3405,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal"): ud.pop(k,None)
             set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
             await send_section(update,req_prompt_text(field,lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")]]),section="deal_card"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
 
         if d.startswith("lang_"):
             await set_lang(update,context,d[5:]); return
@@ -3629,9 +3623,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ans=dedupe_ai_text(ai_local_answer(text, lang, hist) or "")
             if not (ans or "").strip():
                 ans=T(lang,
-                    "На связи. Напишите ещё раз — отвечу.",
-                    "Online. Write again — I’ll answer.",
-                    "На зв'язку. Напишіть ще раз — відповім.")
+                    "Не понял. Напиши ещё раз.",
+                    "Didn't get that. Write it again.",
+                    "Не зрозумів. Напиши ще раз.")
             hist.append({"role":"user","content":text})
             hist.append({"role":"assistant","content":ans})
             if len(hist)>24: ud["ai_history"]=hist[-24:]
@@ -3733,7 +3727,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if not bank_ok:
                         bank_ex=req_bank_examples(field, lang)
                         await update.message.reply_text(
-                            f"{Ewrn} <b>{L(lang,'Банк (минимум 2 буквы):','Bank (min 2 letters):')}</b>\n<blockquote>{bank_ex}</blockquote>",
+                            f"{Ewrn} <b>{T(lang,'Банк (минимум 2 буквы):','Bank (min 2 letters):','Банк (мінімум 2 літери):')}</b>\n<blockquote>{bank_ex}</blockquote>",
                             parse_mode="HTML"); return
                     card_val=ud.pop("card_pending","")
                     text=f"{card_val}|{bank_ok}"
@@ -3744,19 +3738,19 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if r is None:
                         if lang=="uk":
                             err=("Невірний формат.\n\n"
-                                 "<b>Приклад:</b>\n<code>+380501234567</code>\n<code>+12025550123</code>\n<code>5168745641234567</code>")
+                                 "<b>Приклад:</b>\n<code>+380501234567</code>\n<code>5168745641234567</code>")
                         elif lang=="en":
                             err=("Invalid format.\n\n"
-                                 "<b>Example:</b>\n<code>+12025550123</code>\n<code>+79041751408</code>\n<code>4111111111111111</code>")
+                                 "<b>Example:</b>\n<code>+12025550123</code>\n<code>4111111111111111</code>")
                         else:
                             err=("Неверный формат.\n\n"
-                                 "<b>Пример:</b>\n<code>+79041751408</code>\n<code>+12025550123</code>\n<code>4276123456781234</code>")
+                                 "<b>Пример:</b>\n<code>+79041751408</code>\n<code>4276123456781234</code>")
                     else:
                         ud["card_pending"]=r; ud["card_step"]="bank"
                         set_req_input_state(uid, field, card_step="bank", card_pending=r)
                         bank_ex=req_bank_examples(field, lang)
                         await update.message.reply_text(
-                            f"{Ecrd} <b>{L(lang,'Банк:','Bank:')}</b>\n\n<blockquote>{L(lang,'Пример:','Example:')} {bank_ex}</blockquote>",
+                            f"{Ecrd} <b>{T(lang,'Банк:','Bank:','Банк:')}</b>\n\n<blockquote>{T(lang,'Пример:','Example:','Приклад:')} {bank_ex}</blockquote>",
                             parse_mode="HTML"); return
             elif field=="ton":
                 ton_addr=validate_ton_address(text)
@@ -3812,9 +3806,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if resume=="partner" or (ud.get("type") and not ud.get("partner") and ud.get("creator_role")):
                     ud["step"]="partner"
                     cr=ud.get("creator_role","seller")
-                    pp=L(lang,"Введите @username продавца:","Enter seller @username:") if cr=="buyer" else L(lang,"Введите @username покупателя:","Enter buyer @username:")
+                    pp=T(lang,"Введите @username продавца:","Enter seller @username:","Введіть @username продавця:") if cr=="buyer" else T(lang,"Введите @username покупателя:","Enter buyer @username:","Введіть @username покупця:")
                     msg=await update.effective_chat.send_message(
-                        f"<b>{pp}</b>\n\n<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>",
+                        f"<b>{pp}</b>\n\n<b>{T(lang,'Пример','Example','Приклад')}:</b> <code>@username</code>",
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]))
                     ud["last_msg"]=msg.message_id; return
@@ -4223,7 +4217,7 @@ async def on_transferred(update, context):
                 logger.error(f"notify buyer transferred: {e}")
         lang=get_lang(seller.id); ru=lang=="ru"
         await q.edit_message_reply_markup(InlineKeyboardMarkup([
-                [InlineKeyboardButton(L(lang,"Ожидайте подтверждения менеджера","Waiting for manager confirmation"),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
+                [InlineKeyboardButton(T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
         ]))
     except Exception as e:
@@ -4276,13 +4270,13 @@ async def on_paid(update, context):
                 partner_uname=b_uname if is_seller_creator else c_uname
                 await send_banner_chat(
                     context.bot,int(seller),
-                    f"{Ebl} <b>{T(sl2,'Покупатель оплатил. Ожидайте подтверждения менеджера.','Buyer paid. Wait for manager confirmation.','Покупець оплатив. Очікуйте підтвердження менеджера.')}</b>\n\n{deal_txt}",
+                    f"{Ebl} <b>{T(sl2,'Покупатель оплатил. Ожидайте подтверждения.','Buyer paid. Wait for confirmation.','Покупець оплатив. Очікуйте підтвердження.')}</b>\n\n{deal_txt}",
                     deal_action_kb(deal_id,deal2,"seller",sl2,partner_uname,is_creator=is_seller_creator),
                     section="deal_join" if is_seller_creator else "deal_card")
             except: pass
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
-                [InlineKeyboardButton(L(bl,'Ожидайте подтверждения менеджера','Waiting for manager confirmation'),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
+                [InlineKeyboardButton(T(bl,'Ожидайте подтверждения','Waiting for confirmation','Очікуйте підтвердження'),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
                 [InlineKeyboardButton(L(bl,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]
             ]))
         except: pass
