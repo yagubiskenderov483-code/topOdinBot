@@ -678,11 +678,20 @@ def dedupe_ai_text(text):
 def deal_guarantee_lines(lang):
     return T(lang,
         "1. Средства защищены до завершения сделки.\n"
-        "2. Все сделки зашифрованы.",
+        "2. Менеджер подтвердит автоматически после получения товара.\n"
+        "3. Все сделки зашифрованы.",
         "1. Funds are protected until the deal completes.\n"
-        "2. All deals are encrypted.",
+        "2. The manager confirms automatically after receiving the item.\n"
+        "3. All deals are encrypted.",
         "1. Кошти захищені до завершення угоди.\n"
-        "2. Усі угоди зашифровані.")
+        "2. Менеджер підтвердить автоматично після отримання товару.\n"
+        "3. Усі угоди зашифровані.")
+
+def deal_seller_transfer_text(lang):
+    return T(lang,
+        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». Вы сможете продолжить сделку дальше передав товар.",
+        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». You can continue the deal after transferring the item.",
+        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Ви зможете продовжити угоду далі передавши товар.")
 def H(value): return html.escape(str(value))
 
 def deal_payment_details_lines(deal_id, d, lang="ru"):
@@ -1773,10 +1782,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         if joined:
             if viewer_role=="seller":
                 if not d.get("item_transferred"):
-                    joined_instr=T(lang,
-                        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». Вы сможете продолжить сделку дальше, передав товар.",
-                        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». You can continue the deal after transferring the item.",
-                        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Ви зможете продовжити угоду далі, передавши товар.")
+                    joined_instr=deal_seller_transfer_text(lang)
                 elif d.get("payment_reported"):
                     joined_instr=T(lang,
                         "Товар передан, оплата получена. Ожидайте завершения сделки.",
@@ -1810,6 +1816,8 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                 "Send the link to your partner so they can join the deal.",
                 "Надішліть посилання партнеру, щоб він приєднався до угоди.")
             lines.append(f"\n<blockquote>{instr}</blockquote>")
+            if viewer_role=="seller":
+                lines.append(f"<blockquote>{deal_seller_transfer_text(lang)}</blockquote>")
 
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
         lines.append(f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>")
@@ -1960,7 +1968,7 @@ async def show_deal_confirmation(update, context):
         [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
         [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
     ])
-    await send_section(update,text,kb,section="deal")
+    await send_new(update,text,kb,section="deal")
 
 # ─── Show main ────────────────────────────────────────────────────────────────
 async def show_main(update, context):
@@ -4218,12 +4226,14 @@ async def finalize_deal(update, context):
             f"<tg-emoji emoji-id='5906840875484321836'>✅</tg-emoji> <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
             f"{share_text}\n<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
         )
+        if creator_role=="seller":
+            text_out += f"\n\n<blockquote>{deal_seller_transfer_text(lang)}</blockquote>"
         kb=InlineKeyboardMarkup([
             [InlineKeyboardButton(L(lang,"Переслать партнёру","Forward to partner"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
             [InlineKeyboardButton(L(lang,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
         ])
-        await send_new(update,text_out,kb,section="deal_card")
+        await send_new(update,text_out,kb,section="deal")
         try:
             await notify_deal_event(
                 context.bot,user.id,
