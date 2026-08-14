@@ -271,7 +271,7 @@ def load_reviews_index_html(local_root: str) -> bytes:
 
 # FunPay AI: Gemini / OpenAI / Groq по ключу, иначе g4f (живые ответы без ключа).
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
-# AI_PROVIDER=gemini|openai|groq|g4f|local|auto
+# AI_PROVIDER=gemini|openai|groq|g4f|auto
 # AI_PROVIDER=local — только локальная база (без LLM)
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
 AI_MODEL = (os.getenv("AI_MODEL") or "").strip()
@@ -2484,7 +2484,6 @@ AI_KB = {
 
 def resolve_ai_provider():
     p=(AI_PROVIDER or "auto").lower()
-    if p=="local": return "local"
     if p=="gemini" and GEMINI_API_KEY: return "gemini"
     if p=="openai" and OPENAI_API_KEY: return "openai"
     if p=="groq" and GROQ_API_KEY: return "groq"
@@ -2492,72 +2491,65 @@ def resolve_ai_provider():
     if GEMINI_API_KEY: return "gemini"
     if OPENAI_API_KEY: return "openai"
     if GROQ_API_KEY: return "groq"
-    return "g4f"  # FunPay AI без ключа — как раньше, через g4f
-
-# Модели g4f: command-r стабильно работает на Render без ключей
-_G4F_MODELS = [
-    m for m in [
-        (AI_MODEL or "").strip(),
-        "command-r",
-        "command-r-plus",
-        "command-r7b",
-        "gpt-4o-mini",
-        "gpt-4o",
-    ] if m
-]
+    return "g4f"
 
 async def _ai_call_g4f(system, messages):
-    """Живой ответ FunPay AI без API-ключа (g4f), с ретраями по моделям."""
+    """Живой ChatGPT/g4f без ключа — AnyProvider + command-r (стабильно на Render)."""
     import asyncio
+    from g4f.client import Client
+    from g4f import Provider
+    client=Client()
     errs=[]
-    def _run(model):
-        from g4f.client import Client
-        client=Client()
-        msgs=[{"role":"system","content":system}]+list(messages)
-        r=client.chat.completions.create(model=model, messages=msgs)
+    attempts=[]
+    if (AI_MODEL or "").strip():
+        attempts.append(((AI_MODEL or "").strip(), None))
+    attempts.extend([
+        ("command-r", Provider.AnyProvider),
+        ("command-r-plus", Provider.AnyProvider),
+        ("gpt-4o-mini", None),
+    ])
+    def _run(model, provider):
+        kw={"model":model, "messages":[{"role":"system","content":system}]+list(messages), "timeout":55}
+        if provider is not None:
+            kw["provider"]=provider
+        r=client.chat.completions.create(**kw)
         text=(r.choices[0].message.content or "").strip()
         if not text:
             raise RuntimeError("empty g4f response")
         return text
-    for model in _G4F_MODELS:
+    for model, provider in attempts:
         try:
-            text=await asyncio.wait_for(asyncio.to_thread(_run, model), timeout=55)
-            logger.info(f"ai g4f ok model={model}")
+            text=await asyncio.wait_for(asyncio.to_thread(_run, model, provider), timeout=60)
+            logger.info("ai g4f ok model=%s provider=%s", model, getattr(provider, "__name__", "auto"))
             return text
         except Exception as e:
             errs.append(f"{model}: {e}")
-            logger.warning(f"ai g4f fail model={model}: {e}")
+            logger.warning("ai g4f fail model=%s: %s", model, e)
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """Живой FunPay AI: Gemini / OpenAI / Groq / g4f — отвечает на любые темы."""
+    """Gemini / OpenAI / Groq / g4f — живые ответы на любые вопросы (как при добавлении)."""
     provider=resolve_ai_provider()
-    if provider=="local":
-        return (ai_local_answer(question, lang, history) or "").strip()
     system=build_ai_system_prompt(lang)
     msgs=[]
-    for h in (history or [])[-8:]:
+    for h in (history or [])[-12:]:
         if h.get("role") in ("user","assistant") and h.get("content"):
-            msgs.append({"role":h["role"],"content":str(h["content"])[:1500]})
+            msgs.append({"role":h["role"],"content":str(h["content"])[:2000]})
     msgs.append({"role":"user","content":str(question or "")[:2000]})
-    chain=[]
-    if provider=="gemini":
-        chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
-    elif provider in ("openai","groq"):
-        chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
-    chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
-    seen=set(); uniq=[]
-    for name,fn in chain:
-        if name in seen: continue
-        seen.add(name); uniq.append((name,fn))
-    for name,fn in uniq:
-        try:
-            ans=await fn()
-            if ans and str(ans).strip():
-                return str(ans).strip()
-        except Exception as e:
-            logger.warning(f"ai_chat provider={name}: {e}")
-    return (ai_local_answer(question, lang, history) or "").strip()
+    try:
+        if provider=="gemini":
+            return await _ai_call_gemini(system, msgs)
+        if provider in ("openai","groq"):
+            return await _ai_call_openai_compatible(system, msgs, provider)
+        return await _ai_call_g4f(system, msgs)
+    except Exception as e:
+        logger.error("ai_chat provider=%s: %s", provider, e, exc_info=True)
+        if provider!="g4f":
+            try:
+                return await _ai_call_g4f(system, msgs)
+            except Exception as e2:
+                logger.error("ai_chat g4f fallback: %s", e2, exc_info=True)
+    return ai_local_answer(question, lang, history)
 
 def build_ai_system_prompt(lang="ru"):
     """Короткий промпт как в старом g4f-ИИ — отвечает на любые темы."""
@@ -2763,12 +2755,16 @@ def ai_local_answer(question, lang="ru", history=None):
         ans += L(lang,"\n\nМогу уточнить под ваш случай - напишите детали.","\n\nI can narrow it down - send details.")
         return ans[:3500]
 
-    # 3) LLM недоступен — без шаблона «переформулируйте»
+    # 3) если g4f недоступен — всё равно помогаем (как в первой версии)
     return L(lang,
-        "Сейчас нейросеть временно недоступна — попробуйте через минуту. "
-        "Или напишите @FunPayDeaIManager / https://support.funpay.com/tickets",
-        "AI is temporarily unavailable — try again in a minute. "
-        "Or contact @FunPayDeaIManager / https://support.funpay.com/tickets")
+        f"Принял: «{q[:180]}».\n\n"
+        "По FunPay могу подробно: сделки, пополнение, вывод, Tonkeeper, жалобы, рефералы 3%, отзывы.\n"
+        "Сформулируйте чуть конкретнее — дам пошаговый ответ. "
+        "Сложный кейс: @FunPayDeaIManager / https://support.funpay.com/tickets",
+        f"Got it: “{q[:180]}”.\n\n"
+        "On FunPay: deals, top-up, withdraw, Tonkeeper, reports, 3% referrals, reviews.\n"
+        "Be more specific for step-by-step help. "
+        "Hard case: @FunPayDeaIManager / https://support.funpay.com/tickets")
 
 def ai_thinking_html(lang):
     """Одна строка с premium-эмодзи — как раньше."""
