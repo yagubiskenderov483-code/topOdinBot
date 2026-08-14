@@ -269,12 +269,11 @@ def load_reviews_index_html(local_root: str) -> bytes:
     return b""
 
 
-# FunPay AI: Gemini / OpenAI / Groq по ключу; без ключей — локальная база (стабильно на Render).
+# FunPay AI: Gemini / OpenAI / Groq по ключу, иначе g4f (живые ответы без ключа).
 # Render env (по желанию): GEMINI_API_KEY / OPENAI_API_KEY / GROQ_API_KEY
 # AI_PROVIDER=gemini|openai|groq|g4f|local|auto
-# AI_USE_G4F=1 — включить g4f (нестабилен на облаке, по умолчанию выключен)
+# AI_PROVIDER=local — только локальная база (без LLM)
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "auto").strip().lower()
-AI_USE_G4F = (os.getenv("AI_USE_G4F") or "").strip().lower() in ("1", "true", "yes", "on")
 AI_MODEL = (os.getenv("AI_MODEL") or "").strip()
 AI_BASE_URL = (os.getenv("AI_BASE_URL") or "").rstrip("/")
 GEMINI_API_KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
@@ -2493,30 +2492,16 @@ def resolve_ai_provider():
     if GEMINI_API_KEY: return "gemini"
     if OPENAI_API_KEY: return "openai"
     if GROQ_API_KEY: return "groq"
-    if AI_USE_G4F: return "g4f"
-    return "local"  # без ключей — локальная база, всегда отвечает
+    return "g4f"  # FunPay AI без ключа — как раньше, через g4f
 
 # Модели LLM, которые стабильно отвечают с cloud (Render и т.п.)
 _G4F_MODELS = [
     m for m in [
         (AI_MODEL or "").strip(),
         "gpt-4o-mini",
+        "gpt-4o",
     ] if m
 ]
-
-def _ai_local_is_definitive(answer, lang="ru"):
-    """True when local KB already has a concrete answer (skip slow LLM)."""
-    if not (answer or "").strip():
-        return False
-    generic = (
-        "Отвечаю своими знаниями",
-        "Answer with my knowledge",
-        "переформулируйте короче",
-        "rephrase more briefly",
-        "Напишите вопрос",
-        "Write a question",
-    )
-    return not any(g in answer for g in generic)
 
 async def _ai_call_g4f(system, messages):
     """Живой ответ FunPay AI без API-ключа (g4f), с ретраями по моделям."""
@@ -2542,14 +2527,11 @@ async def _ai_call_g4f(system, messages):
     raise RuntimeError("g4f failed: " + " | ".join(errs[:3]))
 
 async def ai_chat(question, lang="ru", history=None):
-    """FunPay AI: локальная база → Gemini / OpenAI / Groq / g4f → снова локально."""
+    """FunPay AI: Gemini / OpenAI / Groq / g4f — живые ответы; локально если LLM недоступен."""
     try:
-        local = ai_local_answer(question, lang, history)
-        if _ai_local_is_definitive(local, lang):
-            return local.strip()
         provider=resolve_ai_provider()
         if provider=="local":
-            return (local or ai_local_answer(question, lang, history) or "").strip()
+            return (ai_local_answer(question, lang, history) or "").strip()
         system=build_ai_system_prompt(lang)
         msgs=[]
         for h in (history or [])[-12:]:
@@ -2561,8 +2543,7 @@ async def ai_chat(question, lang="ru", history=None):
             chain.append(("gemini", lambda: _ai_call_gemini(system, msgs)))
         elif provider in ("openai","groq"):
             chain.append((provider, lambda p=provider: _ai_call_openai_compatible(system, msgs, p)))
-        elif provider=="g4f":
-            chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
+        chain.append(("g4f", lambda: _ai_call_g4f(system, msgs)))
         seen=set(); uniq=[]
         for name,fn in chain:
             if name in seen: continue
@@ -2574,7 +2555,7 @@ async def ai_chat(question, lang="ru", history=None):
                     return str(ans).strip()
             except Exception as e:
                 logger.warning(f"ai_chat provider={name}: {e}")
-        return (local or ai_local_answer(question, lang, history) or "").strip()
+        return (ai_local_answer(question, lang, history) or "").strip()
     except Exception as e:
         logger.error("ai_chat: %s", e, exc_info=True)
         return ai_local_answer(question, lang, history)
@@ -2806,6 +2787,16 @@ def ai_local_answer(question, lang="ru", history=None):
         "• For general topics, ask shorter who/what/how/why.\n"
         "• Money disputes: https://support.funpay.com/tickets or @FunPayDeaIManager.\n\n"
         "Examples: “what is blockchain”, “how to bind a card”, “photosynthesis”, “3% referrals”.")
+
+def ai_thinking_html(lang):
+    """Одна строка с premium-эмодзи — как раньше."""
+    return f"{E['premium']} <b>{T(lang,'FunPay AI думает…','FunPay AI is thinking…','FunPay AI думає…')}</b>"
+
+def ai_answer_html(ans, lang="ru"):
+    return (
+        f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
+        f"<blockquote>{H(ans)}</blockquote>"
+    )
 
 async def show_ai(update, context):
     try:
@@ -3648,11 +3639,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ud.get("ai_ask"):
             chat=update.effective_chat
             hist=ud.setdefault("ai_history",[])
-            think_body=(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-                f"<blockquote>{T(lang,'FunPay AI думает…','FunPay AI is thinking…','FunPay AI думає…')}</blockquote>"
-            )
-            thinking = await chat.send_message(think_body, parse_mode="HTML", reply_markup=ai_kb(lang))
+            thinking = await chat.send_message(ai_thinking_html(lang), parse_mode="HTML", reply_markup=ai_kb(lang))
             try:
                 async with chat.action(ChatAction.TYPING):
                     ans=dedupe_ai_text(await ai_chat(text,lang,hist) or "")
@@ -3670,10 +3657,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             hist.append({"role":"assistant","content":ans})
             if len(hist)>24: ud["ai_history"]=hist[-24:]
             ud["ai_ask"]=True
-            body=(
-                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-                f"<blockquote>{H(ans)}</blockquote>"
-            )
+            body=ai_answer_html(ans, lang)
             try:
                 await thinking.edit_text(body, parse_mode="HTML", reply_markup=ai_kb(lang))
             except Exception:
@@ -5743,7 +5727,7 @@ def main():
     print(f"DB: {DB_FILE}")
     print(f"Banners seed: {BANNERS_SEED_FILE}")
     _ap=resolve_ai_provider()
-    print(f"AI provider: {_ap}" + (" (set GEMINI/OPENAI/GROQ key or AI_USE_G4F=1 for online LLM)" if _ap=="local" else ""))
+    print(f"AI provider: {_ap}" + (" (set GEMINI/OPENAI/GROQ key for API LLM)" if _ap=="g4f" else ""))
     print(f"Reviews Mini App: {reviews_miniapp_url()}")
     print(f"TonConnect Mini App: {tonconnect_miniapp_url()}")
 
