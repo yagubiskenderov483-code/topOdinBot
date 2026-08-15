@@ -1229,58 +1229,123 @@ def get_banner(db, section="main"):
         if any(v for v in lg.values()): return lg
     return None
 
+def _strip_html_tags(s):
+    return re.sub(r"<[^>]+>", "", str(s or ""))
+
+def _tg_caption(text, has_media=False):
+    """Telegram: 1024 for media captions, 4096 for text messages."""
+    lim=1024 if has_media else 4096
+    t=str(text or "")
+    if len(t)<=lim: return t
+    return t[: lim-1] + "…"
+
+async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None):
+    """Send with HTML; on parse/media errors fall back to plain text."""
+    has_media=bool(bv or bg or bp)
+    full=_tg_caption(text, has_media=has_media)
+    try:
+        if bv: return await chat.send_video(video=bv,caption=full,parse_mode="HTML",reply_markup=kb)
+        if bg: return await chat.send_animation(animation=bg,caption=full,parse_mode="HTML",reply_markup=kb)
+        if bp: return await chat.send_photo(photo=bp,caption=full,parse_mode="HTML",reply_markup=kb)
+        return await chat.send_message(full,parse_mode="HTML",reply_markup=kb)
+    except Exception as e:
+        logger.warning("safe_send html: %s", e)
+        plain=_tg_caption(_strip_html_tags(text), has_media=False)[:4096]
+        try:
+            return await chat.send_message(plain, reply_markup=kb)
+        except Exception as e2:
+            logger.error("safe_send plain: %s", e2)
+            return None
+
+async def _safe_edit_text(msg, text, kb=None):
+    """editMessageText without crashing the callback (media→text must not use this)."""
+    if not msg: return False
+    if msg.photo or msg.video or msg.animation or msg.document:
+        return False
+    full=_tg_caption(text, has_media=False)
+    try:
+        await msg.edit_text(full, parse_mode="HTML", reply_markup=kb)
+        return True
+    except Exception as e:
+        err=str(e).lower()
+        if "message is not modified" in err or "not modified" in err:
+            return True
+        logger.warning("edit_text: %s", e)
+        try:
+            await msg.edit_text(_strip_html_tags(full)[:4096], reply_markup=kb)
+            return True
+        except Exception as e2:
+            logger.warning("edit_text plain: %s", e2)
+            return False
+
+async def _safe_edit_caption(msg, text, kb=None):
+    if not msg: return False
+    if not (msg.photo or msg.video or msg.animation):
+        return False
+    full=_tg_caption(text, has_media=True)
+    try:
+        await msg.edit_caption(caption=full, parse_mode="HTML", reply_markup=kb)
+        return True
+    except Exception as e:
+        err=str(e).lower()
+        if "message is not modified" in err or "not modified" in err:
+            return True
+        logger.warning("edit_caption: %s", e)
+        try:
+            await msg.edit_caption(caption=_strip_html_tags(full)[:1024], reply_markup=kb)
+            return True
+        except Exception as e2:
+            logger.warning("edit_caption plain: %s", e2)
+            return False
+
 async def send_section(update, text, kb=None, section="main"):
+    """Show a section. Never leave the user with a bare editMessage error toast."""
     try:
         db=load_db(); b=get_banner(db,section)
         bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-        bt=b.get("text","") if b else ""
-        full=text+(f"\n\n<b>{bt}</b>" if bt else "")
+        bt=(b.get("text") or "").strip() if b else ""
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
+        chat=update.effective_chat
         previous_message=None
         if update.callback_query and update.callback_query.message:
             msg=update.callback_query.message
             has_media=bool(msg.photo or msg.video or msg.animation)
             new_has_media=bool(bv or bg or bp)
+            # Same kind of message → try in-place edit
             if not has_media and not new_has_media:
-                try: await msg.edit_text(full,parse_mode="HTML",reply_markup=kb); return
-                except Exception as e: logger.warning(f"send_section edit_text: {e}")
-            if has_media and new_has_media:
+                if await _safe_edit_text(msg, full, kb):
+                    return
+            elif has_media and new_has_media:
                 current_file=(msg.video.file_id if msg.video else
                               msg.animation.file_id if msg.animation else
                               msg.photo[-1].file_id if msg.photo else None)
                 target_file=bv or bg or bp
-                if current_file==target_file:
-                    try: await msg.edit_caption(caption=full,parse_mode="HTML",reply_markup=kb); return
-                    except Exception as e: logger.warning(f"send_section edit_caption: {e}")
+                if current_file==target_file and await _safe_edit_caption(msg, full, kb):
+                    return
+            # Media↔text or different banner: send new, drop old (avoids editMessage crashes)
             previous_message=msg
-        if bv: await update.effective_chat.send_video(video=bv,caption=full,parse_mode="HTML",reply_markup=kb)
-        elif bg: await update.effective_chat.send_animation(animation=bg,caption=full,parse_mode="HTML",reply_markup=kb)
-        elif bp: await update.effective_chat.send_photo(photo=bp,caption=full,parse_mode="HTML",reply_markup=kb)
-        else: await update.effective_chat.send_message(full,parse_mode="HTML",reply_markup=kb)
+        await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp)
         if previous_message:
             try: await previous_message.delete()
             except: pass
     except Exception as e:
         logger.error(f"send_section: {e}", exc_info=True)
-        try: await update.effective_chat.send_message(text,parse_mode="HTML",reply_markup=kb)
+        try:
+            await _safe_send_chat(update.effective_chat, text, kb)
         except Exception as e2:
             logger.error(f"send_section fallback: {e2}", exc_info=True)
-            try: await update.effective_chat.send_message(text,reply_markup=kb)
-            except: pass
 
 async def send_new(update, text, kb=None, section="main"):
     try:
         db=load_db(); b=get_banner(db,section)
         if section in ("deal_forward","deal_join") and not b: b=get_banner(db,"deal_card")
         bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-        bt=b.get("text","") if b else ""
-        full=text+(f"\n\n<b>{bt}</b>" if bt else "")
-        if bv: await update.effective_chat.send_video(video=bv,caption=full,parse_mode="HTML",reply_markup=kb)
-        elif bg: await update.effective_chat.send_animation(animation=bg,caption=full,parse_mode="HTML",reply_markup=kb)
-        elif bp: await update.effective_chat.send_photo(photo=bp,caption=full,parse_mode="HTML",reply_markup=kb)
-        else: await update.effective_chat.send_message(full,parse_mode="HTML",reply_markup=kb)
+        bt=(b.get("text") or "").strip() if b else ""
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
+        await _safe_send_chat(update.effective_chat, full, kb, bv=bv, bg=bg, bp=bp)
     except Exception as e:
         logger.error(f"send_new: {e}")
-        try: await update.effective_chat.send_message(text,parse_mode="HTML",reply_markup=kb)
+        try: await _safe_send_chat(update.effective_chat, text, kb)
         except: pass
 
 async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
@@ -1288,15 +1353,21 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
         db=load_db(); b=get_banner(db,section)
         if section=="deal_join" and not b: b=get_banner(db,"deal_card")
         bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-        bt=b.get("text","") if b else ""
-        full=text+(f"\n\n<b>{bt}</b>" if bt else "")
-        if bv: await bot.send_video(chat_id=chat_id,video=bv,caption=full,parse_mode="HTML",reply_markup=kb)
-        elif bg: await bot.send_animation(chat_id=chat_id,animation=bg,caption=full,parse_mode="HTML",reply_markup=kb)
-        elif bp: await bot.send_photo(chat_id=chat_id,photo=bp,caption=full,parse_mode="HTML",reply_markup=kb)
-        else: await bot.send_message(chat_id=chat_id,text=full,parse_mode="HTML",reply_markup=kb)
+        bt=(b.get("text") or "").strip() if b else ""
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
+        has_media=bool(bv or bg or bp)
+        cap=_tg_caption(full, has_media=has_media)
+        try:
+            if bv: await bot.send_video(chat_id=chat_id,video=bv,caption=cap,parse_mode="HTML",reply_markup=kb); return
+            if bg: await bot.send_animation(chat_id=chat_id,animation=bg,caption=cap,parse_mode="HTML",reply_markup=kb); return
+            if bp: await bot.send_photo(chat_id=chat_id,photo=bp,caption=cap,parse_mode="HTML",reply_markup=kb); return
+            await bot.send_message(chat_id=chat_id,text=cap,parse_mode="HTML",reply_markup=kb)
+        except Exception as e:
+            logger.warning("send_banner_chat html: %s", e)
+            await bot.send_message(chat_id=chat_id,text=_strip_html_tags(text)[:4096],reply_markup=kb)
     except Exception as e:
         logger.error(f"send_banner_chat: {e}")
-        try: await bot.send_message(chat_id=chat_id,text=text,parse_mode="HTML",reply_markup=kb)
+        try: await bot.send_message(chat_id=chat_id,text=_strip_html_tags(text)[:4096],reply_markup=kb)
         except: pass
 
 # ─── Keyboards ────────────────────────────────────────────────────────────────
@@ -1870,6 +1941,7 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
                 T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",
                 icon_custom_emoji_id=WAIT_ICON)])
     rows.extend([
+        [InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
         [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
     ])
     return InlineKeyboardMarkup(rows)
@@ -3190,7 +3262,12 @@ async def cmd_my_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─── Callbacks ────────────────────────────────────────────────────────────────
 async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        q=update.callback_query; await q.answer(); d=q.data
+        q=update.callback_query
+        try:
+            await q.answer()
+        except Exception as e:
+            logger.warning("callback answer: %s", e)
+        d=q.data or ""
         ud=context.user_data; uid=update.effective_user.id
         lang=get_lang(uid); ru=lang=="ru"
         if d.startswith("adm_") and uid not in ADMIN_IDS: return
@@ -3656,10 +3733,20 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         logger.error(f"on_cb ERROR d={q.data if 'q' in dir() else '?'}: {e}", exc_info=True)
+        # Never show Telegram API junk (editMessage / parse entities) to the user
         try:
             lang=get_lang(update.effective_user.id)
-            await update.effective_chat.send_message(
-                f"{T(lang,'Ошибка кнопки','Button error','Помилка кнопки')}: {e}")
+            d_now=(q.data if 'q' in dir() and q else "") or ""
+            if d_now=="menu_my_deals":
+                await show_my_deals(update, context)
+            elif d_now=="main_menu":
+                await show_main(update, context)
+            else:
+                await update.effective_chat.send_message(
+                    T(lang,"Не открылось. Нажмите ещё раз.","Didn't open. Tap again.","Не відкрилося. Натисніть ще раз."),
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")
+                    ]]))
         except: pass
 
 # ─── Messages ─────────────────────────────────────────────────────────────────
@@ -4656,7 +4743,7 @@ async def show_req(update, context):
 
 async def show_my_deals(update, context):
     try:
-        db=load_db(); uid=str(update.effective_user.id); lang=get_lang(int(uid)); ru=lang=="ru"
+        db=load_db(); uid=str(update.effective_user.id); lang=get_lang(int(uid))
         deals={}
         for k,v in db.get("deals",{}).items():
             if (str(v.get("user_id",""))==uid
@@ -4664,24 +4751,40 @@ async def show_my_deals(update, context):
                 or str(v.get("buyer_uid",""))==uid
                 or str(v.get("seller_uid",""))==uid):
                 deals[k]=v
+        back_kb=InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]])
         if not deals:
             await send_section(update,
-                f"{Edl} <b>{L(lang,'Мои сделки','My Deals')}\n\n{L(lang,'Пока нет сделок.','No deals yet.')}</b>",
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="my_deals"); return
+                f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')}</b>\n\n"
+                f"{T(lang,'Пока нет сделок.','No deals yet.','Поки немає угод.')}",
+                back_kb,section="my_deals"); return
+        # Plain status labels — custom emoji inside <b> breaks Telegram HTML (editMessage)
         SNAMES={
-            "pending":   T(lang,f"{Esrk} Ожидает",  f"{Esrk} Pending",  f"{Esrk} Очікує"),
-            "confirmed": T(lang,f"{Ech} Завершена",  f"{Ech} Completed", f"{Ech} Завершена"),
+            "pending":   T(lang,"ожидает","pending","очікує"),
+            "confirmed": T(lang,"завершена","completed","завершена"),
         }
-        lines=[f"{Edl} <b>{L(lang,'Мои сделки','My Deals')} ({len(deals)}):</b>\n"]
+        lines=[f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({len(deals)})</b>\n"]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
-            tn=tname(dv.get("type",""),lang)
-            cur_d=cur_plain(dv.get("currency",""),lang)
-            amt=dv.get("payment_amount") or dv.get("amount")
-            s=SNAMES.get(dv.get("status",""),dv.get("status",""))
-            lines.append(f"<b>{i}. {tn} · {amt} {cur_d} · {s}</b>")
-        await send_section(update,"\n".join(lines),
-            InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="my_deals")
-    except Exception as e: logger.error(f"show_my_deals: {e}")
+            tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "—")
+            cur_d=cur_plain(dv.get("currency",""),lang) or str(dv.get("currency") or "")
+            amt=dv.get("payment_amount") or dv.get("amount") or "—"
+            s=SNAMES.get(dv.get("status",""), str(dv.get("status") or "—"))
+            lines.append(
+                f"<b>{i}.</b> {H(tn)} · <code>{H(did)}</code>\n"
+                f"{H(amt)} {H(cur_d)} · {H(s)}"
+            )
+        await send_section(update,"\n".join(lines), back_kb, section="my_deals")
+    except Exception as e:
+        logger.error(f"show_my_deals: {e}", exc_info=True)
+        try:
+            lang=get_lang(update.effective_user.id)
+            await send_section(
+                update,
+                f"{Ewrn} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')}</b>\n\n"
+                f"{T(lang,'Не удалось открыть список. Нажмите ещё раз.','Could not open the list. Try again.','Не вдалося відкрити список. Натисніть ще раз.')}",
+                InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),
+                section="my_deals")
+        except Exception as e2:
+            logger.error(f"show_my_deals fallback: {e2}")
 
 async def show_top(update, context):
     try:
@@ -5776,6 +5879,14 @@ def main():
         err = context.error
         if isinstance(err, Conflict):
             logger.warning("getUpdates conflict — другой инстанс ещё жив. Не останавливаемся, Telegram отдаст очередь этому процессу.")
+            return
+        # BadRequest editMessage / message is not modified — not user-facing
+        name=type(err).__name__ if err else ""
+        msg=str(err or "")
+        if "Message is not modified" in msg or "message is not modified" in msg:
+            return
+        if "Can't parse entities" in msg or "can't parse entities" in msg:
+            logger.warning("HTML parse: %s", err)
             return
         logger.error("handler error: %s", err, exc_info=err)
     app.add_error_handler(on_error)
