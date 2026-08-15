@@ -696,16 +696,16 @@ def H(value): return html.escape(str(value))
 
 def deal_payment_details_lines(deal_id, d, lang="ru"):
     pay_cur=d.get("currency","-")
-    lines=[f"\n<b>{Ecrd} {L(lang,'Реквизиты для оплаты','Payment details')}:</b>\n"]
+    lines=[f"\n{Ecrd} <b>{L(lang,'Реквизиты для оплаты','Payment details')}:</b>\n"]
     if pay_cur in FIAT_CURRENCIES:
         bank=card_bank(lang)
         lines += [
-            f"<b>{Ecrd} {L(lang,'СБП / Карта','Card / Phone','СБП / Картка')} {bank}:</b>",
+            f"{Ecrd} <b>{L(lang,'СБП / Карта','Card / Phone','СБП / Картка')} {bank}:</b>",
             f"<blockquote>{L(lang,'Номер','Number')}: <code>{CARD_NUM}</code>\n{L(lang,'Получатель','Recipient')}: {CARD_NAME}\n{L(lang,'Банк','Bank')}: {bank}</blockquote>",
         ]
     elif pay_cur=="TON":
         tonkeeper_url=deal_tonkeeper_payment_url(deal_id,d)
-        lines.append(f"<b>{Eton} TON - Tonkeeper:</b>")
+        lines.append(f"{Eton} <b>TON - Tonkeeper:</b>")
         if tonkeeper_url:
             lines.append(
                 f"<blockquote><a href='{H(tonkeeper_url)}'>{L(lang,'Оплатить в Tonkeeper','Pay in Tonkeeper')}</a>\n"
@@ -714,15 +714,15 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
             lines.append(
                 f"<blockquote>{L(lang,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>")
         lines += [
-            f"<b>{Ecbt} TON - Send / Crypto Bot:</b>",
+            f"{Ecbt} <b>TON - Send / Crypto Bot:</b>",
             f"<blockquote><a href='{CRYPTO_BOT}'>{L(lang,'Открыть Send / Crypto Bot','Open Send / Crypto Bot')}</a>\n"
             f"{L(lang,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>",
-            f"<b>{Eton} TON - {L(lang,'адрес кошелька','wallet address')}:</b>",
+            f"{Eton} <b>TON - {L(lang,'адрес кошелька','wallet address')}:</b>",
             f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>",
         ]
     elif pay_cur=="USDT":
         tonkeeper_url=deal_tonkeeper_payment_url(deal_id,d)
-        lines.append(f"<b>{Eusdt} USDT - Tonkeeper:</b>")
+        lines.append(f"{Eusdt} <b>USDT - Tonkeeper:</b>")
         if tonkeeper_url:
             lines.append(
                 f"<blockquote><a href='{H(tonkeeper_url)}'>{L(lang,'Оплатить в Tonkeeper','Pay in Tonkeeper')}</a>\n"
@@ -731,21 +731,21 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
             lines.append(
                 f"<blockquote>{L(lang,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>")
         lines += [
-            f"<b>{Ecbt} USDT - Send / Crypto Bot:</b>",
+            f"{Ecbt} <b>USDT - Send / Crypto Bot:</b>",
             f"<blockquote><a href='{CRYPTO_BOT}'>{L(lang,'Открыть Send / Crypto Bot','Open Send / Crypto Bot')}</a>\n"
             f"{L(lang,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>",
-            f"<b>{Ebnk2} USDT - {L(lang,'адрес кошелька','wallet address')}:</b>",
+            f"{Ebnk2} <b>USDT - {L(lang,'адрес кошелька','wallet address')}:</b>",
             f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>",
         ]
     elif pay_cur=="Stars":
         lines += [
-            f"<b>{Est} {L(lang,'Звёзды','Stars')}:</b>",
+            f"{Est} <b>{L(lang,'Звёзды','Stars')}:</b>",
             f"<blockquote>{T(lang,'Оплата Stars по реквизитам сделки.','Pay Stars using the deal details.','Оплата Stars за реквізитами угоди.')}</blockquote>",
         ]
     else:
         bank=card_bank(lang)
         lines += [
-            f"<b>{Ecrd} {L(lang,'СБП / Карта','Card / Phone','СБП / Картка')} {bank}:</b>",
+            f"{Ecrd} <b>{L(lang,'СБП / Карта','Card / Phone','СБП / Картка')} {bank}:</b>",
             f"<blockquote>{L(lang,'Номер','Number')}: <code>{CARD_NUM}</code>\n{L(lang,'Получатель','Recipient')}: {CARD_NAME}\n{L(lang,'Банк','Bank')}: {bank}</blockquote>",
         ]
     lines += ["", f"<b>{L(lang,'После перевода нажмите «Я оплатил»','After payment press «I paid»')}</b>"]
@@ -3639,7 +3639,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("adm_topup_ok_"):
             if update.effective_user.id not in ADMIN_IDS: return
             target=d[13:]
-            await q.edit_message_text(f"{Ech} <b>Пополнение подтверждено!</b>\n<code>{target}</code>",parse_mode="HTML")
+            try:
+                await q.edit_message_text(f"{Ech} <b>Пополнение подтверждено!</b>\n<code>{target}</code>",parse_mode="HTML")
+            except Exception:
+                try: await q.message.reply_text(f"{Ech} <b>Пополнение подтверждено!</b>\n<code>{target}</code>",parse_mode="HTML")
+                except: pass
             try:
                 tl=get_lang(int(target))
                 await context.bot.send_message(chat_id=int(target),
@@ -3650,7 +3654,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("adm_topup_no_"):
             if update.effective_user.id not in ADMIN_IDS: return
             target=d[13:]
-            await q.edit_message_text(f"{Ewrn} <b>Не подтверждено.</b>\n<code>{target}</code>",parse_mode="HTML")
+            try:
+                await q.edit_message_text(f"{Ewrn} <b>Не подтверждено.</b>\n<code>{target}</code>",parse_mode="HTML")
+            except Exception:
+                try: await q.message.reply_text(f"{Ewrn} <b>Не подтверждено.</b>\n<code>{target}</code>",parse_mode="HTML")
+                except: pass
             return
 
         if d=="withdraw":
@@ -3699,7 +3707,12 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("rev_"):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars_n=int(parts[3])
             ud["review_deal"]=deal_id; ud["review_role"]=role; ud["review_stars"]=stars_n; ud["review_step"]="text"
-            await q.edit_message_text(f"{Est} {L(lang,'Оценка','Rating')}: {stars_n}/5\n\n{L(lang,'Напишите комментарий:','Write a comment:')}",parse_mode="HTML"); return
+            txt=f"{Est} {L(lang,'Оценка','Rating')}: {stars_n}/5\n\n{L(lang,'Напишите комментарий:','Write a comment:')}"
+            try:
+                await q.edit_message_text(txt,parse_mode="HTML")
+            except Exception:
+                await update.effective_chat.send_message(txt,parse_mode="HTML")
+            return
 
         if d.startswith("adm_del_rev_"):
             parts=d[12:].split("_",1); target_uid=parts[0]; ridx=int(parts[1]) if len(parts)>1 else -1
@@ -3708,14 +3721,22 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 db["users"][target_uid]["reviews"].pop(ridx); save_db(db); await q.answer("Удалено")
                 revs=db["users"][target_uid].get("reviews",[]); u2=db["users"][target_uid]; uname2=u2.get("username","?")
                 if not revs:
-                    await q.edit_message_text(f"<b>@{uname2}: отзывов нет</b>",parse_mode="HTML",
-                        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад",callback_data="adm_back",icon_custom_emoji_id="5258084656674250503")]])); return
+                    try:
+                        await q.edit_message_text(f"<b>@{uname2}: отзывов нет</b>",parse_mode="HTML",
+                            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Назад",callback_data="adm_back",icon_custom_emoji_id="5258084656674250503")]]))
+                    except Exception:
+                        pass
+                    return
                 lines=[f"{Estr} <b>Отзывы @{uname2} ({len(revs)}):</b>"]; rows2=[]
                 for i,r in enumerate(revs):
                     lines.append(f"\n{i+1}. {H(r)}")
                     rows2.append([InlineKeyboardButton(f"#{i+1}",callback_data=f"adm_del_rev_{target_uid}_{i}",icon_custom_emoji_id="5904542823167824187")])
                 rows2.append([InlineKeyboardButton("Назад",callback_data="adm_back",icon_custom_emoji_id="5258084656674250503")])
-                await q.edit_message_text("\n".join(lines),parse_mode="HTML",reply_markup=InlineKeyboardMarkup(rows2)); return
+                try:
+                    await q.edit_message_text("\n".join(lines),parse_mode="HTML",reply_markup=InlineKeyboardMarkup(rows2))
+                except Exception:
+                    pass
+                return
             return
 
         if d.startswith("paid_"): await on_paid(update,context); return
@@ -4401,10 +4422,13 @@ async def on_transferred(update, context):
             except Exception as e:
                 logger.error(f"notify buyer transferred: {e}")
         lang=get_lang(seller.id); ru=lang=="ru"
-        await q.edit_message_reply_markup(InlineKeyboardMarkup([
+        try:
+            await q.edit_message_reply_markup(InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
-            [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
-        ]))
+                [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
+            ]))
+        except Exception:
+            pass
     except Exception as e:
         logger.error(f"on_transferred: {e}")
 
