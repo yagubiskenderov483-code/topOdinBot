@@ -4,13 +4,13 @@
 
 ## Бот
 
-- Бот: **@FunPayDealsOTCRobot**
+- Бот: **@FunPayDeaIsOTCRobot**
 - Менеджер: **@FunPayDeaIManager**
 - Поддержка: https://support.funpay.com/tickets
 - Сайт: https://funpay.com/
 - Отзывы: в боте (Информация → Отзывы) — отзывы с сайта перенаправлены сюда
 
-Токен — из env `BOT_TOKEN` для `@FunPayDealsOTCRobot`.
+Токен — из env `BOT_TOKEN` для `@FunPayDeaIsOTCRobot`.
 
 ## Установка
 
@@ -23,10 +23,10 @@ python bot.py
 
 1. Disk mount `/data`, env `DATA_DIR=/data`, `DB_FILE=/data/db.json`
 2. Health Check Path: `/health`
-3. `BOT_TOKEN=` токен `@FunPayDealsOTCRobot`
+3. `BOT_TOKEN=` токен `@FunPayDeaIsOTCRobot`
 4. Manual Deploy ветки `main`
 
-Ссылки на сделки: `https://t.me/FunPayDealsOTCRobot?start=deal_FPxxxxx`
+Ссылки на сделки: `https://t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx`
 
 ## Mini App
 
