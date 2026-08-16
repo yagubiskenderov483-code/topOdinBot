@@ -2825,20 +2825,23 @@ def resolve_ai_provider():
 def _ai_short_system_prompt(lang="ru"):
     if lang=="uk":
         return (
-            "Ти FunPay AI. Відповідай природно, як звичайний асистент. "
+            "Ти FunPay AI. Завжди відповідай українською. "
+            "Відповідай природно, як звичайний асистент. "
             "Не повторюй бренд FunPay у кожній відповіді — згадуй лише якщо питання саме про бот/угоди. "
-            "Без HTML. Українська."
+            "Без HTML."
         )
     if lang=="en":
         return (
-            "You are FunPay AI. Reply naturally like a normal assistant. "
+            "You are FunPay AI. Always reply in English. "
+            "Reply naturally like a normal assistant. "
             "Do not mention FunPay in every answer — only when the question is about the bot/deals. "
-            "No HTML. English."
+            "No HTML."
         )
     return (
-        "Ты FunPay AI. Отвечай естественно, как обычный ассистент. "
+        "Ты FunPay AI. Всегда отвечай на русском. "
+        "Отвечай естественно, как обычный ассистент. "
         "Не повторяй бренд FunPay в каждом ответе — упоминай только если вопрос про бот/сделки. "
-        "Без HTML. Русский."
+        "Без HTML."
     )
 
 def ai_unconditional_reply(question, lang="ru"):
@@ -2919,11 +2922,16 @@ async def ai_chat(question, lang="ru", history=None):
     """Всегда возвращает текст. Ошибки провайдеров глотаем."""
     try:
         provider=resolve_ai_provider()
+        lang_hint={
+            "ru":"[Ответь строго на русском]\n",
+            "uk":"[Відповідай строго українською]\n",
+            "en":"[Reply strictly in English]\n",
+        }.get(lang, "[Ответь строго на русском]\n")
         msgs=[]
         for h in (history or [])[-8:]:
             if h.get("role") in ("user","assistant") and h.get("content"):
                 msgs.append({"role":h["role"],"content":str(h["content"])[:1500]})
-        msgs.append({"role":"user","content":str(question or "")[:2000]})
+        msgs.append({"role":"user","content":lang_hint+str(question or "")[:2000]})
         systems=[build_ai_system_prompt(lang), _ai_short_system_prompt(lang)]
         for system in systems:
             chain=[]
@@ -2955,23 +2963,26 @@ def build_ai_system_prompt(lang="ru"):
     kb="\n\n".join(_ai_kb_entry_text(entry, lang) for entry in AI_KB.values())
     if lang=="uk":
         return _bot_mention_fix(
-            "Ти — FunPay AI. Відповідай як звичайний розумний асистент: живо, коротко, по суті. "
-            "Не нав’язуй FunPay у кожній відповіді. Згадуй бот/угоди/реєстрацію лише якщо користувач питає про це. "
+            "Ти — FunPay AI. ЗАВЖДИ відповідай українською мовою користувача бота. "
+            "Відповідай як звичайний розумний асистент: живо, коротко, по суті. "
+            "Не нав’язуй FunPay у кожній відповіді. Згадуй бот/угоди лише якщо користувач питає про це. "
             "Для питань про бот спирайся на базу знань нижче. Не відшивай шаблоном. "
-            "Ніколи не називай інші моделі. Без HTML/Markdown. Мова: українська.\n\n"
+            "Ніколи не називай інші моделі. Без HTML/Markdown.\n\n"
             f"База знань бота (використовуй лише за потреби):\n{kb}")
     if lang=="ru":
         return _bot_mention_fix(
-            "Ты — FunPay AI. Отвечай как обычный умный ассистент: живо, коротко, по делу. "
+            "Ты — FunPay AI. ВСЕГДА отвечай на русском языке пользователя бота. "
+            "Отвечай как обычный умный ассистент: живо, коротко, по делу. "
             "Не вставляй FunPay в каждый ответ. Упоминай бот/сделки только если пользователь спрашивает про это. "
             "Для вопросов про бот опирайся на базу знаний ниже. Не отшивай шаблоном. "
-            "Никогда не называй другие модели. Обычный текст без HTML/Markdown. Язык: русский.\n\n"
+            "Никогда не называй другие модели. Обычный текст без HTML/Markdown.\n\n"
             f"База знаний бота (используй только когда нужно):\n{kb}")
     return _bot_mention_fix(
-        "You are FunPay AI. Reply like a normal smart assistant: natural, short, on point. "
+        "You are FunPay AI. ALWAYS reply in English. "
+        "Reply like a normal smart assistant: natural, short, on point. "
         "Do not mention FunPay in every answer. Bring up the bot/deals only when the user asks about them. "
         "For bot questions use the knowledge below. No canned refusals. Never name other AI models. "
-        "Plain text only, no HTML/Markdown. Answer in English.\n\n"
+        "Plain text only, no HTML/Markdown.\n\n"
         f"Bot knowledge (use only when needed):\n{kb}")
 
 async def _ai_call_gemini(system, messages):
@@ -3147,6 +3158,14 @@ def ai_local_answer(question, lang="ru", history=None):
 
     return ai_unconditional_reply(q, lang)
 
+def ai_intro_text(lang="ru"):
+    return T(
+        lang,
+        "FunPay AI. Пишите любой вопрос.",
+        "FunPay AI. Ask anything.",
+        "FunPay AI. Пишіть будь-яке питання.",
+    )
+
 def ai_thinking_html(lang):
     return (
         f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> "
@@ -3165,10 +3184,9 @@ async def show_ai(update, context):
         ud=context.user_data
         ud["ai_ask"]=True
         ud.setdefault("ai_history",[])
-        # Intro brand once, in English as requested
         text=(
             f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-            f"<blockquote>FunPay AI. Ask anything.</blockquote>"
+            f"<blockquote>{ai_intro_text(lang)}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
@@ -3558,7 +3576,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_section(
                 update,
                 f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-                f"<blockquote>FunPay AI. Ask anything.</blockquote>",
+                f"<blockquote>{ai_intro_text(lang)}</blockquote>",
                 ai_kb(lang),section="ai"); return
         if d=="menu_req":
             for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
