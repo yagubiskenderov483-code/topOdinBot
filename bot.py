@@ -766,13 +766,55 @@ async def notify_deal_event(bot, uid, text, lang="ru"):
     except Exception as e:
         logger.error(f"notify_deal_event {uid}: {e}")
 
+def _spawn(coro):
+    """Fire-and-forget: logs/admin notify must not block the user."""
+    try:
+        loop=asyncio.get_running_loop()
+        task=loop.create_task(coro)
+        def _done(t):
+            try:
+                exc=t.exception()
+                if exc: logger.warning("bg task: %s", exc)
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                pass
+        task.add_done_callback(_done)
+        return task
+    except Exception as e:
+        logger.warning("spawn: %s", e)
+        return None
+
 async def notify_admins(context, text, reply_markup=None):
-    for admin_id in ADMIN_IDS:
+    """Send to all admins in parallel."""
+    async def _one(admin_id):
         try:
             await context.bot.send_message(
                 chat_id=admin_id,text=text,parse_mode="HTML",reply_markup=reply_markup)
         except Exception as e:
             logger.error(f"notify admin {admin_id}: {e}")
+    await asyncio.gather(*[_one(a) for a in ADMIN_IDS], return_exceptions=True)
+
+def schedule_notify_admins(context, text, reply_markup=None):
+    _spawn(notify_admins(context, text, reply_markup))
+
+def schedule_log_msg(context, db, entry=None):
+    """Queue log channel post without waiting."""
+    if entry is None:
+        logs=db.get("logs") or []
+        if not logs: return
+        entry=logs[-1]
+    snap={
+        "log_chat_id": db.get("log_chat_id"),
+        "log_hidden": db.get("log_hidden", False),
+        "log_templates": dict(db.get("log_templates") or {}),
+        "log_banners": dict(db.get("log_banners") or {}),
+        "log_labels": dict(db.get("log_labels") or {}),
+    }
+    _spawn(send_log_msg(context, snap, dict(entry)))
+
+def schedule_notify_deal_event(bot, uid, text, lang="ru"):
+    _spawn(notify_deal_event(bot, uid, text, lang))
 
 BANNER_SECTIONS = {
     "main":"Главное меню","deal":"Создать сделку","balance":"Пополнить/Вывод",
@@ -821,27 +863,6 @@ def _media_ref(value):
         except Exception:
             return open(value, "rb")
     return value
-
-def resolve_banner_media(b, section=None):
-    """Return (video, gif, photo) refs; prefer live file_id, else local asset."""
-    if not isinstance(b, dict):
-        b={}
-    bv=b.get("video") or None
-    bg=b.get("gif") or None
-    bp=b.get("photo") or None
-    local=_banner_local_path(section, b)
-    # After bot token change Telegram file_ids die — use local assets when present
-    # unless we already have a fresh file_id cached for this bot (no AgAC from old seed alone).
-    if local and not bv and not bg:
-        # Prefer local whenever photo looks like an old/foreign file_id that may fail
-        # or when photo is empty. If photo is set, still keep local as fallback in send.
-        if not bp:
-            bp=local
-        else:
-            # Keep both: primary file_id, fallback local stored on banner dict
-            b=dict(b)
-            b["_local_fallback"]=local
-    return bv, bg, bp, b
 
 def _seed_has_content(data):
     if not isinstance(data, dict): return False
@@ -1090,19 +1111,33 @@ def load_db():
     return db
 
 def save_db(db):
+    """Fast atomic write (compact JSON). Banner cache only if banners present."""
     try:
         os.makedirs(os.path.dirname(DB_FILE) or ".", exist_ok=True)
     except Exception:
         pass
-    with open(DB_FILE,"w",encoding="utf-8") as f: json.dump(db, f, ensure_ascii=False, indent=2)
+    tmp=DB_FILE+".tmp"
+    try:
+        with open(tmp,"w",encoding="utf-8") as f:
+            json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
+        os.replace(tmp, DB_FILE)
+    except Exception:
+        with open(DB_FILE,"w",encoding="utf-8") as f:
+            json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
     try:
         _DB_MEM["db"]=db
         _DB_MEM["mtime"]=os.path.getmtime(DB_FILE)
         _DB_MEM["ts"]=time.time()
     except Exception:
         _DB_MEM["db"]=db; _DB_MEM["ts"]=time.time()
-    try: invalidate_banner_cache()
-    except Exception: pass
+    # Don't wipe banner map on every deal save — only when banners object identity changes rarely
+    # (still safe: get_banner prefers live db when passed; cached map used without db)
+    try:
+        if isinstance(db.get("banners"), dict):
+            _BANNER_MEM["map"]=db.get("banners") or {}
+            _BANNER_MEM["ts"]=time.time()
+    except Exception:
+        pass
 
 def get_user(db, uid):
     k=str(uid)
@@ -1472,11 +1507,13 @@ async def send_section(update, text, kb=None, section="main"):
             bv=bg=bp=None; local_fb=None
         else:
             bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            # Prefer local asset when photo is missing or still the broken cross-bot file_id
-            if local_fb and (not bp or (isinstance(bp, str) and not os.path.isfile(bp) and bp.startswith("AgAC"))):
-                # After token switch old AgAC file_ids fail — always prefer local until cached
+            # Prefer Telegram file_id (fast). Local file only if no file_id yet.
+            if local_fb and not bp and not bv and not bg:
                 bp=local_fb
                 local_fb=None
+            elif local_fb and bp and os.path.isfile(str(bp)):
+                local_fb=None  # already a path
+            # Keep local_fb as send-fallback when bp is a file_id that may be from another bot
         bt=(b.get("text") or "").strip() if b else ""
         full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
         chat=update.effective_chat
@@ -1523,8 +1560,10 @@ async def send_new(update, text, kb=None, section="main"):
             bv=bg=bp=None; local_fb=None
         else:
             bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            if local_fb and (not bp or (isinstance(bp, str) and not os.path.isfile(bp))):
+            if local_fb and not bp and not bv and not bg:
                 bp=local_fb; local_fb=None
+            elif local_fb and bp and os.path.isfile(str(bp)):
+                local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
         full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
         await _safe_send_chat(update.effective_chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
@@ -1543,8 +1582,10 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
             bv=bg=bp=None; local_fb=None
         else:
             bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            if local_fb and (not bp or (isinstance(bp, str) and not os.path.isfile(bp))):
+            if local_fb and not bp and not bv and not bg:
                 bp=local_fb; local_fb=None
+            elif local_fb and bp and os.path.isfile(str(bp)):
+                local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
         full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
         has_media=bool(bv or bg or bp)
@@ -2168,17 +2209,14 @@ async def complete_deal_join(update, context, deal_id):
     if first_join:
         add_log(db,"Участник присоединился",deal_id=deal_id,uid=joiner.id,username=joiner.username or "")
     save_db(db)
-    if first_join and db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
     if first_join:
+        schedule_log_msg(context, db)
         jtag=f"@{joiner.username}" if joiner.username else f"#{joiner_uid}"
-        try:
-            await notify_admins(
-                context,
-                f"{Ejn} <b>Участник присоединился</b>\n\n"
-                f"{Eu} {H(jtag)} (<code>{joiner_uid}</code>)\n"
-                f"{Edln} <code>{deal_id}</code>")
-        except Exception as e:
-            logger.error(f"notify admins join: {e}")
+        schedule_notify_admins(
+            context,
+            f"{Ejn} <b>Участник присоединился</b>\n\n"
+            f"{Eu} {H(jtag)} (<code>{joiner_uid}</code>)\n"
+            f"{Edln} <code>{deal_id}</code>")
 
     creator_username=db.get("users",{}).get(creator_uid,{}).get("username","")
     joiner_username=joiner.username or ""
@@ -2187,35 +2225,13 @@ async def complete_deal_join(update, context, deal_id):
     creator_role=deal.get("creator_role","seller")
     joiner_role="buyer" if creator_role=="seller" else "seller"
 
-    creator_lang=get_lang(int(creator_uid)); creator_ru=creator_lang=="ru"
+    creator_lang=get_lang(int(creator_uid))
     creator_text=build_deal_text(
         deal_id,deal,creator_tag,joiner_tag,creator_lang,joined=True,is_creator=True)
     join_word=L(creator_lang,"Покупатель присоединился!","Buyer joined!") if joiner_role=="buyer" else L(creator_lang,"Продавец присоединился!","Seller joined!")
     creator_text=f"{Ejn} <b>{join_word}</b>\n\n{creator_text}"
-    if first_join:
-        try:
-            await send_banner_chat(
-                context.bot,int(creator_uid),creator_text,
-                deal_action_kb(deal_id,deal,creator_role,creator_lang,joiner_username,is_creator=True),
-                section="deal_join")
-        except Exception as e:
-            logger.error(f"notify creator joined: {e}")
-        try:
-            await notify_deal_event(
-                context.bot,creator_uid,
-                f"{Ejn} <b>{join_word}</b>\n\n"
-                f"<blockquote>{L(creator_lang,'Сделка','Deal')} <code>{deal_id}</code>\n"
-                f"{L(creator_lang,'Смотрите статус в «Мои сделки».','Check status in My Deals.')}</blockquote>",
-                creator_lang)
-            await notify_deal_event(
-                context.bot,joiner_uid,
-                f"{Ejn} <b>{L(get_lang(joiner.id),'Вы присоединились к сделке!','You joined the deal!')}</b>\n\n"
-                f"<blockquote>{L(get_lang(joiner.id),'Сделка','Deal')} <code>{deal_id}</code>\n"
-                f"{L(get_lang(joiner.id),'Смотрите статус в «Мои сделки».','Check status in My Deals.')}</blockquote>",
-                get_lang(joiner.id))
-        except Exception as e:
-            logger.error(f"notify my deals join: {e}")
 
+    # Joiner sees the deal card immediately
     joiner_lang=get_lang(joiner.id)
     joiner_text=build_deal_text(
         deal_id,deal,creator_tag,joiner_tag,joiner_lang,joined=True,is_creator=False)
@@ -2223,6 +2239,32 @@ async def complete_deal_join(update, context, deal_id):
         update,joiner_text,
         deal_action_kb(deal_id,deal,joiner_role,joiner_lang,creator_username,is_creator=False),
         section="deal_card")
+
+    if first_join:
+        async def _bg_join_notify():
+            try:
+                await send_banner_chat(
+                    context.bot,int(creator_uid),creator_text,
+                    deal_action_kb(deal_id,deal,creator_role,creator_lang,joiner_username,is_creator=True),
+                    section="deal_join")
+            except Exception as e:
+                logger.error(f"notify creator joined: {e}")
+            try:
+                await notify_deal_event(
+                    context.bot,creator_uid,
+                    f"{Ejn} <b>{join_word}</b>\n\n"
+                    f"<blockquote>{L(creator_lang,'Сделка','Deal')} <code>{deal_id}</code>\n"
+                    f"{L(creator_lang,'Смотрите статус в «Мои сделки».','Check status in My Deals.')}</blockquote>",
+                    creator_lang)
+                await notify_deal_event(
+                    context.bot,joiner_uid,
+                    f"{Ejn} <b>{L(joiner_lang,'Вы присоединились к сделке!','You joined the deal!')}</b>\n\n"
+                    f"<blockquote>{L(joiner_lang,'Сделка','Deal')} <code>{deal_id}</code>\n"
+                    f"{L(joiner_lang,'Смотрите статус в «Мои сделки».','Check status in My Deals.')}</blockquote>",
+                    joiner_lang)
+            except Exception as e:
+                logger.error(f"notify my deals join: {e}")
+        _spawn(_bg_join_notify())
     return True
 
 async def show_deal_confirmation(update, context):
@@ -2335,6 +2377,11 @@ def validate_complaint_evidence(text):
     return t
 
 def complaint_prompt(step, ctype, lang="ru"):
+    market_note=T(
+        lang,
+        "Жалоба уйдёт маркетплейсу.",
+        "The report goes to the marketplace.",
+        "Скарга піде маркетплейсу.")
     if ctype=="buyer":
         role_word=T(lang,"покупателя","buyer","покупця")
     elif ctype=="seller":
@@ -2345,6 +2392,7 @@ def complaint_prompt(step, ctype, lang="ru"):
         prompts={
             "topic":(
                 f"<tg-emoji emoji-id='5920332557466997677'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на маркетплейс','Marketplace report')}</b>\n\n"
+                f"<blockquote>{market_note}</blockquote>\n"
                 f"<b>1. {L(lang,'Тема / что случилось','Topic / what happened')}</b>\n"
                 f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Долго не подтверждают пополнение','Top-up not confirmed for too long')}</code></blockquote>"
             ),
@@ -2368,6 +2416,7 @@ def complaint_prompt(step, ctype, lang="ru"):
     prompts={
         "username":(
             f"<tg-emoji emoji-id='{emoji}'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на','Report about')} {role_word}</b>\n\n"
+            f"<blockquote>{market_note}</blockquote>\n"
             f"<b>1. {L(lang,'Юзернейм','Username')} {role_word}</b>\n"
             f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>@username</code></blockquote>"
         ),
@@ -2394,7 +2443,7 @@ async def show_complaint(update, context):
         clear_complaint_state(context.user_data)
         text=(
             f"<tg-emoji emoji-id='6032742198179532882'>⚠️</tg-emoji> <b>{L(lang,'Пожаловаться','Report')}</b>\n\n"
-            f"<blockquote>{L(lang,'Выберите, на кого жалоба. Заполните форму по шагам - заявка уйдёт админам.','Choose who to report. Fill the form step by step - admins will receive it.')}</blockquote>"
+            f"<blockquote>{T(lang,'Жалоба уйдёт маркетплейсу. Выберите, на кого жалоба, и заполните форму.','The report goes to the marketplace. Choose who to report and fill the form.','Скарга піде маркетплейсу. Оберіть, на кого скарга, і заповніть форму.')}</blockquote>"
         )
         await send_section(update,text,complaint_kb(lang),section="complaint")
     except Exception as e: logger.error(f"show_complaint: {e}")
@@ -2435,11 +2484,14 @@ async def finish_complaint(update, context):
             f"3. Время сделки: <b>{H(ud.get('cmp_time',''))}</b>\n"
             f"4. Доказательства:\n<blockquote>{H(ud.get('cmp_evidence',''))}</blockquote>"
         )
-    await notify_admins(context, body)
     clear_complaint_state(ud)
     await update.message.reply_text(
-        L(lang,"Жалоба ушла в ящик маркетплейса.","Complaint sent to the marketplace inbox."),
+        T(lang,
+          "Жалоба ушла маркетплейсу. Ожидайте ответа.",
+          "The report went to the marketplace. Wait for a reply.",
+          "Скарга пішла маркетплейсу. Очікуйте відповіді."),
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,'Главное меню','Main menu'),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]))
+    schedule_notify_admins(context, body)
 
 # Большая база знаний ИИ-помощника FunPay (RU/EN)
 AI_KB = {
@@ -2597,7 +2649,7 @@ AI_KB = {
             "• Кнопки «Я передал» / «Я оплатил» фиксируют шаги.\n"
             "• Средства/товар защищены до завершения сделки.\n"
             "• Смотрите рейтинг, сделки и отзывы партнёра в карточке.\n"
-            "• Спор → «Пожаловаться» (на покупателя / продавца / маркетплейс) или поддержка https://support.funpay.com/tickets."
+            "• Спор → «Пожаловаться» (жалоба уйдёт маркетплейсу) или https://support.funpay.com/tickets."
         ),
         "en": (
             "Deal safety (FunPay escrow)\n\n"
@@ -2607,29 +2659,27 @@ AI_KB = {
             "• I transferred / I paid track steps.\n"
             "• Funds/item stay protected until completion.\n"
             "• Check partner stats and reviews on the deal card.\n"
-            "• Dispute → Report (buyer / seller / marketplace) or https://support.funpay.com/tickets."
+            "• Dispute → Report (the report goes to the marketplace) or https://support.funpay.com/tickets."
         ),
     },
     "complaint": {
-        "keys": ("жалоб","репорт","спор","complaint","report","кинули","не отдал","не пришло"),
+        "keys": ("жалоб","репорт","спор","complaint","report","кинули","не отдал","не пришло","жб"),
         "ru": (
             "Жалобы и споры\n\n"
-            "Главное меню → «Пожаловаться» → готовые кнопки:\n"
-            "• На покупателя - юзернейм, номер сделки, время, доказательства\n"
-            "• На продавца - то же, но по продавцу\n"
-            "• На маркетплейс - тема, сделка (или «-»), время, доказательства\n\n"
-            "Заявка сразу уходит админам в ЛС.\n"
-            "Пишите факты: FP-номер, время, чеки, ссылки, что именно нарушено.\n"
+            "Главное меню → «Пожаловаться» → кнопки:\n"
+            "• На покупателя\n"
+            "• На продавца\n"
+            "• На маркетплейс\n\n"
+            "Жалоба уйдёт маркетплейсу. Укажите факты: FP-номер, время, чеки, ссылки.\n"
             "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayDeaIManager."
         ),
         "en": (
             "Reports and disputes\n\n"
-            "Main menu → Report → ready buttons:\n"
-            "• About buyer - username, deal ID, time, evidence\n"
-            "• About seller - same fields for the seller\n"
-            "• About marketplace - topic, deal (or «-»), time, evidence\n\n"
-            "The form is sent to admins in DM.\n"
-            "Include facts: FP id, time, receipts, links, what broke.\n"
+            "Main menu → Report → buttons:\n"
+            "• About buyer\n"
+            "• About seller\n"
+            "• About marketplace\n\n"
+            "The report goes to the marketplace. Include facts: FP id, time, receipts, links.\n"
             "You can also use https://support.funpay.com/tickets or @FunPayDeaIManager."
         ),
     },
@@ -2774,10 +2824,22 @@ def resolve_ai_provider():
 
 def _ai_short_system_prompt(lang="ru"):
     if lang=="uk":
-        return "Ти FunPay AI. Відповідай на БУДЬ-ЯКЕ питання по суті. Не відмовляй, не пиши про помилки. Без HTML. Українська."
+        return (
+            "Ти FunPay AI. Відповідай природно, як звичайний асистент. "
+            "Не повторюй бренд FunPay у кожній відповіді — згадуй лише якщо питання саме про бот/угоди. "
+            "Без HTML. Українська."
+        )
     if lang=="en":
-        return "You are FunPay AI. Answer ANY question. Never refuse, never mention errors. No HTML. English."
-    return "Ты FunPay AI. Отвечай на ЛЮБОЙ вопрос по существу. Не отказывай, не пиши про ошибки. Без HTML. Русский."
+        return (
+            "You are FunPay AI. Reply naturally like a normal assistant. "
+            "Do not mention FunPay in every answer — only when the question is about the bot/deals. "
+            "No HTML. English."
+        )
+    return (
+        "Ты FunPay AI. Отвечай естественно, как обычный ассистент. "
+        "Не повторяй бренд FunPay в каждом ответе — упоминай только если вопрос про бот/сделки. "
+        "Без HTML. Русский."
+    )
 
 def ai_unconditional_reply(question, lang="ru"):
     """Последний запас: всё равно отвечаем по теме, без «ошибка» и без «не понял»."""
@@ -2785,17 +2847,17 @@ def ai_unconditional_reply(question, lang="ru"):
     q=q[:280]
     if lang=="uk":
         return (
-            f"По «{q}»: розберемо прямо. Можу пояснити суть, дати кроки або коротку відповідь. "
-            f"Питання прийнято — пиши, що потрібно глибше, продовжу відповісти."
+            f"По «{q}»: коротко — можу пояснити суть, дати кроки або відповісти коротко. "
+            f"Уточни, що саме потрібно глибше."
         )
     if lang=="en":
         return (
-            f"On “{q}”: straight answer — I can explain it, give steps, or keep it short. "
-            f"Question taken. Tell me which angle you want and I’ll continue."
+            f"On “{q}”: I can explain it, give steps, or keep it short. "
+            f"Tell me which angle you want."
         )
     return (
-        f"По «{q}»: разберём прямо. Могу объяснить суть, дать шаги или короткий ответ. "
-        f"Вопрос принят — напиши, что нужно глубже, продолжу по делу."
+        f"По «{q}»: могу объяснить суть, дать шаги или ответить коротко. "
+        f"Напиши, что нужно глубже."
     )
 
 async def _ai_call_g4f(system, messages):
@@ -2889,52 +2951,28 @@ async def ai_chat(question, lang="ru", history=None):
     return ai_unconditional_reply(question, lang)
 
 def build_ai_system_prompt(lang="ru"):
-    """Оригинальный FunPay AI: живой ассистент + база знаний, без чужих брендов."""
+    """FunPay AI: живой ассистент. FunPay только по делу, не в каждом ответе."""
     kb="\n\n".join(_ai_kb_entry_text(entry, lang) for entry in AI_KB.values())
     if lang=="uk":
         return _bot_mention_fix(
-            f"Ти — FunPay AI, розумний помічник FunPay (Telegram-бот @{BOT_USERNAME}). "
-            "Відповідай як живий асистент: вільно, по суті, на будь-які питання — "
-            "і про бот/угоди, і загальні. Якщо питання про FunPay — спирайся на базу знань нижче. "
-            "Не відшивай шаблоном і не пиши меню тем. Ніколи не називай інші моделі. "
-            "Якщо не впевнений — все одно відповідай по суті, без слова «помилка». "
-            "Звичайний текст без HTML/Markdown. Мова: українська.\n\n"
-            "Факти платформи:\n"
-            "• 132.584 угод, оборот $1.346.582\n"
-            "• Комісія 0%, рефералка 3%\n"
-            "• Підтримка: https://support.funpay.com/tickets\n"
-            "• funpay.com · угоди FP29548+\n\n"
-            f"База знань бота:\n{kb}")
+            "Ти — FunPay AI. Відповідай як звичайний розумний асистент: живо, коротко, по суті. "
+            "Не нав’язуй FunPay у кожній відповіді. Згадуй бот/угоди/реєстрацію лише якщо користувач питає про це. "
+            "Для питань про бот спирайся на базу знань нижче. Не відшивай шаблоном. "
+            "Ніколи не називай інші моделі. Без HTML/Markdown. Мова: українська.\n\n"
+            f"База знань бота (використовуй лише за потреби):\n{kb}")
     if lang=="ru":
         return _bot_mention_fix(
-            f"Ты — FunPay AI, умный помощник FunPay (Telegram-бот @{BOT_USERNAME}). "
-            "Отвечай как живой ассистент: свободно, по делу, на любые вопросы пользователя — "
-            "и про бот/сделки, и общие. Если вопрос про FunPay — опирайся на базу знаний ниже. "
-            "Не отшивай шаблоном «не знаю тему» и не пиши меню тем. Никогда не называй другие модели. "
-            "Если не уверен — всё равно отвечай по существу, без слова «ошибка». "
-            "Пиши обычным текстом без HTML/Markdown-разметки, коротко и ясно. Язык ответа: русский.\n\n"
-            "Факты платформы:\n"
-            "• Статистика: 132.584 сделок, оборот $1.346.582\n"
-            "• Комиссия сервиса: 0%\n"
-            "• Рефералка: 3% с сделок приглашённых\n"
-            "• Поддержка: https://support.funpay.com/tickets\n"
-            "• Сайт: funpay.com\n"
-            "• Номера сделок вида FP29548+\n\n"
-            f"База знаний бота:\n{kb}")
+            "Ты — FunPay AI. Отвечай как обычный умный ассистент: живо, коротко, по делу. "
+            "Не вставляй FunPay в каждый ответ. Упоминай бот/сделки только если пользователь спрашивает про это. "
+            "Для вопросов про бот опирайся на базу знаний ниже. Не отшивай шаблоном. "
+            "Никогда не называй другие модели. Обычный текст без HTML/Markdown. Язык: русский.\n\n"
+            f"База знаний бота (используй только когда нужно):\n{kb}")
     return _bot_mention_fix(
-        f"You are FunPay AI, the smart helper for FunPay (Telegram bot @{BOT_USERNAME}). "
-        "Answer like a live assistant: freely, on any user question — bot/deals and general. "
-        "For FunPay questions use the knowledge below. Don't brush off with canned refusals or topic menus. "
-        "Never name other AI models. If unsure, still answer substantively — never say 'error'. "
+        "You are FunPay AI. Reply like a normal smart assistant: natural, short, on point. "
+        "Do not mention FunPay in every answer. Bring up the bot/deals only when the user asks about them. "
+        "For bot questions use the knowledge below. No canned refusals. Never name other AI models. "
         "Plain text only, no HTML/Markdown. Answer in English.\n\n"
-        "Platform facts:\n"
-        "• Stats: 132,584 deals, turnover $1,346,582\n"
-        "• Service fee: 0%\n"
-        "• Referrals: 3% from invited users' deals\n"
-        "• Support: https://support.funpay.com/tickets\n"
-        "• Website: funpay.com\n"
-        "• Deal IDs like FP29548+\n\n"
-        f"Bot knowledge base:\n{kb}")
+        f"Bot knowledge (use only when needed):\n{kb}")
 
 async def _ai_call_gemini(system, messages):
     import httpx
@@ -3032,11 +3070,11 @@ def ai_local_answer(question, lang="ru", history=None):
     if ql in ("ку","ку!","ку.","qq","прив","yo","hey") or any(
         x in ql for x in ("привет","здравств","хай","hello","hi","йо","добрый","салют","здорово","здарova")
     ):
-        return T(lang,"Привет! Я FunPay AI.","Hi! I’m FunPay AI.","Привіт! Я FunPay AI.")
+        return T(lang,"Привет!","Hi!","Привіт!")
     if any(x in ql for x in ("как дела","как ты","как сам","how are you","what's up","whats up","что умеешь","кто ты","how r u")):
-        return T(lang,"Я FunPay AI. На связи — пиши.","I’m FunPay AI. Online — write.","Я FunPay AI. На зв’язку — пиши.")
+        return T(lang,"На связи — пиши.","Online — ask anything.","На зв’язку — пиши.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
-        return T(lang,"Пожалуйста! Если ещё вопрос — пишите.","You’re welcome! Ask more anytime.","Будь ласка! Якщо ще питання — пишіть.")
+        return T(lang,"Пожалуйста!","You’re welcome!","Будь ласка!")
 
     m=_re.fullmatch(r"(?:сколько\s+(?:будет\s+)?)?(\d+)\s*([+\-*/x×:])\s*(\d+)\s*\??", ql)
     if m:
@@ -3110,10 +3148,9 @@ def ai_local_answer(question, lang="ru", history=None):
     return ai_unconditional_reply(q, lang)
 
 def ai_thinking_html(lang):
-    """Одна строка как в первой версии: робот-эмодзи + FunPay AI думает…"""
     return (
         f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> "
-        f"<i>{T(lang,'FunPay AI думает…','FunPay AI is thinking…','FunPay AI думає…')}</i>"
+        f"<i>{T(lang,'Думаю…','Thinking…','Думаю…')}</i>"
     )
 
 def ai_answer_html(ans, lang="ru"):
@@ -3124,13 +3161,14 @@ def ai_answer_html(ans, lang="ru"):
 
 async def show_ai(update, context):
     try:
-        uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
+        uid=update.effective_user.id; lang=get_lang(uid)
         ud=context.user_data
         ud["ai_ask"]=True
         ud.setdefault("ai_history",[])
+        # Intro brand once, in English as requested
         text=(
             f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-            f"<blockquote>{T(lang,'FunPay AI на связи. Пишите любой вопрос — отвечаю.','FunPay AI is online. Ask anything — I’ll answer.','FunPay AI на зв’язку. Пишіть будь-яке питання — відповім.')}</blockquote>"
+            f"<blockquote>FunPay AI. Ask anything.</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
     except Exception as e: logger.error(f"show_ai: {e}")
@@ -3520,7 +3558,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_section(
                 update,
                 f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
-                f"<blockquote>{T(lang,'Чат очищен. Это ИИ FunPay — пишите дальше.','Chat cleared. This is FunPay AI — keep writing.','Чат очищено. Це ІІ FunPay — пишіть далі.')}</blockquote>",
+                f"<blockquote>FunPay AI. Ask anything.</blockquote>",
                 ai_kb(lang),section="ai"); return
         if d=="menu_req":
             for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
@@ -4503,7 +4541,7 @@ async def finalize_deal(update, context):
         u_check=get_user(db,user.id)
         currency=ud.get("currency","-")
         if not user_has_requisites_for(u_check, currency):
-            lang=get_lang(user.id); ru=lang=="ru"
+            lang=get_lang(user.id)
             ud["req_resume"]="amount"
             await update.effective_chat.send_message(
                 f"{Ewrn} <b>{L(lang,'Без реквизитов создать сделку нельзя.','You cannot create a deal without requisites.')}</b>",
@@ -4529,23 +4567,9 @@ async def finalize_deal(update, context):
         add_log(db,"Новая сделка",deal_id=deal_id,uid=user.id,username=user.username or "",
             extra=f"{dtype} | {amount} {currency} | {creator_role}")
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
 
-        cu=db["users"].get(str(user.id),{}).get("username","")
-        creator_tag=f"@{cu}" if cu else f"@{user.username or str(user.id)}"
-        partner_tag=partner
-        lang=get_lang(user.id); ru=lang=="ru"
+        lang=get_lang(user.id)
         uname=f"@{user.username}" if user.username else f"#{user.id}"
-        await notify_admins(
-            context,
-            f"{Edl} <b>Новая сделка</b>\n\n"
-            f"{Eu} {H(uname)} (<code>{user.id}</code>)\n"
-            f"{Edln} <code>{deal_id}</code>\n"
-            f"Тип: {dtype}\n"
-            f"Роль: {creator_role}\n"
-            f"Партнёр: {H(partner)}\n"
-            f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
-
         join_link_f=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
         share_text=L(lang,
             "Сделка создана! Присоединяйтесь, чтобы провести сделку:",
@@ -4567,36 +4591,46 @@ async def finalize_deal(update, context):
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
         ])
         await send_new(update,text_out,kb,section="deal")
-        try:
-            await notify_deal_event(
-                context.bot,user.id,
-                f"{Ech} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
-                f"<blockquote>{L(lang,'Сделка','Deal')} <code>{deal_id}</code>\n"
-                f"{L(lang,'Сумма','Amount')}: {cur_amount_phrase(amount,currency,lang)}\n"
-                f"{L(lang,'Смотрите в «Мои сделки».','See it in My Deals.')}</blockquote>",
-                lang)
-        except Exception as e:
-            logger.error(f"notify create my deals: {e}")
-
-        pname=partner.lstrip("@").lower() if partner.startswith("@") else None
-        if pname:
-            puid=next((k for k,v in db["users"].items() if v.get("username","").lower()==pname),None)
-            if puid:
-                try:
-                    pl=get_lang(int(puid))
-                    join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
-                    txt2=(
-                        f"{Ech} <b>{L(pl,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
-                        f"<a href=\"{H(join_link)}\">{H(join_link)}</a>"
-                    )
-                    kb2=InlineKeyboardMarkup([
-                        [InlineKeyboardButton(L(pl,"Присоединиться","Join"),url=join_link,icon_custom_emoji_id="5893431652578758294")],
-                        [InlineKeyboardButton(L(pl,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]
-                    ])
-                    await send_banner_chat(context.bot,int(puid),txt2,kb2,section="deal_forward")
-                except Exception as e: logger.error(f"notify partner: {e}")
-
         context.user_data.clear()
+
+        schedule_log_msg(context, db)
+        schedule_notify_admins(
+            context,
+            f"{Edl} <b>Новая сделка</b>\n\n"
+            f"{Eu} {H(uname)} (<code>{user.id}</code>)\n"
+            f"{Edln} <code>{deal_id}</code>\n"
+            f"Тип: {dtype}\n"
+            f"Роль: {creator_role}\n"
+            f"Партнёр: {H(partner)}\n"
+            f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
+        schedule_notify_deal_event(
+            context.bot,user.id,
+            f"{Ech} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
+            f"<blockquote>{L(lang,'Сделка','Deal')} <code>{deal_id}</code>\n"
+            f"{L(lang,'Сумма','Amount')}: {cur_amount_phrase(amount,currency,lang)}\n"
+            f"{L(lang,'Смотрите в «Мои сделки».','See it in My Deals.')}</blockquote>",
+            lang)
+
+        async def _notify_partner():
+            try:
+                pname=partner.lstrip("@").lower() if partner.startswith("@") else None
+                if not pname: return
+                puid=next((k for k,v in db["users"].items() if v.get("username","").lower()==pname),None)
+                if not puid: return
+                pl=get_lang(int(puid))
+                join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
+                txt2=(
+                    f"{Ech} <b>{L(pl,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
+                    f"<a href=\"{H(join_link)}\">{H(join_link)}</a>"
+                )
+                kb2=InlineKeyboardMarkup([
+                    [InlineKeyboardButton(L(pl,"Присоединиться","Join"),url=join_link,icon_custom_emoji_id="5893431652578758294")],
+                    [InlineKeyboardButton(L(pl,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]
+                ])
+                await send_banner_chat(context.bot,int(puid),txt2,kb2,section="deal_forward")
+            except Exception as e:
+                logger.error(f"notify partner: {e}")
+        _spawn(_notify_partner())
     except Exception as e:
         context.user_data.pop("_finalizing_deal",None)
         logger.error(f"finalize_deal: {e}", exc_info=True)
@@ -4615,38 +4649,12 @@ async def on_transferred(update, context):
         deal["item_transferred"]=True; db["deals"][deal_id]=deal
         add_log(db,"Товар передан",deal_id=deal_id,uid=seller.id,username=seller.username or "")
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
         seller_tag=f"@{seller.username}" if seller.username else f"#{seller.id}"
         payment_attempt=int(deal.get("payment_attempt",0))
         admin_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton("Подтвердить сделку",callback_data=f"adm_confirm_{deal_id}_{payment_attempt}",icon_custom_emoji_id="5316827280863934685")
         ]])
-        await notify_admins(
-            context,
-            f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>",
-            admin_kb)
-        if buyer_uid:
-            try:
-                buyer_lang=get_lang(int(buyer_uid))
-                db2=load_db(); deal2=db2.get("deals",{}).get(deal_id,deal)
-                creator_uid=str(deal2.get("user_id",""))
-                c_uname=db2.get("users",{}).get(creator_uid,{}).get("username","")
-                s_uname=seller.username or ""
-                creator_tag=f"@{c_uname}" if c_uname else f"#{creator_uid}"
-                seller_tag2=f"@{s_uname}" if s_uname else f"#{seller.id}"
-                is_buyer_creator=creator_uid==str(buyer_uid)
-                deal_txt=build_deal_text(
-                    deal_id,deal2,creator_tag,seller_tag2 if is_buyer_creator else creator_tag,
-                    buyer_lang,joined=True,is_creator=is_buyer_creator)
-                partner_uname=s_uname if is_buyer_creator else c_uname
-                await send_banner_chat(
-                    context.bot,int(buyer_uid),
-                    f"{Ech} <b>{L(buyer_lang,'Продавец передал товар. Можно оплачивать.','Seller transferred the item. You can pay now.')}</b>\n\n{deal_txt}",
-                    deal_action_kb(deal_id,deal2,"buyer",buyer_lang,partner_uname,is_creator=is_buyer_creator),
-                    section="deal_join" if is_buyer_creator else "deal_card")
-            except Exception as e:
-                logger.error(f"notify buyer transferred: {e}")
-        lang=get_lang(seller.id); ru=lang=="ru"
+        lang=get_lang(seller.id)
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
@@ -4654,6 +4662,34 @@ async def on_transferred(update, context):
             ]))
         except Exception:
             pass
+        schedule_log_msg(context, db)
+        schedule_notify_admins(
+            context,
+            f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>",
+            admin_kb)
+        if buyer_uid:
+            async def _bg_buyer():
+                try:
+                    buyer_lang=get_lang(int(buyer_uid))
+                    db2=load_db(); deal2=db2.get("deals",{}).get(deal_id,deal)
+                    creator_uid=str(deal2.get("user_id",""))
+                    c_uname=db2.get("users",{}).get(creator_uid,{}).get("username","")
+                    s_uname=seller.username or ""
+                    creator_tag=f"@{c_uname}" if c_uname else f"#{creator_uid}"
+                    seller_tag2=f"@{s_uname}" if s_uname else f"#{seller.id}"
+                    is_buyer_creator=creator_uid==str(buyer_uid)
+                    deal_txt=build_deal_text(
+                        deal_id,deal2,creator_tag,seller_tag2 if is_buyer_creator else creator_tag,
+                        buyer_lang,joined=True,is_creator=is_buyer_creator)
+                    partner_uname=s_uname if is_buyer_creator else c_uname
+                    await send_banner_chat(
+                        context.bot,int(buyer_uid),
+                        f"{Ech} <b>{L(buyer_lang,'Продавец передал товар. Можно оплачивать.','Seller transferred the item. You can pay now.')}</b>\n\n{deal_txt}",
+                        deal_action_kb(deal_id,deal2,"buyer",buyer_lang,partner_uname,is_creator=is_buyer_creator),
+                        section="deal_join" if is_buyer_creator else "deal_card")
+                except Exception as e:
+                    logger.error(f"notify buyer transferred: {e}")
+            _spawn(_bg_buyer())
     except Exception as e:
         logger.error(f"on_transferred: {e}")
 
@@ -4684,36 +4720,39 @@ async def on_paid(update, context):
         ]])
         add_log(db,"Оплачено",deal_id=deal_id,uid=buyer.id,username=buyer.username or "",extra=f"{payment_amount} {cur}")
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
-        await notify_admins(context,paid_text,paid_kb)
-        seller=suid
-        if seller and seller!=str(buyer.id):
-            try:
-                db2=load_db(); deal2=db2.get("deals",{}).get(deal_id,d)
-                creator_uid=str(deal2.get("user_id",""))
-                is_seller_creator=creator_uid==str(seller)
-                c_uname=db2.get("users",{}).get(creator_uid,{}).get("username","")
-                b_uname=buyer.username or ""
-                creator_tag=f"@{c_uname}" if c_uname else f"#{creator_uid}"
-                buyer_tag=f"@{b_uname}" if b_uname else f"#{buyer.id}"
-                deal_txt=build_deal_text(
-                    deal_id,deal2,
-                    creator_tag if is_seller_creator else buyer_tag,
-                    buyer_tag if is_seller_creator else creator_tag,
-                    sl2,joined=True,is_creator=is_seller_creator)
-                partner_uname=b_uname if is_seller_creator else c_uname
-                await send_banner_chat(
-                    context.bot,int(seller),
-                    f"{Ebl} <b>{T(sl2,'Покупатель оплатил. Ожидайте подтверждения.','Buyer paid. Wait for confirmation.','Покупець оплатив. Очікуйте підтвердження.')}</b>\n\n{deal_txt}",
-                    deal_action_kb(deal_id,deal2,"seller",sl2,partner_uname,is_creator=is_seller_creator),
-                    section="deal_join" if is_seller_creator else "deal_card")
-            except: pass
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(bl,'Ожидайте подтверждения','Waiting for confirmation','Очікуйте підтвердження'),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
                 [InlineKeyboardButton(L(bl,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]
             ]))
         except: pass
+        schedule_log_msg(context, db)
+        schedule_notify_admins(context,paid_text,paid_kb)
+        seller=suid
+        if seller and seller!=str(buyer.id):
+            async def _bg_seller_paid():
+                try:
+                    db2=load_db(); deal2=db2.get("deals",{}).get(deal_id,d)
+                    creator_uid=str(deal2.get("user_id",""))
+                    is_seller_creator=creator_uid==str(seller)
+                    c_uname=db2.get("users",{}).get(creator_uid,{}).get("username","")
+                    b_uname=buyer.username or ""
+                    creator_tag=f"@{c_uname}" if c_uname else f"#{creator_uid}"
+                    buyer_tag=f"@{b_uname}" if b_uname else f"#{buyer.id}"
+                    deal_txt=build_deal_text(
+                        deal_id,deal2,
+                        creator_tag if is_seller_creator else buyer_tag,
+                        buyer_tag if is_seller_creator else creator_tag,
+                        sl2,joined=True,is_creator=is_seller_creator)
+                    partner_uname=b_uname if is_seller_creator else c_uname
+                    await send_banner_chat(
+                        context.bot,int(seller),
+                        f"{Ebl} <b>{T(sl2,'Покупатель оплатил. Ожидайте подтверждения.','Buyer paid. Wait for confirmation.','Покупець оплатив. Очікуйте підтвердження.')}</b>\n\n{deal_txt}",
+                        deal_action_kb(deal_id,deal2,"seller",sl2,partner_uname,is_creator=is_seller_creator),
+                        section="deal_join" if is_seller_creator else "deal_card")
+                except Exception as e:
+                    logger.error(f"notify seller paid: {e}")
+            _spawn(_bg_seller_paid())
     except Exception as e: logger.error(f"on_paid: {e}")
 
 # ─── adm_confirm / decline ────────────────────────────────────────────────────
@@ -4771,7 +4810,7 @@ async def adm_confirm(update, context):
                             text=f"{Emn} <b>{L(rl,'Реферальный бонус!','Referral bonus!')}</b>\n<blockquote>+{fmt_balance(bonus, rl)} (3%)</blockquote>",parse_mode="HTML")
                     except: pass
         save_db(db)
-        if db.get("logs"): await send_log_msg(context,db,db["logs"][-1])
+        schedule_log_msg(context, db)
         try:
             log_chat=db.get("log_chat_id")
             if log_chat:
@@ -6029,7 +6068,7 @@ def start_render_keepalive():
 # ─── Main ─────────────────────────────────────────────────────────────────────
 _BOT_LOCK_FD = None
 
-def _acquire_single_instance_lock(wait_sec=60):
+def _acquire_single_instance_lock(wait_sec=20):
     """Один процесс бота. При redeploy новый ждёт, пока старый отпустит lock."""
     global _BOT_LOCK_FD
     path = os.path.join(DATA_DIR, ".bot.lock")
@@ -6097,7 +6136,7 @@ def main():
 
     start_reviews_http_server()
 
-    app=Application.builder().token(BOT_TOKEN).build()
+    app=Application.builder().token(BOT_TOKEN).concurrent_updates(True).build()
     _wh_flag = (os.getenv("USE_WEBHOOK") or "auto").strip().lower()
     _public = _public_base_url()
     if _wh_flag in ("0", "false", "no", "off", "polling"):
