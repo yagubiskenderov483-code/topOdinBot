@@ -1,88 +1,102 @@
 {
   "banners": {
     "main": {
-      "photo": "AgACAgUAAxkBAAICgWp-S5e3isuetsutYgdb1bow_eFzAAIbEWsbI_X4V3Zs4rB8c7RiAQADAgADeAADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/main.jpg"
     },
     "deal": {
-      "photo": "AgACAgUAAxkBAAICYmp-Sbz8U0FdvbDgpRCM-y13Hc5PAAIMEWsbI_X4V5dDhgxBJcVXAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/deal.jpg"
     },
     "balance": {
-      "photo": "AgACAgUAAxkBAAICcGp-SxQUJrCgIGW0J1TADZ3nyN_0AAIUEWsbI_X4V8sIcvwVDmGwAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/balance.jpg"
     },
     "profile": {
-      "photo": "AgACAgUAAxkBAAICZGp-SoHDK06BUIXSd4zXZ-4weyBWAAINEWsbI_X4V_IRK4HgWuQNAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/profile.jpg"
     },
     "req": {
-      "photo": "AgACAgUAAxkBAAICZmp-SpJt40wEnKAL_x9IlwzThfsiAAIOEWsbI_X4V8gwIqNVIhsVAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req.jpg"
     },
     "top": {
-      "photo": "AgACAgUAAxkBAAICaGp-Sp2FWHna1Gu4v6V5YrS0e42jAAIPEWsbI_X4V1ZeqjBzOqwVAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/top.jpg"
     },
     "my_deals": {
-      "photo": "AgACAgUAAxkBAAICamp-SraBWMTAu4ziNqg1hGuEiCIDAAIQEWsbI_X4V8hnZFbuthB7AQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/my_deals.jpg"
     },
     "info": {
-      "photo": "AgACAgUAAxkBAAICbGp-StDP4zx69UQ_EiyQRmWe3u1VAAIREWsbI_X4V_OyFqjN70xdAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/info.jpg"
     },
     "complaint": {
-      "photo": "AgACAgUAAxkBAAICbmp-SwqowVEtiM4Dht0FJMh8gd35AAITEWsbI_X4V4bu0xGwM8cOAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/complaint.jpg"
     },
     "ai": {
-      "photo": "AgACAgUAAxkBAAICcmp-SzGFrw4kYx2kK9uzrqx7CiocAAIVEWsbI_X4V0nIC1rxdk0mAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/ai.jpg"
     },
     "deal_card": {
-      "photo": "AgACAgUAAxkBAAICdGp-S0D9T97d2XZcjvBnmIuK0RAbAAIWEWsbI_X4VyAxCVz9QrA7AQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/deal_card.jpg"
     },
     "deal_join": {
-      "photo": "AgACAgUAAxkBAAICdmp-S1VwaZnQ4P2in1m0TUev_Wu1AAIXEWsbI_X4V5ytP0wONvhsAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/deal_join.jpg"
     },
     "deal_forward": {
-      "photo": "AgACAgUAAxkBAAICeGp-S2MiphBAbcmOW8oRrtn6khaIAAIYEWsbI_X4VxdsG4svOxYpAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/deal_forward.jpg"
     },
     "ref": {
-      "photo": "AgACAgUAAxkBAAICemp-S3tTZKpONnkox6NUNcJDRF_eAAIaEWsbI_X4V_x7hwKK2kZnAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/ref.jpg"
     }
   },
   "log_banners": {},

@@ -99,6 +99,7 @@ BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.jo
     os.path.dirname(os.path.abspath(__file__)), "banners_seed.json")
 # Копия сида на постоянном диске (переживает redeploy при Disk на /data)
 BANNERS_SEED_DATA = os.path.join(DATA_DIR, "banners_seed.json")
+BANNER_ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "banner_assets")
 DEAL_COUNTER_START = 29548
 # Reviews Mini App (self-contained HTML). Do not use BrewPage - it shows a side panel in Telegram.
 # Prefer explicit env, then hosted HTML (self-contained), then Render. TonConnect needs bot origin.
@@ -782,9 +783,65 @@ BANNER_SECTIONS = {
 }
 
 # ─── DB ───────────────────────────────────────────────────────────────────────
+def _banner_local_path(section=None, entry=None):
+    """Resolve on-disk banner image (survives bot token switch)."""
+    cands=[]
+    if isinstance(entry, dict):
+        loc=(entry.get("local") or entry.get("local_photo") or "").strip()
+        if loc:
+            cands.append(loc)
+            if not os.path.isabs(loc):
+                cands.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), loc))
+                cands.append(os.path.join(BANNER_ASSETS_DIR, os.path.basename(loc)))
+    if section:
+        for ext in (".jpg",".jpeg",".png",".webp",".gif"):
+            cands.append(os.path.join(BANNER_ASSETS_DIR, f"{section}{ext}"))
+    for p in cands:
+        try:
+            if p and os.path.isfile(p) and os.path.getsize(p) > 0:
+                return p
+        except Exception:
+            continue
+    return None
+
 def _banner_entry_filled(b):
     if not isinstance(b, dict): return False
-    return bool(b.get("photo") or b.get("video") or b.get("gif") or (b.get("text") or "").strip())
+    if b.get("photo") or b.get("video") or b.get("gif") or (b.get("text") or "").strip():
+        return True
+    return bool(_banner_local_path(entry=b) or (b.get("local") or "").strip())
+
+def _media_ref(value):
+    """file_id, URL, or local path for PTB send_*."""
+    if not value:
+        return None
+    if isinstance(value, str) and os.path.isfile(value):
+        try:
+            from pathlib import Path
+            return Path(value)
+        except Exception:
+            return open(value, "rb")
+    return value
+
+def resolve_banner_media(b, section=None):
+    """Return (video, gif, photo) refs; prefer live file_id, else local asset."""
+    if not isinstance(b, dict):
+        b={}
+    bv=b.get("video") or None
+    bg=b.get("gif") or None
+    bp=b.get("photo") or None
+    local=_banner_local_path(section, b)
+    # After bot token change Telegram file_ids die — use local assets when present
+    # unless we already have a fresh file_id cached for this bot (no AgAC from old seed alone).
+    if local and not bv and not bg:
+        # Prefer local whenever photo looks like an old/foreign file_id that may fail
+        # or when photo is empty. If photo is set, still keep local as fallback in send.
+        if not bp:
+            bp=local
+        else:
+            # Keep both: primary file_id, fallback local stored on banner dict
+            b=dict(b)
+            b["_local_fallback"]=local
+    return bv, bg, bp, b
 
 def _seed_has_content(data):
     if not isinstance(data, dict): return False
@@ -945,9 +1002,20 @@ def force_apply_banners_seed_payload(db, seed):
                 "gif": val.get("gif"),
                 "text": val.get("text") or "",
             }
+            loc=(val.get("local") or val.get("local_photo") or "").strip()
+            if loc:
+                db["banners"][key]["local"]=loc
+            elif _banner_local_path(key, val):
+                db["banners"][key]["local"]=_banner_local_path(key, val)
             n += 1
         else:
-            db["banners"][key] = {}
+            # Keep local asset path even if Telegram file_ids are empty
+            loc=_banner_local_path(key, val) or (val.get("local") if isinstance(val, dict) else None)
+            if loc:
+                db["banners"][key] = {"photo": None, "video": None, "gif": None, "text": "", "local": loc}
+                n += 1
+            else:
+                db["banners"][key] = {}
     if "log_banners" in seed and isinstance(seed.get("log_banners"), dict):
         db["log_banners"] = seed["log_banners"]
     if seed.get("menu_description") is not None:
@@ -1265,7 +1333,18 @@ def get_banner(db, section="main"):
     if not isinstance(banners, dict):
         banners=_banners_map()
     b=banners.get(section) if isinstance(banners, dict) else None
-    if b and any(b.get(k) for k in ("photo","video","gif","text")): return b
+    if not isinstance(b, dict):
+        b={}
+    else:
+        b=dict(b)
+    local=_banner_local_path(section, b)
+    if local and not b.get("local"):
+        b["local"]=local
+    if local and not (b.get("photo") or b.get("video") or b.get("gif")):
+        # Serve from disk until a new file_id is cached for this bot
+        b["photo"]=local
+    if b and any(b.get(k) for k in ("photo","video","gif","text","local")):
+        return b
     if section=="main" and db is not None:
         lg={"photo":db.get("banner_photo"),"video":db.get("banner_video"),
             "gif":db.get("banner_gif"),"text":db.get("banner") or ""}
@@ -1282,9 +1361,9 @@ def _tg_caption(text, has_media=False):
     if len(t)<=lim: return t
     return t[: lim-1] + "…"
 
-async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None):
+async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None):
     """Send with HTML custom emoji. Never strip to plain emoji if HTML still works as text."""
-    has_media=bool(bv or bg or bp)
+    has_media=bool(bv or bg or bp or local_fallback)
     full_html=str(text or "")
     # Photo/video captions are 1024 — long deal cards with <tg-emoji> exceed that and
     # previously fell back to stripped plain emoji. Prefer text message to keep custom emoji.
@@ -1294,26 +1373,55 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None):
         except Exception as e:
             logger.warning("safe_send long→text: %s", e)
             has_media=False
-    try:
-        if has_media and bv:
-            return await chat.send_video(video=bv,caption=_tg_caption(full_html, True),parse_mode="HTML",reply_markup=kb)
-        if has_media and bg:
-            return await chat.send_animation(animation=bg,caption=_tg_caption(full_html, True),parse_mode="HTML",reply_markup=kb)
-        if has_media and bp:
-            return await chat.send_photo(photo=bp,caption=_tg_caption(full_html, True),parse_mode="HTML",reply_markup=kb)
-        return await chat.send_message(_tg_caption(full_html, False),parse_mode="HTML",reply_markup=kb)
-    except Exception as e:
-        logger.warning("safe_send media/html: %s", e)
-        # Keep custom emoji: retry as plain HTML text (no media)
+    media_attempts=[]
+    if has_media and bv: media_attempts.append(("video", bv))
+    if has_media and bg: media_attempts.append(("animation", bg))
+    if has_media and bp: media_attempts.append(("photo", bp))
+    if has_media and local_fallback and local_fallback not in (bp, bv, bg):
+        media_attempts.append(("photo", local_fallback))
+    last_err=None
+    for kind, ref in media_attempts:
         try:
-            return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
-        except Exception as e2:
-            logger.warning("safe_send html text: %s", e2)
+            media=_media_ref(ref)
+            if kind=="video":
+                msg=await chat.send_video(video=media,caption=_tg_caption(full_html, True),parse_mode="HTML",reply_markup=kb)
+            elif kind=="animation":
+                msg=await chat.send_animation(animation=media,caption=_tg_caption(full_html, True),parse_mode="HTML",reply_markup=kb)
+            else:
+                msg=await chat.send_photo(photo=media,caption=_tg_caption(full_html, True),parse_mode="HTML",reply_markup=kb)
+            # Cache fresh file_id after uploading a local asset (new bot)
             try:
-                return await chat.send_message(_tg_caption(_strip_html_tags(full_html), False), reply_markup=kb)
-            except Exception as e3:
-                logger.error("safe_send plain: %s", e3)
-                return None
+                if section and msg and isinstance(ref, str) and os.path.isfile(ref):
+                    new_fid=None
+                    if msg.photo: new_fid=msg.photo[-1].file_id
+                    elif msg.video: new_fid=msg.video.file_id
+                    elif msg.animation: new_fid=msg.animation.file_id
+                    if new_fid:
+                        db=load_db()
+                        ent=db.setdefault("banners",{}).setdefault(section,{})
+                        key="photo" if kind=="photo" else ("video" if kind=="video" else "gif")
+                        ent[key]=new_fid
+                        ent["local"]=ent.get("local") or ref
+                        save_db(db)
+            except Exception as e:
+                logger.warning("banner file_id cache: %s", e)
+            return msg
+        except Exception as e:
+            last_err=e
+            logger.warning("safe_send %s: %s", kind, e)
+            continue
+    if last_err:
+        logger.warning("safe_send media/html: %s", last_err)
+    # Keep custom emoji: retry as plain HTML text (no media)
+    try:
+        return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
+    except Exception as e2:
+        logger.warning("safe_send html text: %s", e2)
+        try:
+            return await chat.send_message(_tg_caption(_strip_html_tags(full_html), False), reply_markup=kb)
+        except Exception as e3:
+            logger.error("safe_send plain: %s", e3)
+            return None
 
 async def _safe_edit_text(msg, text, kb=None):
     """editMessageText without crashing the callback (media→text must not use this)."""
@@ -1359,10 +1467,16 @@ async def send_section(update, text, kb=None, section="main"):
         b=get_banner(None, section)
         # Long deal texts: skip banner so custom emoji never get stripped
         long_deal = section in ("deal_card", "deal_join", "deal_forward") and len(str(text or "")) > 700
+        local_fb=_banner_local_path(section, b)
         if long_deal:
-            bv=bg=bp=None
+            bv=bg=bp=None; local_fb=None
         else:
             bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+            # Prefer local asset when photo is missing or still the broken cross-bot file_id
+            if local_fb and (not bp or (isinstance(bp, str) and not os.path.isfile(bp) and bp.startswith("AgAC"))):
+                # After token switch old AgAC file_ids fail — always prefer local until cached
+                bp=local_fb
+                local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
         full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
         chat=update.effective_chat
@@ -1379,10 +1493,10 @@ async def send_section(update, text, kb=None, section="main"):
                               msg.animation.file_id if msg.animation else
                               msg.photo[-1].file_id if msg.photo else None)
                 target_file=bv or bg or bp
-                if current_file==target_file and await _safe_edit_caption(msg, full, kb):
+                if isinstance(target_file, str) and current_file==target_file and await _safe_edit_caption(msg, full, kb):
                     return
             previous_message=msg
-        await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp)
+        await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
         if previous_message:
             async def _bg_del(m):
                 try: await m.delete()
@@ -1395,7 +1509,7 @@ async def send_section(update, text, kb=None, section="main"):
     except Exception as e:
         logger.error(f"send_section: {e}", exc_info=True)
         try:
-            await _safe_send_chat(update.effective_chat, text, kb)
+            await _safe_send_chat(update.effective_chat, text, kb, section=section)
         except Exception as e2:
             logger.error(f"send_section fallback: {e2}", exc_info=True)
 
@@ -1404,16 +1518,19 @@ async def send_new(update, text, kb=None, section="main"):
         b=get_banner(None, section)
         if section in ("deal_forward","deal_join") and not b: b=get_banner(None,"deal_card")
         long_deal = section in ("deal_card", "deal_join", "deal_forward") and len(str(text or "")) > 700
+        local_fb=_banner_local_path(section, b)
         if long_deal:
-            bv=bg=bp=None
+            bv=bg=bp=None; local_fb=None
         else:
             bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+            if local_fb and (not bp or (isinstance(bp, str) and not os.path.isfile(bp))):
+                bp=local_fb; local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
         full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
-        await _safe_send_chat(update.effective_chat, full, kb, bv=bv, bg=bg, bp=bp)
+        await _safe_send_chat(update.effective_chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
     except Exception as e:
         logger.error(f"send_new: {e}")
-        try: await _safe_send_chat(update.effective_chat, text, kb)
+        try: await _safe_send_chat(update.effective_chat, text, kb, section=section)
         except: pass
 
 async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
@@ -1421,22 +1538,33 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
         b=get_banner(None, section)
         if section=="deal_join" and not b: b=get_banner(None,"deal_card")
         long_deal = len(str(text or "")) > 700
+        local_fb=_banner_local_path(section, b)
         if long_deal:
-            bv=bg=bp=None
+            bv=bg=bp=None; local_fb=None
         else:
             bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+            if local_fb and (not bp or (isinstance(bp, str) and not os.path.isfile(bp))):
+                bp=local_fb; local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
         full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
         has_media=bool(bv or bg or bp)
         if has_media and len(full) > 1000:
             has_media=False; bv=bg=bp=None
         try:
-            if bv: await bot.send_video(chat_id=chat_id,video=bv,caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
-            if bg: await bot.send_animation(chat_id=chat_id,animation=bg,caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
-            if bp: await bot.send_photo(chat_id=chat_id,photo=bp,caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
+            if bv:
+                await bot.send_video(chat_id=chat_id,video=_media_ref(bv),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
+            if bg:
+                await bot.send_animation(chat_id=chat_id,animation=_media_ref(bg),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
+            if bp:
+                await bot.send_photo(chat_id=chat_id,photo=_media_ref(bp),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
             await bot.send_message(chat_id=chat_id,text=_tg_caption(full, False),parse_mode="HTML",reply_markup=kb)
         except Exception as e:
             logger.warning("send_banner_chat html: %s", e)
+            if local_fb:
+                try:
+                    await bot.send_photo(chat_id=chat_id,photo=_media_ref(local_fb),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
+                except Exception as e2:
+                    logger.warning("send_banner_chat local: %s", e2)
             try:
                 await bot.send_message(chat_id=chat_id,text=_tg_caption(full, False),parse_mode="HTML",reply_markup=kb)
             except Exception:
