@@ -11,8 +11,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Бот @FunPayDeaIsOTCRobot. Env BOT_TOKEN на Render; старые токены игнорируем.
-_BOT_TOKEN_DEFAULT = "8624898843:AAGVpydnFvv8sT0xf4yEAnST2BsDctkcefY"
+_BOT_TOKEN_DEFAULT = "8624898843:AAGlnLvikDn_m3suRB0j_5GLe82PAo4njX0"
 _BOT_TOKEN_REVOKED = {
+    "8624898843:AAGVpydnFvv8sT0xf4yEAnST2BsDctkcefY",
     "8624898843:AAHrei7o5_K4KF1TnGU29mzs3ExcfO9tRc0",
     "8624898843:AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo",
     "8624898843:AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA",
@@ -39,6 +40,7 @@ if (
     or ("AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in _tok)
     or ("AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo" in _tok)
     or ("AAHrei7o5_K4KF1TnGU29mzs3ExcfO9tRc0" in _tok)
+    or ("AAGVpydnFvv8sT0xf4yEAnST2BsDctkcefY" in _tok)
     or _tok.startswith("8879343383:")
     or _tok.startswith("8804596421:")
     or _tok.startswith("8397181335:")
@@ -340,7 +342,7 @@ E = {
     "num4":       ce("5794241397217304511", "4️⃣"),
     "bank":       ce("5238132025323444613", "🏦"),
     "banknote":   ce("5201873447554145566", "💵"),
-    "link":       ce("5902449142575141204", "🔗"),
+    "link":       ce("5972261808747057065", "🔗"),
     "shine":      ce("5235630047959727475", "✨"),
     "store":      ce("4988289890769699938", "🏪"),
     "tonkeeper":  ce("5397829221605191505", "💎"),
@@ -1591,16 +1593,16 @@ async def send_section(update, text, kb=None, section="main"):
             new_has_media=bool(bv or bg or bp or local_fb)
             if not has_media and not new_has_media:
                 if await _safe_edit_text(msg, full, kb):
-                    return
+                    return msg
             elif has_media and new_has_media and len(full) <= 1024:
                 current_file=(msg.video.file_id if msg.video else
                               msg.animation.file_id if msg.animation else
                               msg.photo[-1].file_id if msg.photo else None)
                 target_file=bv or bg or bp
                 if isinstance(target_file, str) and current_file==target_file and await _safe_edit_caption(msg, full, kb):
-                    return
+                    return msg
             previous_message=msg
-        await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
+        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
         if previous_message:
             async def _bg_del(m):
                 try: await m.delete()
@@ -1610,12 +1612,14 @@ async def send_section(update, text, kb=None, section="main"):
             except Exception:
                 try: await previous_message.delete()
                 except: pass
+        return sent
     except Exception as e:
         logger.error(f"send_section: {e}", exc_info=True)
         try:
-            await _safe_send_chat(update.effective_chat, text, kb, section=section)
+            return await _safe_send_chat(update.effective_chat, text, kb, section=section)
         except Exception as e2:
             logger.error(f"send_section fallback: {e2}", exc_info=True)
+            return None
 
 async def send_new(update, text, kb=None, section="main"):
     try:
@@ -2090,9 +2094,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         dd=d.get("data",{}); creator_role=d.get("creator_role","seller")
 
         if dtype=="nft":
-            item=f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> {dd.get('nft_link','-')}"
+            item=f"\n{Edln} <b>{T(lang,'Ссылка','Link','Посилання')}:</b> {dd.get('nft_link','-')}"
         elif dtype=="username":
-            item=f"\n<b>Username:</b> {dd.get('trade_username','-')}"
+            item=f"\n{Edln} <b>Username:</b> {dd.get('trade_username','-')}"
         elif dtype=="stars":
             stars_lbl = T(lang,"Кол-во звёзд для продажи","Stars for sale","Кількість зірок для продажу") if creator_role=="seller" else T(lang,"Кол-во звёзд для покупки","Stars for purchase","Кількість зірок для покупки")
             item=f"\n<b>{stars_lbl}:</b> <b>{dd.get('stars_count','-')}</b>"
@@ -3663,13 +3667,12 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d in TYPE_MAP:
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
             cr=ud.get("creator_role","seller")
-            await send_section(
+            msg=await send_section(
                 update,
                 deal_partner_prompt(lang, cr),
                 InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),
                 section="deal")
-            if update.callback_query and update.callback_query.message and not (update.callback_query.message.photo or update.callback_query.message.video or update.callback_query.message.animation):
-                ud["last_msg"]=update.callback_query.message.message_id
+            if msg: ud["last_msg"]=msg.message_id
             return
 
         # ── Период Premium ──
@@ -3680,9 +3683,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "prm_12":T(lang,"12 месяцев","12 months","12 місяців"),
             }
             ud["premium_period"]=prmap[d]; ud["step"]="currency"
-            await send_section(update,deal_currency_prompt(lang),cur_kb(lang),section="deal")
-            if update.callback_query and update.callback_query.message:
-                ud["last_msg"]=update.callback_query.message.message_id
+            msg=await send_section(update,deal_currency_prompt(lang),cur_kb(lang),section="deal")
+            if msg: ud["last_msg"]=msg.message_id
             return
 
         # ── Валюта оплаты (удалён отдельный шаг - одна валюта сделки) ──
@@ -3725,9 +3727,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
                     currency_requisites_kb(cur,lang),section="req"); return
             ud["currency"]=cur; ud["pay_currency"]=cur; ud["step"]="amount"
-            await send_section(update,deal_amount_prompt(cur,lang),section="deal")
-            if update.callback_query and update.callback_query.message:
-                ud["last_msg"]=update.callback_query.message.message_id
+            msg=await send_section(update,deal_amount_prompt(cur,lang),section="deal")
+            if msg: ud["last_msg"]=msg.message_id
             return
 
         # ── Валюта сделки ──
@@ -3743,9 +3744,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{req_add_for_amount_text(cur_code, lang)}</b>",
                     currency_requisites_kb(cur_code,lang),section="req"); return
             ud["currency"]=cur_code; ud["pay_currency"]=cur_code; ud["step"]="amount"
-            await send_section(update,deal_amount_prompt(cur_code,lang),section="deal")
-            if update.callback_query and update.callback_query.message:
-                ud["last_msg"]=update.callback_query.message.message_id
+            msg=await send_section(update,deal_amount_prompt(cur_code,lang),section="deal")
+            if msg: ud["last_msg"]=msg.message_id
             return
 
         # ── Реквизиты ──
@@ -6153,6 +6153,7 @@ def main():
         or "AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in BOT_TOKEN
         or "AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo" in BOT_TOKEN
         or "AAHrei7o5_K4KF1TnGU29mzs3ExcfO9tRc0" in BOT_TOKEN
+        or "AAGVpydnFvv8sT0xf4yEAnST2BsDctkcefY" in BOT_TOKEN
     ):
         raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDeaIsOTCRobot.")
 
