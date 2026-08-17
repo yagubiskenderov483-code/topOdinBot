@@ -105,10 +105,8 @@ DEAL_COUNTER_START = 29548
 # Prefer explicit env, then hosted HTML (self-contained), then Render. TonConnect needs bot origin.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
 # Hosted Reviews HTML (self-contained). Refresh via REVIEWS_HTML_REMOTE / litter upload when expired.
-_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/4nqqp4.html").strip()
+_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/qukcld.html").strip()
 _DEAD_MINIAPP_MARKERS = (
-    "litter.catbox.moe",
-    "files.catbox.moe",
     "litter.catbox.moe/7ip6ck.html",
     "7ip6ck.html",
     "litter.catbox.moe/i58txn.html",
@@ -149,17 +147,17 @@ def _public_base_url() -> str:
     return ""
 
 def reviews_miniapp_url() -> str:
-    """Reviews Mini App — bot's own HTTPS origin first (Telegram WebApp domain)."""
+    """Reviews Mini App is self-contained HTML — prefer working hosted copy over a dead Render URL."""
     env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
     if env and not _miniapp_url_dead(env):
         return env
-    render = _public_base_url()
-    if render:
-        return f"{render}/index.html"
     hosted = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
     if hosted and not _miniapp_url_dead(hosted):
         return hosted
-    return ""
+    render = _public_base_url()
+    if render:
+        return f"{render}/index.html"
+    return _REVIEWS_HTML_HOSTED or ""
 
 def tonconnect_miniapp_url() -> str:
     """TonConnect Mini App — same origin as bot (needs POST /api/bind-ton)."""
@@ -1655,7 +1653,7 @@ def ai_kb(lang):
 
 def info_kb(lang):
     rows=[]
-    reviews_url=reviews_miniapp_url()
+    reviews_url=reviews_miniapp_url() or _REVIEWS_HTML_HOSTED
     if reviews_url:
         rows.append([InlineKeyboardButton(T(lang,'Отзывы','Reviews','Відгуки'),web_app=WebAppInfo(url=reviews_url),icon_custom_emoji_id="5778145208411624388")])
     rows.append([InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
