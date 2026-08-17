@@ -1429,17 +1429,9 @@ def _tg_caption(text, has_media=False):
     return t[: lim-1] + "…"
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None):
-    """Send with HTML custom emoji. Never strip to plain emoji if HTML still works as text."""
+    """Send banner and text together (photo/video + caption)."""
     has_media=bool(bv or bg or bp or local_fallback)
     full_html=str(text or "")
-    # Photo/video captions are 1024 — long deal cards with <tg-emoji> exceed that and
-    # previously fell back to stripped plain emoji. Prefer text message to keep custom emoji.
-    if has_media and len(full_html) > 1000:
-        try:
-            return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
-        except Exception as e:
-            logger.warning("safe_send long→text: %s", e)
-            has_media=False
     media_attempts=[]
     if has_media and bv: media_attempts.append(("video", bv))
     if has_media and bg: media_attempts.append(("animation", bg))
@@ -1514,10 +1506,7 @@ async def _safe_edit_caption(msg, text, kb=None):
     if not msg: return False
     if not (msg.photo or msg.video or msg.animation):
         return False
-    full=str(text or "")
-    if len(full) > 1000:
-        return False  # force replace with text message to keep custom emoji
-    full=_tg_caption(full, has_media=True)
+    full=_tg_caption(str(text or ""), has_media=True)
     try:
         await msg.edit_caption(caption=full, parse_mode="HTML", reply_markup=kb)
         return True
@@ -1532,22 +1521,17 @@ async def send_section(update, text, kb=None, section="main"):
     """Show a section fast: edit in place when possible, keep custom emoji."""
     try:
         b=get_banner(None, section)
-        # Long deal texts: skip banner so custom emoji never get stripped
-        long_deal = section in ("deal_card", "deal_join", "deal_forward") and len(str(text or "")) > 700
         local_fb=_banner_local_path(section, b)
-        if long_deal:
-            bv=bg=bp=None; local_fb=None
-        else:
-            bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            # Prefer Telegram file_id (fast). Local file only if no file_id yet.
-            if local_fb and not bp and not bv and not bg:
-                bp=local_fb
-                local_fb=None
-            elif local_fb and bp and os.path.isfile(str(bp)):
-                local_fb=None  # already a path
-            # Keep local_fb as send-fallback when bp is a file_id that may be from another bot
+        bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+        # Prefer Telegram file_id (fast). Local file only if no file_id yet.
+        if local_fb and not bp and not bv and not bg:
+            bp=local_fb
+            local_fb=None
+        elif local_fb and bp and os.path.isfile(str(bp)):
+            local_fb=None  # already a path
+        # Keep local_fb as send-fallback when bp is a file_id that may be from another bot
         bt=(b.get("text") or "").strip() if b else ""
-        full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
         chat=update.effective_chat
         previous_message=None
         if update.callback_query and update.callback_query.message:
@@ -1586,18 +1570,14 @@ async def send_new(update, text, kb=None, section="main"):
     try:
         b=get_banner(None, section)
         if section in ("deal_forward","deal_join") and not b: b=get_banner(None,"deal_card")
-        long_deal = section in ("deal_card", "deal_join", "deal_forward") and len(str(text or "")) > 700
         local_fb=_banner_local_path(section, b)
-        if long_deal:
-            bv=bg=bp=None; local_fb=None
-        else:
-            bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            if local_fb and not bp and not bv and not bg:
-                bp=local_fb; local_fb=None
-            elif local_fb and bp and os.path.isfile(str(bp)):
-                local_fb=None
+        bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+        if local_fb and not bp and not bv and not bg:
+            bp=local_fb; local_fb=None
+        elif local_fb and bp and os.path.isfile(str(bp)):
+            local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
-        full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
         await _safe_send_chat(update.effective_chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
     except Exception as e:
         logger.error(f"send_new: {e}")
@@ -1608,21 +1588,14 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
     try:
         b=get_banner(None, section)
         if section=="deal_join" and not b: b=get_banner(None,"deal_card")
-        long_deal = len(str(text or "")) > 700
         local_fb=_banner_local_path(section, b)
-        if long_deal:
-            bv=bg=bp=None; local_fb=None
-        else:
-            bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            if local_fb and not bp and not bv and not bg:
-                bp=local_fb; local_fb=None
-            elif local_fb and bp and os.path.isfile(str(bp)):
-                local_fb=None
+        bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+        if local_fb and not bp and not bv and not bg:
+            bp=local_fb; local_fb=None
+        elif local_fb and bp and os.path.isfile(str(bp)):
+            local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
-        full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
-        has_media=bool(bv or bg or bp)
-        if has_media and len(full) > 1000:
-            has_media=False; bv=bg=bp=None
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
         try:
             if bv:
                 await bot.send_video(chat_id=chat_id,video=_media_ref(bv),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
