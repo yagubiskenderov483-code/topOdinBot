@@ -1790,8 +1790,27 @@ Edeal_n2  = ce("5411585799990830248", "2️⃣")
 Edeal_cur = ce("5776233299424843260", "🏦")
 Eamt_in   = ce("6039614175917903752", "💰")
 Enft_link = ce("6050847684355428245", "🖼")
+Edeal_pen = ce("5879841310902324730", "✏️")  # «Кто вы в сделке» — не Epen (чужой кастом)
+Edeal_idea= ce("5258216851472654189", "💡")  # «Выберите тип» — не spark/монетка
 Eprof_user= ce("6035084557378654059", "🪙")
 Eprof_ok  = ce("5805550320985578625", "✅")
+
+def deal_role_prompt(lang="ru"):
+    return (
+        f"{Edeal_pen} <b>{L(lang,'Создать сделку','Create Deal')}\n\n"
+        f"{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>"
+    )
+
+def deal_type_prompt(lang="ru"):
+    return f"{Edeal_idea} <b>{L(lang,'Выберите тип сделки','Choose deal type')}</b>"
+
+def deal_partner_prompt(lang, creator_role="seller"):
+    """Шаг @username партнёра — без кастома: Eu в этом паке рендерится монеткой."""
+    if creator_role=="buyer":
+        pp=T(lang,"Введите @username продавца:","Enter seller @username:","Введіть @username продавця:")
+    else:
+        pp=T(lang,"Введите @username покупателя:","Enter buyer @username:","Введіть @username покупця:")
+    return f"<b>{pp}</b>\n\n<b>{T(lang,'Пример','Example','Приклад')}:</b> <code>@username</code>"
 
 def deal_currency_prompt(lang="ru"):
     return f"{Edeal_cur} <b>{T(lang,'Выберите валюту сделки:','Choose deal currency:','Оберіть валюту угоди:')}</b>"
@@ -2314,7 +2333,7 @@ async def show_deal_confirmation(update, context):
     currency=ud.get("currency","-")
     chat=update.effective_chat
     text=(
-        f"{Ech} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
+        f"<tg-emoji emoji-id='{WAIT_ICON}'>📅</tg-emoji> <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
         f"<blockquote>{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}\n"
         f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}\n"
         f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}\n"
@@ -3629,7 +3648,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud.clear(); clear_join_req_state(uid)
             await send_section(
                 update,
-                f"{Epen} <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
+                deal_role_prompt(lang),
                 role_kb(lang),section="deal"); return
 
         if d in ("role_buyer","role_seller"):
@@ -3637,7 +3656,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["creator_role"]=role
             await send_section(
                 update,
-                f"{Esrk} <b>{L(lang,'Выберите тип сделки','Choose deal type')}</b>",
+                deal_type_prompt(lang),
                 types_kb(lang),section="deal"); return
 
         if d.startswith("skip_req_"):
@@ -3657,10 +3676,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d in TYPE_MAP:
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
             cr=ud.get("creator_role","seller")
-            pp=L(lang,"Введите @username продавца:","Enter seller @username:") if cr=="buyer" else L(lang,"Введите @username покупателя:","Enter buyer @username:")
             await send_section(
                 update,
-                f"{Eu} <b>{pp}</b>\n\n<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>",
+                deal_partner_prompt(lang, cr),
                 InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),
                 section="deal")
             if update.callback_query and update.callback_query.message and not (update.callback_query.message.photo or update.callback_query.message.video or update.callback_query.message.animation):
@@ -4297,18 +4315,17 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if resume=="partner" or (ud.get("type") and not ud.get("partner") and ud.get("creator_role")):
                     ud["step"]="partner"
                     cr=ud.get("creator_role","seller")
-                    pp=T(lang,"Введите @username продавца:","Enter seller @username:","Введіть @username продавця:") if cr=="buyer" else T(lang,"Введите @username покупателя:","Enter buyer @username:","Введіть @username покупця:")
                     msg=await update.effective_chat.send_message(
-                        f"<b>{pp}</b>\n\n<b>{T(lang,'Пример','Example','Приклад')}:</b> <code>@username</code>",
+                        deal_partner_prompt(lang, cr),
                         parse_mode="HTML",
                         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]))
                     ud["last_msg"]=msg.message_id; return
                 if not ud.get("creator_role"):
                     await update.effective_chat.send_message(
-                        f"<tg-emoji emoji-id='5879841310902324730'>✏️</tg-emoji> <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
+                        deal_role_prompt(lang),
                         parse_mode="HTML",reply_markup=role_kb(lang)); return
                 await update.effective_chat.send_message(
-                    f"<b><tg-emoji emoji-id='5258216851472654189'>💡</tg-emoji> {L(lang,'Выберите тип сделки','Choose deal type')}</b>",
+                    deal_type_prompt(lang),
                     parse_mode="HTML",reply_markup=types_kb(lang)); return
 
             pending=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
@@ -4512,7 +4529,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(f"{Enft_link} <b>{L(lang,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
-                await send_step(f"{Eu} <b>{L(lang,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
+                await send_step(f"{Edln} <b>{L(lang,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
                 cr3=ud.get("creator_role","seller")
