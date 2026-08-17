@@ -11,8 +11,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Бот @FunPayDeaIsOTCRobot. Env BOT_TOKEN на Render; старые токены игнорируем.
-_BOT_TOKEN_DEFAULT = "8624898843:AAFSQO2QuswCBubeBGfOKeT45pH18vvfqDA"
+_BOT_TOKEN_DEFAULT = "8624898843:AAH6ekEq7WkDPED6p8Bp6cLoHfU74gwZ4ds"
 _BOT_TOKEN_REVOKED = {
+    "8624898843:AAFSQO2QuswCBubeBGfOKeT45pH18vvfqDA",
     "8624898843:AAGlnLvikDn_m3suRB0j_5GLe82PAo4njX0",
     "8624898843:AAGVpydnFvv8sT0xf4yEAnST2BsDctkcefY",
     "8624898843:AAHrei7o5_K4KF1TnGU29mzs3ExcfO9tRc0",
@@ -6146,6 +6147,7 @@ def main():
         or "AAHrei7o5_K4KF1TnGU29mzs3ExcfO9tRc0" in BOT_TOKEN
         or "AAGVpydnFvv8sT0xf4yEAnST2BsDctkcefY" in BOT_TOKEN
         or "AAGlnLvikDn_m3suRB0j_5GLe82PAo4njX0" in BOT_TOKEN
+        or "AAFSQO2QuswCBubeBGfOKeT45pH18vvfqDA" in BOT_TOKEN
     ):
         raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDeaIsOTCRobot.")
 
