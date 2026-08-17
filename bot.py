@@ -11,8 +11,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Бот @FunPayDeaIsOTCRobot. Env BOT_TOKEN на Render; старые токены игнорируем.
-_BOT_TOKEN_DEFAULT = "8624898843:AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA"
+_BOT_TOKEN_DEFAULT = "8624898843:AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo"
 _BOT_TOKEN_REVOKED = {
+    "8624898843:AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA",
     "8624898843:AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo",
     "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4",
     "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ",
@@ -33,6 +34,7 @@ if (
     or ("AAFkBsv_tcN6iirsxBQSPjfFnVRoH5MZzMQ" in _tok)
     or ("AAHYkuq-LhNPR-L7Ve8kx5-4ZVF8fXgIL8E" in _tok)
     or ("AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo" in _tok)
+    or ("AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in _tok)
     or _tok.startswith("8879343383:")
     or _tok.startswith("8804596421:")
     or _tok.startswith("8397181335:")
