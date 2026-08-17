@@ -11,8 +11,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Бот @FunPayDeaIsOTCRobot. Env BOT_TOKEN на Render; старые токены игнорируем.
-_BOT_TOKEN_DEFAULT = "8624898843:AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo"
+_BOT_TOKEN_DEFAULT = "8624898843:AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA"
 _BOT_TOKEN_REVOKED = {
+    "8624898843:AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo",
     "8879343383:AAGO3viGf3PERRFA-c5Jx0Wz3cqm-tIj6J4",
     "8879343383:AAGbBqY5h255jFtzFDiWUQEc_xKFKczZALQ",
     "8804596421:AAHTQN-bfrnTcyU1PlozD0u4MM5a0SrE5iE",
@@ -31,6 +32,7 @@ if (
     or ("AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng" in _tok)
     or ("AAFkBsv_tcN6iirsxBQSPjfFnVRoH5MZzMQ" in _tok)
     or ("AAHYkuq-LhNPR-L7Ve8kx5-4ZVF8fXgIL8E" in _tok)
+    or ("AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo" in _tok)
     or _tok.startswith("8879343383:")
     or _tok.startswith("8804596421:")
     or _tok.startswith("8397181335:")
@@ -6156,6 +6158,7 @@ def main():
         or "AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng" in BOT_TOKEN
         or "AAFkBsv_tcN6iirsxBQSPjfFnVRoH5MZzMQ" in BOT_TOKEN
         or "AAHYkuq-LhNPR-L7Ve8kx5-4ZVF8fXgIL8E" in BOT_TOKEN
+        or "AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo" in BOT_TOKEN
     ):
         raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDeaIsOTCRobot.")
 
