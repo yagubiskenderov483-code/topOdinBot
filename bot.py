@@ -1421,24 +1421,21 @@ def _tg_caption(text, has_media=False):
     return t[: lim-1] + "…"
 
 def _banner_media(section, text, fallback_section=None):
-    """Always attach section banner (local jpg if file_id is stale). Never skip for long deal cards."""
+    """Always attach the section jpg from disk. Old Telegram file_ids die after token rotate."""
     b=get_banner(None, section)
     if not b and fallback_section:
         b=get_banner(None, fallback_section)
-    local_fb=_banner_local_path(section, b)
-    if not local_fb and fallback_section:
-        local_fb=_banner_local_path(fallback_section, b)
+    local=_banner_local_path(section, b)
+    if not local and fallback_section:
+        local=_banner_local_path(fallback_section, b)
+    bt=(b.get("text") or "").strip() if b else ""
+    full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
+    if local:
+        return None, None, local, None, full
     bv=b.get("video") if b else None
     bg=b.get("gif") if b else None
     bp=b.get("photo") if b else None
-    if local_fb and not bp and not bv and not bg:
-        bp=local_fb
-        local_fb=None
-    elif local_fb and bp and os.path.isfile(str(bp)):
-        local_fb=None
-    bt=(b.get("text") or "").strip() if b else ""
-    full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
-    return bv, bg, bp, local_fb, full
+    return bv, bg, bp, None, full
 
 def _cache_banner_file_id(section, kind, ref, msg):
     if not (section and msg and isinstance(ref, str) and os.path.isfile(ref)):
@@ -1566,19 +1563,20 @@ async def _safe_edit_caption(msg, text, kb=None):
         return False
 
 async def send_section(update, text, kb=None, section="main"):
-    """Show a section with its banner, like the old send_photo+caption flow."""
+    """Always show the section banner. Deal screens never stay as text-only."""
     try:
         bv, bg, bp, local_fb, full = _banner_media(section, text)
         chat=update.effective_chat
         previous_message=None
+        deal_secs=("deal","deal_card","deal_join","deal_forward","my_deals")
         if update.callback_query and update.callback_query.message:
             msg=update.callback_query.message
             has_media=bool(msg.photo or msg.video or msg.animation)
             new_has_media=bool(bv or bg or bp or local_fb)
-            if not has_media and not new_has_media:
+            if section not in deal_secs and not has_media and not new_has_media:
                 if await _safe_edit_text(msg, full, kb):
                     return msg
-            elif has_media and new_has_media and len(full) <= 1024:
+            elif section not in deal_secs and has_media and new_has_media and len(full) <= 1024:
                 current_file=(msg.video.file_id if msg.video else
                               msg.animation.file_id if msg.animation else
                               msg.photo[-1].file_id if msg.photo else None)
