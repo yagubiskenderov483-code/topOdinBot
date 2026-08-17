@@ -1424,11 +1424,19 @@ def _strip_html_tags(s):
     return re.sub(r"<[^>]+>", "", str(s or ""))
 
 def _tg_caption(text, has_media=False):
-    """Telegram: 1024 for media captions, 4096 for text messages."""
+    """Telegram: 1024 for media captions, 4096 for text messages. No trailing ellipsis."""
     lim=1024 if has_media else 4096
     t=str(text or "")
-    if len(t)<=lim: return t
-    return t[: lim-1] + "…"
+    if len(t)<=lim:
+        return t
+    cut=t[:lim]
+    nl=cut.rfind("\n")
+    if nl>=200:
+        cut=cut[:nl].rstrip()
+    last_lt, last_gt=cut.rfind("<"), cut.rfind(">")
+    if last_lt>last_gt:
+        cut=cut[:last_lt].rstrip()
+    return cut
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None):
     """Send banner and text together (photo/video + caption)."""
@@ -4973,7 +4981,7 @@ async def show_profile(update, context):
                 import re as _re2
                 m=_re2.search(r'(\d)/5',r)
                 stars_num=int(m.group(1)) if m else 5
-                star_str=ce("5321485469249198987","⭐")*stars_num
+                star_str=f"{ce('5321485469249198987','⭐')} {stars_num}/5"
                 rv_lines.append(f"{star_str} {H(r)}")
             rv=f"\n\n{Estr} <b>{T(lang,f'Отзывы ({len(reviews)})',f'Reviews ({len(reviews)})',f'Відгуки ({len(reviews)})')}</b>\n<blockquote>"+'\n'.join(rv_lines)+'</blockquote>'
         text=(f"{Ecwn} <b>{T(lang,'Профиль','Profile','Профіль')}</b>{sl}\n\n"
@@ -5113,13 +5121,11 @@ async def show_top(update, context):
             "5794375786743995258",
         ]
         PLACE_FB=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
-        dw=L(lang,"сделок","deals")
-        lines=[f"{Ecwn} <b>{L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
+        lines=[f"{Ecwn} <b>{L(lang,'Топ продавцов','Top Sellers')}</b>"]
         for i,(u2,a,dd) in enumerate(TOP):
             place=ce(PLACE_EMOJI[i], PLACE_FB[i])
-            lines.append(f"{place} <b>{u2}</b> - ${a} · {dd} {dw}")
-        lines.append("")
-        lines.append(f"{CF} <b>{L(lang,'132.584 сделок · оборот $1.346.582','132,584 deals · $1,346,582 turnover')}</b>")
+            lines.append(f"{place} <b>{u2}</b> · ${a} · {dd}")
+        lines.append(f"{CF}<b>{T(lang,'132.584 · $1.346.582','132,584 · $1,346,582','132.584 · $1.346.582')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")
