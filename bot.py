@@ -107,12 +107,15 @@ _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
 # Hosted Reviews HTML (self-contained). Refresh via REVIEWS_HTML_REMOTE / litter upload when expired.
 _REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/4nqqp4.html").strip()
 _DEAD_MINIAPP_MARKERS = (
+    "litter.catbox.moe",
+    "files.catbox.moe",
     "litter.catbox.moe/7ip6ck.html",
     "7ip6ck.html",
     "litter.catbox.moe/i58txn.html",
     "litter.catbox.moe/8n77lf",
     "litter.catbox.moe/brgw8b",
     "litter.catbox.moe/v515tq.html",
+    "litter.catbox.moe/4nqqp4.html",
     "brewpage",
     "example.com",
 )
@@ -146,17 +149,17 @@ def _public_base_url() -> str:
     return ""
 
 def reviews_miniapp_url() -> str:
-    """Reviews Mini App is self-contained HTML — prefer working hosted copy over a dead Render URL."""
+    """Reviews Mini App — bot's own HTTPS origin first (Telegram WebApp domain)."""
     env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
     if env and not _miniapp_url_dead(env):
         return env
-    hosted = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
-    if hosted and not _miniapp_url_dead(hosted):
-        return hosted
     render = _public_base_url()
     if render:
         return f"{render}/index.html"
-    return _REVIEWS_HTML_HOSTED or ""
+    hosted = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
+    if hosted and not _miniapp_url_dead(hosted):
+        return hosted
+    return ""
 
 def tonconnect_miniapp_url() -> str:
     """TonConnect Mini App — same origin as bot (needs POST /api/bind-ton)."""
@@ -375,6 +378,7 @@ Ecwn = E["safe"];       Ebnk = E["bank"];       Ebnk2= E["banknote"]
 Ecrss= E["cross"];      Eshne= E["shine"];      Echart=E["chart"]
 Etgt = E["target"];     Estck= E["sticker"]
 Eusdt= ce("5406841020769936275", "💵")
+Eref = ce("6037475557082403885", "🪙")
 
 # ─── Типы сделок ──────────────────────────────────────────────────────────────
 TNAMES_RU = {
@@ -1618,18 +1622,18 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
 # ─── Keyboards ────────────────────────────────────────────────────────────────
 def main_kb(lang):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
-         InlineKeyboardButton(T(lang,'Профиль','Profile','Профіль'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
-        [InlineKeyboardButton(T(lang,'Пополнить/Вывод','Top Up/Withdraw','Поповнити/Вивід'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
-         InlineKeyboardButton(T(lang,'Мои сделки','My Deals','Мої угоди'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
-        [InlineKeyboardButton(T(lang,'Язык','Language','Мова'),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212"),
-         InlineKeyboardButton(T(lang,'Топ продавцов','Top Sellers','Топ продавців'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
-        [InlineKeyboardButton(T(lang,'Рефералы','Referrals','Реферали'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
-         InlineKeyboardButton(T(lang,'Реквизиты','Requisites','Реквізити'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
-        [InlineKeyboardButton(T(lang,'Пожаловаться','Report','Поскаржитися'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882"),
-         InlineKeyboardButton(T(lang,'FunPay AI','FunPay AI','FunPay AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
-        [InlineKeyboardButton(T(lang,'Тех. поддержка','Tech Support','Тех. підтримка'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
-         InlineKeyboardButton(T(lang,'Сайт FunPay','FunPay Website','Сайт FunPay'),url=SITE_URL,icon_custom_emoji_id="5983580310292402968")],
+        [InlineKeyboardButton(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075")],
+        [InlineKeyboardButton(T(lang,'Профиль','Profile','Профіль'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
+        [InlineKeyboardButton(T(lang,'Пополнить/Вывод','Top Up/Withdraw','Поповнити/Вивід'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407")],
+        [InlineKeyboardButton(T(lang,'Мои сделки','My Deals','Мої угоди'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+        [InlineKeyboardButton(T(lang,'Язык','Language','Мова'),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212")],
+        [InlineKeyboardButton(T(lang,'Топ продавцов','Top Sellers','Топ продавців'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
+        [InlineKeyboardButton(T(lang,'Рефералы','Referrals','Реферали'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098")],
+        [InlineKeyboardButton(T(lang,'Реквизиты','Requisites','Реквізити'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(T(lang,'Пожаловаться','Report','Поскаржитися'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882")],
+        [InlineKeyboardButton(T(lang,'FunPay AI','FunPay AI','FunPay AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
+        [InlineKeyboardButton(T(lang,'Тех. поддержка','Tech Support','Тех. підтримка'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799")],
+        [InlineKeyboardButton(T(lang,'Сайт FunPay','FunPay Website','Сайт FunPay'),url=SITE_URL,icon_custom_emoji_id="5983580310292402968")],
         [InlineKeyboardButton(T(lang,'Информация','Information','Інформація'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
     ])
 
@@ -2392,7 +2396,6 @@ def complaint_prompt(step, ctype, lang="ru"):
         prompts={
             "topic":(
                 f"<tg-emoji emoji-id='5920332557466997677'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на маркетплейс','Marketplace report')}</b>\n\n"
-                f"<blockquote>{market_note}</blockquote>\n"
                 f"<b>1. {L(lang,'Тема / что случилось','Topic / what happened')}</b>\n"
                 f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Долго не подтверждают пополнение','Top-up not confirmed for too long')}</code></blockquote>"
             ),
@@ -2408,7 +2411,8 @@ def complaint_prompt(step, ctype, lang="ru"):
             "evidence":(
                 f"<b>4. {L(lang,'Доказательства','Evidence')}</b>\n"
                 f"<blockquote>{L(lang,'Ссылки, скрины текстом, ID платежа.','Links, screenshot text, payment ID.')}\n"
-                f"{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Чек EG-123, скрин отправил в поддержку','Receipt EG-123, screenshot sent to support')}</code></blockquote>"
+                f"{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Чек EG-123, скрин отправил в поддержку','Receipt EG-123, screenshot sent to support')}</code></blockquote>\n\n"
+                f"<i>{market_note}</i>"
             ),
         }
         return prompts.get(step,"?")
@@ -2416,7 +2420,6 @@ def complaint_prompt(step, ctype, lang="ru"):
     prompts={
         "username":(
             f"<tg-emoji emoji-id='{emoji}'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на','Report about')} {role_word}</b>\n\n"
-            f"<blockquote>{market_note}</blockquote>\n"
             f"<b>1. {L(lang,'Юзернейм','Username')} {role_word}</b>\n"
             f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>@username</code></blockquote>"
         ),
@@ -2432,7 +2435,8 @@ def complaint_prompt(step, ctype, lang="ru"):
         "evidence":(
             f"<b>4. {L(lang,'Доказательства','Evidence')}</b>\n"
             f"<blockquote>{L(lang,'Опишите проблему и приложите факты.','Describe the issue and include facts.')}\n"
-            f"{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Оплата ушла, товар не отдали, чек: ...','Paid, item not delivered, receipt: ...')}</code></blockquote>"
+            f"{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Оплата ушла, товар не отдали, чек: ...','Paid, item not delivered, receipt: ...')}</code></blockquote>\n\n"
+            f"<i>{market_note}</i>"
         ),
     }
     return prompts.get(step,"?")
@@ -2443,7 +2447,8 @@ async def show_complaint(update, context):
         clear_complaint_state(context.user_data)
         text=(
             f"<tg-emoji emoji-id='6032742198179532882'>⚠️</tg-emoji> <b>{L(lang,'Пожаловаться','Report')}</b>\n\n"
-            f"<blockquote>{T(lang,'Жалоба уйдёт маркетплейсу. Выберите, на кого жалоба, и заполните форму.','The report goes to the marketplace. Choose who to report and fill the form.','Скарга піде маркетплейсу. Оберіть, на кого скарга, і заповніть форму.')}</blockquote>"
+            f"<blockquote>{T(lang,'Выберите, на кого жалоба, и заполните форму.','Choose who to report and fill the form.','Оберіть, на кого скарга, і заповніть форму.')}</blockquote>\n\n"
+            f"<i>{T(lang,'Жалоба уйдёт маркетплейсу.','The report goes to the marketplace.','Скарга піде маркетплейсу.')}</i>"
         )
         await send_section(update,text,complaint_kb(lang),section="complaint")
     except Exception as e: logger.error(f"show_complaint: {e}")
@@ -4992,8 +4997,8 @@ async def show_ref(update, context):
         if refs: refs_str="\n\n"+L(lang,"Рефералы","Referrals")+":\n"+"\n".join(f"{Esrk} @{r}" if r and r!="?" else f"{Esrk} #?" for r in refs[-10:])
         text=(f"{Ejn} <b>{L(lang,'Реферальная программа','Referral Program')}</b>\n\n"
               f"<blockquote>{Epct} {L(lang,'Приглашайте друзей - 3% с каждой их сделки!','Invite friends - 3% from each deal!')}\n\n"
-              f"{Eu} {L(lang,'Приглашено','Invited')}: <b>{rc}</b>\n"
-              f"{Ebal} {T(lang,'Заработано','Earned','Зароблено')}: <b>{fmt_balance(re, lang)}</b>{refs_str}</blockquote>\n\n"
+              f"{Eref} {L(lang,'Приглашено','Invited')}: <b>{rc}</b>\n"
+              f"{Eref} {T(lang,'Заработано','Earned','Зароблено')}: <b>{fmt_balance(re, lang)}</b>{refs_str}</blockquote>\n\n"
               f"{Esrk} {L(lang,'Ваша ссылка:','Your link:')}\n<code>{ref_link}</code>")
         await send_section(update,text,InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="ref")
     except Exception as e: logger.error(f"show_ref: {e}")
