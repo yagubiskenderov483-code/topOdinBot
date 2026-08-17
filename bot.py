@@ -4996,7 +4996,7 @@ async def show_ref(update, context):
         text=(f"{Ejn} <b>{L(lang,'Реферальная программа','Referral Program')}</b>\n\n"
               f"<blockquote>{Epct} {L(lang,'Приглашайте друзей - 3% с каждой их сделки!','Invite friends - 3% from each deal!')}\n\n"
               f"{Eref} {L(lang,'Приглашено','Invited')}: <b>{rc}</b>\n"
-              f"{Eref} {T(lang,'Заработано','Earned','Зароблено')}: <b>{fmt_balance(re, lang)}</b>{refs_str}</blockquote>\n\n"
+              f"{Ebal} {T(lang,'Заработано','Earned','Зароблено')}: <b>{fmt_balance(re, lang)}</b>{refs_str}</blockquote>\n\n"
               f"{Esrk} {L(lang,'Ваша ссылка:','Your link:')}\n<code>{ref_link}</code>")
         await send_section(update,text,InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="ref")
     except Exception as e: logger.error(f"show_ref: {e}")
