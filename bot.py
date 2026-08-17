@@ -27,28 +27,11 @@ _BOT_TOKEN_REVOKED = {
     "8218941253:AAFkBsv_tcN6iirsxBQSPjfFnVRoH5MZzMQ",
     "8218941253:AAHYkuq-LhNPR-L7Ve8kx5-4ZVF8fXgIL8E",
 }
+# Актуальный токен всегда из кода. Старый BOT_TOKEN в env Render игнорируем.
 _tok = (os.getenv("BOT_TOKEN") or "").strip()
-if (
-    (not _tok)
-    or (_tok in _BOT_TOKEN_REVOKED)
-    or ("AAGO3viGf3PERRFA" in _tok)
-    or ("AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in _tok)
-    or ("AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng" in _tok)
-    or ("AAFkBsv_tcN6iirsxBQSPjfFnVRoH5MZzMQ" in _tok)
-    or ("AAHYkuq-LhNPR-L7Ve8kx5-4ZVF8fXgIL8E" in _tok)
-    or ("AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo" in _tok)
-    or ("AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in _tok)
-    or ("AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo" in _tok)
-    or ("AAHrei7o5_K4KF1TnGU29mzs3ExcfO9tRc0" in _tok)
-    or ("AAGVpydnFvv8sT0xf4yEAnST2BsDctkcefY" in _tok)
-    or _tok.startswith("8879343383:")
-    or _tok.startswith("8804596421:")
-    or _tok.startswith("8397181335:")
-    or _tok.startswith("8218941253:")
-):
-    BOT_TOKEN = _BOT_TOKEN_DEFAULT
-else:
-    BOT_TOKEN = _tok
+if _tok and _tok != _BOT_TOKEN_DEFAULT:
+    logger.warning("Ignoring stale BOT_TOKEN env (...%s)", _tok[-8:])
+BOT_TOKEN = _BOT_TOKEN_DEFAULT
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495}
 BOT_USERNAME = "FunPayDeaIsOTCRobot"
 
@@ -4287,9 +4270,11 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     cur=ud.get("currency")
                     if cur and not user_has_requisites_for(u, cur):
                         ud["req_resume"]="amount"
-                        await update.effective_chat.send_message(
+                        await send_new(
+                            update,
                             f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
-                            parse_mode="HTML",reply_markup=currency_requisites_kb(cur,lang)); return
+                            currency_requisites_kb(cur,lang),section="deal")
+                        return
                     if ud.get("amount") not in (None,"","-"):
                         ud.setdefault("pay_currency",cur)
                         ud.setdefault("payment_amount",ud.get("amount"))
@@ -4332,9 +4317,11 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not user_has_requisites_for(u, deal_cur):
                     context.user_data["pending_deal"]=pending
                     set_join_req_state(uid, pending, None)
-                    await update.effective_chat.send_message(
+                    await send_new(
+                        update,
                         f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                        parse_mode="HTML",reply_markup=deal_join_req_kb(pending, deal_cur, lang)); return
+                        deal_join_req_kb(pending, deal_cur, lang),section="req")
+                    return
                 try:
                     ok=await complete_deal_join(update,context,pending)
                 except Exception as join_err:
@@ -4583,9 +4570,11 @@ async def finalize_deal(update, context):
         if not user_has_requisites_for(u_check, currency):
             lang=get_lang(user.id)
             ud["req_resume"]="amount"
-            await update.effective_chat.send_message(
+            await send_new(
+                update,
                 f"{Ewrn} <b>{req_add_for_amount_text(currency, lang)}</b>",
-                parse_mode="HTML",reply_markup=currency_requisites_kb(currency,lang)); return
+                currency_requisites_kb(currency,lang),section="deal")
+            return
         ud["_finalizing_deal"]=True
         dtype=ud.get("type","?"); partner=ud.get("partner","-")
         amount=ud.get("amount","-")
