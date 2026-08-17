@@ -1782,6 +1782,9 @@ def topup_details_text(method, amount, uid, lang="ru", payment_ref=None):
     return f"<b>{method}</b>"
 
 WAIT_ICON = "6028435952299413210"  # calendar / waiting check
+Edeal_ok  = ce("5906840875484321836", "✅")
+Edeal_n1  = ce("5408894951440279259", "1️⃣")
+Edeal_n2  = ce("5411585799990830248", "2️⃣")
 Edeal_cur = ce("5776233299424843260", "🏦")
 Eamt_in   = ce("6039614175917903752", "💰")
 Enft_link = ce("6050847684355428245", "🖼")
@@ -2117,10 +2120,10 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         show_cur=pay_cur
         amt_phrase = cur_amount_phrase(show_amt, show_cur, lang)
 
-        ico1, ico2 = En1, En2
+        ico1, ico2 = Edeal_n1, Edeal_n2
         lines=[
-            f"{Ech} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
-            f"<b>{T(lang,'Тип','Type','Тип')}:</b> {tname_plain(dtype,lang)}{item}",
+            f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
+            f"<b>{T(lang,'Тип','Type','Тип')}:</b> <b>{tname_plain(dtype,lang)}</b>{item}",
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
             f"{ico1} <b>{lbl_creator}:</b> <b>{creator_tag}</b>",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
@@ -3571,7 +3574,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if deal_id not in db.get("deals",{}): return
             join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
             invite=(
-                f"<b>{L(lang,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
+                f"{Edeal_ok} <b>{L(lang,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
                 f"<a href=\"{H(join_link)}\">{H(join_link)}</a>"
             )
             await send_new(update,invite,section="deal_forward"); return
@@ -4631,7 +4634,7 @@ async def finalize_deal(update, context):
             "text":share_msg,
         }, quote_via=quote)
         text_out=(
-            f"{Ech} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
+            f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
             f"{share_text}\n<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
         )
         if creator_role=="seller":
@@ -4656,7 +4659,7 @@ async def finalize_deal(update, context):
             f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
         schedule_notify_deal_event(
             context.bot,user.id,
-            f"{Ech} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
+            f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
             f"<blockquote>{L(lang,'Сделка','Deal')} <code>{deal_id}</code>\n"
             f"{L(lang,'Сумма','Amount')}: {cur_amount_phrase(amount,currency,lang)}\n"
             f"{L(lang,'Смотрите в «Мои сделки».','See it in My Deals.')}</blockquote>",
@@ -4671,7 +4674,7 @@ async def finalize_deal(update, context):
                 pl=get_lang(int(puid))
                 join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
                 txt2=(
-                    f"{Ech} <b>{L(pl,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
+                    f"{Edeal_ok} <b>{L(pl,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
                     f"<a href=\"{H(join_link)}\">{H(join_link)}</a>"
                 )
                 kb2=InlineKeyboardMarkup([
