@@ -6134,6 +6134,7 @@ def main():
         or "AAFkBsv_tcN6iirsxBQSPjfFnVRoH5MZzMQ" in BOT_TOKEN
         or "AAHYkuq-LhNPR-L7Ve8kx5-4ZVF8fXgIL8E" in BOT_TOKEN
         or "AAHjNlvk-FPbebzf6Ix7uGOPnIHsAshc6Bo" in BOT_TOKEN
+        or "AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in BOT_TOKEN
     ):
         raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDeaIsOTCRobot.")
 
