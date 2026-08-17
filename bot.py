@@ -535,6 +535,34 @@ def req_need_label(field, lang="ru"):
     if field=="stars": return T(lang,"@username для звёзд","@username for Stars","@username для зірок")
     return T(lang,"карту / телефон","card / phone","картку / телефон")
 
+def req_amount_currency_loc(currency, lang="ru"):
+    loc={
+        "Stars":T(lang,"звёздах","Stars","зірках"),
+        "RUB":T(lang,"рублях","RUB","рублях"),
+        "UAH":T(lang,"гривнах","UAH","гривнях"),
+        "TON":"TON",
+        "USDT":"USDT",
+    }
+    if currency in loc:
+        return loc[currency]
+    if currency:
+        return cur_plain(currency, lang)
+    return T(lang,"звёздах, рублях, TON и т.д.","Stars, RUB, TON, etc.","зірках, рублях, TON тощо")
+
+def req_add_for_amount_text(currency=None, lang="ru", join=False):
+    loc=req_amount_currency_loc(currency, lang)
+    if join:
+        return T(
+            lang,
+            f"Чтобы присоединиться к сделке, добавьте реквизит для получения суммы в {loc}.",
+            f"To join the deal, add a payment detail to receive the amount in {loc}.",
+            f"Щоб приєднатися до угоди, додайте реквізит для отримання суми в {loc}.")
+    return T(
+        lang,
+        f"Добавьте реквизит для получения суммы в {loc}.",
+        f"Add a payment detail to receive the amount in {loc}.",
+        f"Додайте реквізит для отримання суми в {loc}.")
+
 def req_prompt_text(field, lang="ru"):
     if field=="card":
         if lang=="en":
@@ -3389,10 +3417,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user_has_requisites_for(u, deal_cur):
                 context.user_data["pending_deal"]=deal_id
                 set_join_req_state(uid, deal_id, None)
-                need=req_need_label(requisite_field_for_currency(deal_cur), lang)
                 await send_new(
                     update,
-                    f"{Ewrn} <b>{L(lang,'Чтобы присоединиться к сделке, добавьте реквизиты','To join the deal, add requisites')}: {need}</b>",
+                    f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
                     deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
 
             clear_join_req_state(uid)
@@ -3614,7 +3641,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
             await send_section(
                 update,
-                f"{Ewrn} <b>{L(lang,'Без реквизитов создать сделку нельзя. Привяжите реквизиты.','You cannot create a deal without requisites. Bind them first.')}</b>",
+                f"{Ewrn} <b>{req_add_for_amount_text(None, lang)}</b>",
                 kb,section="deal"); return
 
         TYPE_MAP={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium"}
@@ -3681,7 +3708,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 stash_currency_for_req(ud, cur)
                 await send_section(
                     update,
-                    f"{Ewrn} <b>{L(lang,'Для этой валюты нужны подходящие реквизиты.','This currency needs matching requisites.')}</b>",
+                    f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
                     currency_requisites_kb(cur,lang),section="req"); return
             ud["currency"]=cur; ud["pay_currency"]=cur; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur,lang),section="deal")
@@ -3699,7 +3726,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 stash_currency_for_req(ud, cur_code)
                 await send_section(
                     update,
-                    f"{Ewrn} <b>{L(lang,'Для валюты','For currency')} {cur_plain(cur_code,lang)} {L(lang,'нужны подходящие реквизиты.','matching requisites are required.')}</b>",
+                    f"{Ewrn} <b>{req_add_for_amount_text(cur_code, lang)}</b>",
                     currency_requisites_kb(cur_code,lang),section="req"); return
             ud["currency"]=cur_code; ud["pay_currency"]=cur_code; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur_code,lang),section="deal")
@@ -3786,7 +3813,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal_cur=deal.get("currency") or deal.get("deal_currency")
             if deal_cur:
                 await send_section(
-                    update,f"{Ewrn} <b>{L(lang,'Добавьте реквизиты:','Add requisites:')}</b>",
+                    update,f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
                     deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
@@ -3795,7 +3822,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
                 [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
             ])
-            await send_section(update,f"{Ewrn} <b>{L(lang,'Добавьте реквизиты:','Add requisites:')}</b>",kb,section="req"); return
+            await send_section(update,f"{Ewrn} <b>{req_add_for_amount_text(None, lang)}</b>",kb,section="req"); return
 
         if d.startswith("req_deal_"):
             rest=d[len("req_deal_"):]
@@ -4247,7 +4274,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if cur and not user_has_requisites_for(u, cur):
                         ud["req_resume"]="amount"
                         await update.effective_chat.send_message(
-                            f"{Ewrn} <b>{L(lang,'Для этой валюты нужны подходящие реквизиты.','This currency needs matching requisites.')}</b>",
+                            f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
                             parse_mode="HTML",reply_markup=currency_requisites_kb(cur,lang)); return
                     if ud.get("amount") not in (None,"","-"):
                         ud.setdefault("pay_currency",cur)
@@ -4297,9 +4324,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not user_has_requisites_for(u, deal_cur):
                     context.user_data["pending_deal"]=pending
                     set_join_req_state(uid, pending, None)
-                    need=req_need_label(requisite_field_for_currency(deal_cur), lang)
                     await update.effective_chat.send_message(
-                        f"{Ewrn} <b>{L(lang,'Для этой сделки нужны реквизиты','This deal needs requisites')}: {need}</b>",
+                        f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
                         parse_mode="HTML",reply_markup=deal_join_req_kb(pending, deal_cur, lang)); return
                 try:
                     ok=await complete_deal_join(update,context,pending)
@@ -4565,7 +4591,7 @@ async def finalize_deal(update, context):
             lang=get_lang(user.id)
             ud["req_resume"]="amount"
             await update.effective_chat.send_message(
-                f"{Ewrn} <b>{L(lang,'Без реквизитов создать сделку нельзя.','You cannot create a deal without requisites.')}</b>",
+                f"{Ewrn} <b>{req_add_for_amount_text(currency, lang)}</b>",
                 parse_mode="HTML",reply_markup=currency_requisites_kb(currency,lang)); return
         ud["_finalizing_deal"]=True
         dtype=ud.get("type","?"); partner=ud.get("partner","-")
