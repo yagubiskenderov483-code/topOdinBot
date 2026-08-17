@@ -10,7 +10,7 @@
 - Сайт: https://funpay.com/
 - Отзывы: в боте (Информация → Отзывы) — отзывы с сайта перенаправлены сюда
 
-Токен — из env `BOT_TOKEN` для `@FunPayDeaIsOTCRobot`.
+Токен бота зашит в `bot.py`. Хостинг бота — **Bothost** (ветка `main`). Сайт/Mini App — Render.
 
 ## Установка
 
@@ -19,12 +19,11 @@ pip install -r requirements.txt
 python bot.py
 ```
 
-## Render
+## Bothost
 
-1. Disk mount `/data`, env `DATA_DIR=/data`, `DB_FILE=/data/db.json`
-2. Health Check Path: `/health`
-3. `BOT_TOKEN=` токен `@FunPayDeaIsOTCRobot`
-4. Manual Deploy ветки `main`
+1. Репозиторий `topOdinBot`, ветка `main`, точка входа `bot.py`
+2. База: `/app/data/db.json` (папка `data` переживает обновление из Git)
+3. После пуша в `main` — «Обновить из Git» в панели Bothost (или автодеплой, если включён)
 
 Ссылки на сделки: `https://t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx`
 

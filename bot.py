@@ -71,11 +71,14 @@ CARD_BANK_EN = "Chase"
 CARD_BANK_UK = "ПриватБанк"
 
 def _resolve_data_dir():
-    """Каталог для db/баннеров: Render Disk (/data) или рядом с bot.py."""
+    """Каталог для db: Bothost /app/data (живёт между деплоями), иначе рядом с bot.py."""
     candidates=[]
     env_dir=(os.getenv("DATA_DIR") or "").strip()
     if env_dir: candidates.append(env_dir)
-    candidates.extend(["/data", "/var/data", os.path.dirname(os.path.abspath(__file__))])
+    # Bothost persists /app/data across Git updates. /data is Render-only.
+    if os.getenv("BOT_ID") or os.path.isdir("/app"):
+        candidates.append("/app/data")
+    candidates.extend(["/app/data", "/data", "/var/data", os.path.dirname(os.path.abspath(__file__))])
     for d in candidates:
         try:
             os.makedirs(d, exist_ok=True)
