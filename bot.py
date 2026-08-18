@@ -771,6 +771,35 @@ def deal_guarantee_lines(lang):
         f"{En2} Менеджер підтвердить автоматично після отримання товару.\n"
         f"{En3} Усі угоди зашифровані.")
 
+def deal_share_target_text(creator_role, partner, lang):
+    p = partner if str(partner).startswith("@") else (f"@{partner}" if partner else "")
+    if creator_role == "seller":
+        return T(lang,
+            f"Отправьте ссылку покупателю {p}, чтобы он присоединился к сделке.",
+            f"Send the link to buyer {p} so they can join the deal.",
+            f"Надішліть посилання покупцю {p}, щоб він приєднався до угоди.")
+    return T(lang,
+        f"Отправьте ссылку продавцу {p}, чтобы он присоединился к сделке.",
+        f"Send the link to seller {p} so they can join the deal.",
+        f"Надішліть посилання продавцю {p}, щоб він приєднався до угоди.")
+
+def deal_forward_button_label(creator_role, lang):
+    if creator_role == "seller":
+        return T(lang, "Переслать покупателю", "Forward to buyer", "Переслати покупцю")
+    return T(lang, "Переслать продавцу", "Forward to seller", "Переслати продавцю")
+
+def deal_buyer_seller_display(deal, creator_tag, partner_tag):
+    creator_uid = str(deal.get("user_id", ""))
+    creator_role = deal.get("creator_role", "seller")
+    db = load_db()
+    p_uname = (deal.get("partner") or "").lstrip("@").lower()
+    partner_uid = deal.get("partner_uid") or next(
+        (k for k, v in db.get("users", {}).items() if v.get("username", "").lower() == p_uname), None)
+    partner_uid = str(partner_uid) if partner_uid else ""
+    if creator_role == "buyer":
+        return creator_tag, partner_tag, creator_uid, partner_uid, creator_uid
+    return partner_tag, creator_tag, partner_uid, creator_uid, creator_uid
+
 def deal_seller_action_label(dtype, lang):
     if dtype in ("stars", "crypto"):
         return T(lang, "Я отправил", "I sent", "Я відправив")
@@ -2308,24 +2337,28 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                         f"{Emn} {T(lang,'Оборот','Turnover','Оборот')}: <b>{fmt_balance(nt, lang)}</b>{sl}")
             except: return "-"
 
-        creator_uid=d.get("user_id","")
-        p_uname=d.get("partner","").lstrip("@").lower()
-        partner_uid=d.get("partner_uid") or next((k for k,v in db.get("users",{}).items() if v.get("username","").lower()==p_uname),None)
+        buyer_tag, seller_tag, buyer_uid, seller_uid, creator_uid = deal_buyer_seller_display(d, creator_tag, partner_tag)
+
+        def creator_mark(uid):
+            if uid and str(uid) == creator_uid:
+                return f" <i>({T(lang,'создатель','creator','творець')})</i>"
+            return ""
 
         payment_amount=d.get("payment_amount") or amt
         show_amt=payment_amount
         show_cur=pay_cur
         amt_phrase = cur_amount_phrase(show_amt, show_cur, lang)
 
-        ico1, ico2 = En1, En2
+        creator_role_word = T(lang, "продавец", "seller", "продавець") if creator_role == "seller" else T(lang, "покупатель", "buyer", "покупець")
         lines=[
             f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
+            f"<i>{T(lang,'Создатель сделки','Deal creator','Творець угоди')}: <b>{creator_tag}</b> · {creator_role_word}</i>\n",
             f"<b>{T(lang,'Тип','Type','Тип')}:</b> {tname_plain(dtype,lang)}{item}",
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
-            f"{ico1} <b>{lbl_creator}:</b> <b>{creator_tag}</b>",
-            f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
-            f"{ico2} <b>{lbl_partner}:</b> <b>{partner_tag}</b>",
-            f"<blockquote>{stats_block(partner_uid)}</blockquote>",
+            f"{En1} <b>{T(lang,'Покупатель','Buyer','Покупець')}:</b> <b>{buyer_tag}</b>{creator_mark(buyer_uid)}",
+            f"<blockquote>{stats_block(buyer_uid)}</blockquote>\n",
+            f"{En2} <b>{T(lang,'Продавец','Seller','Продавець')}:</b> <b>{seller_tag}</b>{creator_mark(seller_uid)}",
+            f"<blockquote>{stats_block(seller_uid)}</blockquote>",
         ]
 
         if joined:
@@ -2360,13 +2393,14 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if viewer_role=="buyer" and d.get("item_transferred"):
                 lines += deal_payment_details_lines(deal_id, d, lang)
         else:
-            instr=T(lang,
-                "Отправьте ссылку партнёру, чтобы он присоединился к сделке.",
-                "Send the link to your partner so they can join the deal.",
-                "Надішліть посилання партнеру, щоб він приєднався до угоди.")
+            if is_creator:
+                instr = deal_share_target_text(creator_role, partner_tag, lang)
+            else:
+                instr=T(lang,
+                    "Ожидайте, пока создатель отправит вам ссылку для присоединения.",
+                    "Wait for the creator to send you the join link.",
+                    "Очікуйте, поки творець надішле вам посилання для приєднання.")
             lines.append(f"\n<blockquote>{instr}</blockquote>")
-            if viewer_role=="seller":
-                lines.append(f"<blockquote>{deal_seller_transfer_text(lang, dtype)}</blockquote>")
 
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
 
@@ -4799,9 +4833,14 @@ async def finalize_deal(update, context):
             "url":join_link_f,
             "text":share_msg,
         }, quote_via=quote)
-        text_out=f"<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
+        created_hint=deal_share_target_text(creator_role, partner, lang)
+        text_out=(
+            f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
+            f"<blockquote>{created_hint}</blockquote>\n\n"
+            f"<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
+        )
         kb=InlineKeyboardMarkup([
-            [InlineKeyboardButton(L(lang,"Переслать партнёру","Forward to partner"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
+            [InlineKeyboardButton(deal_forward_button_label(creator_role, lang),url=share_url,icon_custom_emoji_id="5316600120043649556")],
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
         ])
         await send_new(update,text_out,kb,section="deal")
