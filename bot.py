@@ -771,11 +771,22 @@ def deal_guarantee_lines(lang):
         f"{En2} Менеджер підтвердить автоматично після отримання товару.\n"
         f"{En3} Усі угоди зашифровані.")
 
-def deal_seller_transfer_text(lang):
+def deal_seller_action_label(dtype, lang):
+    if dtype in ("stars", "crypto"):
+        return T(lang, "Я отправил", "I sent", "Я відправив")
+    return T(lang, "Я передал", "I transferred", "Я передав")
+
+def deal_seller_transfer_text(lang, dtype=""):
+    btn = deal_seller_action_label(dtype, lang)
+    if dtype in ("stars", "crypto"):
+        return T(lang,
+            f"Отправьте менеджеру {MANAGER_TAG} и нажмите «{btn}».",
+            f"Send to manager {MANAGER_TAG} and press «{btn}».",
+            f"Надішліть менеджеру {MANAGER_TAG} і натисніть «{btn}».")
     return T(lang,
-        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». Вы сможете продолжить сделку дальше передав товар.",
-        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». You can continue the deal after transferring the item.",
-        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Ви зможете продовжити угоду далі передавши товар.")
+        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «{btn}». Вы сможете продолжить сделку дальше передав товар.",
+        f"Transfer the item to manager {MANAGER_TAG} and press «{btn}». You can continue the deal after transferring the item.",
+        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «{btn}». Ви зможете продовжити угоду далі передавши товар.")
 def H(value): return html.escape(str(value))
 
 def qi(text):
@@ -841,7 +852,6 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
 
 def my_deals_kb(lang="ru"):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
         [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
     ])
 
@@ -2309,7 +2319,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
 
         ico1, ico2 = En1, En2
         lines=[
-            f"{Ech} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
+            f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
             f"<b>{T(lang,'Тип','Type','Тип')}:</b> {tname_plain(dtype,lang)}{item}",
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
             f"{ico1} <b>{lbl_creator}:</b> <b>{creator_tag}</b>",
@@ -2321,7 +2331,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         if joined:
             if viewer_role=="seller":
                 if not d.get("item_transferred"):
-                    joined_instr=deal_seller_transfer_text(lang)
+                    joined_instr=deal_seller_transfer_text(lang, dtype)
                 elif d.get("payment_reported"):
                     joined_instr=T(lang,
                         "Товар передан, оплата получена. Ожидайте завершения сделки.",
@@ -2356,10 +2366,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                 "Надішліть посилання партнеру, щоб він приєднався до угоди.")
             lines.append(f"\n<blockquote>{instr}</blockquote>")
             if viewer_role=="seller":
-                lines.append(f"<blockquote>{deal_seller_transfer_text(lang)}</blockquote>")
+                lines.append(f"<blockquote>{deal_seller_transfer_text(lang, dtype)}</blockquote>")
 
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
-        lines.append(f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>")
 
         return "\n".join(lines)
     except Exception as e:
@@ -2405,40 +2414,19 @@ def deal_party_tags(deal):
 
 def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_creator=False):
     rows=[]
-    def add_pay_buttons():
-        if deal.get("payment_reported"):
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте подтверждения","Waiting for confirmation","Очікуйте підтвердження"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
-        else:
+    dtype=deal.get("type","")
+    if viewer_role=="buyer":
+        if deal.get("item_transferred") and not deal.get("payment_reported"):
             rows.append([InlineKeyboardButton(
                 T(lang,"Я оплатил","I paid","Я оплатив"),callback_data=f"paid_{deal_id}",
                 icon_custom_emoji_id="5316827280863934685")])
-
-    if viewer_role=="buyer":
-        if not deal.get("item_transferred"):
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте передачу товара","Waiting for item transfer","Очікуйте передачу товару"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
-        else:
-            add_pay_buttons()
-    else:
-        if not deal.get("item_transferred"):
-            rows.append([InlineKeyboardButton(
-                T(lang,"Я передал","I transferred","Я передав"),callback_data=f"transferred_{deal_id}",
-                icon_custom_emoji_id="5316827280863934685")])
-        elif deal.get("payment_reported"):
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте подтверждения","Waiting for confirmation","Очікуйте підтвердження"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
-        else:
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
-    rows.extend([
-        [InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
-        [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
-    ])
+    elif not deal.get("item_transferred"):
+        rows.append([InlineKeyboardButton(
+            deal_seller_action_label(dtype, lang),callback_data=f"transferred_{deal_id}",
+            icon_custom_emoji_id="5316827280863934685")])
+    rows.append([InlineKeyboardButton(
+        T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",
+        icon_custom_emoji_id="5316887736823591263")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -4814,7 +4802,6 @@ async def finalize_deal(update, context):
         text_out=f"<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
         kb=InlineKeyboardMarkup([
             [InlineKeyboardButton(L(lang,"Переслать партнёру","Forward to partner"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
-            [InlineKeyboardButton(L(lang,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
         ])
         await send_new(update,text_out,kb,section="deal")
@@ -5279,7 +5266,6 @@ async def show_my_deals(update, context):
             "confirmed": T(lang,"завершена","completed","завершена"),
         }
         lines=[f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({len(deals)})</b>\n"]
-        rows=[]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
             tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "—")
             cur_d=cur_plain(dv.get("currency",""),lang) or str(dv.get("currency") or "")
@@ -5289,17 +5275,7 @@ async def show_my_deals(update, context):
                 f"<b>{i}.</b> {H(tn)} · <code>{H(did)}</code>\n"
                 f"<i>{H(amt)} {H(cur_d)} · {H(s)}</i>"
             )
-            rows.append([InlineKeyboardButton(
-                f"{tn} · {did}", callback_data=f"open_deal_{did}",
-                icon_custom_emoji_id="5258476306152038031")])
-            viewer_role,_is_creator=deal_viewer_role(dv, uid)
-            if viewer_role=="seller" and not dv.get("item_transferred") and dv.get("status")!="confirmed":
-                rows.append([InlineKeyboardButton(
-                    T(lang,"Я передал","I transferred","Я передав"),
-                    callback_data=f"transferred_{did}",
-                    icon_custom_emoji_id="5316827280863934685")])
-        rows.append([InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
-        await send_section(update,"\n".join(lines), InlineKeyboardMarkup(rows), section="my_deals")
+        await send_section(update,"\n".join(lines), back_kb, section="my_deals")
     except Exception as e:
         logger.error(f"show_my_deals: {e}", exc_info=True)
         try:
@@ -5323,7 +5299,7 @@ async def show_open_deal(update, context, deal_id):
             await send_section(
                 update,
                 f"{Ewrn} <b>{T(lang,'Сделка не найдена.','Deal not found.','Угоду не знайдено.')}</b>",
-                InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")]]),
+                InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]),
                 section="my_deals"); return
         viewer_role, is_creator=deal_viewer_role(deal, uid)
         creator_tag, partner_tag=deal_party_tags(deal)
