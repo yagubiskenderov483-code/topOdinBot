@@ -548,28 +548,54 @@ def req_amount_currency_loc(currency, lang="ru"):
         return cur_plain(currency, lang)
     return T(lang,"звёздах, рублях, TON и т.д.","Stars, RUB, TON, etc.","зірках, рублях, TON тощо")
 
+def req_receive_noun(currency, lang="ru"):
+    if currency=="Stars":
+        return T(lang,"звёзд","Stars","зірок")
+    if currency=="RUB":
+        return T(lang,"рублей","RUB","рублів")
+    if currency=="UAH":
+        return T(lang,"гривен","UAH","гривень")
+    if currency=="TON":
+        return "TON"
+    if currency=="USDT":
+        return "USDT"
+    return T(lang,"оплаты","payment","оплати")
+
+def req_add_ico(currency):
+    if currency=="Stars":
+        return Est
+    if currency=="USDT":
+        return Eusdt
+    if currency=="TON":
+        return Eton
+    field=requisite_field_for_currency(currency) if currency else None
+    if field=="stars":
+        return Est
+    if field=="ton":
+        return Eton
+    return Ecrd
+
 def req_add_for_amount_text(currency=None, lang="ru", join=False):
-    loc=req_amount_currency_loc(currency, lang)
-    cur=cur_plain(currency, lang) if currency else loc
-    if join:
-        head=T(
-            lang,
-            f"Чтобы присоединиться к сделке, привяжите реквизит для получения суммы в {loc}.",
-            f"To join the deal, bind a payment detail to receive the amount in {loc}.",
-            f"Щоб приєднатися до угоди, прив’яжіть реквізит для отримання суми в {loc}.")
-    else:
-        head=T(
-            lang,
-            f"Сначала привяжите реквизит — без него нельзя указать сумму сделки в {loc}.",
-            f"Bind a payment detail first — you cannot enter the deal amount in {loc} without it.",
-            f"Спочатку прив’яжіть реквізит — без нього не можна вказати суму угоди в {loc}.")
-    why=T(
-        lang,
-        f"Сюда придёт оплата покупателя в {H(cur)}.\nПосле привязки бот попросит сумму сделки — напишите только число, например <code>1500</code>.",
-        f"The buyer’s payment in {H(cur)} will go here.\nAfter binding, the bot will ask for the deal amount — type a number only, e.g. <code>1500</code>.",
-        f"Сюди надійде оплата покупця в {H(cur)}.\nПісля прив’язки бот запитає суму угоди — напишіть лише число, наприклад <code>1500</code>.",
-    )
-    return f"{head}\n\n<blockquote>{why}</blockquote>"
+    ico=req_add_ico(currency)
+    what=req_receive_noun(currency, lang)
+    return f"{ico} <b>{T(lang, f'Добавьте реквизит для получение {what} после сделки', f'Add a payment detail to receive {what} after the deal', f'Додайте реквізит для отримання {what} після угоди')}</b>"
+
+def req_bind_screen_text(field, lang="ru", currency=None, join=False):
+    if not currency:
+        currency="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
+    return req_add_for_amount_text(currency, lang, join=join)+"\n\n"+req_prompt_text(field, lang)
+
+def req_bind_kb(field, lang="ru", back="menu_deal"):
+    rows=[]
+    ton_url=tonconnect_miniapp_url()
+    if field=="ton" and ton_url:
+        rows.append([InlineKeyboardButton(
+            "Tonkeeper", web_app=WebAppInfo(url=ton_url),
+            icon_custom_emoji_id="5397829221605191505")])
+    rows.append([InlineKeyboardButton(
+        T(lang,"Назад","Back","Назад"),callback_data=back,
+        icon_custom_emoji_id="5258084656674250503")])
+    return InlineKeyboardMarkup(rows)
 
 def req_prompt_text(field, lang="ru"):
     if field=="card":
@@ -1540,7 +1566,7 @@ def _cache_banner_file_id(section, kind, ref, msg):
         logger.warning("banner file_id cache: %s", e)
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None, pair_out=None):
-    """Banner+text as one photo caption when it fits. Long cards (guarantee etc.) keep full text."""
+    """One message: banner photo with the text as caption. Never a separate photo bubble."""
     full_html=str(text or "")
     pair_out = pair_out if pair_out is not None else []
     media_attempts=[]
@@ -1549,24 +1575,25 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_
     if bp: media_attempts.append(("photo", bp))
     if local_fallback and local_fallback not in (bp, bv, bg):
         media_attempts.append(("photo", local_fallback))
-    caption_fits=len(full_html) <= 1024
+    cap_html=_tg_caption(full_html, True) if len(full_html)>1024 else full_html
     last_err=None
     for kind, ref in media_attempts:
         try:
-            if caption_fits:
-                msg=await _send_media_caption(chat, kind, ref, full_html, kb, "HTML")
-                _cache_banner_file_id(section, kind, ref, msg)
-                return msg
-            msg=await _send_media_caption(chat, kind, ref, None, None, None)
+            msg=await _send_media_caption(chat, kind, ref, cap_html, kb, "HTML")
             _cache_banner_file_id(section, kind, ref, msg)
-            if msg:
-                pair_out.append(msg.message_id)
-            break
+            return msg
         except Exception as e:
             last_err=e
-            logger.warning("safe_send %s: %s", kind, e)
-            continue
-    if last_err and not pair_out and not caption_fits:
+            logger.warning("safe_send %s html: %s", kind, e)
+            try:
+                msg=await _send_media_caption(chat, kind, ref, _tg_caption(_strip_html_tags(full_html), True), kb, None)
+                _cache_banner_file_id(section, kind, ref, msg)
+                return msg
+            except Exception as e2:
+                last_err=e2
+                logger.warning("safe_send %s plain: %s", kind, e2)
+                continue
+    if last_err:
         logger.warning("safe_send media: %s", last_err)
     try:
         return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
@@ -1611,7 +1638,7 @@ def _section_media(section, text, fallback_section=None):
     return bv, bg, bp, local_fb, full
 
 async def _show_screen(update, text, kb=None, section="main", fallback_section=None, wipe=True):
-    """Photo+caption when it fits; long deal cards keep the full guarantee text."""
+    """One photo+caption. Delete the previous screen (no «изменено», no orphan banners)."""
     bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fallback_section)
     chat=update.effective_chat
     cid=int(chat.id)
@@ -1683,7 +1710,7 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
 # ─── Keyboards ────────────────────────────────────────────────────────────────
 def main_kb(lang):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
+        [InlineKeyboardButton(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="6032742198179532882"),
          InlineKeyboardButton(T(lang,'Профиль','Profile','Профіль'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
         [InlineKeyboardButton(T(lang,'Пополнить/Вывод','Top Up/Withdraw','Поповнити/Вивід'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
          InlineKeyboardButton(T(lang,'Мои сделки','My Deals','Мої угоди'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
@@ -1818,7 +1845,7 @@ Edeal_n1  = ce("5408894951440279259", "1️⃣")
 Edeal_n2  = ce("5411585799990830248", "2️⃣")
 Edeal_cur = ce("5776233299424843260", "🏦")
 Eamt_in   = ce("6039614175917903752", "💰")
-Edeal_make= ce("5870998024779468554", "🛠")
+Edeal_make= ce("6032742198179532882", "🛠")
 Edeal_idea= ce("5258216851472654189", "💡")
 Edeal_chk = ce("6030563507299160824", "✅")
 Enft_link = ce("6050847684355428245", "🖼")
@@ -1881,6 +1908,37 @@ def stash_currency_for_req(ud, currency):
     ud["pay_currency"]=currency
     ud["step"]="amount"
     ud["req_resume"]="amount"
+
+async def ask_req_for_amount(update, context, currency, *, resume=None, join=False, deal_id=None, back=None, field=None):
+    """Immediately ask to type the requisite (banner+text together), no extra tap screen."""
+    uid=update.effective_user.id
+    ud=context.user_data
+    lang=get_lang(uid)
+    field=field or requisite_field_for_currency(currency)
+    for k in ("card_step","card_pending","card_bank_name"):
+        ud.pop(k, None)
+    ud["req_step"]=field
+    if join:
+        deal_id=str(deal_id or ud.get("req_for_deal") or ud.get("pending_deal") or "").strip().upper()
+        ud["req_for_deal"]=deal_id
+        ud["pending_deal"]=deal_id
+        ud.pop("req_after_buyer_deal", None)
+        set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
+        await send_section(
+            update, req_bind_screen_text(field, lang, currency, join=True),
+            req_bind_kb(field, lang, back or "main_menu"), section="req")
+        return
+    ud["req_after_buyer_deal"]=True
+    if resume:
+        ud["req_resume"]=resume
+    if currency in DEAL_CURRENCIES and resume=="amount":
+        stash_currency_for_req(ud, currency)
+    set_req_input_state(
+        uid, field, mode="deal_create", after_buyer=True,
+        req_resume=ud.get("req_resume"), req_return=None)
+    await send_section(
+        update, req_bind_screen_text(field, lang, currency, join=False),
+        req_bind_kb(field, lang, back or "menu_deal"), section="deal")
 
 def normalize_currency_amount(raw, currency):
     try:
@@ -2174,6 +2232,8 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         ico1, ico2 = Edeal_n1, Edeal_n2
         lines=[
             f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
+            f"<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>",
+            f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>\n",
             f"<b>{T(lang,'Тип','Type','Тип')}:</b> <b>{tname_plain(dtype,lang)}</b>{item}",
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
             f"{ico1} <b>{lbl_creator}:</b> <b>{creator_tag}</b>",
@@ -2221,9 +2281,6 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             lines.append(f"\n<blockquote>{instr}</blockquote>")
             if viewer_role=="seller":
                 lines.append(f"<blockquote>{deal_seller_transfer_text(lang)}</blockquote>")
-
-        lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
-        lines.append(f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>")
 
         return "\n".join(lines)
     except Exception as e:
@@ -3475,10 +3532,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user_has_requisites_for(u, deal_cur):
                 context.user_data["pending_deal"]=deal_id
                 set_join_req_state(uid, deal_id, None)
-                await send_new(
-                    update,
-                    f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
+                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id)
+                return
 
             clear_join_req_state(uid)
             ok=await complete_deal_join(update,context,deal_id)
@@ -3699,12 +3754,17 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
             await send_section(
                 update,
-                f"{Ewrn} <b>{req_add_for_amount_text(None, lang)}</b>",
+                req_add_for_amount_text(None, lang),
                 kb,section="deal"); return
 
         TYPE_MAP={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium"}
         if d in TYPE_MAP:
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
+            if TYPE_MAP[d]=="stars":
+                db=load_db(); u=get_user(db,uid)
+                if not user_has_requisites_for(u, "Stars"):
+                    await ask_req_for_amount(update, context, "Stars", resume="partner")
+                    return
             cr=ud.get("creator_role","seller")
             await send_section(
                 update,
@@ -3763,11 +3823,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(update,deal_currency_prompt(lang),cur_kb(lang),section="deal"); return
             db=load_db(); u=get_user(db,uid)
             if not user_has_requisites_for(u, cur):
-                stash_currency_for_req(ud, cur)
-                await send_section(
-                    update,
-                    f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
-                    currency_requisites_kb(cur,lang),section="req"); return
+                await ask_req_for_amount(update, context, cur, resume="amount")
+                return
             ud["currency"]=cur; ud["pay_currency"]=cur; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur,lang),section="deal")
             if update.callback_query and update.callback_query.message:
@@ -3781,11 +3838,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(update,deal_currency_prompt(lang),cur_kb(lang),section="deal"); return
             db=load_db(); u=get_user(db,uid)
             if not user_has_requisites_for(u, cur_code):
-                stash_currency_for_req(ud, cur_code)
-                await send_section(
-                    update,
-                    f"{Ewrn} <b>{req_add_for_amount_text(cur_code, lang)}</b>",
-                    currency_requisites_kb(cur_code,lang),section="req"); return
+                await ask_req_for_amount(update, context, cur_code, resume="amount")
+                return
             ud["currency"]=cur_code; ud["pay_currency"]=cur_code; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur_code,lang),section="deal")
             if update.callback_query and update.callback_query.message:
@@ -3818,28 +3872,17 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await update.effective_chat.send_message(
                         f"{Ewrn} <b>{L(lang,'Неизвестный тип реквизитов.','Unknown requisite type.')}</b>",
                         parse_mode="HTML"); return
-                ton_url=tonconnect_miniapp_url()
-                if field=="ton" and ton_url:
-                    ud["req_after_buyer_deal"]=True
-                    await send_section(update,req_prompt_text("ton",lang),
-                        InlineKeyboardMarkup([
-                            [InlineKeyboardButton("Tonkeeper",web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
-                            [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
-                        ]),section="req"); return
-                ud["req_step"]=field; ud["req_after_buyer_deal"]=True
-                for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
-                set_req_input_state(
-                    uid, field, mode="deal_create", after_buyer=True,
-                    req_resume=ud.get("req_resume"), req_return=None)
-                await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+                cur=ud.get("currency") or ud.get("pay_currency")
+                if not cur:
+                    cur="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
+                resume=ud.get("req_resume") or ("amount" if ud.get("currency") else "partner")
+                await ask_req_for_amount(update, context, cur, resume=resume, field=field)
+                return
             if raw=="ton_buyer_manual":
-                field="ton"
-                ud["req_step"]=field; ud["req_after_buyer_deal"]=True
-                for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
-                set_req_input_state(uid, field, mode="deal_create", after_buyer=True, req_resume=ud.get("req_resume"), req_return=None)
-                await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+                cur=ud.get("currency") or ud.get("pay_currency") or "TON"
+                resume=ud.get("req_resume") or ("amount" if ud.get("currency") else "partner")
+                await ask_req_for_amount(update, context, cur, resume=resume, field="ton")
+                return
             field=raw
             if field not in REQ_FIELDS:
                 await show_req(update,context); return
@@ -3870,9 +3913,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal=load_db().get("deals",{}).get(deal_id,{})
             deal_cur=deal.get("currency") or deal.get("deal_currency")
             if deal_cur:
-                await send_section(
-                    update,f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
+                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id)
+                return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}",f"Картка / Телефон {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
@@ -3880,7 +3922,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
                 [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
             ])
-            await send_section(update,f"{Ewrn} <b>{req_add_for_amount_text(None, lang)}</b>",kb,section="req"); return
+            await send_section(update,req_add_for_amount_text(None, lang),kb,section="req"); return
 
         if d.startswith("req_deal_"):
             rest=d[len("req_deal_"):]
@@ -3892,11 +3934,12 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.effective_chat.send_message(
                     f"{Ewrn} <b>{L(lang,'Не удалось открыть ввод реквизитов. Откройте ссылку на сделку ещё раз.','Could not open requisites input. Open the deal link again.')}</b>",
                     parse_mode="HTML"); return
-            ud["req_step"]=field; ud["req_for_deal"]=deal_id; ud["pending_deal"]=deal_id
-            for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal"): ud.pop(k,None)
-            set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
-            await send_section(update,req_prompt_text(field,lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+            deal=load_db().get("deals",{}).get(deal_id,{})
+            deal_cur=deal.get("currency") or deal.get("deal_currency")
+            if not deal_cur:
+                deal_cur="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
+            await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, field=field, back=f"add_req_{deal_id}")
+            return
 
         if d.startswith("lang_"):
             await set_lang(update,context,d[5:]); return
@@ -4307,25 +4350,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 clear_req_input_state(uid)
                 await update.message.reply_text(f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {L(lang,'Реквизиты привязаны!','Requisites bound!')}</b>",parse_mode="HTML")
                 resume=ud.pop("req_resume",None)
-                # Resume where the user was blocked (currency → amount / confirmation)
-                if resume=="amount" or (ud.get("currency") and ud.get("type") and ud.get("partner")):
-                    cur=ud.get("currency")
-                    if cur and not user_has_requisites_for(u, cur):
-                        ud["req_resume"]="amount"
-                        await send_section(
-                            update,
-                            f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
-                            currency_requisites_kb(cur,lang),section="req"); return
-                    if ud.get("amount") not in (None,"","-"):
-                        ud.setdefault("pay_currency",cur)
-                        ud.setdefault("payment_amount",ud.get("amount"))
-                        await show_deal_confirmation(update,context); return
-                    ud["step"]="amount"; ud.setdefault("pay_currency",cur)
-                    await send_section(update,deal_amount_prompt(cur,lang),section="deal")
-                    ids=_screen_get(update.effective_chat.id)
-                    if ids: ud["last_msg"]=ids[-1]
-                    return
-                # Type already chosen → continue to partner username
+                # Stars type: requisites first, then partner username
                 if resume=="partner" or (ud.get("type") and not ud.get("partner") and ud.get("creator_role")):
                     ud["step"]="partner"
                     cr=ud.get("creator_role","seller")
@@ -4334,6 +4359,21 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         deal_partner_prompt(lang, cr),
                         InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),
                         section="deal")
+                    ids=_screen_get(update.effective_chat.id)
+                    if ids: ud["last_msg"]=ids[-1]
+                    return
+                # Resume where the user was blocked (currency → amount / confirmation)
+                if resume=="amount" or (ud.get("currency") and ud.get("type") and ud.get("partner")):
+                    cur=ud.get("currency")
+                    if cur and not user_has_requisites_for(u, cur):
+                        await ask_req_for_amount(update, context, cur, resume="amount")
+                        return
+                    if ud.get("amount") not in (None,"","-"):
+                        ud.setdefault("pay_currency",cur)
+                        ud.setdefault("payment_amount",ud.get("amount"))
+                        await show_deal_confirmation(update,context); return
+                    ud["step"]="amount"; ud.setdefault("pay_currency",cur)
+                    await send_section(update,deal_amount_prompt(cur,lang),section="deal")
                     ids=_screen_get(update.effective_chat.id)
                     if ids: ud["last_msg"]=ids[-1]
                     return
@@ -4369,10 +4409,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not user_has_requisites_for(u, deal_cur):
                     context.user_data["pending_deal"]=pending
                     set_join_req_state(uid, pending, None)
-                    await send_section(
-                        update,
-                        f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                        deal_join_req_kb(pending, deal_cur, lang),section="req"); return
+                    await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=pending)
+                    return
                 try:
                     ok=await complete_deal_join(update,context,pending)
                 except Exception as join_err:
@@ -4614,12 +4652,8 @@ async def finalize_deal(update, context):
         u_check=get_user(db,user.id)
         currency=ud.get("currency","-")
         if not user_has_requisites_for(u_check, currency):
-            lang=get_lang(user.id)
-            ud["req_resume"]="amount"
-            await send_section(
-                update,
-                f"{Ewrn} <b>{req_add_for_amount_text(currency, lang)}</b>",
-                currency_requisites_kb(currency,lang),section="req"); return
+            await ask_req_for_amount(update, context, currency, resume="amount")
+            return
         ud["_finalizing_deal"]=True
         dtype=ud.get("type","?"); partner=ud.get("partner","-")
         amount=ud.get("amount","-")
