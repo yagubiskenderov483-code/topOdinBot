@@ -1488,29 +1488,46 @@ def _collapse_tg_emoji(html):
         r"\1", str(html or ""), flags=re.S)
 
 def _html_for_photo_caption(full_html):
-    """Fit banner caption in 1024 chars without cutting manager/guarantee lines."""
+    """Fit caption in 1024 chars; keep custom emoji tags (no plain sticker fallback)."""
     t=str(full_html or "").strip()
     if len(t)<=1024:
         return t
-    variants=[]
-    base=_collapse_tg_emoji(t)
-    variants.append(base)
-    variants.append(re.sub(r"\n{3,}", "\n\n", base))
-    variants.append(re.sub(
-        r"<blockquote><i>([\s\S]*?)</i></blockquote>",
-        r"<blockquote>\1</blockquote>", base))
-    variants.append(re.sub(
-        r"<blockquote><i>([\s\S]*?)</i></blockquote>",
-        r"<i>\1</i>", base))
-    seen=set()
+    variants=[
+        re.sub(r"\n{3,}", "\n\n", t),
+        re.sub(r"<blockquote><i>([\s\S]*?)</i></blockquote>", r"<blockquote>\1</blockquote>", t),
+        re.sub(r"<blockquote><i>([\s\S]*?)</i></blockquote>", r"<i>\1</i>", t),
+    ]
+    seen={t}
     for v in variants:
         v=v.strip()
-        if not v or v in seen:
+        if v in seen:
             continue
         seen.add(v)
         if len(v)<=1024:
             return v
-    return None
+    cut=t[:1024]
+    nl=cut.rfind("\n")
+    if nl > 700:
+        return cut[:nl]
+    return cut
+
+async def _try_edit_caption_message(msg, full_html, kb=None):
+    """Fast path: edit photo caption instead of re-uploading the banner."""
+    if not msg or not (msg.photo or msg.video or msg.animation):
+        return None
+    cap=_html_for_photo_caption(full_html)
+    if not cap:
+        return None
+    bot=msg.get_bot()
+    kw={"caption": cap, "parse_mode": "HTML"}
+    if kb is not None:
+        kw["reply_markup"]=kb
+    try:
+        return await bot.edit_message_caption(
+            chat_id=msg.chat_id, message_id=msg.message_id, **kw)
+    except Exception as e:
+        logger.warning("edit_caption: %s", e)
+        return None
 
 # chat_id -> current UI: banner photo(s) + text. Never edit in place («изменено»).
 # Same-section taps reuse the photo and only replace the text — that's what makes buttons fast.
@@ -1632,14 +1649,7 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_
             except Exception as e:
                 last_err=e
                 logger.warning("safe_send %s html: %s", kind, e)
-                try:
-                    msg=await _send_media_caption(chat, kind, ref, _collapse_tg_emoji(cap_html), kb, "HTML")
-                    _cache_banner_file_id(section, kind, ref, msg)
-                    return msg
-                except Exception as e2:
-                    last_err=e2
-                    logger.warning("safe_send %s compact: %s", kind, e2)
-                    continue
+                continue
     if last_err:
         logger.warning("safe_send media: %s", last_err)
     try:
@@ -1688,7 +1698,7 @@ def _section_media(section, text, fallback_section=None):
     return bv, bg, bp, local_fb, full
 
 async def _show_screen(update, text, kb=None, section="main", fallback_section=None, wipe=True):
-    """One photo+caption. Delete the previous screen (no «изменено», no orphan banners)."""
+    """Photo+caption; same-section taps edit caption (fast, no re-upload)."""
     bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fallback_section)
     chat=update.effective_chat
     cid=int(chat.id)
@@ -1697,11 +1707,28 @@ async def _show_screen(update, text, kb=None, section="main", fallback_section=N
     if previous:
         try: bot=previous.get_bot()
         except Exception: bot=None
+    fast_sections={"deal","deal_card","deal_forward","deal_join","main","balance","req"}
+    if wipe and previous and (previous.photo or previous.video or previous.animation):
+        meta=_screen_meta(cid)
+        prev_sec=meta.get("section") or ""
+        same=(prev_sec==section) or (section=="deal" and prev_sec in fast_sections) or (prev_sec=="deal" and section in fast_sections)
+        if same:
+            edited=await _try_edit_caption_message(previous, full, kb)
+            if edited:
+                _screen_put(cid, photos=[previous.message_id], texts=[], section=section)
+                old=[mid for mid in _old_screen_ids(cid, None) if mid!=previous.message_id]
+                if old:
+                    await _wipe_ids(chat, old, bot=bot)
+                return edited
     extras=[]
     sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section, pair_out=extras)
     old=_old_screen_ids(cid, previous) if wipe else []
     new_id=getattr(sent, "message_id", None)
-    _screen_put(cid, photos=extras, texts=[new_id] if new_id else [], section=section)
+    photo_id=new_id if sent and (getattr(sent,"photo",None) or getattr(sent,"video",None) or getattr(sent,"animation",None)) else None
+    if photo_id:
+        _screen_put(cid, photos=[photo_id], texts=[], section=section)
+    else:
+        _screen_put(cid, photos=extras, texts=[new_id] if new_id else [], section=section)
     if wipe:
         await _wipe_ids(chat, old, bot=bot)
     return sent
@@ -2323,15 +2350,12 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if viewer_role=="buyer" and d.get("item_transferred"):
                 lines += deal_payment_details_lines(deal_id, d, lang)
         else:
-            join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
+            pname=partner_tag if partner_tag and partner_tag!="—" else (d.get("partner") or "—")
             instr=T(lang,
-                "Отправьте ссылку партнёру, чтобы он присоединился к сделке.",
-                "Send the link to your partner so they can join the deal.",
-                "Надішліть посилання партнеру, щоб він приєднався до угоди.")
+                f"Ожидайте, пока партнёр {pname} присоединится к сделке. Ссылка отправлена ему в личные сообщения.",
+                f"Wait for partner {pname} to join the deal. The link was sent to them in a private message.",
+                f"Очікуйте, поки партнер {pname} приєднається до угоди. Посилання надіслано йому в особисті повідомлення.")
             lines.append(f"\n{qi(instr)}")
-            lines.append(f"<a href=\"{H(join_link)}\"><i>{H(join_link)}</i></a>")
-            if viewer_role=="seller":
-                lines.append(qi(deal_seller_transfer_text(lang)))
 
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
         lines.append(qi(deal_guarantee_lines(lang)))
@@ -3762,11 +3786,18 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # ── Навигация главного меню ──
         if d.startswith("fwd_deal_"):
             deal_id=d[9:].upper(); db=load_db()
-            if deal_id not in db.get("deals",{}): return
+            deal=db.get("deals",{}).get(deal_id)
+            if not deal: return
+            if not deal.get("partner_uid"):
+                await send_section(
+                    update,
+                    f"{Ewrn} <b>{T(lang,'Ссылка появится после присоединения партнёра.','The link appears after your partner joins.','Посилання з’явиться після приєднання партнера.')}</b>",
+                    InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),
+                    section="deal_card"); return
             join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
             invite=(
                 f"{Edeal_ok} <b>{L(lang,'Сделка создана! Присоединяйтесь, чтобы провести сделку.','Deal created! Join to complete the deal.')}</b>\n\n"
-                f"<a href=\"{H(join_link)}\">{H(join_link)}</a>"
+                f"<a href=\"{H(join_link)}\"><i>{H(join_link)}</i></a>"
             )
             await send_new(update,invite,section="deal_forward"); return
 
@@ -4610,13 +4641,26 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not dtype or not step: return
 
         async def send_step(t2, kb=None):
-            """New message + delete old. No edit — Telegram otherwise shows «изменено»."""
+            """Edit the same banner message when possible — faster than re-upload."""
             async def _del_user():
                 try: await update.message.delete()
                 except: pass
             try: asyncio.create_task(_del_user())
             except Exception:
                 pass
+            last_id=ud.get("last_msg")
+            if last_id:
+                try:
+                    msg=await context.bot.edit_message_caption(
+                        chat_id=update.effective_chat.id,
+                        message_id=last_id,
+                        caption=_html_for_photo_caption(t2) or t2[:1024],
+                        parse_mode="HTML",
+                        reply_markup=kb)
+                    _screen_put(update.effective_chat.id, photos=[last_id], texts=[], section="deal")
+                    return
+                except Exception:
+                    pass
             await send_section(update, t2, kb, section="deal")
             ids=_screen_get(update.effective_chat.id)
             if ids: ud["last_msg"]=ids[-1]
@@ -4761,23 +4805,16 @@ async def finalize_deal(update, context):
         lang=get_lang(user.id)
         uname=f"@{user.username}" if user.username else f"#{user.id}"
         join_link_f=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
-        share_msg=L(lang,"Сделка создана! Присоединяйтесь.","Deal created! Join now.")
-        share_url="https://t.me/share/url?"+urlencode({
-            "url":join_link_f,
-            "text":share_msg,
-        }, quote_via=quote)
         deal=db["deals"][deal_id]
         creator_tag, partner_tag = deal_party_tags(deal)
         text_out=build_deal_text(
             deal_id, deal, creator_tag, partner_tag, lang, joined=False, is_creator=True)
         text_out=f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n{text_out}"
         kb_rows=[
-            [InlineKeyboardButton(L(lang,"Переслать партнёру","Forward to partner"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
+            [InlineKeyboardButton(
+                T(lang,"Ожидайте партнёра","Waiting for partner","Очікуйте партнера"),
+                callback_data="noop", icon_custom_emoji_id=WAIT_ICON)],
         ]
-        if creator_role=="seller":
-            kb_rows.append([InlineKeyboardButton(
-                T(lang,"Я передал","I transferred","Я передав"),callback_data=f"transferred_{deal_id}",
-                icon_custom_emoji_id="5316827280863934685")])
         kb_rows.extend([
             [InlineKeyboardButton(L(lang,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
