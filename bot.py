@@ -578,6 +578,8 @@ def req_add_ico(currency):
 def req_add_for_amount_text(currency=None, lang="ru", join=False):
     ico=req_add_ico(currency)
     what=req_receive_noun(currency, lang)
+    if join:
+        return f"{ico} <b>{T(lang, f'Чтобы войти в сделку, добавьте реквизиты для получения {what}', f'To join the deal, add payment details to receive {what}', f'Щоб увійти в угоду, додайте реквізити для отримання {what}')}</b>"
     return f"{ico} <b>{T(lang, f'Добавьте реквизит для получение {what} после сделки', f'Add a payment detail to receive {what} after the deal', f'Додайте реквізит для отримання {what} після угоди')}</b>"
 
 def req_bind_example(field, lang="ru"):
@@ -596,8 +598,15 @@ def req_bind_screen_text(field, lang="ru", currency=None, join=False):
         currency="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
     head=req_add_for_amount_text(currency, lang, join=join)
     ex=req_bind_example(field, lang)
-    return (f"{head}\n\n"
-            f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n{ex}</blockquote>")
+    what=req_need_label(field, lang)
+    body=f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n{ex}</blockquote>"
+    if join:
+        enter=T(lang,
+            f"Добавьте {what} — отправьте сообщением ниже:",
+            f"Add {what} — send it in a message below:",
+            f"Додайте {what} — надішліть повідомленням нижче:")
+        return f"{head}\n\n{body}\n\n{enter}"
+    return f"{head}\n\n{body}"
 
 def remember_deal_currency(ud, currency):
     ud["currency"]=currency
@@ -2025,7 +2034,7 @@ def stash_currency_for_req(ud, currency):
     ud["step"]="amount"
     ud["req_resume"]="amount"
 
-async def ask_req_for_amount(update, context, currency, *, resume=None, join=False, deal_id=None, back=None, field=None):
+async def ask_req_for_amount(update, context, currency, *, resume=None, join=False, deal_id=None, back=None, field=None, deal=None):
     """Immediately ask to type the requisite (banner+text together), no extra tap screen."""
     uid=update.effective_user.id
     ud=context.user_data
@@ -2040,9 +2049,18 @@ async def ask_req_for_amount(update, context, currency, *, resume=None, join=Fal
         ud["pending_deal"]=deal_id
         ud.pop("req_after_buyer_deal", None)
         set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
+        req_text=req_bind_screen_text(field, lang, currency, join=True)
+        if deal and deal_id:
+            creator_tag, partner_tag=deal_party_tags(deal)
+            deal_text=build_deal_text(
+                deal_id, deal, creator_tag, partner_tag, lang,
+                joined=False, is_creator=False, for_join_req=True)
+            screen_text=f"{deal_text}\n\n{req_text}"
+        else:
+            screen_text=req_text
         await send_section(
-            update, req_bind_screen_text(field, lang, currency, join=True),
-            req_bind_kb(field, lang, back or "main_menu"), section="req")
+            update, screen_text,
+            req_bind_kb(field, lang, back or "main_menu"), section="deal_join")
         return
     ud["req_after_buyer_deal"]=True
     if resume:
@@ -2301,7 +2319,7 @@ def get_welcome(lang):
 
 
 # ─── Deal card ────────────────────────────────────────────────────────────────
-def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is_creator=False):
+def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is_creator=False, for_join_req=False):
     try:
         dtype=d.get("type",""); pay_cur=d.get("currency","-")
         amt=d.get("amount","-")
@@ -2319,11 +2337,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         else:
             item=""
 
-        if creator_role=="buyer":
-            lbl_creator=T(lang,"Покупатель","Buyer","Покупець"); lbl_partner=T(lang,"Продавец","Seller","Продавець")
-        else:
-            lbl_creator=T(lang,"Продавец","Seller","Продавець"); lbl_partner=T(lang,"Покупатель","Buyer","Покупець")
-        viewer_role=creator_role if is_creator else ("buyer" if creator_role=="seller" else "seller")
+        viewer_role=("buyer" if d.get("creator_role","seller")=="seller" else "seller") if not is_creator else d.get("creator_role","seller")
 
         db=load_db()
         def stats_block(uid_s):
@@ -2339,25 +2353,18 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
 
         buyer_tag, seller_tag, buyer_uid, seller_uid, creator_uid = deal_buyer_seller_display(d, creator_tag, partner_tag)
 
-        def creator_mark(uid):
-            if uid and str(uid) == creator_uid:
-                return f" <i>({T(lang,'создатель','creator','творець')})</i>"
-            return ""
-
         payment_amount=d.get("payment_amount") or amt
         show_amt=payment_amount
         show_cur=pay_cur
         amt_phrase = cur_amount_phrase(show_amt, show_cur, lang)
 
-        creator_role_word = T(lang, "продавец", "seller", "продавець") if creator_role == "seller" else T(lang, "покупатель", "buyer", "покупець")
         lines=[
             f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
-            f"<i>{T(lang,'Создатель сделки','Deal creator','Творець угоди')}: <b>{creator_tag}</b> · {creator_role_word}</i>\n",
             f"<b>{T(lang,'Тип','Type','Тип')}:</b> {tname_plain(dtype,lang)}{item}",
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
-            f"{En1} <b>{T(lang,'Покупатель','Buyer','Покупець')}:</b> <b>{buyer_tag}</b>{creator_mark(buyer_uid)}",
+            f"{En1} <b>{T(lang,'Покупатель','Buyer','Покупець')}:</b> <b>{buyer_tag}</b>",
             f"<blockquote>{stats_block(buyer_uid)}</blockquote>\n",
-            f"{En2} <b>{T(lang,'Продавец','Seller','Продавець')}:</b> <b>{seller_tag}</b>{creator_mark(seller_uid)}",
+            f"{En2} <b>{T(lang,'Продавец','Seller','Продавець')}:</b> <b>{seller_tag}</b>",
             f"<blockquote>{stats_block(seller_uid)}</blockquote>",
         ]
 
@@ -2393,16 +2400,18 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if viewer_role=="buyer" and d.get("item_transferred"):
                 lines += deal_payment_details_lines(deal_id, d, lang)
         else:
-            if is_creator:
-                instr = deal_share_target_text(creator_role, partner_tag, lang)
-            else:
-                instr=T(lang,
-                    "Ожидайте, пока создатель отправит вам ссылку для присоединения.",
-                    "Wait for the creator to send you the join link.",
-                    "Очікуйте, поки творець надішле вам посилання для приєднання.")
-            lines.append(f"\n<blockquote>{instr}</blockquote>")
+            if not for_join_req:
+                if is_creator:
+                    instr = deal_share_target_text(creator_role, partner_tag, lang)
+                else:
+                    instr=T(lang,
+                        "Ожидайте, пока создатель отправит вам ссылку для присоединения.",
+                        "Wait for the creator to send you the join link.",
+                        "Очікуйте, поки творець надішле вам посилання для приєднання.")
+                lines.append(f"\n<blockquote>{instr}</blockquote>")
 
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
+        lines.append(f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>")
 
         return "\n".join(lines)
     except Exception as e:
@@ -2459,8 +2468,8 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
             deal_seller_action_label(dtype, lang),callback_data=f"transferred_{deal_id}",
             icon_custom_emoji_id="5316827280863934685")])
     rows.append([InlineKeyboardButton(
-        T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",
-        icon_custom_emoji_id="5316887736823591263")])
+        T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",
+        icon_custom_emoji_id="5258476306152038031")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -3664,7 +3673,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user_has_requisites_for(u, deal_cur):
                 context.user_data["pending_deal"]=deal_id
                 set_join_req_state(uid, deal_id, None)
-                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id)
+                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, deal=d)
                 return
 
             clear_join_req_state(uid)
@@ -4047,7 +4056,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal=load_db().get("deals",{}).get(deal_id,{})
             deal_cur=deal.get("currency") or deal.get("deal_currency")
             if deal_cur:
-                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id)
+                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, deal=deal)
                 return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
@@ -4072,7 +4081,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal_cur=deal.get("currency") or deal.get("deal_currency")
             if not deal_cur:
                 deal_cur="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
-            await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, field=field, back=f"add_req_{deal_id}")
+            await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, field=field, back=f"add_req_{deal_id}", deal=deal)
             return
 
         if d.startswith("lang_"):
@@ -4545,7 +4554,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not user_has_requisites_for(u, deal_cur):
                     context.user_data["pending_deal"]=pending
                     set_join_req_state(uid, pending, None)
-                    await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=pending)
+                    await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=pending, deal=deal_pending)
                     return
                 try:
                     ok=await complete_deal_join(update,context,pending)
