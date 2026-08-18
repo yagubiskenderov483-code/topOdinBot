@@ -3882,7 +3882,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 deal_partner_prompt(lang, cr),
                 InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),
                 section="deal")
-            if update.callback_query and update.callback_query.message and not (update.callback_query.message.photo or update.callback_query.message.video or update.callback_query.message.animation):
+            if update.callback_query and update.callback_query.message:
                 ud["last_msg"]=update.callback_query.message.message_id
             return
 
