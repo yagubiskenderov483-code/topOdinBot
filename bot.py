@@ -550,17 +550,26 @@ def req_amount_currency_loc(currency, lang="ru"):
 
 def req_add_for_amount_text(currency=None, lang="ru", join=False):
     loc=req_amount_currency_loc(currency, lang)
+    cur=cur_plain(currency, lang) if currency else loc
     if join:
-        return T(
+        head=T(
             lang,
-            f"Чтобы присоединиться к сделке, добавьте реквизит для получения суммы в {loc}.",
-            f"To join the deal, add a payment detail to receive the amount in {loc}.",
-            f"Щоб приєднатися до угоди, додайте реквізит для отримання суми в {loc}.")
-    return T(
+            f"Чтобы присоединиться к сделке, привяжите реквизит для получения суммы в {loc}.",
+            f"To join the deal, bind a payment detail to receive the amount in {loc}.",
+            f"Щоб приєднатися до угоди, прив’яжіть реквізит для отримання суми в {loc}.")
+    else:
+        head=T(
+            lang,
+            f"Сначала привяжите реквизит — без него нельзя указать сумму сделки в {loc}.",
+            f"Bind a payment detail first — you cannot enter the deal amount in {loc} without it.",
+            f"Спочатку прив’яжіть реквізит — без нього не можна вказати суму угоди в {loc}.")
+    why=T(
         lang,
-        f"Добавьте реквизит для получения суммы в {loc}.",
-        f"Add a payment detail to receive the amount in {loc}.",
-        f"Додайте реквізит для отримання суми в {loc}.")
+        f"Сюда придёт оплата покупателя в {H(cur)}.\nПосле привязки бот попросит сумму сделки — напишите только число, например <code>1500</code>.",
+        f"The buyer’s payment in {H(cur)} will go here.\nAfter binding, the bot will ask for the deal amount — type a number only, e.g. <code>1500</code>.",
+        f"Сюди надійде оплата покупця в {H(cur)}.\nПісля прив’язки бот запитає суму угоди — напишіть лише число, наприклад <code>1500</code>.",
+    )
+    return f"{head}\n\n<blockquote>{why}</blockquote>"
 
 def req_prompt_text(field, lang="ru"):
     if field=="card":
@@ -1496,11 +1505,15 @@ async def _wipe_ids(chat, ids, bot=None):
     except Exception:
         await _bg()
 
-async def _send_media_caption(chat, kind, ref, caption, kb=None, parse_mode="HTML"):
+async def _send_media_caption(chat, kind, ref, caption=None, kb=None, parse_mode="HTML"):
     media=_media_ref(ref)
-    kw={"caption": caption, "reply_markup": kb}
-    if parse_mode:
-        kw["parse_mode"]=parse_mode
+    kw={}
+    if kb is not None:
+        kw["reply_markup"]=kb
+    if caption:
+        kw["caption"]=caption
+        if parse_mode:
+            kw["parse_mode"]=parse_mode
     if kind=="video":
         return await chat.send_video(video=media, **kw)
     if kind=="animation":
@@ -1527,33 +1540,33 @@ def _cache_banner_file_id(section, kind, ref, msg):
         logger.warning("banner file_id cache: %s", e)
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None, pair_out=None):
-    """One message: banner photo with the text as caption. Never a separate photo bubble."""
+    """Banner+text as one photo caption when it fits. Long cards (guarantee etc.) keep full text."""
     full_html=str(text or "")
+    pair_out = pair_out if pair_out is not None else []
     media_attempts=[]
     if bv: media_attempts.append(("video", bv))
     if bg: media_attempts.append(("animation", bg))
     if bp: media_attempts.append(("photo", bp))
     if local_fallback and local_fallback not in (bp, bv, bg):
         media_attempts.append(("photo", local_fallback))
-    cap_html=_tg_caption(full_html, True) if len(full_html)>1024 else full_html
+    caption_fits=len(full_html) <= 1024
     last_err=None
     for kind, ref in media_attempts:
         try:
-            msg=await _send_media_caption(chat, kind, ref, cap_html, kb, "HTML")
-            _cache_banner_file_id(section, kind, ref, msg)
-            return msg
-        except Exception as e:
-            last_err=e
-            logger.warning("safe_send %s html: %s", kind, e)
-            try:
-                msg=await _send_media_caption(chat, kind, ref, _tg_caption(_strip_html_tags(full_html), True), kb, None)
+            if caption_fits:
+                msg=await _send_media_caption(chat, kind, ref, full_html, kb, "HTML")
                 _cache_banner_file_id(section, kind, ref, msg)
                 return msg
-            except Exception as e2:
-                last_err=e2
-                logger.warning("safe_send %s plain: %s", kind, e2)
-                continue
-    if last_err:
+            msg=await _send_media_caption(chat, kind, ref, None, None, None)
+            _cache_banner_file_id(section, kind, ref, msg)
+            if msg:
+                pair_out.append(msg.message_id)
+            break
+        except Exception as e:
+            last_err=e
+            logger.warning("safe_send %s: %s", kind, e)
+            continue
+    if last_err and not pair_out and not caption_fits:
         logger.warning("safe_send media: %s", last_err)
     try:
         return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
@@ -1598,7 +1611,7 @@ def _section_media(section, text, fallback_section=None):
     return bv, bg, bp, local_fb, full
 
 async def _show_screen(update, text, kb=None, section="main", fallback_section=None, wipe=True):
-    """One photo+caption. Delete the previous screen (no «изменено», no orphan banners)."""
+    """Photo+caption when it fits; long deal cards keep the full guarantee text."""
     bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fallback_section)
     chat=update.effective_chat
     cid=int(chat.id)
@@ -1607,10 +1620,11 @@ async def _show_screen(update, text, kb=None, section="main", fallback_section=N
     if previous:
         try: bot=previous.get_bot()
         except Exception: bot=None
-    sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
+    extras=[]
+    sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section, pair_out=extras)
     old=_old_screen_ids(cid, previous) if wipe else []
     new_id=getattr(sent, "message_id", None)
-    _screen_put(cid, photos=[], texts=[new_id] if new_id else [], section=section)
+    _screen_put(cid, photos=extras, texts=[new_id] if new_id else [], section=section)
     if wipe:
         await _wipe_ids(chat, old, bot=bot)
     return sent
@@ -1669,7 +1683,7 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
 # ─── Keyboards ────────────────────────────────────────────────────────────────
 def main_kb(lang):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5870998024779468554"),
+        [InlineKeyboardButton(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
          InlineKeyboardButton(T(lang,'Профиль','Profile','Профіль'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
         [InlineKeyboardButton(T(lang,'Пополнить/Вывод','Top Up/Withdraw','Поповнити/Вивід'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
          InlineKeyboardButton(T(lang,'Мои сделки','My Deals','Мої угоди'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
@@ -1805,35 +1819,34 @@ Edeal_n2  = ce("5411585799990830248", "2️⃣")
 Edeal_cur = ce("5776233299424843260", "🏦")
 Eamt_in   = ce("6039614175917903752", "💰")
 Edeal_make= ce("5870998024779468554", "🛠")
-Edeal_usr = ce("6039614175917903752", "💰")
+Edeal_idea= ce("5258216851472654189", "💡")
 Edeal_chk = ce("6030563507299160824", "✅")
 Enft_link = ce("6050847684355428245", "🖼")
 Eprof_user= ce("6035084557378654059", "🪙")
 Eprof_ok  = ce("5805550320985578625", "✅")
 
+def deal_role_prompt(lang="ru"):
+    return (
+        f"{Edeal_make} <b>{L(lang,'Создать сделку','Create Deal')}\n\n"
+        f"{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>"
+    )
+
+def deal_type_prompt(lang="ru"):
+    return f"{Edeal_idea} <b>{L(lang,'Выберите тип сделки','Choose deal type')}</b>"
+
+def deal_partner_prompt(lang, creator_role="seller"):
+    """Без кастома: Eu в паке выглядит монеткой/@, его сюда не ставим."""
+    if creator_role=="buyer":
+        pp=T(lang,"Введите @username продавца:","Enter seller @username:","Введіть @username продавця:")
+    else:
+        pp=T(lang,"Введите @username покупателя:","Enter buyer @username:","Введіть @username покупця:")
+    return f"<b>{pp}</b>\n\n<b>{T(lang,'Пример','Example','Приклад')}:</b> <code>@username</code>"
+
 def deal_currency_prompt(lang="ru"):
     return f"{Edeal_cur} <b>{T(lang,'Выберите валюту сделки:','Choose deal currency:','Оберіть валюту угоди:')}</b>"
 
 def deal_amount_prompt(currency, lang="ru"):
-    cur=str(currency or "").strip()
-    if not cur:
-        cur=T(lang,"выбранной валюте","the chosen currency","обраній валюті")
-    if currency=="TON":
-        ex="10.5"
-    elif currency=="USDT":
-        ex="25"
-    elif currency in ("Stars","⭐"):
-        ex="500"
-    else:
-        ex="1500"
-    title=T(lang,"Сумма сделки","Deal amount","Сума угоди")
-    body=T(
-        lang,
-        f"Напишите, сколько должен заплатить покупатель.\nТолько число, в {H(cur)} — без слов и знака валюты.\n\nПример: <code>{ex}</code>",
-        f"Type how much the buyer must pay.\nNumbers only, in {H(cur)} — no extra words.\n\nExample: <code>{ex}</code>",
-        f"Напишіть, скільки має заплатити покупець.\nЛише число, у {H(cur)} — без слів і знака валюти.\n\nПриклад: <code>{ex}</code>",
-    )
-    return f"{Eamt_in} <b>{title}</b>\n\n<blockquote>{body}</blockquote>"
+    return f"{Eamt_in} <b>{T(lang,'Введите сумму сделки:','Enter deal amount:','Введіть суму угоди:')}</b>"
 
 def currency_requisites_kb(currency, lang="ru"):
     """Ask for the requisite type needed by the chosen deal currency."""
@@ -3665,7 +3678,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud.clear(); clear_join_req_state(uid)
             await send_section(
                 update,
-                f"{Edeal_make} <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
+                deal_role_prompt(lang),
                 role_kb(lang),section="deal"); return
 
         if d in ("role_buyer","role_seller"):
@@ -3673,7 +3686,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["creator_role"]=role
             await send_section(
                 update,
-                f"{Esrk} <b>{L(lang,'Выберите тип сделки','Choose deal type')}</b>",
+                deal_type_prompt(lang),
                 types_kb(lang),section="deal"); return
 
         if d.startswith("skip_req_"):
@@ -3693,10 +3706,9 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d in TYPE_MAP:
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
             cr=ud.get("creator_role","seller")
-            pp=L(lang,"Введите @username продавца:","Enter seller @username:") if cr=="buyer" else L(lang,"Введите @username покупателя:","Enter buyer @username:")
             await send_section(
                 update,
-                f"{Edeal_usr} <b>{pp}</b>\n\n<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>",
+                deal_partner_prompt(lang, cr),
                 InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),
                 section="deal")
             if update.callback_query and update.callback_query.message and not (update.callback_query.message.photo or update.callback_query.message.video or update.callback_query.message.animation):
@@ -4317,10 +4329,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if resume=="partner" or (ud.get("type") and not ud.get("partner") and ud.get("creator_role")):
                     ud["step"]="partner"
                     cr=ud.get("creator_role","seller")
-                    pp=T(lang,"Введите @username продавца:","Enter seller @username:","Введіть @username продавця:") if cr=="buyer" else T(lang,"Введите @username покупателя:","Enter buyer @username:","Введіть @username покупця:")
                     await send_section(
                         update,
-                        f"{Edeal_usr} <b>{pp}</b>\n\n<b>{T(lang,'Пример','Example','Приклад')}:</b> <code>@username</code>",
+                        deal_partner_prompt(lang, cr),
                         InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),
                         section="deal")
                     ids=_screen_get(update.effective_chat.id)
@@ -4329,11 +4340,11 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not ud.get("creator_role"):
                     await send_section(
                         update,
-                        f"{Edeal_make} <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
+                        deal_role_prompt(lang),
                         role_kb(lang),section="deal"); return
                 await send_section(
                     update,
-                    f"{Esrk} <b>{L(lang,'Выберите тип сделки','Choose deal type')}</b>",
+                    deal_type_prompt(lang),
                     types_kb(lang),section="deal"); return
 
             pending=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
