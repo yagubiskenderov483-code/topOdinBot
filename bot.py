@@ -2500,12 +2500,16 @@ async def show_deal_confirmation(update, context):
     amount=ud.get("amount","-")
     currency=ud.get("currency","-")
     chat=update.effective_chat
-    text=(
-        f"{Edeal_chk} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
-        f"{qi(T(lang,'Роль','Role','Роль')+': '+ (T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець'))+'\n'"
+    role_lbl=T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')
+    summary=(
+        f"{T(lang,'Роль','Role','Роль')}: {role_lbl}\n"
         f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}\n"
         f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}\n"
-        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}")}"
+        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}"
+    )
+    text=(
+        f"{Edeal_chk} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
+        f"{qi(summary)}"
     )
     kb=InlineKeyboardMarkup([
         [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
