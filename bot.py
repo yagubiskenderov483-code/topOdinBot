@@ -578,9 +578,7 @@ def req_add_ico(currency):
 def req_add_for_amount_text(currency=None, lang="ru", join=False):
     ico=req_add_ico(currency)
     what=req_receive_noun(currency, lang)
-    if join:
-        return f"{ico} <b>{T(lang, f'Чтобы войти в сделку, добавьте реквизиты для получения {what}', f'To join the deal, add payment details to receive {what}', f'Щоб увійти в угоду, додайте реквізити для отримання {what}')}</b>"
-    return f"{ico} <b>{T(lang, f'Добавьте реквизит для получение {what} после сделки', f'Add a payment detail to receive {what} after the deal', f'Додайте реквізит для отримання {what} після угоди')}</b>"
+    return f"{ico} <b>{T(lang, f'Добавьте реквизит для получения {what}', f'Add payment details to receive {what}', f'Додайте реквізит для отримання {what}')}</b>"
 
 def req_bind_example(field, lang="ru"):
     if field=="stars":
@@ -596,31 +594,29 @@ def req_bind_example(field, lang="ru"):
 def req_bind_screen_text(field, lang="ru", currency=None, join=False):
     if not currency:
         currency="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
-    head=req_add_for_amount_text(currency, lang, join=join)
-    ex=req_bind_example(field, lang)
-    what=req_need_label(field, lang)
-    body=f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n{ex}</blockquote>"
-    if join:
-        enter=T(lang,
-            f"Добавьте {what} — отправьте сообщением ниже:",
-            f"Add {what} — send it in a message below:",
-            f"Додайте {what} — надішліть повідомленням нижче:")
-        return f"{head}\n\n{body}\n\n{enter}"
-    return f"{head}\n\n{body}"
+    return req_add_for_amount_text(currency, lang, join=join)
 
 def remember_deal_currency(ud, currency):
     ud["currency"]=currency
     ud["pay_currency"]=currency
 
-def req_bind_kb(field, lang="ru", back="menu_deal"):
+def req_bind_kb(field, lang="ru", back="menu_deal", join=False, deal_id=None):
     rows=[]
     ton_url=tonconnect_miniapp_url()
     if field=="ton" and ton_url:
         rows.append([InlineKeyboardButton(
             "Tonkeeper", web_app=WebAppInfo(url=ton_url),
             icon_custom_emoji_id="5397829221605191505")])
+    if join and deal_id:
+        rows.append([InlineKeyboardButton(
+            T(lang,"Отменить вход","Cancel join","Скасувати вхід"),
+            callback_data=f"join_req_cancel_{deal_id}",
+            icon_custom_emoji_id="5904542823167824187")])
+        back_cb=f"join_req_resume_{deal_id}"
+    else:
+        back_cb=back
     rows.append([InlineKeyboardButton(
-        T(lang,"Назад","Back","Назад"),callback_data=back,
+        T(lang,"Назад","Back","Назад"),callback_data=back_cb,
         icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
@@ -875,9 +871,11 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
             f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>",
         ]
     elif pay_cur=="Stars":
+        stars_amt=d.get("payment_amount") or d.get("amount") or "-"
         lines += [
             f"{Est} <b>{L(lang,'Звёзды','Stars')}:</b>",
-            f"<blockquote>{T(lang,'Оплата Stars по реквизитам сделки.','Pay Stars using the deal details.','Оплата Stars за реквізитами угоди.')}</blockquote>",
+            f"<blockquote>{L(lang,'Отправьте менеджеру','Send to manager')}: <b>{MANAGER_TAG}</b>\n"
+            f"{L(lang,'Сумма','Amount')}: <b>{H(str(stars_amt))}</b> {L(lang,'звёзд','stars','зірок')}</blockquote>",
         ]
     else:
         bank=card_bank(lang)
@@ -1338,6 +1336,29 @@ def clear_req_input_state(uid):
     u.pop("join_req_field",None)
     save_db(db)
 
+def get_active_join_req(uid, ud=None):
+    """(deal_id, field) если пользователь вводит реквизиты для входа в сделку."""
+    db=load_db(); u=get_user(db,uid)
+    st=u.get("req_input") or {}
+    if st.get("mode")=="join" and st.get("deal_id"):
+        return str(st["deal_id"]).upper(), st.get("field")
+    if ud:
+        deal_id=ud.get("pending_deal") or ud.get("req_for_deal")
+        field=ud.get("req_step")
+        if deal_id and field in REQ_FIELDS:
+            return str(deal_id).upper(), field
+    deal_id=u.get("join_pending_deal"); field=u.get("join_req_field")
+    if deal_id and field in REQ_FIELDS:
+        return str(deal_id).upper(), field
+    return None, None
+
+def user_is_deal_participant(deal, uid):
+    uid=str(uid)
+    if uid==str(deal.get("user_id","")): return True
+    for k in ("partner_uid","buyer_uid","seller_uid"):
+        if uid==str(deal.get(k) or ""): return True
+    return False
+
 def restore_req_input_state(ud, uid):
     """Restore requisite wizard from DB if user_data was lost."""
     db=load_db(); u=get_user(db,uid)
@@ -1541,6 +1562,7 @@ def _html_for_photo_caption(full_html):
     if len(t)<=1024:
         return t
     guarantee_markers=(
+        "Менеджер", "Manager",
         "Гарантия безопасности", "Security guarantee", "Гарантія безпеки",
     )
     tail=""
@@ -1580,6 +1602,11 @@ def _html_for_photo_caption(full_html):
         return cut[:nl]
     return cut
 
+_TEXT_ONLY_SECTIONS=frozenset({"deal_card","deal_join"})
+
+def _section_text_only(section):
+    return section in _TEXT_ONLY_SECTIONS
+
 async def _try_edit_caption_message(msg, full_html, kb=None):
     """Fast path: edit photo caption instead of re-uploading the banner."""
     if not msg or not (msg.photo or msg.video or msg.animation):
@@ -1596,6 +1623,24 @@ async def _try_edit_caption_message(msg, full_html, kb=None):
             chat_id=msg.chat_id, message_id=msg.message_id, **kw)
     except Exception as e:
         logger.warning("edit_caption: %s", e)
+        return None
+
+async def _try_edit_text_message(msg, full_html, kb=None):
+    """Fast path: edit plain text message (deal cards without banner)."""
+    if not msg or (msg.photo or msg.video or msg.animation):
+        return None
+    body=_tg_caption(full_html, False)
+    if not body:
+        return None
+    bot=msg.get_bot()
+    kw={"text": body, "parse_mode": "HTML"}
+    if kb is not None:
+        kw["reply_markup"]=kb
+    try:
+        return await bot.edit_message_text(
+            chat_id=msg.chat_id, message_id=msg.message_id, **kw)
+    except Exception as e:
+        logger.warning("edit_text: %s", e)
         return None
 
 # chat_id -> current UI: banner photo(s) + text. Never edit in place («изменено»).
@@ -1698,9 +1743,19 @@ def _cache_banner_file_id(section, kind, ref, msg):
         logger.warning("banner file_id cache: %s", e)
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None, pair_out=None):
-    """Banner+full text in one photo caption. Never chop manager/security lines off the end."""
+    """Banner+full text in one photo caption. Deal cards — text only (no 1024 cap)."""
     full_html=str(text or "")
     pair_out = pair_out if pair_out is not None else []
+    if _section_text_only(section):
+        try:
+            return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
+        except Exception as e:
+            logger.warning("safe_send deal text: %s", e)
+            try:
+                return await chat.send_message(_tg_caption(_strip_html_tags(full_html), False), reply_markup=kb)
+            except Exception as e2:
+                logger.error("safe_send deal plain: %s", e2)
+                return None
     media_attempts=[]
     if bv: media_attempts.append(("video", bv))
     if bg: media_attempts.append(("animation", bg))
@@ -1767,7 +1822,7 @@ def _section_media(section, text, fallback_section=None):
     return bv, bg, bp, local_fb, full
 
 async def _show_screen(update, text, kb=None, section="main", fallback_section=None, wipe=True):
-    """Photo+caption; same-section taps edit caption (fast, no re-upload)."""
+    """Photo+caption; deal cards — plain text (full card, no banner)."""
     bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fallback_section)
     chat=update.effective_chat
     cid=int(chat.id)
@@ -1776,6 +1831,25 @@ async def _show_screen(update, text, kb=None, section="main", fallback_section=N
     if previous:
         try: bot=previous.get_bot()
         except Exception: bot=None
+    if _section_text_only(section):
+        if wipe and previous and not (previous.photo or previous.video or previous.animation):
+            edited=await _try_edit_text_message(previous, full, kb)
+            if edited:
+                _screen_put(cid, photos=[], texts=[previous.message_id], section=section)
+                old=[mid for mid in _old_screen_ids(cid, None) if mid!=previous.message_id]
+                if old:
+                    await _wipe_ids(chat, old, bot=bot)
+                return edited
+        try:
+            sent=await chat.send_message(_tg_caption(full, False), parse_mode="HTML", reply_markup=kb)
+        except Exception as e:
+            logger.warning("show_screen deal text: %s", e)
+            sent=await chat.send_message(_tg_caption(_strip_html_tags(full), False), reply_markup=kb)
+        new_id=getattr(sent, "message_id", None)
+        _screen_put(cid, photos=[], texts=[new_id] if new_id else [], section=section)
+        if wipe:
+            await _wipe_ids(chat, _old_screen_ids(cid, previous), bot=bot)
+        return sent
     fast_sections={"deal","deal_card","deal_forward","deal_join","main","balance","req"}
     if wipe and previous and (previous.photo or previous.video or previous.animation):
         meta=_screen_meta(cid)
@@ -1842,7 +1916,7 @@ class _BotChat:
         return await self._bot.send_animation(chat_id=self.id, animation=animation, **kwargs)
 
 async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
-    """Deal cards and notices: always attach the section banner, even on long HTML."""
+    """Deal cards — plain text; other sections may use banner media."""
     try:
         fb="deal_card" if section in ("deal_join","deal_forward") else None
         bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fb)
@@ -2072,7 +2146,7 @@ async def ask_req_for_amount(update, context, currency, *, resume=None, join=Fal
         set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
         await send_section(
             update, req_bind_screen_text(field, lang, currency, join=True),
-            req_bind_kb(field, lang, back or "main_menu"), section="deal")
+            req_bind_kb(field, lang, back=back or "main_menu", join=True, deal_id=deal_id), section="deal")
         return
     ud["req_after_buyer_deal"]=True
     if resume:
@@ -2182,7 +2256,11 @@ def deal_join_req_kb(deal_id, currency, lang="ru"):
             T(lang,"Звёзды","Stars","Зірки"),callback_data=f"req_deal_stars_{deal_id}",
             icon_custom_emoji_id="5893034681636491040")])
     rows.append([InlineKeyboardButton(
-        T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
+        T(lang,"Отменить","Cancel","Скасувати"),callback_data=f"join_req_cancel_{deal_id}",
+        icon_custom_emoji_id="5904542823167824187")])
+    rows.append([InlineKeyboardButton(
+        T(lang,"Назад","Back","Назад"),callback_data=f"join_req_resume_{deal_id}",
+        icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
 
 RU_BANKS = ["Сбербанк", "ВТБ", "Тинькофф", "Альфа", "Газпром", "Россельхоз", "Открытие", "Совком", "Райффайзен", "МКБ", "Росбанк", "Промсвязь", "Уралсиб", "Банк России"]
@@ -2378,6 +2456,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             f"<blockquote>{stats_block(buyer_uid)}</blockquote>\n",
             f"{En2} <b>{T(lang,'Продавец','Seller','Продавець')}:</b> <b>{seller_tag}</b>",
             f"<blockquote>{stats_block(seller_uid)}</blockquote>",
+            f"\n<b>{T(lang,'Кому передать товар','Transfer item to','Кому передати товар')}:</b> <b>{MANAGER_TAG}</b>",
         ]
 
         if joined:
@@ -2422,6 +2501,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                         "Очікуйте, поки творець надішле вам посилання для приєднання.")
                 lines.append(f"\n<blockquote>{instr}</blockquote>")
 
+        lines.append(f"\n{En4} <b>{T(lang,'Менеджер','Manager','Менеджер')}:</b> <b>{MANAGER_TAG}</b>")
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
         lines.append(f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>")
 
@@ -2451,7 +2531,7 @@ def deal_viewer_role(deal, uid):
         return "seller", False
     if uid==str(buyer_uid) and buyer_uid:
         return "buyer", False
-    return creator_role, False
+    return None, False
 
 def deal_party_tags(deal):
     db=load_db()
@@ -2475,15 +2555,98 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
             rows.append([InlineKeyboardButton(
                 T(lang,"Я оплатил","I paid","Я оплатив"),callback_data=f"paid_{deal_id}",
                 icon_custom_emoji_id="5316827280863934685")])
-    elif not deal.get("item_transferred"):
+    elif viewer_role=="seller" and not deal.get("item_transferred"):
         rows.append([InlineKeyboardButton(
             deal_seller_action_label(dtype, lang),callback_data=f"transferred_{deal_id}",
             icon_custom_emoji_id="5316827280863934685")])
     rows.append([InlineKeyboardButton(
-        T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",
-        icon_custom_emoji_id="5258476306152038031")])
+        T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",
+        icon_custom_emoji_id="5316887736823591263")])
     return InlineKeyboardMarkup(rows)
 
+
+async def resume_join_req_screen(update, context, deal_id=None):
+    """Вернуть экран ввода реквизитов при входе в сделку (без сброса состояния)."""
+    uid=update.effective_user.id; ud=context.user_data
+    restore_req_input_state(ud, uid)
+    if not deal_id:
+        deal_id,_=get_active_join_req(uid, ud)
+    deal_id=str(deal_id or "").strip().upper()
+    if not deal_id: return False
+    db=load_db(); deal=db.get("deals",{}).get(deal_id)
+    if not deal:
+        clear_join_req_state(uid); return False
+    deal_cur=deal.get("currency") or deal.get("deal_currency")
+    field=ud.get("req_step") or requisite_field_for_currency(deal_cur)
+    await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, field=field)
+    return True
+
+async def handle_join_continue(update, context, deal_id):
+    """Продолжить вход в сделку после привязки реквизитов (Tonkeeper и т.д.)."""
+    q=update.callback_query
+    uid=update.effective_user.id; lang=get_lang(uid)
+    deal_id=str(deal_id).strip().upper()
+    db=load_db(); d=db.get("deals",{}).get(deal_id)
+    if not d:
+        try: await q.answer(T(lang,"Сделка не найдена.","Deal not found.","Угоду не знайдено."), show_alert=True)
+        except Exception: pass
+        return
+    creator_uid=str(d.get("user_id",""))
+    if creator_uid==str(uid):
+        await show_open_deal(update, context, deal_id); return
+    u=get_user(db,uid); deal_cur=d.get("currency") or d.get("deal_currency")
+    if not user_has_requisites_for(u, deal_cur):
+        try: await q.answer(T(lang,"Сначала привяжите реквизиты.","Bind payment details first.","Спочатку прив'яжіть реквізити."), show_alert=True)
+        except Exception: pass
+        context.user_data["pending_deal"]=deal_id
+        set_join_req_state(uid, deal_id, None)
+        await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id)
+        return
+    for k in ("req_step","req_for_deal","pending_deal","req_after_buyer_deal","req_return","req_resume"):
+        context.user_data.pop(k, None)
+    clear_join_req_state(uid)
+    ok=await complete_deal_join(update, context, deal_id)
+    if not ok:
+        try: await q.answer(T(lang,"Не удалось войти в сделку.","Could not join the deal.","Не вдалося увійти в угоду."), show_alert=True)
+        except Exception: pass
+
+def _telegram_send_message_http(chat_id, text, reply_markup=None):
+    import urllib.request
+    payload={"chat_id":str(chat_id),"text":text,"parse_mode":"HTML","disable_web_page_preview":True}
+    if reply_markup:
+        payload["reply_markup"]=json.dumps(reply_markup, ensure_ascii=False)
+    data=json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req=urllib.request.Request(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+        data=data, headers={"Content-Type":"application/json"}, method="POST")
+    urllib.request.urlopen(req, timeout=8)
+
+def try_resume_join_after_ton_bind(uid):
+    """После /api/bind-ton — предложить войти в сделку, если ждали реквизиты."""
+    db=load_db(); u=get_user(db,uid)
+    st=u.get("req_input") or {}
+    deal_id=(st.get("deal_id") or u.get("join_pending_deal") or "").upper()
+    if st.get("mode")!="join" or not deal_id: return False
+    deal=db.get("deals",{}).get(deal_id)
+    if not deal:
+        clear_req_input_state(uid); return False
+    deal_cur=deal.get("currency") or deal.get("deal_currency")
+    if not user_has_requisites_for(u, deal_cur): return False
+    lang=get_lang(uid)
+    text=(
+        f"{Ech} <b>{T(lang,'Tonkeeper привязан!','Tonkeeper bound!','Tonkeeper прив\'язано!')}</b>\n\n"
+        f"{T(lang,'Нажмите кнопку, чтобы войти в сделку.','Press the button to join the deal.','Натисніть кнопку, щоб увійти в угоду.')}"
+    )
+    kb={"inline_keyboard":[[{
+        "text":T(lang,"Войти в сделку","Join deal","Увійти в угоду"),
+        "callback_data":f"join_continue_{deal_id}",
+        "icon_custom_emoji_id":"5893431652578758294"}]]}
+    try:
+        _telegram_send_message_http(uid, text, kb)
+        return True
+    except Exception as e:
+        logger.error(f"try_resume_join_after_ton_bind: {e}")
+        return False
 
 async def complete_deal_join(update, context, deal_id):
     db=load_db(); deal=db.get("deals",{}).get(deal_id)
@@ -3643,6 +3806,16 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.effective_message.reply_text(
                 f"{Ech} <b>{L(lang,'Tonkeeper привязан!','Tonkeeper bound!')}</b>\n<blockquote><code>{H(addr)}</code></blockquote>",
                 parse_mode="HTML")
+            deal_id,_=get_active_join_req(uid, context.user_data)
+            if deal_id:
+                db=load_db(); u=get_user(db,uid); deal=db.get("deals",{}).get(deal_id)
+                deal_cur=(deal or {}).get("currency") or (deal or {}).get("deal_currency")
+                if deal and user_has_requisites_for(u, deal_cur):
+                    for k in ("req_step","req_for_deal","pending_deal","req_after_buyer_deal","req_return","req_resume"):
+                        context.user_data.pop(k, None)
+                    clear_join_req_state(uid)
+                    if await complete_deal_join(update,context,deal_id): return
+            if try_resume_join_after_ton_bind(uid): return
             await show_req(update,context); return
 
         if args and args[0].lower().startswith("deal_"):
@@ -3662,10 +3835,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal_cur=d.get("currency") or d.get("deal_currency")
 
             if creator_uid and creator_uid==str(uid):
-                await update.effective_message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Нельзя присоединиться к своей сделке.','Cannot join your own deal.')}</b>",
-                    parse_mode="HTML")
-                await show_main(update,context); return
+                await show_open_deal(update, context, deal_id); return
 
             partner_uname=d.get("partner","").lstrip("@").lower()
             my_uname=(update.effective_user.username or "").lower()
@@ -3675,12 +3845,17 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{L(lang,'В эту сделку уже присоединился другой участник.','Another participant has already joined this deal.')}</b>",
                     parse_mode="HTML")
                 await show_main(update,context); return
-            # Compare usernames only when the joiner has a username set
-            if not bound_partner and partner_uname and my_uname and my_uname!=partner_uname:
-                await update.effective_message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Эта сделка предназначена для другого пользователя.','This deal is intended for another user.')}</b>",
-                    parse_mode="HTML")
-                await show_main(update,context); return
+            if not bound_partner and partner_uname:
+                if not my_uname:
+                    await update.effective_message.reply_text(
+                        f"{Ewrn} <b>{L(lang,'Для входа в сделку нужен @username в Telegram. Задайте его в настройках профиля.','You need a @username in Telegram to join. Set it in profile settings.')}</b>",
+                        parse_mode="HTML")
+                    await show_main(update,context); return
+                if my_uname!=partner_uname:
+                    await update.effective_message.reply_text(
+                        f"{Ewrn} <b>{L(lang,'Эта сделка предназначена для другого пользователя.','This deal is intended for another user.')}</b>",
+                        parse_mode="HTML")
+                    await show_main(update,context); return
 
             if not user_has_requisites_for(u, deal_cur):
                 context.user_data["pending_deal"]=deal_id
@@ -3818,13 +3993,21 @@ async def cmd_my_reviews(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         q=update.callback_query
-        try:
-            await q.answer()
-        except Exception as e:
-            logger.warning("callback answer: %s", e)
         d=q.data or ""
         ud=context.user_data; uid=update.effective_user.id
         lang=get_lang(uid); ru=lang=="ru"
+
+        if d=="noop":
+            try: await q.answer(T(lang,"Уже отправлено. Ожидайте.","Already sent. Please wait.","Вже надіслано. Очікуйте."))
+            except Exception: pass
+            return
+
+        skip_early_answer=d.startswith("transferred_") or d.startswith("paid_") or d.startswith("join_continue_")
+        if not skip_early_answer:
+            try: await q.answer()
+            except Exception as e:
+                logger.warning("callback answer: %s", e)
+
         if d.startswith("adm_") and uid not in ADMIN_IDS: return
 
         # ── Навигация главного меню ──
@@ -3846,6 +4029,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_new(update,invite,section="deal_forward"); return
 
         if d=="main_menu":
+            join_deal,_=get_active_join_req(uid, ud)
+            if join_deal:
+                try: await q.answer(T(lang,"Сначала завершите ввод реквизитов или нажмите «Отменить».","Finish entering payment details or press Cancel.","Спочатку завершіть введення реквізитів або натисніть «Скасувати»."), show_alert=True)
+                except Exception: pass
+                await resume_join_req_screen(update, context, join_deal); return
             ud.clear(); clear_join_req_state(uid); clear_complaint_state(ud)
             await show_main(update,context); return
         if d=="menu_profile":
@@ -3890,6 +4078,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ── Создать сделку (старый рабочий поток) ──
         if d=="menu_deal":
+            join_deal,_=get_active_join_req(uid, ud)
+            if join_deal:
+                try: await q.answer(T(lang,"Сначала завершите ввод реквизитов для входа в сделку.","Finish payment details to join the deal.","Спочатку завершіть введення реквізитів для входу в угоду."), show_alert=True)
+                except Exception: pass
+                await resume_join_req_screen(update, context, join_deal); return
             ud.clear(); clear_join_req_state(uid)
             await send_section(
                 update,
@@ -3950,9 +4143,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud.setdefault("pay_currency",ud.get("currency"))
             ud.setdefault("payment_amount",ud.get("amount"))
             if confirm_token!=context.user_data.get("_deal_confirm_token") or any(context.user_data.get(k) in (None,"","-") for k in required):
+                try: await q.answer(T(lang,"Сообщение устарело. Создайте сделку заново.","This message is outdated. Create the deal again.","Повідомлення застаріло. Створіть угоду заново."), show_alert=True)
+                except Exception: pass
                 await send_section(
                     update,
-                    f"{Ewrn} <b>{L(lang,'Черновик сделки неполный. Создайте сделку заново.','The deal draft is incomplete. Start again.')}</b>",
+                    f"{Ewrn} <b>{L(lang,'Это сообщение устарело. Нажмите «Создать сделку» в меню и начните заново.','This message is outdated. Tap Create Deal in the menu and start again.')}</b>",
                     role_kb(lang),section="deal")
                 return
             context.user_data.pop("_deal_confirm_token",None)
@@ -4075,7 +4270,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [InlineKeyboardButton(T(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}",f"Картка / Телефон {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
                 [InlineKeyboardButton("TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")],
                 [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
-                [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+                [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data=f"join_req_resume_{deal_id}",icon_custom_emoji_id="5258084656674250503")],
             ])
             await send_section(update,req_add_for_amount_text(None, lang),kb,section="req"); return
 
@@ -4275,9 +4470,20 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("paid_"): await on_paid(update,context); return
         if d.startswith("transferred_"): await on_transferred(update,context); return
+        if d.startswith("join_req_resume_"):
+            await resume_join_req_screen(update, context, d[16:].strip().upper()); return
+        if d.startswith("join_req_cancel_"):
+            deal_id=d[16:].strip().upper()
+            clear_join_req_state(uid)
+            for k in ("req_step","req_for_deal","pending_deal","req_after_buyer_deal","req_return","req_resume","card_step","card_pending"):
+                ud.pop(k, None)
+            try: await q.answer(T(lang,"Вход отменён","Join cancelled","Вхід скасовано"))
+            except Exception: pass
+            await show_main(update,context); return
+        if d.startswith("join_continue_"):
+            await handle_join_continue(update, context, d[14:].strip().upper()); return
         if d.startswith("open_deal_"):
             await show_open_deal(update, context, d[len("open_deal_"):].strip().upper()); return
-        if d=="noop": return
         if d.startswith("adm_confirm_"): await adm_confirm(update,context); return
         if d.startswith("adm_decline_"): await adm_decline(update,context); return
         if d=="adm_back":
@@ -4443,7 +4649,20 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{L(lang,'Отправьте текст реквизитов одним сообщением.','Send the requisites as one text message.')}</b>",
                     parse_mode="HTML"); return
             if is_card_req_field(field):
-                if ud.get("card_step")=="bank":
+                if "|" in text and not ud.get("card_step"):
+                    card_part,bank_part=text.split("|",1)
+                    r=validate_card(card_part.strip(), lang)
+                    bank_ok=validate_bank_name(bank_part.strip())
+                    if r is None or not bank_ok:
+                        err=T(lang,
+                            "Неверный формат. Отправьте: номер|банк",
+                            "Invalid format. Send: number|bank",
+                            "Невірний формат. Надішліть: номер|банк")
+                    else:
+                        text=f"{r}|{bank_ok}"
+                        ud.pop("card_step",None); ud.pop("card_pending",None)
+                        set_req_input_state(uid, field, card_step=None, card_pending=None)
+                elif ud.get("card_step")=="bank":
                     bank_ok=validate_bank_name(text)
                     if not bank_ok:
                         bank_ex=req_bank_examples(field, lang)
@@ -4911,22 +5130,23 @@ async def finalize_deal(update, context):
 async def on_transferred(update, context):
     try:
         q=update.callback_query; seller=update.effective_user
+        lang=get_lang(seller.id)
         deal_id=q.data[12:]; db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
         buyer_uid,seller_uid=deal_participant_roles(deal)
         if str(seller.id)!=seller_uid:
-            await update.effective_chat.send_message(
-                f"{Ewrn} <b>{L(get_lang(seller.id),'Эта кнопка доступна продавцу.','This button is for the seller.')}</b>",
-                parse_mode="HTML"); return
-        if deal.get("item_transferred"): return
+            try: await q.answer(T(lang,"Эта кнопка только для продавца.","This button is for the seller only.","Ця кнопка лише для продавця."), show_alert=True)
+            except Exception: pass
+            return
+        if deal.get("item_transferred"):
+            try: await q.answer(T(lang,"Товар уже передан.","Item already transferred.","Товар уже передано."), show_alert=True)
+            except Exception: pass
+            return
+        try: await q.answer(T(lang,"Принято! Ожидайте оплату.","Accepted! Wait for payment.","Прийнято! Очікуйте оплату."))
+        except Exception: pass
         deal["item_transferred"]=True; db["deals"][deal_id]=deal
         add_log(db,"Товар передан",deal_id=deal_id,uid=seller.id,username=seller.username or "")
         save_db(db)
         seller_tag=f"@{seller.username}" if seller.username else f"#{seller.id}"
-        payment_attempt=int(deal.get("payment_attempt",0))
-        admin_kb=InlineKeyboardMarkup([[
-            InlineKeyboardButton("Подтвердить сделку",callback_data=f"adm_confirm_{deal_id}_{payment_attempt}",icon_custom_emoji_id="5316827280863934685")
-        ]])
-        lang=get_lang(seller.id)
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
@@ -4937,8 +5157,8 @@ async def on_transferred(update, context):
         schedule_log_msg(context, db)
         schedule_notify_admins(
             context,
-            f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>",
-            admin_kb)
+            f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>\n\n"
+            f"<i>Ожидайте оплату от покупателя.</i>")
         if buyer_uid:
             async def _bg_buyer():
                 try:
@@ -4973,10 +5193,15 @@ async def on_paid(update, context):
         db=load_db(); d=db.get("deals",{}).get(deal_id,{})
         buyer_uid,seller_uid=deal_participant_roles(d)
         if str(buyer.id)!=buyer_uid:
-            await update.effective_chat.send_message(
-                f"{Ewrn} <b>{L(bl,'Эта кнопка доступна покупателю.','This button is for the buyer.')}</b>",
-                parse_mode="HTML"); return
-        if d.get("payment_reported"): return
+            try: await q.answer(T(bl,"Эта кнопка только для покупателя.","This button is for the buyer only.","Ця кнопка лише для покупця."), show_alert=True)
+            except Exception: pass
+            return
+        if d.get("payment_reported"):
+            try: await q.answer(T(bl,"Оплата уже отмечена.","Payment already reported.","Оплату вже відмічено."), show_alert=True)
+            except Exception: pass
+            return
+        try: await q.answer(T(bl,"Принято! Ожидайте подтверждения.","Accepted! Wait for confirmation.","Прийнято! Очікуйте підтвердження."))
+        except Exception: pass
         payment_attempt=int(d.get("payment_attempt",0))+1
         d["payment_attempt"]=payment_attempt
         d["payment_reported"]=True; db["deals"][deal_id]=d
@@ -5313,18 +5538,20 @@ async def show_my_deals(update, context):
                 or str(v.get("buyer_uid",""))==uid
                 or str(v.get("seller_uid",""))==uid):
                 deals[k]=v
-        back_kb=InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]])
+        rows=[[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]
         if not deals:
             await send_section(update,
                 f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')}</b>\n\n"
                 f"{T(lang,'Пока нет сделок.','No deals yet.','Поки немає угод.')}",
-                back_kb,section="my_deals"); return
+                InlineKeyboardMarkup(rows),section="my_deals"); return
         SNAMES={
             "pending":   T(lang,"ожидает","pending","очікує"),
             "confirmed": T(lang,"завершена","completed","завершена"),
         }
+        sorted_deals=sorted(deals.items(), key=lambda x: x[1].get("created","") or "", reverse=True)[:10]
         lines=[f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({len(deals)})</b>\n"]
-        for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
+        open_rows=[]
+        for i,(did,dv) in enumerate(sorted_deals,start=1):
             tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "—")
             cur_d=cur_plain(dv.get("currency",""),lang) or str(dv.get("currency") or "")
             amt=dv.get("payment_amount") or dv.get("amount") or "—"
@@ -5333,7 +5560,12 @@ async def show_my_deals(update, context):
                 f"<b>{i}.</b> {H(tn)} · <code>{H(did)}</code>\n"
                 f"<i>{H(amt)} {H(cur_d)} · {H(s)}</i>"
             )
-        await send_section(update,"\n".join(lines), back_kb, section="my_deals")
+            open_rows.append([InlineKeyboardButton(
+                f"{did} · {tn[:12]}",
+                callback_data=f"open_deal_{did}",
+                icon_custom_emoji_id="5445221832074483553")])
+        open_rows.append(rows[0])
+        await send_section(update,"\n".join(lines), InlineKeyboardMarkup(open_rows), section="my_deals")
     except Exception as e:
         logger.error(f"show_my_deals: {e}", exc_info=True)
         try:
@@ -5352,22 +5584,31 @@ async def show_open_deal(update, context, deal_id):
         uid=update.effective_user.id
         lang=get_lang(uid)
         db=load_db()
-        deal=(db.get("deals") or {}).get(str(deal_id).upper())
+        deal_id=str(deal_id).upper()
+        deal=(db.get("deals") or {}).get(deal_id)
         if not deal:
             await send_section(
                 update,
                 f"{Ewrn} <b>{T(lang,'Сделка не найдена.','Deal not found.','Угоду не знайдено.')}</b>",
                 InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]),
                 section="my_deals"); return
+        if not user_is_deal_participant(deal, uid):
+            await send_section(
+                update,
+                f"{Ewrn} <b>{T(lang,'Нет доступа к этой сделке.','No access to this deal.','Немає доступу до цієї угоди.')}</b>",
+                InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]),
+                section="my_deals"); return
         viewer_role, is_creator=deal_viewer_role(deal, uid)
+        if viewer_role is None:
+            viewer_role=deal.get("creator_role","seller") if is_creator else "buyer"
         creator_tag, partner_tag=deal_party_tags(deal)
         joined=bool(deal.get("partner_uid"))
         text=build_deal_text(
-            str(deal_id).upper(), deal, creator_tag, partner_tag, lang,
+            deal_id, deal, creator_tag, partner_tag, lang,
             joined=joined, is_creator=is_creator)
         await send_section(
             update, text,
-            deal_action_kb(str(deal_id).upper(), deal, viewer_role, lang, is_creator=is_creator),
+            deal_action_kb(deal_id, deal, viewer_role, lang, is_creator=is_creator),
             section="deal_card")
     except Exception as e:
         logger.error(f"show_open_deal: {e}", exc_info=True)
@@ -5414,7 +5655,9 @@ async def show_withdraw(update, context):
         else: rows.append([InlineKeyboardButton("TON / USDT",callback_data="withdraw_crypto",icon_custom_emoji_id="5409321884074419506")])
         if reqs.get("stars"): rows.append([InlineKeyboardButton(L(lang,"Звёзды → ","Stars → ")+reqs["stars"],callback_data="withdraw_stars",icon_custom_emoji_id="5893034681636491040")])
         else: rows.append([InlineKeyboardButton(L(lang,"Звёзды","Stars"),callback_data="withdraw_stars",icon_custom_emoji_id="5893034681636491040")])
-        if reqs.get("card"): rows.append([InlineKeyboardButton(L(lang,"Карта → ","Card → ")+reqs["card"][:12]+"...",callback_data="withdraw_card",icon_custom_emoji_id="5902056028513505203")])
+        if reqs.get("card"):
+            card_disp=reqs["card"].split("|",1)[0] if "|" in reqs["card"] else reqs["card"]
+            rows.append([InlineKeyboardButton(L(lang,"Карта → ","Card → ")+card_disp[:16]+("…" if len(card_disp)>16 else ""),callback_data="withdraw_card",icon_custom_emoji_id="5902056028513505203")])
         else: rows.append([InlineKeyboardButton(L(lang,"Карта / Телефон","Card / Phone"),callback_data="withdraw_card",icon_custom_emoji_id="5902056028513505203")])
         rows.append([InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,
@@ -6314,6 +6557,10 @@ def start_reviews_http_server():
                     notify_admins_wallet_bound_http(uid, uname, "ton", addr)
                 except Exception as e:
                     logger.error(f"bind-ton notify: {e}")
+                try:
+                    try_resume_join_after_ton_bind(uid)
+                except Exception as e:
+                    logger.error(f"bind-ton resume join: {e}")
                 self._send_json(200, {"ok":True,"address":addr})
 
         # bind_and_activate=False: __init__ already bound the socket otherwise,
