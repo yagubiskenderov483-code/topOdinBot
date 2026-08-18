@@ -2633,8 +2633,9 @@ def try_resume_join_after_ton_bind(uid):
     deal_cur=deal.get("currency") or deal.get("deal_currency")
     if not user_has_requisites_for(u, deal_cur): return False
     lang=get_lang(uid)
+    ton_title=T(lang,"Tonkeeper привязан!","Tonkeeper bound!","Tonkeeper прив'язано!")
     text=(
-        f"{Ech} <b>{T(lang,'Tonkeeper привязан!','Tonkeeper bound!','Tonkeeper прив\'язано!')}</b>\n\n"
+        f"{Ech} <b>{ton_title}</b>\n\n"
         f"{T(lang,'Нажмите кнопку, чтобы войти в сделку.','Press the button to join the deal.','Натисніть кнопку, щоб увійти в угоду.')}"
     )
     kb={"inline_keyboard":[[{
