@@ -11,8 +11,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Бот @FunPayDeaIsOTCRobot. Env BOT_TOKEN на Bothost игнорируем — токен из кода.
-_BOT_TOKEN_DEFAULT = "8624898843:AAGwicHcnhdImFfaDwcjT8bEqYpJ3uOcduI"
+_BOT_TOKEN_DEFAULT = "8624898843:AAEzHbAI7vQvGVEhpKdhQ5uqMi9k996K4I8"
 _BOT_TOKEN_REVOKED = {
+    "8624898843:AAGwicHcnhdImFfaDwcjT8bEqYpJ3uOcduI",
+    "8624898843:AAHHOZ25814Yn3mFWBvbk9PWOe0FX5g4HGE",
     "8624898843:AAH6ekEq7WkDPED6p8Bp6cLoHfU74gwZ4ds",
     "8624898843:AAFSQO2QuswCBubeBGfOKeT45pH18vvfqDA",
     "8624898843:AAGlnLvikDn_m3suRB0j_5GLe82PAo4njX0",
