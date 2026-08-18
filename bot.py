@@ -597,7 +597,11 @@ def req_bind_screen_text(field, lang="ru", currency=None, join=False):
     head=req_add_for_amount_text(currency, lang, join=join)
     ex=req_bind_example(field, lang)
     return (f"{head}\n\n"
-            f"<blockquote><i>{T(lang,'Пример:','Example:','Приклад:')}\n{ex}</i></blockquote>")
+            f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n{ex}</blockquote>")
+
+def remember_deal_currency(ud, currency):
+    ud["currency"]=currency
+    ud["pay_currency"]=currency
 
 def req_bind_kb(field, lang="ru", back="menu_deal"):
     rows=[]
@@ -1484,13 +1488,28 @@ def _collapse_tg_emoji(html):
         r"\1", str(html or ""), flags=re.S)
 
 def _html_for_photo_caption(full_html):
-    """Keep every word. Shrink custom-emoji tags if the 1024 caption budget is tight."""
-    t=str(full_html or "")
+    """Fit banner caption in 1024 chars without cutting manager/guarantee lines."""
+    t=str(full_html or "").strip()
     if len(t)<=1024:
         return t
-    compact=re.sub(r"\n{3,}", "\n\n", _collapse_tg_emoji(t)).strip()
-    if len(compact)<=1024:
-        return compact
+    variants=[]
+    base=_collapse_tg_emoji(t)
+    variants.append(base)
+    variants.append(re.sub(r"\n{3,}", "\n\n", base))
+    variants.append(re.sub(
+        r"<blockquote><i>([\s\S]*?)</i></blockquote>",
+        r"<blockquote>\1</blockquote>", base))
+    variants.append(re.sub(
+        r"<blockquote><i>([\s\S]*?)</i></blockquote>",
+        r"<i>\1</i>", base))
+    seen=set()
+    for v in variants:
+        v=v.strip()
+        if not v or v in seen:
+            continue
+        seen.add(v)
+        if len(v)<=1024:
+            return v
     return None
 
 # chat_id -> current UI: banner photo(s) + text. Never edit in place («изменено»).
@@ -1662,7 +1681,10 @@ def _section_media(section, text, fallback_section=None):
             if os.path.isfile(p):
                 bp=p; break
     bt=(b.get("text") or "").strip() if b else ""
-    full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
+    if section and str(section).startswith("deal"):
+        full=text
+    else:
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
     return bv, bg, bp, local_fb, full
 
 async def _show_screen(update, text, kb=None, section="main", fallback_section=None, wipe=True):
@@ -1959,8 +1981,9 @@ async def ask_req_for_amount(update, context, currency, *, resume=None, join=Fal
     ud["req_after_buyer_deal"]=True
     if resume:
         ud["req_resume"]=resume
-    if currency in DEAL_CURRENCIES and resume=="amount":
-        stash_currency_for_req(ud, currency)
+    if currency in DEAL_CURRENCIES:
+        remember_deal_currency(ud, currency)
+    ud.pop("step", None)
     set_req_input_state(
         uid, field, mode="deal_create", after_buyer=True,
         req_resume=ud.get("req_resume"), req_return=None)
@@ -2479,10 +2502,10 @@ async def show_deal_confirmation(update, context):
     chat=update.effective_chat
     text=(
         f"{Edeal_chk} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
-        f"<blockquote>{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}\n"
+        f"{qi(T(lang,'Роль','Role','Роль')+': '+ (T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець'))+'\n'"
         f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}\n"
         f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}\n"
-        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}</blockquote>"
+        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}")}"
     )
     kb=InlineKeyboardMarkup([
         [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
