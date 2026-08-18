@@ -580,10 +580,24 @@ def req_add_for_amount_text(currency=None, lang="ru", join=False):
     what=req_receive_noun(currency, lang)
     return f"{ico} <b>{T(lang, f'Добавьте реквизит для получение {what} после сделки', f'Add a payment detail to receive {what} after the deal', f'Додайте реквізит для отримання {what} після угоди')}</b>"
 
+def req_bind_example(field, lang="ru"):
+    if field=="stars":
+        return "<code>@username</code>"
+    if field=="ton":
+        return "<code>UQDxxx...xxx</code>"
+    if lang=="en":
+        return "<code>+12025550123</code>\n<code>4276123456781234</code>"
+    if lang=="uk":
+        return "<code>+380501234567</code>\n<code>5168745641234567</code>"
+    return "<code>+79041751408</code>\n<code>4276123456781234</code>"
+
 def req_bind_screen_text(field, lang="ru", currency=None, join=False):
     if not currency:
         currency="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
-    return req_add_for_amount_text(currency, lang, join=join)+"\n\n"+req_prompt_text(field, lang)
+    head=req_add_for_amount_text(currency, lang, join=join)
+    ex=req_bind_example(field, lang)
+    return (f"{head}\n\n"
+            f"<blockquote><i>{T(lang,'Пример:','Example:','Приклад:')}\n{ex}</i></blockquote>")
 
 def req_bind_kb(field, lang="ru", back="menu_deal"):
     rows=[]
@@ -759,6 +773,10 @@ def deal_seller_transfer_text(lang):
         f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». You can continue the deal after transferring the item.",
         f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Ви зможете продовжити угоду далі передавши товар.")
 def H(value): return html.escape(str(value))
+
+def qi(text):
+    """Telegram quote (эфирный) + italic."""
+    return f"<blockquote><i>{text}</i></blockquote>"
 
 def deal_payment_details_lines(deal_id, d, lang="ru"):
     pay_cur=d.get("currency","-")
@@ -1458,13 +1476,22 @@ def _tg_caption(text, has_media=False):
     lim=1024 if has_media else 4096
     t=str(text or "")
     if len(t)<=lim: return t
-    cut=t[:lim]
-    if has_media:
-        nl=cut.rfind("\n")
-        if nl > lim // 2:
-            return cut[:nl]
-        return cut
-    return t[: lim-1] + "…"
+    return t[:lim]
+
+def _collapse_tg_emoji(html):
+    return re.sub(
+        r"<tg-emoji emoji-id=['\"][^'\"]+['\"]>(.*?)</tg-emoji>",
+        r"\1", str(html or ""), flags=re.S)
+
+def _html_for_photo_caption(full_html):
+    """Keep every word. Shrink custom-emoji tags if the 1024 caption budget is tight."""
+    t=str(full_html or "")
+    if len(t)<=1024:
+        return t
+    compact=re.sub(r"\n{3,}", "\n\n", _collapse_tg_emoji(t)).strip()
+    if len(compact)<=1024:
+        return compact
+    return None
 
 # chat_id -> current UI: banner photo(s) + text. Never edit in place («изменено»).
 # Same-section taps reuse the photo and only replace the text — that's what makes buttons fast.
@@ -1566,7 +1593,7 @@ def _cache_banner_file_id(section, kind, ref, msg):
         logger.warning("banner file_id cache: %s", e)
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None, pair_out=None):
-    """One message: banner photo with the text as caption. Never a separate photo bubble."""
+    """Banner+full text in one photo caption. Never chop manager/security lines off the end."""
     full_html=str(text or "")
     pair_out = pair_out if pair_out is not None else []
     media_attempts=[]
@@ -1575,24 +1602,25 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_
     if bp: media_attempts.append(("photo", bp))
     if local_fallback and local_fallback not in (bp, bv, bg):
         media_attempts.append(("photo", local_fallback))
-    cap_html=_tg_caption(full_html, True) if len(full_html)>1024 else full_html
+    cap_html=_html_for_photo_caption(full_html)
     last_err=None
-    for kind, ref in media_attempts:
-        try:
-            msg=await _send_media_caption(chat, kind, ref, cap_html, kb, "HTML")
-            _cache_banner_file_id(section, kind, ref, msg)
-            return msg
-        except Exception as e:
-            last_err=e
-            logger.warning("safe_send %s html: %s", kind, e)
+    if cap_html:
+        for kind, ref in media_attempts:
             try:
-                msg=await _send_media_caption(chat, kind, ref, _tg_caption(_strip_html_tags(full_html), True), kb, None)
+                msg=await _send_media_caption(chat, kind, ref, cap_html, kb, "HTML")
                 _cache_banner_file_id(section, kind, ref, msg)
                 return msg
-            except Exception as e2:
-                last_err=e2
-                logger.warning("safe_send %s plain: %s", kind, e2)
-                continue
+            except Exception as e:
+                last_err=e
+                logger.warning("safe_send %s html: %s", kind, e)
+                try:
+                    msg=await _send_media_caption(chat, kind, ref, _collapse_tg_emoji(cap_html), kb, "HTML")
+                    _cache_banner_file_id(section, kind, ref, msg)
+                    return msg
+                except Exception as e2:
+                    last_err=e2
+                    logger.warning("safe_send %s compact: %s", kind, e2)
+                    continue
     if last_err:
         logger.warning("safe_send media: %s", last_err)
     try:
@@ -2232,14 +2260,12 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         ico1, ico2 = Edeal_n1, Edeal_n2
         lines=[
             f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
-            f"<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>",
-            f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>\n",
             f"<b>{T(lang,'Тип','Type','Тип')}:</b> <b>{tname_plain(dtype,lang)}</b>{item}",
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
             f"{ico1} <b>{lbl_creator}:</b> <b>{creator_tag}</b>",
-            f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
+            f"{qi(stats_block(creator_uid))}\n",
             f"{ico2} <b>{lbl_partner}:</b> <b>{partner_tag}</b>",
-            f"<blockquote>{stats_block(partner_uid)}</blockquote>",
+            qi(stats_block(partner_uid)),
         ]
 
         if joined:
@@ -2270,17 +2296,22 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             else:
                 joined_instr=""
             if joined_instr:
-                lines.append(f"\n<blockquote>{joined_instr}</blockquote>")
+                lines.append(f"\n{qi(joined_instr)}")
             if viewer_role=="buyer" and d.get("item_transferred"):
                 lines += deal_payment_details_lines(deal_id, d, lang)
         else:
+            join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
             instr=T(lang,
                 "Отправьте ссылку партнёру, чтобы он присоединился к сделке.",
                 "Send the link to your partner so they can join the deal.",
                 "Надішліть посилання партнеру, щоб він приєднався до угоди.")
-            lines.append(f"\n<blockquote>{instr}</blockquote>")
+            lines.append(f"\n{qi(instr)}")
+            lines.append(f"<a href=\"{H(join_link)}\"><i>{H(join_link)}</i></a>")
             if viewer_role=="seller":
-                lines.append(f"<blockquote>{deal_seller_transfer_text(lang)}</blockquote>")
+                lines.append(qi(deal_seller_transfer_text(lang)))
+
+        lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
+        lines.append(qi(deal_guarantee_lines(lang)))
 
         return "\n".join(lines)
     except Exception as e:
@@ -2296,6 +2327,33 @@ def deal_participant_roles(deal):
     if deal.get("creator_role","seller")=="buyer":
         return creator_uid,partner_uid
     return partner_uid,creator_uid
+
+def deal_viewer_role(deal, uid):
+    uid=str(uid)
+    creator=str(deal.get("user_id",""))
+    creator_role=deal.get("creator_role","seller")
+    if uid==creator:
+        return creator_role, True
+    buyer_uid,seller_uid=deal_participant_roles(deal)
+    if uid==str(seller_uid) and seller_uid:
+        return "seller", False
+    if uid==str(buyer_uid) and buyer_uid:
+        return "buyer", False
+    return creator_role, False
+
+def deal_party_tags(deal):
+    db=load_db()
+    creator_uid=str(deal.get("user_id",""))
+    cu=(db.get("users") or {}).get(creator_uid,{}) or {}
+    creator_tag=f"@{cu.get('username')}" if cu.get("username") else f"#{creator_uid}"
+    partner_uid=str(deal.get("partner_uid") or "")
+    partner=deal.get("partner") or ""
+    if partner_uid:
+        pu=(db.get("users") or {}).get(partner_uid,{}) or {}
+        partner_tag=f"@{pu.get('username')}" if pu.get("username") else (partner or f"#{partner_uid}")
+    else:
+        partner_tag=partner or "—"
+    return creator_tag, partner_tag
 
 def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_creator=False):
     rows=[]
@@ -3760,11 +3818,6 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         TYPE_MAP={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium"}
         if d in TYPE_MAP:
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
-            if TYPE_MAP[d]=="stars":
-                db=load_db(); u=get_user(db,uid)
-                if not user_has_requisites_for(u, "Stars"):
-                    await ask_req_for_amount(update, context, "Stars", resume="partner")
-                    return
             cr=ud.get("creator_role","seller")
             await send_section(
                 update,
@@ -4120,6 +4173,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("paid_"): await on_paid(update,context); return
         if d.startswith("transferred_"): await on_transferred(update,context); return
+        if d.startswith("open_deal_"):
+            await show_open_deal(update, context, d[len("open_deal_"):].strip().upper()); return
         if d=="noop": return
         if d.startswith("adm_confirm_"): await adm_confirm(update,context); return
         if d.startswith("adm_decline_"): await adm_decline(update,context); return
@@ -4679,26 +4734,29 @@ async def finalize_deal(update, context):
         lang=get_lang(user.id)
         uname=f"@{user.username}" if user.username else f"#{user.id}"
         join_link_f=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
-        share_text=L(lang,
-            "Сделка создана! Присоединяйтесь, чтобы провести сделку:",
-            "Deal created! Join to complete the deal:")
         share_msg=L(lang,"Сделка создана! Присоединяйтесь.","Deal created! Join now.")
         share_url="https://t.me/share/url?"+urlencode({
             "url":join_link_f,
             "text":share_msg,
         }, quote_via=quote)
-        text_out=(
-            f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
-            f"{share_text}\n<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
-        )
-        if creator_role=="seller":
-            text_out += f"\n\n<blockquote>{deal_seller_transfer_text(lang)}</blockquote>"
-        kb=InlineKeyboardMarkup([
+        deal=db["deals"][deal_id]
+        creator_tag, partner_tag = deal_party_tags(deal)
+        text_out=build_deal_text(
+            deal_id, deal, creator_tag, partner_tag, lang, joined=False, is_creator=True)
+        text_out=f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n{text_out}"
+        kb_rows=[
             [InlineKeyboardButton(L(lang,"Переслать партнёру","Forward to partner"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
+        ]
+        if creator_role=="seller":
+            kb_rows.append([InlineKeyboardButton(
+                T(lang,"Я передал","I transferred","Я передав"),callback_data=f"transferred_{deal_id}",
+                icon_custom_emoji_id="5316827280863934685")])
+        kb_rows.extend([
             [InlineKeyboardButton(L(lang,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
         ])
-        await send_new(update,text_out,kb,section="deal_forward")
+        kb=InlineKeyboardMarkup(kb_rows)
+        await send_new(update,text_out,kb,section="deal_card")
         context.user_data.clear()
 
         schedule_log_msg(context, db)
@@ -5155,12 +5213,12 @@ async def show_my_deals(update, context):
                 f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')}</b>\n\n"
                 f"{T(lang,'Пока нет сделок.','No deals yet.','Поки немає угод.')}",
                 back_kb,section="my_deals"); return
-        # Plain status labels — custom emoji inside <b> breaks Telegram HTML (editMessage)
         SNAMES={
             "pending":   T(lang,"ожидает","pending","очікує"),
             "confirmed": T(lang,"завершена","completed","завершена"),
         }
         lines=[f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({len(deals)})</b>\n"]
+        rows=[]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
             tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "—")
             cur_d=cur_plain(dv.get("currency",""),lang) or str(dv.get("currency") or "")
@@ -5168,9 +5226,19 @@ async def show_my_deals(update, context):
             s=SNAMES.get(dv.get("status",""), str(dv.get("status") or "—"))
             lines.append(
                 f"<b>{i}.</b> {H(tn)} · <code>{H(did)}</code>\n"
-                f"{H(amt)} {H(cur_d)} · {H(s)}"
+                f"<i>{H(amt)} {H(cur_d)} · {H(s)}</i>"
             )
-        await send_section(update,"\n".join(lines), back_kb, section="my_deals")
+            rows.append([InlineKeyboardButton(
+                f"{tn} · {did}", callback_data=f"open_deal_{did}",
+                icon_custom_emoji_id="5258476306152038031")])
+            viewer_role,_is_creator=deal_viewer_role(dv, uid)
+            if viewer_role=="seller" and not dv.get("item_transferred") and dv.get("status")!="confirmed":
+                rows.append([InlineKeyboardButton(
+                    T(lang,"Я передал","I transferred","Я передав"),
+                    callback_data=f"transferred_{did}",
+                    icon_custom_emoji_id="5316827280863934685")])
+        rows.append([InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
+        await send_section(update,"\n".join(lines), InlineKeyboardMarkup(rows), section="my_deals")
     except Exception as e:
         logger.error(f"show_my_deals: {e}", exc_info=True)
         try:
@@ -5183,6 +5251,31 @@ async def show_my_deals(update, context):
                 section="my_deals")
         except Exception as e2:
             logger.error(f"show_my_deals fallback: {e2}")
+
+async def show_open_deal(update, context, deal_id):
+    try:
+        uid=update.effective_user.id
+        lang=get_lang(uid)
+        db=load_db()
+        deal=(db.get("deals") or {}).get(str(deal_id).upper())
+        if not deal:
+            await send_section(
+                update,
+                f"{Ewrn} <b>{T(lang,'Сделка не найдена.','Deal not found.','Угоду не знайдено.')}</b>",
+                InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")]]),
+                section="my_deals"); return
+        viewer_role, is_creator=deal_viewer_role(deal, uid)
+        creator_tag, partner_tag=deal_party_tags(deal)
+        joined=bool(deal.get("partner_uid"))
+        text=build_deal_text(
+            str(deal_id).upper(), deal, creator_tag, partner_tag, lang,
+            joined=joined, is_creator=is_creator)
+        await send_section(
+            update, text,
+            deal_action_kb(str(deal_id).upper(), deal, viewer_role, lang, is_creator=is_creator),
+            section="deal_card")
+    except Exception as e:
+        logger.error(f"show_open_deal: {e}", exc_info=True)
 
 async def show_top(update, context):
     try:
