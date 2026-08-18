@@ -1536,10 +1536,31 @@ def _collapse_tg_emoji(html):
         r"\1", str(html or ""), flags=re.S)
 
 def _html_for_photo_caption(full_html):
-    """Fit caption in 1024 chars; keep custom emoji tags (no plain sticker fallback)."""
+    """Fit caption in 1024 chars; keep custom emoji tags; always keep guarantee block."""
     t=str(full_html or "").strip()
     if len(t)<=1024:
         return t
+    guarantee_markers=(
+        "Гарантия безопасности", "Security guarantee", "Гарантія безпеки",
+    )
+    tail=""
+    tail_start=-1
+    for marker in guarantee_markers:
+        for pat in (f"\n<b>{marker}</b>", f"<b>{marker}</b>", marker):
+            i=t.rfind(pat)
+            if i>=0 and (tail_start<0 or i<tail_start):
+                tail_start=i
+                tail=t[i:].lstrip("\n")
+    if tail:
+        budget=1024-len(tail)-2
+        if budget>=120:
+            head=t[:budget].rstrip()
+            nl=head.rfind("\n")
+            if nl>int(budget*0.55):
+                head=head[:nl].rstrip()
+            fitted=f"{head}\n\n{tail}".strip()
+            if len(fitted)<=1024:
+                return fitted
     variants=[
         re.sub(r"\n{3,}", "\n\n", t),
         re.sub(r"<blockquote><i>([\s\S]*?)</i></blockquote>", r"<blockquote>\1</blockquote>", t),
@@ -2049,18 +2070,9 @@ async def ask_req_for_amount(update, context, currency, *, resume=None, join=Fal
         ud["pending_deal"]=deal_id
         ud.pop("req_after_buyer_deal", None)
         set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
-        req_text=req_bind_screen_text(field, lang, currency, join=True)
-        if deal and deal_id:
-            creator_tag, partner_tag=deal_party_tags(deal)
-            deal_text=build_deal_text(
-                deal_id, deal, creator_tag, partner_tag, lang,
-                joined=False, is_creator=False, for_join_req=True)
-            screen_text=f"{deal_text}\n\n{req_text}"
-        else:
-            screen_text=req_text
         await send_section(
-            update, screen_text,
-            req_bind_kb(field, lang, back or "main_menu"), section="deal_join")
+            update, req_bind_screen_text(field, lang, currency, join=True),
+            req_bind_kb(field, lang, back or "main_menu"), section="deal")
         return
     ud["req_after_buyer_deal"]=True
     if resume:
@@ -3673,7 +3685,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user_has_requisites_for(u, deal_cur):
                 context.user_data["pending_deal"]=deal_id
                 set_join_req_state(uid, deal_id, None)
-                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, deal=d)
+                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id)
                 return
 
             clear_join_req_state(uid)
@@ -4056,7 +4068,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal=load_db().get("deals",{}).get(deal_id,{})
             deal_cur=deal.get("currency") or deal.get("deal_currency")
             if deal_cur:
-                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, deal=deal)
+                await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id)
                 return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
@@ -4081,7 +4093,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             deal_cur=deal.get("currency") or deal.get("deal_currency")
             if not deal_cur:
                 deal_cur="Stars" if field=="stars" else ("TON" if field=="ton" else "RUB")
-            await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, field=field, back=f"add_req_{deal_id}", deal=deal)
+            await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=deal_id, field=field, back=f"add_req_{deal_id}")
             return
 
         if d.startswith("lang_"):
@@ -4540,28 +4552,26 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if pending:
                 pending=str(pending).strip().upper()
                 deal_pending=load_db().get("deals",{}).get(pending)
-                await update.message.reply_text(
-                    f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {L(lang,'Реквизиты привязаны!','Requisites bound!')}</b>",
-                    parse_mode="HTML")
                 if not deal_pending:
                     clear_join_req_state(uid)
                     await update.message.reply_text(
                         f"{Ewrn} <b>{L(lang,'Сделка не найдена. Откройте ссылку ещё раз.','Deal not found. Open the link again.')}</b>",
                         parse_mode="HTML"); return
                 deal_cur=deal_pending.get("currency") or deal_pending.get("deal_currency")
-                # reload user after save
                 u=get_user(load_db(),uid)
                 if not user_has_requisites_for(u, deal_cur):
                     context.user_data["pending_deal"]=pending
                     set_join_req_state(uid, pending, None)
-                    await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=pending, deal=deal_pending)
+                    await ask_req_for_amount(update, context, deal_cur, join=True, deal_id=pending)
                     return
+                for k in ("req_step","req_for_deal","pending_deal","req_after_buyer_deal","req_return","req_resume"):
+                    ud.pop(k, None)
+                clear_join_req_state(uid)
                 try:
                     ok=await complete_deal_join(update,context,pending)
                 except Exception as join_err:
                     logger.error(f"complete_deal_join after req: {join_err}", exc_info=True)
                     ok=False
-                clear_join_req_state(uid)
                 if not ok:
                     await update.message.reply_text(
                         f"{Ewrn} <b>{L(lang,'Не удалось присоединиться к сделке. Откройте ссылку ещё раз или напишите в поддержку.','Failed to join the deal. Open the link again or contact support.')}</b>",
