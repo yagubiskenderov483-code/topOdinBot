@@ -2307,15 +2307,15 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         show_cur=pay_cur
         amt_phrase = cur_amount_phrase(show_amt, show_cur, lang)
 
-        ico1, ico2 = Edeal_n1, Edeal_n2
+        ico1, ico2 = En1, En2
         lines=[
-            f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
-            f"<b>{T(lang,'Тип','Type','Тип')}:</b> <b>{tname_plain(dtype,lang)}</b>{item}",
+            f"{Ech} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
+            f"<b>{T(lang,'Тип','Type','Тип')}:</b> {tname_plain(dtype,lang)}{item}",
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
             f"{ico1} <b>{lbl_creator}:</b> <b>{creator_tag}</b>",
-            f"{qi(stats_block(creator_uid))}\n",
+            f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
             f"{ico2} <b>{lbl_partner}:</b> <b>{partner_tag}</b>",
-            qi(stats_block(partner_uid)),
+            f"<blockquote>{stats_block(partner_uid)}</blockquote>",
         ]
 
         if joined:
@@ -2346,19 +2346,20 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             else:
                 joined_instr=""
             if joined_instr:
-                lines.append(f"\n{qi(joined_instr)}")
+                lines.append(f"\n<blockquote>{joined_instr}</blockquote>")
             if viewer_role=="buyer" and d.get("item_transferred"):
                 lines += deal_payment_details_lines(deal_id, d, lang)
         else:
-            pname=partner_tag if partner_tag and partner_tag!="—" else (d.get("partner") or "—")
             instr=T(lang,
-                f"Ожидайте, пока партнёр {pname} присоединится к сделке. Ссылка отправлена ему в личные сообщения.",
-                f"Wait for partner {pname} to join the deal. The link was sent to them in a private message.",
-                f"Очікуйте, поки партнер {pname} приєднається до угоди. Посилання надіслано йому в особисті повідомлення.")
-            lines.append(f"\n{qi(instr)}")
+                "Отправьте ссылку партнёру, чтобы он присоединился к сделке.",
+                "Send the link to your partner so they can join the deal.",
+                "Надішліть посилання партнеру, щоб він приєднався до угоди.")
+            lines.append(f"\n<blockquote>{instr}</blockquote>")
+            if viewer_role=="seller":
+                lines.append(f"<blockquote>{deal_seller_transfer_text(lang)}</blockquote>")
 
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
-        lines.append(qi(deal_guarantee_lines(lang)))
+        lines.append(f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>")
 
         return "\n".join(lines)
     except Exception as e:
@@ -4805,22 +4806,18 @@ async def finalize_deal(update, context):
         lang=get_lang(user.id)
         uname=f"@{user.username}" if user.username else f"#{user.id}"
         join_link_f=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
-        deal=db["deals"][deal_id]
-        creator_tag, partner_tag = deal_party_tags(deal)
-        text_out=build_deal_text(
-            deal_id, deal, creator_tag, partner_tag, lang, joined=False, is_creator=True)
-        text_out=f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n{text_out}"
-        kb_rows=[
-            [InlineKeyboardButton(
-                T(lang,"Ожидайте партнёра","Waiting for partner","Очікуйте партнера"),
-                callback_data="noop", icon_custom_emoji_id=WAIT_ICON)],
-        ]
-        kb_rows.extend([
+        share_msg=L(lang,"Сделка создана! Присоединяйтесь.","Deal created! Join now.")
+        share_url="https://t.me/share/url?"+urlencode({
+            "url":join_link_f,
+            "text":share_msg,
+        }, quote_via=quote)
+        text_out=f"<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
+        kb=InlineKeyboardMarkup([
+            [InlineKeyboardButton(L(lang,"Переслать партнёру","Forward to partner"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
             [InlineKeyboardButton(L(lang,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
             [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
         ])
-        kb=InlineKeyboardMarkup(kb_rows)
-        await send_new(update,text_out,kb,section="deal_card")
+        await send_new(update,text_out,kb,section="deal")
         context.user_data.clear()
 
         schedule_log_msg(context, db)
