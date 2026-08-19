@@ -1731,9 +1731,7 @@ async def send_section(update, text, kb=None, section="main"):
                     return
             elif has_media and new_has_media:
                 prev_sec=_SCREEN_SECTION.get(cid, "")
-                fast_sections={"deal", "deal_card", "deal_forward", "deal_join", "main", "balance", "req", "profile", "top", "info", "complaint", "ai", "ref", "my_deals"}
-                same=(prev_sec == section) or (section in fast_sections and prev_sec in fast_sections)
-                if same and await _safe_edit_caption(msg, full, kb):
+                if prev_sec == section and await _safe_edit_caption(msg, full, kb):
                     _screen_set(cid, [msg.message_id])
                     _SCREEN_SECTION[cid]=section
                     return
