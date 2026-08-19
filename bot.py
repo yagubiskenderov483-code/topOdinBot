@@ -5106,9 +5106,9 @@ async def show_balance(update, context):
             f"{Ewlt} <b>{T(lang,'Пополнить / Вывод','Top Up / Withdraw','Поповнити / Вивід')}</b>\n\n"
             f"<blockquote>{Ebal} <b>{T(lang,'Баланс','Balance','Баланс')}: {fmt_balance(bal, lang)}</b></blockquote>",
             InlineKeyboardMarkup([
-                [btn(T(lang,"Пополнить","Top Up","Поповнити"),callback_data="balance_topup",icon_custom_emoji_id="5810051751654460532")],
-                [btn(T(lang,"Вывод","Withdraw","Вивід"),callback_data="withdraw",icon_custom_emoji_id="5807626765874499116")],
-                [btn(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+                [btn(T(lang,"Пополнить","Top Up","Поповнити"),callback_data="balance_topup",icon_custom_emoji_id="5810051751654460532",style="primary")],
+                [btn(T(lang,"Вывод","Withdraw","Вивід"),callback_data="withdraw",icon_custom_emoji_id="5807626765874499116",style="danger")],
+                [btn(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503",style="danger")],
             ]),section="balance")
     except Exception as e: logger.error(f"show_balance: {e}")
 
