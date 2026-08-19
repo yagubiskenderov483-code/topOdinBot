@@ -645,10 +645,11 @@ def _btn_is_primary(text, callback_data=None, url=None, web_app=None):
     cb = (callback_data or "").lower()
     primary_exact = {
         "menu_deal", "menu_balance", "menu_my_deals", "balance_topup",
+        "menu_top", "menu_req", "menu_ai", "main_menu",
     }
     primary_prefixes = (
         "topup", "confirm_deal", "role_", "dt_", "cmp_", "req_edit",
-        "deal_", "join_", "add_req", "topup_sent", "lang_",
+        "deal_", "join_", "add_req", "topup_sent", "lang_", "balance_",
     )
     if cb in primary_exact or any(cb.startswith(p) for p in primary_prefixes):
         return True
@@ -1796,17 +1797,17 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
 # ─── Keyboards ────────────────────────────────────────────────────────────────
 def main_kb(lang):
     return InlineKeyboardMarkup([
-        [btn(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075"),
+        [btn(T(lang,'Создать сделку','Create Deal','Створити угоду'),callback_data="menu_deal",icon_custom_emoji_id="5260687681733533075",style="primary"),
          btn(T(lang,'Профиль','Profile','Профіль'),callback_data="menu_profile",icon_custom_emoji_id="5258011929993026890")],
-        [btn(T(lang,'Пополнить/Вывод','Top Up/Withdraw','Поповнити/Вивід'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407"),
-         btn(T(lang,'Мои сделки','My Deals','Мої угоди'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+        [btn(T(lang,'Пополнить/Вывод','Top Up/Withdraw','Поповнити/Вивід'),callback_data="menu_balance",icon_custom_emoji_id="5258043150110301407",style="primary"),
+         btn(T(lang,'Мои сделки','My Deals','Мої угоди'),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031",style="primary")],
         [btn(T(lang,'Язык','Language','Мова'),callback_data="menu_lang",icon_custom_emoji_id="5258115571848846212"),
-         btn(T(lang,'Топ продавцов','Top Sellers','Топ продавців'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475")],
+         btn(T(lang,'Топ продавцов','Top Sellers','Топ продавців'),callback_data="menu_top",icon_custom_emoji_id="5258204546391351475",style="primary")],
         [btn(T(lang,'Рефералы','Referrals','Реферали'),callback_data="menu_ref",icon_custom_emoji_id="5258362837411045098"),
-         btn(T(lang,'Реквизиты','Requisites','Реквізити'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
+         btn(T(lang,'Реквизиты','Requisites','Реквізити'),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557",style="primary")],
         [btn(T(lang,'Пожаловаться','Report','Поскаржитися'),callback_data="menu_complaint",icon_custom_emoji_id="6032742198179532882"),
-         btn(T(lang,'FunPay AI','FunPay AI','FunPay AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522")],
-        [btn(T(lang,'Тех. поддержка','Tech Support','Тех. підтримка'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799"),
+         btn(T(lang,'FunPay AI','FunPay AI','FunPay AI'),callback_data="menu_ai",icon_custom_emoji_id="5258093637450866522",style="primary")],
+        [btn(T(lang,'Тех. поддержка','Tech Support','Тех. підтримка'),url=SUPPORT_URL,icon_custom_emoji_id="5258260149037965799",style="primary"),
          btn(T(lang,'Сайт FunPay','FunPay Website','Сайт FunPay'),url=SITE_URL,icon_custom_emoji_id="5983580310292402968")],
         [btn(T(lang,'Информация','Information','Інформація'),callback_data="menu_info",icon_custom_emoji_id="6028435952299413210")],
     ])
