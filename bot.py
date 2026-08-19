@@ -2,10 +2,17 @@ import logging, json, os, math, html, time, re, asyncio, sys
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands
+from telegram import Update, InlineKeyboardButton as _IKB, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands
 from telegram.constants import ChatAction
 from telegram.error import Conflict
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+
+def InlineKeyboardButton(text=None, *args, **kwargs):
+    """Все кнопки синие, только «Назад» красная. Логика бота не меняется."""
+    if kwargs.get("style") is None:
+        t = (text or "").strip().lower()
+        kwargs["style"] = "danger" if t in ("назад", "back") else "primary"
+    return _IKB(text, *args, **kwargs)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
