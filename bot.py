@@ -1272,6 +1272,8 @@ def clear_req_input_state(uid):
 
 def restore_req_input_state(ud, uid):
     """Restore requisite wizard from DB if user_data was lost."""
+    if ud.get("type") and ud.get("step"):
+        return
     db=load_db(); u=get_user(db,uid)
     st=u.get("req_input") or {}
     field=st.get("field")
@@ -1753,6 +1755,18 @@ async def send_section(update, text, kb=None, section="main"):
         except Exception as e2:
             logger.error(f"send_section fallback: {e2}", exc_info=True)
 
+async def push_deal_screen(update, context, text, kb=None):
+    """Next deal-wizard screen after a text reply (banner + caption)."""
+    ud=context.user_data
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
+    await send_section(update, text, kb, section="deal")
+    ids=_screen_get(update.effective_chat.id)
+    if ids:
+        ud["last_msg"]=ids[-1]
+
 async def send_new(update, text, kb=None, section="main"):
     try:
         fb="deal_card" if section in ("deal_forward","deal_join") else None
@@ -2035,14 +2049,14 @@ def pay_cur_kb(lang):
     return cur_kb(lang)
 
 def cur_kb(lang):
-    def btn(code, cb):
+    def cur_btn(code, cb):
         return btn(
             cur_button_text(code,lang),callback_data=cb,
             icon_custom_emoji_id=CUR_BTN_ICON[code])
     return InlineKeyboardMarkup([
-        [btn("TON","cur_ton"), btn("USDT","cur_usdt")],
-        [btn("RUB","cur_rub"), btn("Stars","cur_stars")],
-        [btn("UAH","cur_uah")],
+        [cur_btn("TON","cur_ton"), cur_btn("USDT","cur_usdt")],
+        [cur_btn("RUB","cur_rub"), cur_btn("Stars","cur_stars")],
+        [cur_btn("UAH","cur_uah")],
         [btn(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
     ])
 
@@ -2196,6 +2210,19 @@ def normalize_nft_link(text):
     return t
 
 def looks_like_nft_link(text):
+    """True only for real NFT URLs, never for a partner @username / bare slug."""
+    t=(text or "").strip()
+    if not t or t.startswith("@"):
+        return False
+    low=t.lower()
+    for prefix in ("https://", "http://"):
+        if low.startswith(prefix):
+            t=t[len(prefix):]
+            low=t.lower()
+            break
+    low=low.replace("telegram.me/", "t.me/").replace("www.t.me/", "t.me/")
+    if not (low.startswith("t.me/nft/") or low.startswith("nft/")):
+        return False
     clean=normalize_nft_link(text)
     return clean.startswith("t.me/nft/") and len(clean) > len("t.me/nft/")
 
@@ -3848,7 +3875,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # ── Создать сделку (старый рабочий поток) ──
         if d=="menu_deal":
-            ud.clear(); clear_join_req_state(uid)
+            ud.clear(); clear_join_req_state(uid); clear_req_input_state(uid)
             await send_section(
                 update,
                 f"{Epen} <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
@@ -3877,6 +3904,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         TYPE_MAP={"dt_nft":"nft","dt_usr":"username","dt_str":"stars","dt_cry":"crypto","dt_prm":"premium"}
         if d in TYPE_MAP:
+            for key in ("req_step","req_return","card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal","pending_deal"):
+                ud.pop(key,None)
             ud["type"]=TYPE_MAP[d]; ud["step"]="partner"
             cr=ud.get("creator_role","seller")
             pp=L(lang,"Введите @username продавца:","Enter seller @username:") if cr=="buyer" else L(lang,"Введите @username покупателя:","Enter buyer @username:")
@@ -4299,8 +4328,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
         text=update.message.text.strip() if update.message.text else ""
         if uid in ADMIN_IDS and ud.get("adm_step"): await handle_adm_msg(update,context); return
-        # Restore requisite wizard if user_data was lost (profile / deal / join)
-        restore_req_input_state(ud, uid)
+        # Restore requisite wizard if user_data was lost — never during deal creation
+        if not (ud.get("type") and ud.get("step")):
+            restore_req_input_state(ud, uid)
 
         if ud.get("ai_ask"):
             chat=update.effective_chat
@@ -4427,7 +4457,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{Emn} <b>{L(lang,'Выберите способ пополнения:','Choose a top-up method:')}</b>",
                 topup_methods_kb(lang),section="balance"); return
 
-        if ud.get("req_step") in REQ_FIELDS:
+        if ud.get("req_step") in REQ_FIELDS and not (ud.get("type") and ud.get("step")):
             field=ud["req_step"]; db=load_db(); u=get_user(db,uid)
             err=None
             if not text:
@@ -4674,64 +4704,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         dtype=ud.get("type"); step=ud.get("step")
         if not dtype or not step: return
 
-        async def send_step(t2, kb=None):
-            """Edit previous bot prompt when possible — works for text and photo captions."""
-            chat_id=update.effective_chat.id
-            last=ud.get("last_msg")
-            edited=False
-            if last:
-                try:
-                    await context.bot.edit_message_text(
-                        chat_id=chat_id, message_id=last, text=t2,
-                        parse_mode="HTML", reply_markup=kb)
-                    edited=True
-                except Exception:
-                    try:
-                        await context.bot.edit_message_caption(
-                            chat_id=chat_id, message_id=last, caption=t2,
-                            parse_mode="HTML", reply_markup=kb)
-                        edited=True
-                    except Exception:
-                        edited=False
-            # drop user's text in background (don't wait)
-            async def _del_user():
-                try: await update.message.delete()
-                except: pass
-            try: asyncio.create_task(_del_user())
-            except Exception:
-                try: await update.message.delete()
-                except: pass
-            if edited:
-                return
-            if last:
-                async def _del_old():
-                    try: await context.bot.delete_message(chat_id=chat_id, message_id=last)
-                    except: pass
-                try: asyncio.create_task(_del_old())
-                except Exception: pass
-            msg=await update.effective_chat.send_message(t2,parse_mode="HTML",reply_markup=kb)
-            ud["last_msg"]=msg.message_id
-
-        async def del_prev():
-            # Fast path for confirmation: only remove user msg; leave bot msg if we'll replace via send_new
-            async def _bg():
-                try: await update.message.delete()
-                except: pass
-                if ud.get("last_msg"):
-                    try: await context.bot.delete_message(chat_id=update.effective_chat.id,message_id=ud["last_msg"])
-                    except: pass
-            try: asyncio.create_task(_bg())
-            except Exception:
-                try: await update.message.delete()
-                except: pass
-
         if step=="partner":
             if dtype=="nft" and looks_like_nft_link(text):
                 ud["_pending_nft_link"]=normalize_nft_link(text)
-                await update.message.reply_text(
+                await push_deal_screen(
+                    update, context,
                     f"{Ech} <b>{L(lang,'Ссылку на NFT сохранил. Теперь укажите @username партнёра.','NFT link saved. Now enter partner @username.','Посилання на NFT збережено. Тепер вкажіть @username партнера.')}</b>\n\n"
-                    f"<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>",
-                    parse_mode="HTML")
+                    f"<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>")
                 return
             t_raw = text.strip()
             if not t_raw.startswith("@"): t_raw = "@" + t_raw
@@ -4747,26 +4726,29 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if pending:
                     ud["nft_link"]=pending
                     ud["step"]="currency"
-                    await send_step(deal_currency_prompt(lang),cur_kb(lang))
+                    await push_deal_screen(update, context, deal_currency_prompt(lang), cur_kb(lang))
                 else:
                     ud["step"]="nft_link"
-                    await send_step(f"{Enft_link} <b>{L(lang,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
+                    await push_deal_screen(update, context, f"{Enft_link} <b>{L(lang,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
-                await send_step(
+                await push_deal_screen(
+                    update, context,
                     f"{Eu} <b>{L(lang,'Введите username для сделки:','Enter username for the deal:','Введіть username для угоди:')}</b>\n\n"
                     f"<b>{L(lang,'Пример','Example','Приклад')}:</b> <code>@username</code> / <code>t.me/username</code>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
                 cr3=ud.get("creator_role","seller")
                 stars_q=L(lang,"Введите сумму звёзд для продажи","Enter stars amount for sale") if cr3=="seller" else L(lang,"Введите сумму звёзд для покупки","Enter stars amount for purchase")
-                await send_step(f"{Eamt_in} <b>{stars_q}</b>")
+                await push_deal_screen(update, context, f"{Eamt_in} <b>{stars_q}</b>")
             elif dtype=="crypto":
                 ud["step"]="currency"
-                await send_step(deal_currency_prompt(lang),cur_kb(lang))
+                await push_deal_screen(update, context, deal_currency_prompt(lang), cur_kb(lang))
             elif dtype=="premium":
                 ud["step"]="prem_period"
-                await send_step(f"{Eprem} <b>Telegram Premium\n\n{L(lang,'Выберите срок:','Choose period:')}</b>",
+                await push_deal_screen(
+                    update, context,
+                    f"{Eprem} <b>Telegram Premium\n\n{L(lang,'Выберите срок:','Choose period:')}</b>",
                     InlineKeyboardMarkup([[
                         btn("3 "+L(lang,"мес.","mo"),callback_data="prm_3",icon_custom_emoji_id="5906715307820456633"),
                         btn("6 "+L(lang,"мес.","mo"),callback_data="prm_6",icon_custom_emoji_id="5906715307820456633"),
@@ -4783,7 +4765,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             ud["nft_link"]=normalize_nft_link(text)
             ud["step"]="currency"
-            await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
+            await push_deal_screen(update, context, deal_currency_prompt(lang), cur_kb(lang)); return
 
         if step=="trade_usr":
             ok,em=validate_nft_link(text,"username")
@@ -4793,13 +4775,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"<b>{L(lang,'Пример','Example','Приклад')}:</b> <code>@username</code> / <code>t.me/username</code>",
                     parse_mode="HTML"); return
             ud["trade_username"]=normalize_trade_username(text); ud["step"]="currency"
-            await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
+            await push_deal_screen(update, context, deal_currency_prompt(lang), cur_kb(lang)); return
 
         if step=="stars_cnt":
             if not text.isdigit():
                 await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Только цифры!','Numbers only!')}</b>",parse_mode="HTML"); return
             ud["stars_count"]=text; ud["step"]="currency"
-            await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
+            await push_deal_screen(update, context, deal_currency_prompt(lang), cur_kb(lang)); return
 
         if step=="payment_amount":
             # legacy: keep one amount equal to deal amount
@@ -4821,7 +4803,8 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["pay_currency"]=ud.get("currency")
             ud["payment_amount"]=ca
             ud.pop("step",None)
-            await del_prev()
+            try: await update.message.delete()
+            except Exception: pass
             await show_deal_confirmation(update,context)
             return
 
