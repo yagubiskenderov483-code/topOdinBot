@@ -639,34 +639,12 @@ def _btn_is_danger(text, callback_data=None):
         return True
     return False
 
-def _btn_is_primary(text, callback_data=None, url=None, web_app=None):
-    if _btn_is_danger(text, callback_data):
-        return False
-    cb = (callback_data or "").lower()
-    primary_exact = {
-        "menu_deal", "menu_balance", "menu_my_deals", "balance_topup",
-        "menu_top", "menu_req", "menu_ai", "main_menu",
-    }
-    primary_prefixes = (
-        "topup", "confirm_deal", "role_", "dt_", "cmp_", "req_edit",
-        "deal_", "join_", "add_req", "topup_sent", "lang_", "balance_",
-    )
-    if cb in primary_exact or any(cb.startswith(p) for p in primary_prefixes):
-        return True
-    if url or web_app:
-        return True
-    key = f"{text}|{callback_data}|{url}"
-    return sum(ord(c) for c in key) % 2 == 0
-
 def btn(text, callback_data=None, url=None, web_app=None, icon_custom_emoji_id=None,
         style=None, switch_inline_query=None, switch_inline_query_current_chat=None,
         callback_game=None, pay=None, login_url=None, switch_inline_query_chosen_chat=None,
         copy_text=None, **kwargs):
     if style is None:
-        if _btn_is_danger(text, callback_data):
-            style = "danger"
-        elif _btn_is_primary(text, callback_data, url=url, web_app=web_app):
-            style = "primary"
+        style = "danger" if _btn_is_danger(text, callback_data) else "primary"
     kw = {}
     if callback_data is not None: kw["callback_data"] = callback_data
     if url is not None: kw["url"] = url
@@ -1484,9 +1462,33 @@ def _tg_caption(text, has_media=False):
     if len(t)<=lim: return t
     return t[: lim-1] + "…"
 
+def _html_for_photo_caption(full_html):
+    """Fit caption in 1024 chars; keep custom emoji tags."""
+    t=str(full_html or "").strip()
+    if len(t) <= 1024:
+        return t
+    variants=[
+        re.sub(r"\n{3,}", "\n\n", t),
+        re.sub(r"<blockquote><i>([\s\S]*?)</i></blockquote>", r"<blockquote>\1</blockquote>", t),
+        re.sub(r"<blockquote><i>([\s\S]*?)</i></blockquote>", r"<i>\1</i>", t),
+    ]
+    seen={t}
+    for v in variants:
+        v=v.strip()
+        if v in seen:
+            continue
+        seen.add(v)
+        if len(v) <= 1024:
+            return v
+    cut=t[:1024]
+    nl=cut.rfind("\n")
+    if nl > 700:
+        return cut[:nl]
+    return cut
+
 # chat_id -> all message ids of the current UI (banner photo + text).
-# Long screens (Top Sellers, My Deals, …) are two messages; both must go together.
 _SCREEN_MSGS = {}
+_SCREEN_SECTION = {}
 _SCREEN_FILE = os.path.join(DATA_DIR, "ui_screens.json")
 
 def _screen_load():
@@ -1563,58 +1565,64 @@ async def _wipe_ids(chat, ids, bot=None):
     except Exception:
         await _bg()
 
+async def _send_media_caption(chat, kind, ref, caption=None, kb=None, parse_mode="HTML"):
+    media=_media_ref(ref)
+    kw={}
+    if kb is not None:
+        kw["reply_markup"]=kb
+    if caption:
+        kw["caption"]=caption
+        if parse_mode:
+            kw["parse_mode"]=parse_mode
+    if kind=="video":
+        return await chat.send_video(video=media, **kw)
+    if kind=="animation":
+        return await chat.send_animation(animation=media, **kw)
+    return await chat.send_photo(photo=media, **kw)
+
+def _cache_banner_file_id(section, kind, ref, msg):
+    if not (section and msg and isinstance(ref, str) and os.path.isfile(ref)):
+        return
+    try:
+        new_fid=None
+        if msg.photo: new_fid=msg.photo[-1].file_id
+        elif msg.video: new_fid=msg.video.file_id
+        elif msg.animation: new_fid=msg.animation.file_id
+        if not new_fid:
+            return
+        db=load_db()
+        ent=db.setdefault("banners",{}).setdefault(section,{})
+        key="photo" if kind=="photo" else ("video" if kind=="video" else "gif")
+        if ent.get(key)!=new_fid or not ent.get("local"):
+            ent[key]=new_fid
+            ent["local"]=ent.get("local") or ref
+            save_db(db)
+    except Exception as e:
+        logger.warning("banner file_id cache: %s", e)
+
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None, pair_out=None):
-    """Send banner+text. Long texts stay full; banner is a paired photo deleted together later."""
-    has_media=bool(bv or bg or bp or local_fallback)
+    """Banner + text always in one photo caption (never a bare image + separate text)."""
     full_html=str(text or "")
-    pair_out = pair_out if pair_out is not None else []
     media_attempts=[]
-    if has_media and bv: media_attempts.append(("video", bv))
-    if has_media and bg: media_attempts.append(("animation", bg))
-    if has_media and bp: media_attempts.append(("photo", bp))
-    if has_media and local_fallback and local_fallback not in (bp, bv, bg):
+    if bv: media_attempts.append(("video", bv))
+    if bg: media_attempts.append(("animation", bg))
+    if bp: media_attempts.append(("photo", bp))
+    if local_fallback and local_fallback not in (bp, bv, bg):
         media_attempts.append(("photo", local_fallback))
-    caption_fits=len(full_html) <= 1024
+    cap_html=_html_for_photo_caption(full_html)
     last_err=None
-    for kind, ref in media_attempts:
-        try:
-            media=_media_ref(ref)
-            kw={}
-            if caption_fits:
-                kw={"caption": full_html, "parse_mode": "HTML", "reply_markup": kb}
-            if kind=="video":
-                msg=await chat.send_video(video=media, **kw)
-            elif kind=="animation":
-                msg=await chat.send_animation(animation=media, **kw)
-            else:
-                msg=await chat.send_photo(photo=media, **kw)
+    if cap_html and media_attempts:
+        for kind, ref in media_attempts:
             try:
-                if section and msg and isinstance(ref, str) and os.path.isfile(ref):
-                    new_fid=None
-                    if msg.photo: new_fid=msg.photo[-1].file_id
-                    elif msg.video: new_fid=msg.video.file_id
-                    elif msg.animation: new_fid=msg.animation.file_id
-                    if new_fid:
-                        db=load_db()
-                        ent=db.setdefault("banners",{}).setdefault(section,{})
-                        key="photo" if kind=="photo" else ("video" if kind=="video" else "gif")
-                        if ent.get(key)!=new_fid or not ent.get("local"):
-                            ent[key]=new_fid
-                            ent["local"]=ent.get("local") or ref
-                            save_db(db)
-            except Exception as e:
-                logger.warning("banner file_id cache: %s", e)
-            if caption_fits:
+                msg=await _send_media_caption(chat, kind, ref, cap_html, kb, "HTML")
+                _cache_banner_file_id(section, kind, ref, msg)
                 return msg
-            if msg:
-                pair_out.append(msg.message_id)
-            break
-        except Exception as e:
-            last_err=e
-            logger.warning("safe_send %s: %s", kind, e)
-            continue
-    if last_err and not pair_out:
-        logger.warning("safe_send media/html: %s", last_err)
+            except Exception as e:
+                last_err=e
+                logger.warning("safe_send %s html: %s", kind, e)
+                continue
+    if last_err:
+        logger.warning("safe_send media: %s", last_err)
     try:
         return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
     except Exception as e2:
@@ -1649,10 +1657,9 @@ async def _safe_edit_caption(msg, text, kb=None):
     if not msg: return False
     if not (msg.photo or msg.video or msg.animation):
         return False
-    full=str(text or "")
-    if len(full) > 1000:
-        return False  # keep full HTML + custom emoji via a new text message
-    full=_tg_caption(full, has_media=True)
+    full=_html_for_photo_caption(str(text or ""))
+    if not full:
+        return False
     try:
         await msg.edit_caption(caption=full, parse_mode="HTML", reply_markup=kb)
         return True
@@ -1664,56 +1671,78 @@ async def _safe_edit_caption(msg, text, kb=None):
         return False
 
 def _section_media(section, text, fallback_section=None, skip_media=False):
-    b=get_banner(None, section)
-    if not b and fallback_section:
-        b=get_banner(None, fallback_section)
-    local_fb=_banner_local_path(section, b) or (_banner_local_path(fallback_section, b) if fallback_section else None)
+    """Always attach a banner; fallback chain: section → deal_card → main."""
+    chain=[]
+    for sec in (section, fallback_section):
+        if sec and sec not in chain:
+            chain.append(sec)
+    if section and str(section).startswith("deal"):
+        for sec in ("deal_card", "deal", "main"):
+            if sec not in chain:
+                chain.append(sec)
+    elif section != "main":
+        if "main" not in chain:
+            chain.append("main")
+    b=None
+    bv=bg=bp=local_fb=None
     if skip_media:
-        bv=bg=bp=None; local_fb=None
-    else:
-        bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+        return bv, bg, bp, local_fb, str(text or "")
+    for sec in chain:
+        b=get_banner(None, sec)
+        local_fb=_banner_local_path(sec, b)
+        bv=b.get("video") if b else None
+        bg=b.get("gif") if b else None
+        bp=b.get("photo") if b else None
         if local_fb and not bp and not bv and not bg:
-            bp=local_fb; local_fb=None
+            bp=local_fb
+            local_fb=None
         elif local_fb and bp and os.path.isfile(str(bp)):
             local_fb=None
+        if bv or bg or bp or local_fb:
+            break
+    if not (bv or bg or bp or local_fb):
+        for name in ("main.jpg", "deal.jpg", "deal_card.jpg"):
+            p=os.path.join(BANNER_ASSETS_DIR, name)
+            if os.path.isfile(p):
+                bp=p
+                break
     bt=(b.get("text") or "").strip() if b else ""
-    full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not skip_media else "")
+    if section and str(section).startswith("deal"):
+        full=text
+    else:
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
     return bv, bg, bp, local_fb, full
 
 async def send_section(update, text, kb=None, section="main"):
-    """Show a section. Banner photo and text are always removed together on the next tap."""
+    """Show a section: banner image + text in one caption."""
     try:
         bv, bg, bp, local_fb, full = _section_media(section, text)
         chat=update.effective_chat
         cid=int(chat.id)
         previous_message=None
-        leftover=_screen_get(cid)
         if update.callback_query and update.callback_query.message:
             msg=update.callback_query.message
             has_media=bool(msg.photo or msg.video or msg.animation)
             new_has_media=bool(bv or bg or bp or local_fb)
-            extras_old=[i for i in leftover if i!=getattr(msg,"message_id",None)]
-            if not extras_old and not has_media and not new_has_media and len(full) <= 4096:
+            if not has_media and not new_has_media:
                 if await _safe_edit_text(msg, full, kb):
                     _screen_set(cid, [msg.message_id])
+                    _SCREEN_SECTION[cid]=section
                     return
-            elif not extras_old and has_media and new_has_media and len(full) <= 1024:
-                current_file=(msg.video.file_id if msg.video else
-                              msg.animation.file_id if msg.animation else
-                              msg.photo[-1].file_id if msg.photo else None)
-                target_file=bv or bg or bp
-                if isinstance(target_file, str) and current_file==target_file and await _safe_edit_caption(msg, full, kb):
+            elif has_media and new_has_media:
+                prev_sec=_SCREEN_SECTION.get(cid, "")
+                fast_sections={"deal", "deal_card", "deal_forward", "deal_join", "main", "balance", "req", "profile", "top", "info", "complaint", "ai", "ref", "my_deals"}
+                same=(prev_sec == section) or (section in fast_sections and prev_sec in fast_sections)
+                if same and await _safe_edit_caption(msg, full, kb):
                     _screen_set(cid, [msg.message_id])
+                    _SCREEN_SECTION[cid]=section
                     return
             previous_message=msg
-        extras=[]
-        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section, pair_out=extras)
-        new_ids=list(extras)
-        if sent:
-            try: new_ids.append(sent.message_id)
-            except Exception: pass
+        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
+        new_ids=[sent.message_id] if sent else []
         old=_old_screen_ids(cid, previous_message)
         _screen_set(cid, new_ids)
+        _SCREEN_SECTION[cid]=section
         bot=None
         if previous_message:
             try: bot=previous_message.get_bot()
@@ -1729,18 +1758,14 @@ async def send_section(update, text, kb=None, section="main"):
 async def send_new(update, text, kb=None, section="main"):
     try:
         fb="deal_card" if section in ("deal_forward","deal_join") else None
-        long_deal = section in ("deal_card", "deal_join", "deal_forward") and len(str(text or "")) > 700
-        bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fb, skip_media=long_deal)
-        extras=[]
+        bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fb)
         chat=update.effective_chat
         previous_message=update.callback_query.message if update.callback_query else None
-        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section, pair_out=extras)
-        new_ids=list(extras)
-        if sent:
-            try: new_ids.append(sent.message_id)
-            except Exception: pass
+        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
+        new_ids=[sent.message_id] if sent else []
         old=_old_screen_ids(chat.id, previous_message)
         _screen_set(chat.id, new_ids)
+        _SCREEN_SECTION[int(chat.id)]=section
         bot=None
         if previous_message:
             try: bot=previous_message.get_bot()
@@ -1753,42 +1778,30 @@ async def send_new(update, text, kb=None, section="main"):
 
 async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
     try:
-        b=get_banner(None, section)
-        if section=="deal_join" and not b: b=get_banner(None,"deal_card")
-        long_deal = len(str(text or "")) > 700
-        local_fb=_banner_local_path(section, b)
-        if long_deal:
-            bv=bg=bp=None; local_fb=None
-        else:
-            bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            if local_fb and not bp and not bv and not bg:
-                bp=local_fb; local_fb=None
-            elif local_fb and bp and os.path.isfile(str(bp)):
-                local_fb=None
-        bt=(b.get("text") or "").strip() if b else ""
-        full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
-        has_media=bool(bv or bg or bp)
-        if has_media and len(full) > 1000:
-            has_media=False; bv=bg=bp=None
-        try:
-            if bv:
-                await bot.send_video(chat_id=chat_id,video=_media_ref(bv),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
-            if bg:
-                await bot.send_animation(chat_id=chat_id,animation=_media_ref(bg),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
-            if bp:
-                await bot.send_photo(chat_id=chat_id,photo=_media_ref(bp),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
-            await bot.send_message(chat_id=chat_id,text=_tg_caption(full, False),parse_mode="HTML",reply_markup=kb)
-        except Exception as e:
-            logger.warning("send_banner_chat html: %s", e)
-            if local_fb:
-                try:
-                    await bot.send_photo(chat_id=chat_id,photo=_media_ref(local_fb),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
-                except Exception as e2:
-                    logger.warning("send_banner_chat local: %s", e2)
+        fb="deal_card" if section == "deal_join" else None
+        bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fb)
+        cap=_html_for_photo_caption(full)
+        media_attempts=[]
+        if bv: media_attempts.append(("video", bv))
+        if bg: media_attempts.append(("animation", bg))
+        if bp: media_attempts.append(("photo", bp))
+        if local_fb and local_fb not in (bp, bv, bg):
+            media_attempts.append(("photo", local_fb))
+        kw={"caption": cap, "parse_mode": "HTML", "reply_markup": kb}
+        for kind, ref in media_attempts:
             try:
-                await bot.send_message(chat_id=chat_id,text=_tg_caption(full, False),parse_mode="HTML",reply_markup=kb)
-            except Exception:
-                await bot.send_message(chat_id=chat_id,text=_strip_html_tags(text)[:4096],reply_markup=kb)
+                media=_media_ref(ref)
+                if kind=="video":
+                    await bot.send_video(chat_id=chat_id, video=media, **kw)
+                elif kind=="animation":
+                    await bot.send_animation(chat_id=chat_id, animation=media, **kw)
+                else:
+                    await bot.send_photo(chat_id=chat_id, photo=media, **kw)
+                return
+            except Exception as e:
+                logger.warning("send_banner_chat %s: %s", kind, e)
+                continue
+        await bot.send_message(chat_id=chat_id, text=_tg_caption(full, False), parse_mode="HTML", reply_markup=kb)
     except Exception as e:
         logger.error(f"send_banner_chat: {e}")
         try: await bot.send_message(chat_id=chat_id,text=_strip_html_tags(text)[:4096],reply_markup=kb)
