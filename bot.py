@@ -380,35 +380,35 @@ Eref = ce("6037475557082403885", "🪙")
 # ─── Типы сделок ──────────────────────────────────────────────────────────────
 TNAMES_RU = {
     "nft":      f"{Enft} NFT подарок",
-    "username": "Username",
+    "username": f"{Eu} NFT Username",
     "stars":    f"{Est} Звёзды Telegram",
     "crypto":   f"{Edm} Крипта TON/USDT",
     "premium":  f"{Egm} Telegram Premium",
 }
 TNAMES_EN = {
     "nft":      f"{Enft} NFT Gift",
-    "username": "Username",
+    "username": f"{Eu} NFT Username",
     "stars":    f"{Est} Telegram Stars",
     "crypto":   f"{Edm} Crypto TON/USDT",
     "premium":  f"{Egm} Telegram Premium",
 }
 TNAMES_PLAIN_RU = {
-    "nft":"NFT подарок","username":"Username","stars":"Звёзды Telegram",
+    "nft":"NFT подарок","username":"NFT Username","stars":"Звёзды Telegram",
     "crypto":"Крипта TON/USDT","premium":"Telegram Premium",
 }
 TNAMES_PLAIN_EN = {
-    "nft":"NFT Gift","username":"Username","stars":"Telegram Stars",
+    "nft":"NFT Gift","username":"NFT Username","stars":"Telegram Stars",
     "crypto":"Crypto TON/USDT","premium":"Telegram Premium",
 }
 TNAMES_UK = {
     "nft":      f"{Enft} NFT-подарунок",
-    "username": "Username",
+    "username": f"{Eu} NFT Username",
     "stars":    f"{Est} Зірки Telegram",
     "crypto":   f"{Edm} Крипта TON/USDT",
     "premium":  f"{Egm} Telegram Premium",
 }
 TNAMES_PLAIN_UK = {
-    "nft":"NFT-подарунок","username":"Username","stars":"Зірки Telegram",
+    "nft":"NFT-подарунок","username":"NFT Username","stars":"Зірки Telegram",
     "crypto":"Крипта TON/USDT","premium":"Telegram Premium",
 }
 
@@ -2023,7 +2023,7 @@ def role_kb(lang):
 def types_kb(lang):
     return InlineKeyboardMarkup([
         [btn(T(lang,'NFT подарок','NFT Gift','NFT-подарунок'),callback_data="dt_nft",icon_custom_emoji_id="5906716471756593520"),
-         btn("NFT Username",callback_data="dt_usr",icon_custom_emoji_id="5906976471896824396")],
+         btn(T(lang,'NFT Username','NFT Username','NFT Username'),callback_data="dt_usr",icon_custom_emoji_id="5906976471896824396")],
         [btn(T(lang,'Звёзды','Stars','Зірки'),callback_data="dt_str",icon_custom_emoji_id="5906478942885255780"),
          btn(T(lang,'Крипта','Crypto','Крипта'),callback_data="dt_cry",icon_custom_emoji_id="5904576890848419790")],
         [btn("Telegram Premium",callback_data="dt_prm",icon_custom_emoji_id="5906715307820456633")],
@@ -2183,14 +2183,52 @@ def normalize_nft_link(text):
             t=t[len(prefix):]
             break
     t=t.replace("telegram.me/", "t.me/").replace("www.t.me/", "t.me/")
-    if t.lower().startswith("nft/"):
-        t="t.me/"+t
-    elif not t.lower().startswith("t.me/nft/"):
-        return ""
+    if not t.lower().startswith("t.me/"):
+        if t.lower().startswith("nft/"):
+            t="t.me/"+t
+        elif "/" not in t:
+            t="t.me/nft/"+t.lstrip("/")
+        else:
+            return ""
+    else:
+        t="t.me/"+t[5:]
     t=t.split("?")[0].split("#")[0].rstrip("/")
     return t
 
+def looks_like_nft_link(text):
+    clean=normalize_nft_link(text)
+    return clean.startswith("t.me/nft/") and len(clean) > len("t.me/nft/")
+
+def normalize_trade_username(text):
+    """Normalize @username / t.me/username / bare slug to @username."""
+    t=(text or "").strip()
+    if not t:
+        return ""
+    if t.startswith("@"):
+        u=t[1:]
+        if len(u)>=5 and re.fullmatch(r"[a-zA-Z0-9_]+", u) and re.search(r"[a-zA-Z]", u):
+            return f"@{u}"
+        return ""
+    for prefix in ("https://", "http://"):
+        if t.lower().startswith(prefix):
+            t=t[len(prefix):]
+            break
+    t=t.replace("telegram.me/", "t.me/").replace("www.t.me/", "t.me/")
+    if t.lower().startswith("t.me/"):
+        t="t.me/"+t[5:]
+        path=t[5:].strip("/").split("/")[0]
+        if len(path)>=5 and re.fullmatch(r"[a-zA-Z0-9_]+", path) and re.search(r"[a-zA-Z]", path):
+            return f"@{path}"
+        return ""
+    if "/" not in t and len(t)>=5 and re.fullmatch(r"[a-zA-Z0-9_]+", t) and re.search(r"[a-zA-Z]", t):
+        return f"@{t}"
+    return ""
+
 def validate_nft_link(text, dtype):
+    if dtype=="username":
+        if not normalize_trade_username(text):
+            return False, "wrong_usr"
+        return True, None
     clean=normalize_nft_link(text)
     if not clean.startswith("t.me/"):
         return False, "no_tme"
@@ -2201,10 +2239,6 @@ def validate_nft_link(text, dtype):
         slug=path[4:].strip("/")
         if len(slug) < 1 or not re.fullmatch(r"[a-zA-Z0-9_\-]+", slug):
             return False, "wrong_nft"
-    elif dtype=="username":
-        uname=path.strip("/").split("/")[0]
-        if len(uname) < 4 or not re.fullmatch(r"[a-zA-Z0-9_]+", uname):
-            return False, "wrong_usr"
     return True, None
 
 def deal_item_lines(ud, lang):
@@ -2214,7 +2248,7 @@ def deal_item_lines(ud, lang):
     if dtype=="nft" and ud.get("nft_link"):
         lines.append(f"<b>{T(lang,'Ссылка','Link','Посилання')}:</b> <code>{H(ud['nft_link'])}</code>")
     elif dtype=="username" and ud.get("trade_username"):
-        lines.append(f"<b>Username:</b> <code>{H(ud['trade_username'])}</code>")
+        lines.append(f"<b>{T(lang,'Username','Username','Username')}:</b> <code>{H(ud['trade_username'])}</code>")
     elif dtype=="stars" and ud.get("stars_count"):
         lines.append(f"<b>{T(lang,'Звёзды','Stars','Зірки')}:</b> <b>{H(ud['stars_count'])}</b>")
     elif dtype=="premium" and ud.get("premium_period"):
@@ -2270,7 +2304,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         if dtype=="nft":
             item=f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> <code>{H(dd.get('nft_link','-'))}</code>"
         elif dtype=="username":
-            item=f"\n<b>Username:</b> {dd.get('trade_username','-')}"
+            item=f"\n<b>{T(lang,'Username','Username','Username')}:</b> <code>{H(dd.get('trade_username','-'))}</code>"
         elif dtype=="stars":
             stars_lbl = T(lang,"Кол-во звёзд для продажи","Stars for sale","Кількість зірок для продажу") if creator_role=="seller" else T(lang,"Кол-во звёзд для покупки","Stars for purchase","Кількість зірок для покупки")
             item=f"\n<b>{stars_lbl}:</b> <b>{dd.get('stars_count','-')}</b>"
@@ -4719,7 +4753,9 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await send_step(f"{Enft_link} <b>{L(lang,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
-                await send_step(f"{Eu} <b>{L(lang,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
+                await send_step(
+                    f"{Eu} <b>{L(lang,'Введите username для сделки:','Enter username for the deal:','Введіть username для угоди:')}</b>\n\n"
+                    f"<b>{L(lang,'Пример','Example','Приклад')}:</b> <code>@username</code> / <code>t.me/username</code>")
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
                 cr3=ud.get("creator_role","seller")
@@ -4750,15 +4786,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
 
         if step=="trade_usr":
-            cl=text.strip().replace("https://","").replace("http://","")
-            import re as _re
-            ok_link = cl.startswith("t.me/") and len(cl[5:].strip("/"))>=5 and _re.fullmatch(r"[a-zA-Z0-9_]+", cl[5:].strip("/"))
-            ok_at   = text.strip().startswith("@") and len(text.strip()[1:])>=5 and _re.fullmatch(r"[a-zA-Z0-9_]+", text.strip()[1:])
-            if not ok_link and not ok_at:
+            ok,em=validate_nft_link(text,"username")
+            if not ok:
                 await update.message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Введите корректную ссылку t.me/username или @username (мин. 5 символов).','Enter valid t.me/username or @username (min 5 chars).')}</b>",
+                    f"{Ewrn} <b>{L(lang,'Введите корректную ссылку t.me/username или @username (мин. 5 символов).','Enter valid t.me/username or @username (min 5 chars).','Введіть коректне посилання t.me/username або @username (мін. 5 символів).')}</b>\n\n"
+                    f"<b>{L(lang,'Пример','Example','Приклад')}:</b> <code>@username</code> / <code>t.me/username</code>",
                     parse_mode="HTML"); return
-            ud["trade_username"]=text.strip(); ud["step"]="currency"
+            ud["trade_username"]=normalize_trade_username(text); ud["step"]="currency"
             await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
 
         if step=="stars_cnt":
@@ -4791,7 +4825,16 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_deal_confirmation(update,context)
             return
 
-    except Exception as e: logger.error(f"on_msg ERROR: {e}", exc_info=True)
+    except Exception as e:
+        logger.error(f"on_msg ERROR: {e}", exc_info=True)
+        try:
+            lang=get_lang(update.effective_user.id)
+            await update.effective_chat.send_message(
+                f"{Ewrn} <b>{L(lang,'Произошла ошибка. Попробуйте ещё раз или начните сделку заново.','Something went wrong. Try again or start the deal over.','Сталася помилка. Спробуйте ще раз або почніть угоду спочатку.')}</b>",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[btn(L(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")]]))
+        except Exception:
+            pass
 
 # ─── Finalize deal ────────────────────────────────────────────────────────────
 async def finalize_deal(update, context):
@@ -4803,6 +4846,8 @@ async def finalize_deal(update, context):
             raise ValueError("incomplete deal draft")
         if ud.get("type")=="nft" and not ud.get("nft_link"):
             raise ValueError("nft link required")
+        if ud.get("type")=="username" and not ud.get("trade_username"):
+            raise ValueError("trade username required")
         user=update.effective_user
         u_check=get_user(db,user.id)
         currency=ud.get("currency","-")
@@ -4869,6 +4914,7 @@ async def finalize_deal(update, context):
             f"Роль: {creator_role}\n"
             f"Партнёр: {H(partner)}\n"
             + (f"NFT: <code>{H(data.get('nft_link',''))}</code>\n" if data.get("nft_link") else "")
+            + (f"Username: <code>{H(data.get('trade_username',''))}</code>\n" if data.get("trade_username") else "")
             + f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
         schedule_notify_deal_event(
             context.bot,user.id,
@@ -4901,6 +4947,18 @@ async def finalize_deal(update, context):
     except Exception as e:
         context.user_data.pop("_finalizing_deal",None)
         logger.error(f"finalize_deal: {e}", exc_info=True)
+        try:
+            lang=get_lang(update.effective_user.id)
+            err=L(lang,
+                "Не удалось создать сделку. Проверьте все поля и попробуйте снова.",
+                "Could not create the deal. Check all fields and try again.",
+                "Не вдалося створити угоду. Перевірте всі поля та спробуйте знову.")
+            await update.effective_chat.send_message(
+                f"{Ewrn} <b>{err}</b>",
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([[btn(L(lang,"Создать сделку","Create deal","Створити угоду"),callback_data="menu_deal",icon_custom_emoji_id="5906840875484321836")]]))
+        except Exception:
+            pass
 
 # ─── Participant actions ──────────────────────────────────────────────────────
 async def on_transferred(update, context):
