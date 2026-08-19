@@ -2176,24 +2176,19 @@ def validate_bank_name(text):
 
 def normalize_nft_link(text):
     t=(text or "").strip()
+    if not t or t.startswith("@"):
+        return ""
     for prefix in ("https://", "http://"):
         if t.lower().startswith(prefix):
             t=t[len(prefix):]
             break
     t=t.replace("telegram.me/", "t.me/").replace("www.t.me/", "t.me/")
-    if not t.lower().startswith("t.me/"):
-        if t.lower().startswith("nft/"):
-            t="t.me/"+t
-        elif "/" not in t:
-            t="t.me/nft/"+t.lstrip("/")
-    else:
-        t="t.me/"+t[5:]
+    if t.lower().startswith("nft/"):
+        t="t.me/"+t
+    elif not t.lower().startswith("t.me/nft/"):
+        return ""
     t=t.split("?")[0].split("#")[0].rstrip("/")
     return t
-
-def looks_like_nft_link(text):
-    clean=normalize_nft_link(text)
-    return clean.startswith("t.me/nft/") and len(clean) > len("t.me/nft/")
 
 def validate_nft_link(text, dtype):
     clean=normalize_nft_link(text)
