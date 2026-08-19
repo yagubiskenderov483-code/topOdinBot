@@ -2174,22 +2174,57 @@ def validate_bank_name(text):
     if not re.search(r"[a-zA-Zа-яёА-ЯЁіІїЇєЄґҐ]{2,}", t): return None
     return t
 
+def normalize_nft_link(text):
+    t=(text or "").strip()
+    for prefix in ("https://", "http://"):
+        if t.lower().startswith(prefix):
+            t=t[len(prefix):]
+            break
+    t=t.replace("telegram.me/", "t.me/").replace("www.t.me/", "t.me/")
+    if not t.lower().startswith("t.me/"):
+        if t.lower().startswith("nft/"):
+            t="t.me/"+t
+        elif "/" not in t:
+            t="t.me/nft/"+t.lstrip("/")
+    else:
+        t="t.me/"+t[5:]
+    t=t.split("?")[0].split("#")[0].rstrip("/")
+    return t
+
+def looks_like_nft_link(text):
+    clean=normalize_nft_link(text)
+    return clean.startswith("t.me/nft/") and len(clean) > len("t.me/nft/")
+
 def validate_nft_link(text, dtype):
-    import re
-    clean=text.strip()
-    for prefix in ("https://","http://"):
-        if clean.startswith(prefix): clean=clean[len(prefix):]; break
-    if not clean.startswith("t.me/"): return False,"no_tme"
+    clean=normalize_nft_link(text)
+    if not clean.startswith("t.me/"):
+        return False, "no_tme"
     path=clean[5:]
     if dtype=="nft":
-        if not path.startswith("nft/"): return False,"wrong_nft"
+        if not path.startswith("nft/"):
+            return False, "wrong_nft"
         slug=path[4:].strip("/")
-        if len(slug)<2 or not re.search(r"[a-zA-Z0-9]", slug): return False,"wrong_nft"
+        if len(slug) < 1 or not re.fullmatch(r"[a-zA-Z0-9_\-]+", slug):
+            return False, "wrong_nft"
     elif dtype=="username":
-        uname=path.strip("/")
-        if len(uname)<4: return False,"wrong_usr"
-        if not re.fullmatch(r"[a-zA-Z0-9_]+", uname): return False,"wrong_usr"
-    return True,None
+        uname=path.strip("/").split("/")[0]
+        if len(uname) < 4 or not re.fullmatch(r"[a-zA-Z0-9_]+", uname):
+            return False, "wrong_usr"
+    return True, None
+
+def deal_item_lines(ud, lang):
+    """Extra deal fields for confirmation card and summaries."""
+    dtype=ud.get("type")
+    lines=[]
+    if dtype=="nft" and ud.get("nft_link"):
+        lines.append(f"<b>{T(lang,'Ссылка','Link','Посилання')}:</b> <code>{H(ud['nft_link'])}</code>")
+    elif dtype=="username" and ud.get("trade_username"):
+        lines.append(f"<b>Username:</b> <code>{H(ud['trade_username'])}</code>")
+    elif dtype=="stars" and ud.get("stars_count"):
+        lines.append(f"<b>{T(lang,'Звёзды','Stars','Зірки')}:</b> <b>{H(ud['stars_count'])}</b>")
+    elif dtype=="premium" and ud.get("premium_period"):
+        lines.append(f"<b>{T(lang,'Срок','Period','Термін')}:</b> {H(ud['premium_period'])}")
+    return lines
 
 # ─── Welcome ──────────────────────────────────────────────────────────────────
 def get_welcome(lang):
@@ -2238,7 +2273,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         dd=d.get("data",{}); creator_role=d.get("creator_role","seller")
 
         if dtype=="nft":
-            item=f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> {dd.get('nft_link','-')}"
+            item=f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> <code>{H(dd.get('nft_link','-'))}</code>"
         elif dtype=="username":
             item=f"\n<b>Username:</b> {dd.get('trade_username','-')}"
         elif dtype=="stars":
@@ -2466,13 +2501,17 @@ async def show_deal_confirmation(update, context):
     ud["_deal_confirm_token"]=f"{update.effective_user.id}-{time.time_ns()}"
     amount=ud.get("amount","-")
     currency=ud.get("currency","-")
-    chat=update.effective_chat
+    role_lbl=T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')
+    summary_lines=[
+        f"{T(lang,'Роль','Role','Роль')}: {role_lbl}",
+        f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}",
+        f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}",
+    ]
+    summary_lines.extend(deal_item_lines(ud, lang))
+    summary_lines.append(f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}")
     text=(
         f"{Ech} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
-        f"<blockquote>{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}\n"
-        f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}\n"
-        f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}\n"
-        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}</blockquote>"
+        f"<blockquote>{chr(10).join(summary_lines)}</blockquote>"
     )
     kb=InlineKeyboardMarkup([
         [btn(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
@@ -3817,7 +3856,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{Eu} <b>{pp}</b>\n\n<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>",
                 InlineKeyboardMarkup([[btn(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),
                 section="deal")
-            if update.callback_query and update.callback_query.message and not (update.callback_query.message.photo or update.callback_query.message.video or update.callback_query.message.animation):
+            if update.callback_query and update.callback_query.message:
                 ud["last_msg"]=update.callback_query.message.message_id
             return
 
@@ -4607,7 +4646,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not dtype or not step: return
 
         async def send_step(t2, kb=None):
-            """Edit previous bot prompt when possible — much faster than delete+send."""
+            """Edit previous bot prompt when possible — works for text and photo captions."""
             chat_id=update.effective_chat.id
             last=ud.get("last_msg")
             edited=False
@@ -4618,7 +4657,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         parse_mode="HTML", reply_markup=kb)
                     edited=True
                 except Exception:
-                    edited=False
+                    try:
+                        await context.bot.edit_message_caption(
+                            chat_id=chat_id, message_id=last, caption=t2,
+                            parse_mode="HTML", reply_markup=kb)
+                        edited=True
+                    except Exception:
+                        edited=False
             # drop user's text in background (don't wait)
             async def _del_user():
                 try: await update.message.delete()
@@ -4652,6 +4697,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except: pass
 
         if step=="partner":
+            if dtype=="nft" and looks_like_nft_link(text):
+                ud["_pending_nft_link"]=normalize_nft_link(text)
+                await update.message.reply_text(
+                    f"{Ech} <b>{L(lang,'Ссылку на NFT сохранил. Теперь укажите @username партнёра.','NFT link saved. Now enter partner @username.','Посилання на NFT збережено. Тепер вкажіть @username партнера.')}</b>\n\n"
+                    f"<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>",
+                    parse_mode="HTML")
+                return
             t_raw = text.strip()
             if not t_raw.startswith("@"): t_raw = "@" + t_raw
             cl_p, ec_p = validate_username(t_raw)
@@ -4662,8 +4714,14 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text(f"{Ewrn} <b>{err_msg}</b>\n\n<b>{L(lang,'Пример','Example')}:</b> <code>@username</code>",parse_mode="HTML"); return
             ud["partner"]=cl_p
             if dtype=="nft":
-                ud["step"]="nft_link"
-                await send_step(f"{Enft_link} <b>{L(lang,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
+                pending=ud.pop("_pending_nft_link", None)
+                if pending:
+                    ud["nft_link"]=pending
+                    ud["step"]="currency"
+                    await send_step(deal_currency_prompt(lang),cur_kb(lang))
+                else:
+                    ud["step"]="nft_link"
+                    await send_step(f"{Enft_link} <b>{L(lang,'Вставьте ссылку на NFT:','Paste NFT link:')}</b>\n\n<code>t.me/nft/...</code>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
                 await send_step(f"{Eu} <b>{L(lang,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
@@ -4687,12 +4745,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if step=="nft_link":
             ok,em=validate_nft_link(text,dtype)
             if not ok:
-                await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Формат: t.me/nft/НазваниеНФТ','Invalid link. Format: t.me/nft/NFTName')}</b>",parse_mode="HTML"); return
-            clean_link=text.strip()
-            for prefix in ("https://","http://"):
-                if clean_link.startswith(prefix): clean_link=clean_link[len(prefix):]; break
-            if not clean_link.startswith("t.me/"): clean_link="t.me/"+clean_link
-            ud["nft_link"]=clean_link; ud["step"]="currency"
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Формат: t.me/nft/НазваниеНФТ','Invalid link. Format: t.me/nft/NFTName','Некоректне посилання. Формат: t.me/nft/НазваНФТ')}</b>\n\n"
+                    f"<code>https://t.me/nft/...</code>",
+                    parse_mode="HTML")
+                return
+            ud["nft_link"]=normalize_nft_link(text)
+            ud["step"]="currency"
             await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
 
         if step=="trade_usr":
@@ -4747,6 +4806,8 @@ async def finalize_deal(update, context):
         required=("creator_role","type","partner","currency","amount")
         if any(ud.get(key) in (None,"","-") for key in required):
             raise ValueError("incomplete deal draft")
+        if ud.get("type")=="nft" and not ud.get("nft_link"):
+            raise ValueError("nft link required")
         user=update.effective_user
         u_check=get_user(db,user.id)
         currency=ud.get("currency","-")
@@ -4812,7 +4873,8 @@ async def finalize_deal(update, context):
             f"Тип: {dtype}\n"
             f"Роль: {creator_role}\n"
             f"Партнёр: {H(partner)}\n"
-            f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
+            + (f"NFT: <code>{H(data.get('nft_link',''))}</code>\n" if data.get("nft_link") else "")
+            + f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
         schedule_notify_deal_event(
             context.bot,user.id,
             f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
