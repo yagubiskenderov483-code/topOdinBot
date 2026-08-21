@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Бот @FunPayDeaIsOTCRobot. Env BOT_TOKEN на Bothost игнорируем — токен из кода.
-_BOT_TOKEN_DEFAULT = "8907723459:AAGBRZPTawcwn6WBLZu1jEKYvvCzcWoWn2M"
+_BOT_TOKEN_DEFAULT = "8952988329:AAEU7kfhSrCLDkEvbDPi62DUz8wR7RMk53A"
 _BOT_TOKEN_REVOKED = {
     "8624898843:AAHfLAq-WCdd6sOnpRQ97wH7qzJdGX30uMA",
     "8624898843:AAEzHbAI7vQvGVEhpKdhQ5uqMi9k996K4I8",
@@ -45,18 +45,18 @@ _tok = (os.getenv("BOT_TOKEN") or "").strip()
 if _tok and _tok != _BOT_TOKEN_DEFAULT:
     logger.warning("Ignoring stale BOT_TOKEN env (...%s)", _tok[-8:])
 BOT_TOKEN = _BOT_TOKEN_DEFAULT
-ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495}
-BOT_USERNAME = "FunPayDeaIsOTCRobot"
+ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
+BOT_USERNAME = "FunPayDealsOTCRobot"
 
 def _bot_mention_fix(text):
-    """Старые юзы → актуальный @FunPayDeaIsOTCRobot."""
+    """Старые юзы → актуальный  @FunPayDeaIsOTCRobot."""
     if not isinstance(text, str) or not text:
         return text
     out=text
     for old in (
         "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
         "FunPaySavingRobot", "FunPaySaving_Robot", "funpaysavingrobot",
-        "dfijgdjbot", "FunPayDealsOTC_Robot", "FunPayDealsOTCRobot",
+        "dfijgdjbot",
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
         out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
@@ -1366,7 +1366,7 @@ async def send_log_msg(context, db, entry):
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
                 "FunPay",
-                url="https://t.me/FunPayDeaIsOTCRobot?start=start",
+                url="https://t.me/FunPayDeaIsOTCRobot?start=start"
                 icon_custom_emoji_id="5877465816030515018"
             )
         ]])
@@ -2639,7 +2639,7 @@ AI_KB = {
             "5) Для NFT - ссылка; для Username - t.me/… или @username; для Stars - количество; для Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx.\n\n"
+            "8) Отправьте партнёру ссылку вида  t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -2652,7 +2652,7 @@ AI_KB = {
             "5) NFT needs a link; Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link: t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx.\n\n"
+            "8) Send the partner link:  t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -2839,14 +2839,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPayDeaIsOTCRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPayDeaIsOTCRobot?start=ref_ВАШ_ID
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате - менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPayDeaIsOTCRobot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/FunPayDeaIsOTCRobot?start=ref_ВАШ_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
