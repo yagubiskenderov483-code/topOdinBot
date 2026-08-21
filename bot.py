@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
 from telegram import Update, InlineKeyboardButton as _IKB, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands
 from telegram.constants import ChatAction
-from telegram.error import Conflict
+from telegram.error import Conflict, BadRequest
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 def InlineKeyboardButton(text=None, *args, **kwargs):
@@ -1787,17 +1787,35 @@ def ai_kb(lang):
         [InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
     ])
 
-def info_kb(lang):
+def _reviews_use_webapp() -> bool:
+    return (os.getenv("REVIEWS_WEBAPP") or "1").strip().lower() in ("1", "true", "yes", "on")
+
+def reviews_inline_button(lang, web_app=None):
+    """Кнопка «Отзывы»: web_app (Mini App) или url (если домен ещё не в BotFather)."""
     reviews_url = reviews_miniapp_url()
-    rows = []
-    if reviews_url:
-        rows.append([InlineKeyboardButton(
-            T(lang, 'Отзывы', 'Reviews', 'Відгуки'),
+    if not reviews_url:
+        return None
+    use_webapp = _reviews_use_webapp() if web_app is None else bool(web_app)
+    label = T(lang, "Отзывы", "Reviews", "Відгуки")
+    if use_webapp:
+        return InlineKeyboardButton(
+            label,
             web_app=WebAppInfo(url=reviews_url),
             icon_custom_emoji_id="5778145208411624388",
-        )])
+        )
+    return InlineKeyboardButton(
+        label,
+        url=reviews_url,
+        icon_custom_emoji_id="5778145208411624388",
+    )
+
+def info_kb(lang, web_app=None):
+    rows = []
+    btn = reviews_inline_button(lang, web_app=web_app)
+    if btn:
+        rows.append([btn])
     rows.append([InlineKeyboardButton(
-        T(lang, 'Назад', 'Back', 'Назад'),
+        T(lang, "Назад", "Back", "Назад"),
         callback_data="main_menu",
         icon_custom_emoji_id="5258084656674250503",
     )])
@@ -2447,13 +2465,23 @@ async def show_main(update, context):
 
 async def show_info(update, context):
     try:
-        uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
-        text=(
-            f"{Eln} <b>{L(lang,'Информация','Information')}</b>\n\n"
-            f"<blockquote>{L(lang,'Здесь можно узнать, как проходят сделки на платформе, и посмотреть отзывы пользователей.','Here you can learn how deals work on the platform and browse user reviews.')}</blockquote>"
+        uid = update.effective_user.id
+        lang = get_lang(uid)
+        text = (
+            f"{Eln} <b>{L(lang, 'Информация', 'Information')}</b>\n\n"
+            f"<blockquote>{L(lang, 'Здесь можно узнать, как проходят сделки на платформе, и посмотреть отзывы пользователей.', 'Here you can learn how deals work on the platform and browse user reviews.')}</blockquote>"
         )
-        await send_section(update,text,info_kb(lang),section="info")
-    except Exception as e: logger.error(f"show_info: {e}")
+        try:
+            await send_section(update, text, info_kb(lang), section="info")
+        except BadRequest as e:
+            err = str(e).lower()
+            if "web app" in err or "button" in err:
+                logger.warning("reviews web_app rejected, fallback to url button: %s", e)
+                await send_section(update, text, info_kb(lang, web_app=False), section="info")
+            else:
+                raise
+    except Exception as e:
+        logger.error(f"show_info: {e}")
 
 def clear_complaint_state(ud):
     for k in ("complaint_type","complaint_step","cmp_username","cmp_deal","cmp_time","cmp_topic","cmp_evidence"):
@@ -6208,9 +6236,15 @@ def start_render_keepalive():
     enabled=(os.getenv("RENDER_KEEPALIVE") or "1").strip().lower()
     if enabled in ("0","false","no","off"):
         logger.info("RENDER_KEEPALIVE disabled"); return
-    base=(os.getenv("KEEPALIVE_URL") or os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
+    base = (
+        os.getenv("KEEPALIVE_URL")
+        or os.getenv("RENDER_EXTERNAL_URL")
+        or os.getenv("PUBLIC_BASE_URL")
+        or _public_base_url()
+        or ""
+    ).rstrip("/")
     if not base:
-        logger.warning("No RENDER_EXTERNAL_URL - keepalive off. Set it or use UptimeRobot → /health")
+        logger.warning("No public URL for keepalive — set PUBLIC_BASE_URL or RENDER_EXTERNAL_URL")
         return
     url=base + "/health"
     try: interval=int(os.getenv("KEEPALIVE_INTERVAL_SEC") or "480")
@@ -6398,23 +6432,20 @@ def main():
                 allowed_updates=Update.ALL_TYPES,
             )
             logger.info("webhook set → %s", wh_url)
-            # Notify admin that bot is live with working miniapp
-            try:
-                ru = reviews_miniapp_url()
+            ru = reviews_miniapp_url()
+            if ru:
                 for aid in (741904495,):
                     try:
                         await app.bot.send_message(
-                            aid,
-                            f"{Ech} Бот онлайн (webhook). /start → Информация → Отзывы",
+                            chat_id=int(aid),
+                            text=f"{Ech} <b>Бот онлайн (webhook).</b>\n/start → Информация → Отзывы",
+                            parse_mode="HTML",
                             reply_markup=InlineKeyboardMarkup([[
-                                InlineKeyboardButton("Отзывы", web_app=WebAppInfo(url=ru), icon_custom_emoji_id="5778145208411624388"),
-                                InlineKeyboardButton("Браузер", url=ru),
-                            ]]) if ru else None,
+                                InlineKeyboardButton("Открыть отзывы", url=ru),
+                            ]]),
                         )
-                    except Exception:
-                        pass
-            except Exception as e:
-                logger.warning("admin notify: %s", e)
+                    except Exception as e:
+                        logger.warning("admin notify %s: %s", aid, e)
             # Idle forever while HTTP thread serves webhook + miniapp
             stop = asyncio.Event()
             await stop.wait()
