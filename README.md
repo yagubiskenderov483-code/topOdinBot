@@ -1,54 +1,61 @@
-# FunPay Bot
+# FunPay Bot — @FunPayDealsOTCRobot
 
-Безопасные сделки в Telegram FunPay.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/yagubiskenderov483-code/topOdinBot)
+
+## Деплой на Render (один клик)
+
+1. **Остановите бота на Bothost** (если там запущен) — один токен = один сервер.
+2. Нажмите кнопку **Deploy to Render** выше (или откройте ссылку):
+   https://render.com/deploy?repo=https://github.com/yagubiskenderov483-code/topOdinBot
+3. Войдите в Render через GitHub → **Apply** (Blueprint подхватит `render.yaml` автоматически).
+4. Дождитесь статуса **Live** (~5–10 мин).
+5. Проверьте:
+   - https://funpay-saving-bot.onrender.com/health
+   - https://funpay-saving-bot.onrender.com/index.html
+   - Telegram: `/start` у @FunPayDealsOTCRobot
+6. **BotFather** → @FunPayDealsOTCRobot → Configure Mini App → домен:
+   `funpay-saving-bot.onrender.com`
+
+После этого: **Информация → Отзывы** в боте.
+
+---
 
 ## Бот
 
 - Бот: **@FunPayDealsOTCRobot**
 - Менеджер: **@FunPayDeaIManager**
-- Поддержка: https://support.funpay.com/tickets
-- Сайт: https://funpay.com/
-- Отзывы: в боте (Информация → Отзывы) — Mini App
+- Mini App (отзывы + Tonkeeper): тот же Render-сервис
 
-Токен бота зашит в `bot.py`. Хостинг — **Render** (webhook) или **Bothost** (polling). Mini App — на Render.
+Токен зашит в `bot.py`. На Render — **webhook**, на Bothost — **polling** (авто).
 
-## Bothost vs Render
+**Не запускайте Bothost и Render одновременно** — `/start` перестанет работать.
 
-| Платформа | Режим | Что делать |
-|-----------|-------|------------|
-| **Bothost** | `polling` (авто) | Просто запустите `bot.py`. Не ставьте `USE_WEBHOOK=1` и не указывайте `PUBLIC_BASE_URL` как webhook — иначе `/start` не работает. |
-| **Render** | `webhook` | Blueprint из `render.yaml`. Telegram шлёт апдейты на `https://…onrender.com/telegram`. |
+---
 
-**Важно:** бот должен работать только на **одной** платформе. Если Bothost и Render запущены одновременно с одним токеном — конфликт, `/start` может не отвечать.
-
-## Локальный запуск
+## Локальная проверка
 
 ```bash
-pip install -r requirements.txt
-python bot.py
+bash scripts/render_smoke_test.sh
 ```
 
-Без `PORT` бот работает в режиме polling, HTTP-сервер не поднимается.
+## Bothost (альтернатива)
 
-## Деплой на Render
+1. Репозиторий `topOdinBot`, ветка `main`, файл `bot.py`
+2. **Не ставьте** `USE_WEBHOOK=1` и `PUBLIC_BASE_URL` на Bothost
+3. «Обновить из Git» в панели Bothost
 
-1. Blueprint из `render.yaml` — создаётся один web-сервис `funpay-saving-bot`.
-2. Build: `pip install -r requirements.txt && python3 miniapp/build.py` (встраивает `miniapp/reviews.json` в `index.html`).
-3. Start: `python bot.py` — процесс сам поднимает HTTP на `$PORT`:
-   - `/health` — health check;
-   - `/index.html` — Mini App «Отзывы»;
-   - `/tonconnect.html` + `/tonconnect-manifest.json` — Mini App привязки Tonkeeper;
-   - `POST /api/bind-ton` — сохранение TON-кошелька из Mini App;
-   - `POST /telegram` — Telegram webhook (режим включён через `USE_WEBHOOK=1`).
-4. `RENDER_EXTERNAL_URL` Render задаёт сам — от него строятся ссылки Mini App и webhook.
-5. На free-плане диск недоступен: `db.json` живёт в каталоге проекта и сбрасывается при redeploy.
-   Для персистентности возьмите платный план, добавьте disk на `/data` и env `DATA_DIR=/data`, `DB_FILE=/data/db.json`.
+---
+
+## Что поднимает Render-сервис
+
+| URL | Назначение |
+|-----|------------|
+| `/health` | health check |
+| `/telegram` | Telegram webhook |
+| `/index.html` | Mini App «Отзывы» |
+| `/tonconnect.html` | привязка Tonkeeper |
+| `/api/bind-ton` | сохранение TON-кошелька |
+
+На free-плане `db.json` сбрасывается при redeploy (нет диска).
 
 Ссылки на сделки: `https://t.me/FunPayDealsOTCRobot?start=deal_FPxxxxx`
-
-## Mini App
-
-- Оба Mini App отдаёт сам бот со своего Render-домена (отдельный статический сайт не нужен).
-- Переопределить ссылку отзывов можно через `REVIEWS_MINIAPP_URL`, TonConnect — через `TONCONNECT_MINIAPP_URL`.
-- В `/admin` → **Mini App URL** — текущие ссылки.
-- В BotFather → Configure Mini App укажите домен Render (например `*.onrender.com`).

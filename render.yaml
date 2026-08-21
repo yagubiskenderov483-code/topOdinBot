@@ -1,20 +1,25 @@
+# Render Blueprint — один web-сервис: бот + webhook + Mini Apps
+# Деплой: https://render.com/deploy?repo=https://github.com/yagubiskenderov483-code/topOdinBot
 services:
-  # Единственный сервис: бот + webhook + Mini Apps (отзывы /index.html, Tonkeeper /tonconnect.html)
   - type: web
     name: funpay-saving-bot
     runtime: python
     plan: free
+    region: frankfurt
+    branch: main
+    repo: https://github.com/yagubiskenderov483-code/topOdinBot
     buildCommand: pip install -r requirements.txt && python3 miniapp/build.py
     startCommand: python bot.py
     healthCheckPath: /health
+    autoDeployTrigger: commit
     envVars:
       - key: PUBLIC_BASE_URL
         value: https://funpay-saving-bot.onrender.com
+      - key: USE_WEBHOOK
+        value: "1"
       - key: RENDER_KEEPALIVE
         value: "1"
       - key: KEEPALIVE_INTERVAL_SEC
         value: "480"
       - key: PYTHON_VERSION
         value: "3.11.0"
-      - key: USE_WEBHOOK
-        value: "1"
