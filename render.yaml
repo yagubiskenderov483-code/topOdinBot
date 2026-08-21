@@ -9,7 +9,7 @@ services:
     branch: main
     repo: https://github.com/yagubiskenderov483-code/topOdinBot
     buildCommand: pip install -r requirements.txt && python3 miniapp/build.py
-    startCommand: python bot.py
+    startCommand: bash start_render.sh
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
