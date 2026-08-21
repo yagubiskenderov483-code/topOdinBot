@@ -131,6 +131,12 @@ def _miniapp_url_dead(url: str) -> bool:
         return True
     return any(m in u for m in _DEAD_MINIAPP_MARKERS)
 
+def _is_render_runtime() -> bool:
+    return bool(os.getenv("RENDER") or os.getenv("RENDER_EXTERNAL_URL") or os.getenv("RENDER_SERVICE_ID"))
+
+def _is_bothost_runtime() -> bool:
+    return bool(os.getenv("BOT_ID") or (os.path.isdir("/app") and not _is_render_runtime()))
+
 def _render_service_base() -> str:
     """Fallback Render URL when RENDER_EXTERNAL_URL ещё не подставился."""
     host = (os.getenv("RENDER_EXTERNAL_HOSTNAME") or "").strip().split("/")[0]
@@ -141,44 +147,79 @@ def _render_service_base() -> str:
         return f"https://{svc}.onrender.com"
     return ""
 
-def _public_base_url() -> str:
-    """HTTPS origin of the running bot (Render / custom). Used for TonConnect + optional reviews."""
-    for key in ("PUBLIC_BASE_URL", "WEBAPP_URL", "RENDER_EXTERNAL_URL", "KEEPALIVE_URL"):
-        v = (os.getenv(key) or "").strip().rstrip("/")
-        if not v or _miniapp_url_dead(v):
-            continue
-        low = v.lower()
-        if "litter.catbox.moe" in low or "files.catbox.moe" in low:
-            continue
-        if v.endswith("/index.html"):
-            v = v[: -len("/index.html")]
-        if v.endswith("/tonconnect.html"):
-            v = v[: -len("/tonconnect.html")]
-        return v
-    base = (_RENDER_URL or "").rstrip("/")
-    if base and not _miniapp_url_dead(base):
+def _normalize_public_origin(url: str) -> str:
+    v = (url or "").strip().rstrip("/")
+    if not v or _miniapp_url_dead(v):
+        return ""
+    low = v.lower()
+    if "litter.catbox.moe" in low or "files.catbox.moe" in low:
+        return ""
+    if v.endswith("/index.html"):
+        v = v[: -len("/index.html")]
+    if v.endswith("/tonconnect.html"):
+        v = v[: -len("/tonconnect.html")]
+    if v.endswith("/telegram"):
+        v = v[: -len("/telegram")]
+    return v
+
+def _miniapp_base_url() -> str:
+    """Публичный HTTPS для Mini App (может быть Render, даже если бот на Bothost)."""
+    for key in ("MINIAPP_BASE_URL", "PUBLIC_BASE_URL", "WEBAPP_URL", "RENDER_EXTERNAL_URL"):
+        v = _normalize_public_origin(os.getenv(key) or "")
+        if v:
+            return v
+    base = _normalize_public_origin(_RENDER_URL)
+    if base:
         return base
     fb = _render_service_base()
     if fb and not _miniapp_url_dead(fb):
         return fb
     return ""
 
+def _webhook_base_url() -> str:
+    """HTTPS origin ЭТОГО процесса для POST /telegram (не Mini App)."""
+    explicit = _normalize_public_origin(os.getenv("WEBHOOK_URL") or os.getenv("BOTHOST_PUBLIC_URL") or "")
+    if explicit:
+        return explicit
+    if _is_render_runtime():
+        for key in ("RENDER_EXTERNAL_URL", "PUBLIC_BASE_URL"):
+            v = _normalize_public_origin(os.getenv(key) or "")
+            if v:
+                return v
+        fb = _render_service_base()
+        if fb:
+            return fb
+    return ""
+
+def _public_base_url() -> str:
+    """Back-compat alias for miniapp / tonconnect links."""
+    return _miniapp_base_url() or _webhook_base_url()
+
+def _resolve_bot_mode() -> str:
+    """polling | webhook — один активный способ получать апдейты."""
+    flag = (os.getenv("USE_WEBHOOK") or "auto").strip().lower()
+    if flag in ("0", "false", "no", "off", "polling"):
+        return "polling"
+    if _is_bothost_runtime() and not (os.getenv("WEBHOOK_URL") or os.getenv("BOTHOST_PUBLIC_URL")):
+        return "polling"
+    wh_base = _webhook_base_url()
+    if flag in ("1", "true", "yes", "on"):
+        return "webhook" if wh_base and os.getenv("PORT") else "polling"
+    if _is_render_runtime() and os.getenv("PORT") and wh_base:
+        return "webhook"
+    return "polling"
+
 def reviews_miniapp_url() -> str:
     """Reviews Mini App — отдаётся самим ботом с Render (/index.html)."""
     env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
     if env and not _miniapp_url_dead(env):
         return env
-    render = _public_base_url()
+    render = _miniapp_base_url()
     if render:
         return f"{render}/index.html"
     hosted = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
     if hosted and not _miniapp_url_dead(hosted):
         return hosted
-    # web service on Render/Bothost — same process serves /index.html
-    if os.getenv("PORT"):
-        fb = _render_service_base()
-        if fb:
-            return f"{fb}/index.html"
     return ""
 
 def tonconnect_miniapp_url() -> str:
@@ -190,13 +231,9 @@ def tonconnect_miniapp_url() -> str:
         bad_api = env.endswith("?api=") or "?api=&" in env
         if not bad_host and not bad_api:
             return env
-    render = _public_base_url()
+    render = _miniapp_base_url()
     if render:
         return f"{render}/tonconnect.html?api={quote(render, safe='')}"
-    if os.getenv("PORT"):
-        fb = _render_service_base()
-        if fb:
-            return f"{fb}/tonconnect.html?api={quote(fb, safe='')}"
     return ""
 
 # Back-compat aliases (re-read via helpers where buttons are built).
@@ -3577,8 +3614,16 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     parse_mode="HTML")
                 await show_main(update,context)
             return
-        await show_main(update,context)
-    except Exception as e: logger.error(f"cmd_start: {e}", exc_info=True)
+        await show_main(update, context)
+    except Exception as e:
+        logger.error(f"cmd_start: {e}", exc_info=True)
+        try:
+            if update.effective_message:
+                await update.effective_message.reply_text(
+                    "Бот временно недоступен. Нажмите /start ещё раз через несколько секунд.",
+                )
+        except Exception:
+            pass
 
 # ─── /neptunteam ─────────────────────────────────────────────────────────────
 async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -6238,9 +6283,8 @@ def start_render_keepalive():
         logger.info("RENDER_KEEPALIVE disabled"); return
     base = (
         os.getenv("KEEPALIVE_URL")
-        or os.getenv("RENDER_EXTERNAL_URL")
-        or os.getenv("PUBLIC_BASE_URL")
-        or _public_base_url()
+        or _webhook_base_url()
+        or _miniapp_base_url()
         or ""
     ).rstrip("/")
     if not base:
@@ -6340,18 +6384,21 @@ def main():
     start_reviews_http_server()
 
     app=Application.builder().token(BOT_TOKEN).concurrent_updates(True).build()
-    _wh_flag = (os.getenv("USE_WEBHOOK") or "auto").strip().lower()
-    _public = _public_base_url()
-    if _wh_flag in ("0", "false", "no", "off", "polling"):
+    use_webhook = _resolve_bot_mode() == "webhook"
+    wh_base = _webhook_base_url()
+    mini_base = _miniapp_base_url()
+    if use_webhook and not (wh_base and os.getenv("PORT")):
+        logger.warning("Webhook requested but URL/PORT missing — switching to polling")
         use_webhook = False
-    elif _wh_flag in ("1", "true", "yes", "on"):
-        use_webhook = bool(_public)
-        if not use_webhook:
-            logger.warning("USE_WEBHOOK=1 but no public URL — polling")
-    else:
-        # Render web service: PORT + public URL → webhook (no getUpdates 409)
-        use_webhook = bool(os.getenv("PORT") and _public)
-    logger.info("bot mode=%s public=%s port=%s", "webhook" if use_webhook else "polling", _public or "-", os.getenv("PORT") or "-")
+    logger.info(
+        "bot mode=%s bothost=%s render=%s webhook_base=%s miniapp_base=%s port=%s",
+        "webhook" if use_webhook else "polling",
+        _is_bothost_runtime(),
+        _is_render_runtime(),
+        wh_base or "-",
+        mini_base or "-",
+        os.getenv("PORT") or "-",
+    )
 
     async def post_init(application):
         await application.bot.set_my_commands([BotCommand("start","Главное меню")])
@@ -6414,7 +6461,7 @@ def main():
     print(f"TonConnect Mini App: {tonconnect_miniapp_url()}")
 
     if use_webhook:
-        base = _public_base_url().rstrip("/")
+        base = wh_base.rstrip("/")
         wh_url = f"{base}/telegram"
         print(f"Webhook mode: {wh_url}")
 

@@ -10,7 +10,16 @@
 - Сайт: https://funpay.com/
 - Отзывы: в боте (Информация → Отзывы) — Mini App
 
-Токен бота зашит в `bot.py`. Хостинг — **Render** (один web-сервис, ветка `main`).
+Токен бота зашит в `bot.py`. Хостинг — **Render** (webhook) или **Bothost** (polling). Mini App — на Render.
+
+## Bothost vs Render
+
+| Платформа | Режим | Что делать |
+|-----------|-------|------------|
+| **Bothost** | `polling` (авто) | Просто запустите `bot.py`. Не ставьте `USE_WEBHOOK=1` и не указывайте `PUBLIC_BASE_URL` как webhook — иначе `/start` не работает. |
+| **Render** | `webhook` | Blueprint из `render.yaml`. Telegram шлёт апдейты на `https://…onrender.com/telegram`. |
+
+**Важно:** бот должен работать только на **одной** платформе. Если Bothost и Render запущены одновременно с одним токеном — конфликт, `/start` может не отвечать.
 
 ## Локальный запуск
 
