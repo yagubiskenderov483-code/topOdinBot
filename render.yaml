@@ -8,6 +8,8 @@ services:
     startCommand: python bot.py
     healthCheckPath: /health
     envVars:
+      - key: PUBLIC_BASE_URL
+        value: https://funpay-saving-bot.onrender.com
       - key: RENDER_KEEPALIVE
         value: "1"
       - key: KEEPALIVE_INTERVAL_SEC

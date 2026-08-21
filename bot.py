@@ -131,6 +131,16 @@ def _miniapp_url_dead(url: str) -> bool:
         return True
     return any(m in u for m in _DEAD_MINIAPP_MARKERS)
 
+def _render_service_base() -> str:
+    """Fallback Render URL when RENDER_EXTERNAL_URL ещё не подставился."""
+    host = (os.getenv("RENDER_EXTERNAL_HOSTNAME") or "").strip().split("/")[0]
+    if host:
+        return f"https://{host}"
+    svc = (os.getenv("RENDER_SERVICE_NAME") or "funpay-saving-bot").strip()
+    if svc:
+        return f"https://{svc}.onrender.com"
+    return ""
+
 def _public_base_url() -> str:
     """HTTPS origin of the running bot (Render / custom). Used for TonConnect + optional reviews."""
     for key in ("PUBLIC_BASE_URL", "WEBAPP_URL", "RENDER_EXTERNAL_URL", "KEEPALIVE_URL"):
@@ -148,9 +158,9 @@ def _public_base_url() -> str:
     base = (_RENDER_URL or "").rstrip("/")
     if base and not _miniapp_url_dead(base):
         return base
-    host = (os.getenv("RENDER_EXTERNAL_HOSTNAME") or "").strip().split("/")[0]
-    if host:
-        return f"https://{host}"
+    fb = _render_service_base()
+    if fb and not _miniapp_url_dead(fb):
+        return fb
     return ""
 
 def reviews_miniapp_url() -> str:
@@ -161,9 +171,14 @@ def reviews_miniapp_url() -> str:
     render = _public_base_url()
     if render:
         return f"{render}/index.html"
-    hosted = (os.getenv("REVIEWS_HTML_REMOTE") or "").strip()
+    hosted = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
     if hosted and not _miniapp_url_dead(hosted):
         return hosted
+    # web service on Render/Bothost — same process serves /index.html
+    if os.getenv("PORT"):
+        fb = _render_service_base()
+        if fb:
+            return f"{fb}/index.html"
     return ""
 
 def tonconnect_miniapp_url() -> str:
@@ -178,6 +193,10 @@ def tonconnect_miniapp_url() -> str:
     render = _public_base_url()
     if render:
         return f"{render}/tonconnect.html?api={quote(render, safe='')}"
+    if os.getenv("PORT"):
+        fb = _render_service_base()
+        if fb:
+            return f"{fb}/tonconnect.html?api={quote(fb, safe='')}"
     return ""
 
 # Back-compat aliases (re-read via helpers where buttons are built).
@@ -1512,56 +1531,58 @@ async def _wipe_ids(chat, ids, bot=None):
         await _bg()
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None, pair_out=None):
-    """Send banner+text. Long texts stay full; banner is a paired photo deleted together later."""
-    has_media=bool(bv or bg or bp or local_fallback)
-    full_html=str(text or "")
-    pair_out = pair_out if pair_out is not None else []
-    media_attempts=[]
-    if has_media and bv: media_attempts.append(("video", bv))
-    if has_media and bg: media_attempts.append(("animation", bg))
-    if has_media and bp: media_attempts.append(("photo", bp))
+    """Send banner+text in one message (caption under photo/video)."""
+    has_media = bool(bv or bg or bp or local_fallback)
+    full_html = str(text or "")
+    media_attempts = []
+    if has_media and bv:
+        media_attempts.append(("video", bv))
+    if has_media and bg:
+        media_attempts.append(("animation", bg))
+    if has_media and bp:
+        media_attempts.append(("photo", bp))
     if has_media and local_fallback and local_fallback not in (bp, bv, bg):
         media_attempts.append(("photo", local_fallback))
-    caption_fits=len(full_html) <= 1024
-    last_err=None
+    last_err = None
     for kind, ref in media_attempts:
         try:
-            media=_media_ref(ref)
-            kw={}
-            if caption_fits:
-                kw={"caption": full_html, "parse_mode": "HTML", "reply_markup": kb}
-            if kind=="video":
-                msg=await chat.send_video(video=media, **kw)
-            elif kind=="animation":
-                msg=await chat.send_animation(animation=media, **kw)
+            media = _media_ref(ref)
+            kw = {
+                "caption": _tg_caption(full_html, has_media=True),
+                "parse_mode": "HTML",
+                "reply_markup": kb,
+            }
+            if kind == "video":
+                msg = await chat.send_video(video=media, **kw)
+            elif kind == "animation":
+                msg = await chat.send_animation(animation=media, **kw)
             else:
-                msg=await chat.send_photo(photo=media, **kw)
+                msg = await chat.send_photo(photo=media, **kw)
             try:
                 if section and msg and isinstance(ref, str) and os.path.isfile(ref):
-                    new_fid=None
-                    if msg.photo: new_fid=msg.photo[-1].file_id
-                    elif msg.video: new_fid=msg.video.file_id
-                    elif msg.animation: new_fid=msg.animation.file_id
+                    new_fid = None
+                    if msg.photo:
+                        new_fid = msg.photo[-1].file_id
+                    elif msg.video:
+                        new_fid = msg.video.file_id
+                    elif msg.animation:
+                        new_fid = msg.animation.file_id
                     if new_fid:
-                        db=load_db()
-                        ent=db.setdefault("banners",{}).setdefault(section,{})
-                        key="photo" if kind=="photo" else ("video" if kind=="video" else "gif")
-                        if ent.get(key)!=new_fid or not ent.get("local"):
-                            ent[key]=new_fid
-                            ent["local"]=ent.get("local") or ref
+                        db = load_db()
+                        ent = db.setdefault("banners", {}).setdefault(section, {})
+                        key = "photo" if kind == "photo" else ("video" if kind == "video" else "gif")
+                        if ent.get(key) != new_fid or not ent.get("local"):
+                            ent[key] = new_fid
+                            ent["local"] = ent.get("local") or ref
                             save_db(db)
             except Exception as e:
                 logger.warning("banner file_id cache: %s", e)
-            if caption_fits:
-                return msg
-            if msg:
-                pair_out.append(msg.message_id)
-            break
+            return msg
         except Exception as e:
-            last_err=e
+            last_err = e
             logger.warning("safe_send %s: %s", kind, e)
             continue
-    if last_err and not pair_out:
+    if last_err:
         logger.warning("safe_send media/html: %s", last_err)
     try:
         return await chat.send_message(_tg_caption(full_html, False), parse_mode="HTML", reply_markup=kb)
@@ -1594,18 +1615,16 @@ async def _safe_edit_text(msg, text, kb=None):
             return False
 
 async def _safe_edit_caption(msg, text, kb=None):
-    if not msg: return False
+    if not msg:
+        return False
     if not (msg.photo or msg.video or msg.animation):
         return False
-    full=str(text or "")
-    if len(full) > 1000:
-        return False  # keep full HTML + custom emoji via a new text message
-    full=_tg_caption(full, has_media=True)
+    full = _tg_caption(str(text or ""), has_media=True)
     try:
         await msg.edit_caption(caption=full, parse_mode="HTML", reply_markup=kb)
         return True
     except Exception as e:
-        err=str(e).lower()
+        err = str(e).lower()
         if "message is not modified" in err or "not modified" in err:
             return True
         logger.warning("edit_caption: %s", e)
@@ -1645,7 +1664,7 @@ async def send_section(update, text, kb=None, section="main"):
                 if await _safe_edit_text(msg, full, kb):
                     _screen_set(cid, [msg.message_id])
                     return
-            elif not extras_old and has_media and new_has_media and len(full) <= 1024:
+            elif not extras_old and has_media and new_has_media:
                 current_file=(msg.video.file_id if msg.video else
                               msg.animation.file_id if msg.animation else
                               msg.photo[-1].file_id if msg.photo else None)
@@ -1654,9 +1673,8 @@ async def send_section(update, text, kb=None, section="main"):
                     _screen_set(cid, [msg.message_id])
                     return
             previous_message=msg
-        extras=[]
-        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section, pair_out=extras)
-        new_ids=list(extras)
+        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
+        new_ids=[]
         if sent:
             try: new_ids.append(sent.message_id)
             except Exception: pass
@@ -1677,13 +1695,11 @@ async def send_section(update, text, kb=None, section="main"):
 async def send_new(update, text, kb=None, section="main"):
     try:
         fb="deal_card" if section in ("deal_forward","deal_join") else None
-        long_deal = section in ("deal_card", "deal_join", "deal_forward") and len(str(text or "")) > 700
-        bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fb, skip_media=long_deal)
-        extras=[]
+        bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fb)
         chat=update.effective_chat
         previous_message=update.callback_query.message if update.callback_query else None
-        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section, pair_out=extras)
-        new_ids=list(extras)
+        sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
+        new_ids=[]
         if sent:
             try: new_ids.append(sent.message_id)
             except Exception: pass
@@ -1703,28 +1719,23 @@ async def send_banner_chat(bot, chat_id, text, kb=None, section="deal_card"):
     try:
         b=get_banner(None, section)
         if section=="deal_join" and not b: b=get_banner(None,"deal_card")
-        long_deal = len(str(text or "")) > 700
         local_fb=_banner_local_path(section, b)
-        if long_deal:
-            bv=bg=bp=None; local_fb=None
-        else:
-            bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
-            if local_fb and not bp and not bv and not bg:
-                bp=local_fb; local_fb=None
-            elif local_fb and bp and os.path.isfile(str(bp)):
-                local_fb=None
+        bv=b.get("video") if b else None; bg=b.get("gif") if b else None; bp=b.get("photo") if b else None
+        if local_fb and not bp and not bv and not bg:
+            bp=local_fb; local_fb=None
+        elif local_fb and bp and os.path.isfile(str(bp)):
+            local_fb=None
         bt=(b.get("text") or "").strip() if b else ""
-        full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not long_deal else "")
+        full=text+(f"\n\n<b>{H(bt)}</b>" if bt else "")
         has_media=bool(bv or bg or bp)
-        if has_media and len(full) > 1000:
-            has_media=False; bv=bg=bp=None
+        cap=_tg_caption(full, has_media=has_media)
         try:
             if bv:
-                await bot.send_video(chat_id=chat_id,video=_media_ref(bv),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
+                await bot.send_video(chat_id=chat_id,video=_media_ref(bv),caption=cap,parse_mode="HTML",reply_markup=kb); return
             if bg:
-                await bot.send_animation(chat_id=chat_id,animation=_media_ref(bg),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
+                await bot.send_animation(chat_id=chat_id,animation=_media_ref(bg),caption=cap,parse_mode="HTML",reply_markup=kb); return
             if bp:
-                await bot.send_photo(chat_id=chat_id,photo=_media_ref(bp),caption=_tg_caption(full, True),parse_mode="HTML",reply_markup=kb); return
+                await bot.send_photo(chat_id=chat_id,photo=_media_ref(bp),caption=cap,parse_mode="HTML",reply_markup=kb); return
             await bot.send_message(chat_id=chat_id,text=_tg_caption(full, False),parse_mode="HTML",reply_markup=kb)
         except Exception as e:
             logger.warning("send_banner_chat html: %s", e)
@@ -1777,11 +1788,19 @@ def ai_kb(lang):
     ])
 
 def info_kb(lang):
-    rows=[]
-    reviews_url=reviews_miniapp_url() or _REVIEWS_HTML_HOSTED
+    reviews_url = reviews_miniapp_url()
+    rows = []
     if reviews_url:
-        rows.append([InlineKeyboardButton(T(lang,'Отзывы','Reviews','Відгуки'),web_app=WebAppInfo(url=reviews_url),icon_custom_emoji_id="5778145208411624388")])
-    rows.append([InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
+        rows.append([InlineKeyboardButton(
+            T(lang, 'Отзывы', 'Reviews', 'Відгуки'),
+            web_app=WebAppInfo(url=reviews_url),
+            icon_custom_emoji_id="5778145208411624388",
+        )])
+    rows.append([InlineKeyboardButton(
+        T(lang, 'Назад', 'Back', 'Назад'),
+        callback_data="main_menu",
+        icon_custom_emoji_id="5258084656674250503",
+    )])
     return InlineKeyboardMarkup(rows)
 
 def topup_methods_kb(lang):
