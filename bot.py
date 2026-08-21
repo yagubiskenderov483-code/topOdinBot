@@ -17,9 +17,10 @@ def InlineKeyboardButton(text=None, *args, **kwargs):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Бот @FunPayDeaIsOTCRobot. Env BOT_TOKEN на Bothost игнорируем — токен из кода.
-_BOT_TOKEN_DEFAULT = "8952988329:AAEU7kfhSrCLDkEvbDPi62DUz8wR7RMk53A"
+# Бот @FunPayDealsOTCRobot. Стабильный токен зашит в коде; чужой BOT_TOKEN из env игнорируем.
+_BOT_TOKEN_DEFAULT = "8952988329:AAFBfplvCDpTQxWTRvX5O54qF_THUZJdrvo"
 _BOT_TOKEN_REVOKED = {
+    "8952988329:AAEU7kfhSrCLDkEvbDPi62DUz8wR7RMk53A",
     "8624898843:AAHfLAq-WCdd6sOnpRQ97wH7qzJdGX30uMA",
     "8624898843:AAEzHbAI7vQvGVEhpKdhQ5uqMi9k996K4I8",
     "8624898843:AAGwicHcnhdImFfaDwcjT8bEqYpJ3uOcduI",
@@ -49,13 +50,14 @@ ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221
 BOT_USERNAME = "FunPayDealsOTCRobot"
 
 def _bot_mention_fix(text):
-    """Старые юзы → актуальный  @FunPayDeaIsOTCRobot."""
+    """Старые юзы → актуальный  @FunPayDealsOTCRobot."""
     if not isinstance(text, str) or not text:
         return text
     out=text
     for old in (
         "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
         "FunPaySavingRobot", "FunPaySaving_Robot", "funpaysavingrobot",
+        "FunPayDeaIsOTCRobot", "funpaydeaisotcrobot",
         "dfijgdjbot",
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
@@ -109,19 +111,16 @@ BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.jo
 BANNERS_SEED_DATA = os.path.join(DATA_DIR, "banners_seed.json")
 BANNER_ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "banner_assets")
 DEAL_COUNTER_START = 29548
-# Reviews Mini App (self-contained HTML). Do not use BrewPage - it shows a side panel in Telegram.
-# Prefer explicit env, then hosted HTML (self-contained), then Render. TonConnect needs bot origin.
+# Mini Apps живут на том же Render-сервисе, что и бот (single web service):
+#   GET /index.html      — отзывы (self-contained HTML из miniapp/)
+#   GET /tonconnect.html — привязка Tonkeeper (нужен POST /api/bind-ton того же origin)
+# Внешние хостинги (litter/files.catbox и т.п.) протухают — считаем их мёртвыми.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
-# Hosted Reviews HTML (self-contained). Refresh via REVIEWS_HTML_REMOTE / litter upload when expired.
-_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "https://litter.catbox.moe/qukcld.html").strip()
+_REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "").strip()
 _DEAD_MINIAPP_MARKERS = (
-    "litter.catbox.moe/7ip6ck.html",
+    "litter.catbox.moe",
+    "files.catbox.moe",
     "7ip6ck.html",
-    "litter.catbox.moe/i58txn.html",
-    "litter.catbox.moe/8n77lf",
-    "litter.catbox.moe/brgw8b",
-    "litter.catbox.moe/v515tq.html",
-    "litter.catbox.moe/4nqqp4.html",
     "brewpage",
     "example.com",
 )
@@ -155,17 +154,17 @@ def _public_base_url() -> str:
     return ""
 
 def reviews_miniapp_url() -> str:
-    """Reviews Mini App is self-contained HTML — prefer working hosted copy over a dead Render URL."""
+    """Reviews Mini App — отдаётся самим ботом с Render (/index.html)."""
     env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
     if env and not _miniapp_url_dead(env):
         return env
-    hosted = (os.getenv("REVIEWS_HTML_REMOTE") or _REVIEWS_HTML_HOSTED or "").strip()
-    if hosted and not _miniapp_url_dead(hosted):
-        return hosted
     render = _public_base_url()
     if render:
         return f"{render}/index.html"
-    return _REVIEWS_HTML_HOSTED or ""
+    hosted = (os.getenv("REVIEWS_HTML_REMOTE") or "").strip()
+    if hosted and not _miniapp_url_dead(hosted):
+        return hosted
+    return ""
 
 def tonconnect_miniapp_url() -> str:
     """TonConnect Mini App — same origin as bot (needs POST /api/bind-ton)."""
@@ -1366,8 +1365,7 @@ async def send_log_msg(context, db, entry):
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
                 "FunPay",
-                url="https://t.me/FunPayDeaIsOTCRobot?start=start"
-                icon_custom_emoji_id="5877465816030515018"
+                url="https://t.me/FunPayDealsOTCRobot?start=start"
             )
         ]])
         b=log_banners.get(event_key,{})
@@ -2639,7 +2637,7 @@ AI_KB = {
             "5) Для NFT - ссылка; для Username - t.me/… или @username; для Stars - количество; для Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида  t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx. \n\n"
+            "8) Отправьте партнёру ссылку вида  t.me/FunPayDealsOTCRobot?start=deal_FPxxxxx. \n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -2652,7 +2650,7 @@ AI_KB = {
             "5) NFT needs a link; Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link:  t.me/FunPayDeaIsOTCRobot?start=deal_FPxxxxx. \n\n"
+            "8) Send the partner link:  t.me/FunPayDealsOTCRobot?start=deal_FPxxxxx. \n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -2661,7 +2659,7 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayDeaIsOTCRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayDealsOTCRobot.\n"
             "Если реквизитов нет - бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
             "Продавец передаёт товар и жмёт «Я передал». Менеджер подтвердит автоматически после получения товара.\n"
@@ -2670,7 +2668,7 @@ AI_KB = {
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_FPxxxxx) in @FunPayDeaIsOTCRobot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @FunPayDealsOTCRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
             "Seller transfers the item and presses I transferred. The manager confirms automatically after receiving it.\n"
@@ -2839,14 +2837,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPayDeaIsOTCRobot?start=ref_ВАШ_ID
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPayDealsOTCRobot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате - менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPayDeaIsOTCRobot?start=ref_ВАШ_ID.\n"
+            "Referrals → your link t.me/FunPayDealsOTCRobot?start=ref_ВАШ_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
@@ -2878,7 +2876,7 @@ AI_KB = {
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
-            "Бот: @FunPayDeaIsOTCRobot"
+            "Бот: @FunPayDealsOTCRobot"
         ),
         "en": (
             "Contacts and help\n\n"
@@ -2887,7 +2885,7 @@ AI_KB = {
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @FunPayDeaIsOTCRobot"
+            "Bot: @FunPayDealsOTCRobot"
         ),
     },
     "fee": {
@@ -6262,7 +6260,7 @@ def main():
         or "AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in BOT_TOKEN
         or "AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo" in BOT_TOKEN
     ):
-        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDeaIsOTCRobot.")
+        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDealsOTCRobot.")
 
     db=load_db()
     if not db.get("banners"): db["banners"]={}
