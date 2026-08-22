@@ -14,6 +14,69 @@
       "text": "",
       "local": "banner_assets/deal.jpg"
     },
+    "deal_role": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_role.jpg"
+    },
+    "deal_type": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_type.jpg"
+    },
+    "deal_partner": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_partner.jpg"
+    },
+    "deal_nft": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_nft.jpg"
+    },
+    "deal_username": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_username.jpg"
+    },
+    "deal_stars": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_stars.jpg"
+    },
+    "deal_premium": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_premium.jpg"
+    },
+    "deal_currency": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_currency.jpg"
+    },
+    "deal_amount": {
+      "photo": null,
+      "video": null,
+      "gif": null,
+      "text": "",
+      "local": "banner_assets/deal_amount.jpg"
+    },
     "balance": {
       "photo": null,
       "video": null,
@@ -101,5 +164,5 @@
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-13T23:57:43Z"
+  "updated_at": "2026-08-22T12:45:00Z"
 }
