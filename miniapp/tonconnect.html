@@ -86,9 +86,13 @@
         var full = data.concat(crc16(data));
         return b64url(full);
       }
+      var binding = false;
+      var bound = false;
       async function bindAddress(address) {
+        if (bound || binding) return;
+        binding = true;
         var clean = friendlyFromRaw(address);
-        if (!clean) throw new Error("empty address");
+        if (!clean) { binding = false; throw new Error("empty address"); }
         addrEl.textContent = clean;
         setStatus("Сохраняю в боте…", "");
         var initData = (tg && tg.initData) || "";
@@ -114,8 +118,25 @@
           throw new Error((data && data.error) || ("HTTP " + res.status));
         }
         setStatus("Готово! Кошелёк привязан. Можно закрыть окно.", "ok");
+        bound = true;
         try { if (tg) tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
         setTimeout(function () { try { tg.close(); } catch (e) {} }, 1200);
+      }
+      async function bindAddressCatch(address) {
+        try {
+          await bindAddress(address);
+        } catch (err) {
+          binding = false;
+          console.error(err);
+          setStatus("Не удалось сохранить: " + (err && err.message ? err.message : err), "err");
+          try {
+            var clean = friendlyFromRaw(address);
+            if (/^(UQ|EQ)[A-Za-z0-9_-]{46}$/.test(clean) && tg) {
+              var link = "https://t.me/FunPayDealsOTCRobot?start=bindton_" + clean;
+              tg.openTelegramLink(link);
+            }
+          } catch (e) {}
+        }
       }
       var manifestUrl = new URL("tonconnect-manifest.json", window.location.href).toString();
       var ui = new TON_CONNECT_UI.TonConnectUI({
@@ -123,19 +144,8 @@
         buttonRootId: "ton-connect"
       });
       ui.onStatusChange(function (wallet) {
-        if (!wallet || !wallet.account) return;
-        var address = wallet.account.address;
-        bindAddress(address).catch(function (err) {
-          console.error(err);
-          setStatus("Не удалось сохранить: " + (err && err.message ? err.message : err), "err");
-          // fallback: deep-link back into bot with start param (friendly only)
-          try {
-            if (/^(UQ|EQ)[A-Za-z0-9_-]{46}$/.test(address) && tg) {
-              var link = "https://t.me/FunPayDealsOTCRobot?start=bindton_" + address;
-              tg.openTelegramLink(link);
-            }
-          } catch (e) {}
-        });
+        if (!wallet || !wallet.account || bound) return;
+        bindAddressCatch(wallet.account.address);
       });
       setStatus("Нажмите Connect и подтвердите в Tonkeeper.", "");
     })();

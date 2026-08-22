@@ -204,6 +204,90 @@
       line-height: 1.45;
     }
     .foot a { color: var(--accent); text-decoration: none; font-weight: 700; }
+
+    .add-review-fab {
+      position: fixed;
+      right: 16px;
+      bottom: calc(16px + var(--safe-bottom));
+      z-index: 20;
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, #1a7fb0, #1f7a63);
+      color: #fff;
+      font: 800 0.86rem "Manrope", sans-serif;
+      box-shadow: 0 10px 28px rgba(16, 42, 60, 0.22);
+      cursor: pointer;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      background: rgba(16, 42, 60, 0.45);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+      padding-bottom: calc(16px + var(--safe-bottom));
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      width: min(100%, 420px);
+      background: #fff;
+      border-radius: 18px;
+      padding: 18px 16px 16px;
+      box-shadow: 0 18px 50px rgba(0,0,0,.18);
+    }
+    .modal h2 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+    .modal p { color: var(--muted); font-size: 0.86rem; margin-bottom: 12px; }
+    .star-pick { display: flex; gap: 8px; margin-bottom: 12px; }
+    .star-pick button {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      border-radius: 10px;
+      padding: 10px 0;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .star-pick button.active { background: var(--accent); color: #fff; border-color: transparent; }
+    .modal textarea {
+      width: 100%;
+      min-height: 96px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      font: 600 0.9rem "Manrope", sans-serif;
+      resize: vertical;
+      margin-bottom: 10px;
+    }
+    .modal-error {
+      color: var(--danger);
+      font-size: 0.84rem;
+      font-weight: 700;
+      min-height: 1.2em;
+      margin-bottom: 8px;
+    }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions button {
+      flex: 1;
+      border-radius: 12px;
+      padding: 12px;
+      font: 800 0.86rem "Manrope", sans-serif;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      color: var(--muted);
+    }
+    .modal-actions button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
   </style>
 </head>
 <body>
@@ -229,6 +313,26 @@
         <a href="https://support.funpay.com/tickets" target="_blank" rel="noopener">FunPay Support</a>
       </footer>
     </main>
+
+  <button class="add-review-fab" type="button" id="addReviewFab">+ Отзыв</button>
+  <div class="modal-overlay" id="reviewModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="reviewModalTitle">
+      <h2 id="reviewModalTitle">Добавить отзыв</h2>
+      <p>Оценка и комментарий после успешной сделки.</p>
+      <div class="star-pick" id="starPick">
+        <button type="button" data-stars="5">5★</button>
+        <button type="button" data-stars="4">4★</button>
+        <button type="button" data-stars="3">3★</button>
+      </div>
+      <textarea id="reviewText" maxlength="500" placeholder="Ваш отзыв…"></textarea>
+      <div class="modal-error" id="reviewError"></div>
+      <div class="modal-actions">
+        <button type="button" id="reviewCancel">Отмена</button>
+        <button type="button" class="primary" id="reviewSubmit">Отправить</button>
+      </div>
+    </div>
+  </div>
+
   </div>
 
   <script>
@@ -545,6 +649,46 @@ window.REVIEWS_DATA={"average":4.9,"count":44728,"baseCount":43829,"growthEpochM
     document.addEventListener("gesturestart", function (e) { e.preventDefault(); }, { passive: false });
   })();
 
+
+  function setupAddReview() {
+    var fab = document.getElementById("addReviewFab");
+    var modal = document.getElementById("reviewModal");
+    var err = document.getElementById("reviewError");
+    var stars = 5;
+    var starBtns = document.querySelectorAll("#starPick button");
+    if (!fab || !modal) return;
+    function openModal() {
+      err.textContent = "";
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    }
+    function closeModal() {
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    }
+    fab.onclick = openModal;
+    document.getElementById("reviewCancel").onclick = closeModal;
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) closeModal();
+    });
+    for (var i = 0; i < starBtns.length; i++) {
+      starBtns[i].onclick = function () {
+        stars = Number(this.getAttribute("data-stars")) || 5;
+        for (var j = 0; j < starBtns.length; j++) {
+          starBtns[j].classList.toggle("active", starBtns[j] === this);
+        }
+      };
+      if (starBtns[i].getAttribute("data-stars") === "5") starBtns[i].classList.add("active");
+    }
+    document.getElementById("reviewSubmit").onclick = function () {
+      err.textContent = "Ошибка: у вас не проведена сделка";
+      try {
+        var tg = window.Telegram && window.Telegram.WebApp;
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
+      } catch (e) {}
+    };
+  }
+
   function boot() {
     try {
       rebuildSource();
@@ -558,6 +702,7 @@ window.REVIEWS_DATA={"average":4.9,"count":44728,"baseCount":43829,"growthEpochM
   }
 
   loadMore.onclick = function () { renderBatch(0); };
+  setupAddReview();
   lockTelegramGestures();
   boot();
 })();
