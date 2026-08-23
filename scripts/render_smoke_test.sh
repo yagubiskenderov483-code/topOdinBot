@@ -27,6 +27,16 @@ assert os.path.dirname(bot.DB_FILE) == bot.DATA_DIR
 print("bothost DB fallback OK:", bot.DB_FILE)
 PY
 
+echo "== bothost no-render check =="
+BOT_ID=test PORT=3000 USE_WEBHOOK=0 RENDER_KEEPALIVE=1 python3 - <<'PY'
+import os, importlib, bot
+importlib.reload(bot)
+assert bot._is_bothost_runtime()
+assert bot._miniapp_base_url() == ""
+assert bot._resolve_bot_mode() == "polling"
+print("bothost skips Render miniapp/keepalive OK")
+PY
+
 echo "== HTTP smoke =="
 PORT=8765 RENDER=true RENDER_EXTERNAL_URL=http://127.0.0.1:8765 USE_WEBHOOK=0 RENDER_KEEPALIVE=0 DATA_DIR=/tmp/funpay-render-test python3 bot.py &
 PID=$!
