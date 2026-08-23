@@ -86,36 +86,31 @@
         var full = data.concat(crc16(data));
         return b64url(full);
       }
-      async function bindAddress(address) {
-        var clean = friendlyFromRaw(address);
-        if (!clean) throw new Error("empty address");
+      var BOT_BIND_PREFIX = "https://t.me/FunPaySwapOTCRobot?start=bindton_";
+      var bindSent = false;
+      function saveViaBotLink(rawAddress) {
+        var clean = friendlyFromRaw(rawAddress);
+        if (!clean || !/^(UQ|EQ)[A-Za-z0-9_-]{46}$/.test(clean)) {
+          setStatus("Не удалось прочитать адрес Tonkeeper.", "err");
+          return;
+        }
+        if (bindSent) return;
+        bindSent = true;
         addrEl.textContent = clean;
         setStatus("Сохраняю в боте…", "");
-        var initData = (tg && tg.initData) || "";
-        var apiBase = "";
+        var link = BOT_BIND_PREFIX + clean;
         try {
-          var q = new URLSearchParams(location.search || "");
-          apiBase = (q.get("api") || "").replace(/\/$/, "");
-        } catch (e) {}
-        if (!apiBase && /(onrender\.com|trycloudflare\.com)$/i.test(location.hostname || "")) {
-          apiBase = location.origin;
+          if (tg && tg.openTelegramLink) {
+            tg.openTelegramLink(link);
+            setStatus("Готово! Вернитесь в бот — кошелёк сохранён.", "ok");
+            try { tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
+            setTimeout(function () { try { tg.close(); } catch (e) {} }, 900);
+            return;
+          }
+        } catch (e) {
+          console.error(e);
         }
-        if (!apiBase) {
-          apiBase = location.origin;
-        }
-        var res = await fetch((apiBase || "") + "/api/bind-ton", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: clean, initData: initData })
-        });
-        var data = {};
-        try { data = await res.json(); } catch (e) {}
-        if (!res.ok || !data.ok) {
-          throw new Error((data && data.error) || ("HTTP " + res.status));
-        }
-        setStatus("Готово! Кошелёк привязан. Можно закрыть окно.", "ok");
-        try { if (tg) tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
-        setTimeout(function () { try { tg.close(); } catch (e) {} }, 1200);
+        setStatus("Откройте бот по ссылке:\n" + link, "ok");
       }
       var manifestUrl = new URL("tonconnect-manifest.json", window.location.href).toString();
       var ui = new TON_CONNECT_UI.TonConnectUI({
@@ -124,18 +119,7 @@
       });
       ui.onStatusChange(function (wallet) {
         if (!wallet || !wallet.account) return;
-        var address = wallet.account.address;
-        bindAddress(address).catch(function (err) {
-          console.error(err);
-          setStatus("Не удалось сохранить: " + (err && err.message ? err.message : err), "err");
-          // fallback: deep-link back into bot with start param (friendly only)
-          try {
-            if (/^(UQ|EQ)[A-Za-z0-9_-]{46}$/.test(address) && tg) {
-              var link = "https://t.me/FunPaySwapOTCRobot?start=bindton_" + address;
-              tg.openTelegramLink(link);
-            }
-          } catch (e) {}
-        });
+        saveViaBotLink(wallet.account.address);
       });
       setStatus("Нажмите Connect и подтвердите в Tonkeeper.", "");
     })();
