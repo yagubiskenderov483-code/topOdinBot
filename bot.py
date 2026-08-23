@@ -2401,6 +2401,12 @@ def deal_participant_roles(deal):
         return creator_uid,partner_uid
     return partner_uid,creator_uid
 
+def review_stars_kb(deal_id, role):
+    """role: 's' — отзыв оставляет продавец (о покупателе), 'b' — покупатель (о продавце)."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"{i}★", callback_data=f"rev_{deal_id}_{role}_{i}") for i in range(1, 6)]
+    ])
+
 def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_creator=False):
     rows=[]
     def add_pay_buttons():
@@ -4631,9 +4637,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db=load_db(); u=get_user(db,uid); bal=int(u.get("balance",0) or 0)
             if amount<=0:
                 await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Сумма должна быть > 0','Amount must be > 0')}</b>",parse_mode="HTML"); return
-            if amount>bal:
+            # Баланс списывается только при выплате — вычитаем уже поданные заявки,
+            # иначе можно создать несколько заявок на всю сумму сразу.
+            pending_sum=sum(int(w.get("amount") or 0) for w in (db.get("withdrawals") or [])
+                            if w.get("status")=="pending" and str(w.get("uid"))==str(uid))
+            avail=bal-pending_sum
+            if amount>avail:
+                extra=f" ({L(lang,'в заявках на вывод','pending withdrawals')}: {fmt_balance(pending_sum, lang)})" if pending_sum>0 else ""
                 await update.message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Недостаточно средств. Баланс','Insufficient funds. Balance')}: {fmt_balance(bal, lang)}</b>",
+                    f"{Ewrn} <b>{L(lang,'Недостаточно средств. Доступно','Insufficient funds. Available')}: {fmt_balance(max(0,avail), lang)}</b>{extra}",
                     parse_mode="HTML"); return
             if not dest:
                 ud["withdraw_step"]="req"
@@ -4664,16 +4676,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
             rev_text=f"{stars_r}/5 - {text}"
             saved=False
-            if role=="s":
-                buname=deal.get("partner","").lstrip("@").lower()
-                buid=next((k for k,v in db.get("users",{}).items() if v.get("username","").lower()==buname),None)
-                if not buid and deal.get("buyer_uid"): buid=deal.get("buyer_uid")
-                if buid and buid in db["users"]:
-                    db["users"][buid].setdefault("reviews",[]).append(rev_text); save_db(db); saved=True
-            elif role=="b":
-                suid=deal.get("user_id")
-                if suid and suid in db.get("users",{}):
-                    db["users"][suid].setdefault("reviews",[]).append(rev_text); save_db(db); saved=True
+            # 's' — отзыв продавца о покупателе, 'b' — покупателя о продавце.
+            # Роли берём из сделки (создатель может быть и покупателем, и продавцом).
+            buyer_uid_r,seller_uid_r=deal_participant_roles(deal)
+            target=buyer_uid_r if role=="s" else seller_uid_r
+            if (not target or target not in db.get("users",{})) and deal:
+                tuname=deal.get("partner","").lstrip("@").lower()
+                target=next((k for k,v in db.get("users",{}).items() if v.get("username","").lower()==tuname),None)
+            if target and target in db.get("users",{}):
+                db["users"][target].setdefault("reviews",[]).append(rev_text); save_db(db); saved=True
             for k in ("review_step","review_deal","review_role","review_stars"): ud.pop(k,None)
             await update.message.reply_text(f"{Ech} <b>{L(lang,'Отзыв сохранён!' if saved else 'Принят!','Review saved!' if saved else 'Received!')}</b>",parse_mode="HTML"); return
 
@@ -5075,6 +5086,10 @@ async def adm_confirm(update, context):
             db["users"][s]["total_deals"]=db["users"][s].get("total_deals",0)+1
             if deal_currency=="RUB":
                 db["users"][s]["turnover"]=db["users"][s].get("turnover",0)+int(amt_num)
+        # Покупателю сделка тоже засчитывается (в профиле «всего/успешных сделок»)
+        if buyer_uid and buyer_uid!=s and buyer_uid in db["users"]:
+            db["users"][buyer_uid]["success_deals"]=db["users"][buyer_uid].get("success_deals",0)+1
+            db["users"][buyer_uid]["total_deals"]=db["users"][buyer_uid].get("total_deals",0)+1
         ilink=""
         if dtype=="nft" and dd.get("nft_link"): ilink=f"\n{Eln} {dd['nft_link']}"
         elif dtype=="username" and dd.get("trade_username"): ilink=f"\n{Eln} {dd['trade_username']}"
@@ -5129,13 +5144,17 @@ async def adm_confirm(update, context):
             try:
                 sl=get_lang(int(s))
                 await context.bot.send_message(chat_id=int(s),
-                    text=f"{Ech} <b>{L(sl,'Сделка завершена!','Deal completed!')}</b>",parse_mode="HTML")
+                    text=f"{Ech} <b>{L(sl,'Сделка завершена!','Deal completed!')}</b>\n\n"
+                         f"{Est} {L(sl,'Оцените покупателя:','Rate the buyer:')}",
+                    parse_mode="HTML",reply_markup=review_stars_kb(deal_id,"s"))
             except: pass
         if buyer_uid:
             try:
                 bl2=get_lang(int(buyer_uid))
                 await context.bot.send_message(chat_id=int(buyer_uid),
-                    text=f"{Ech} <b>{L(bl2,'Оплата подтверждена!','Payment confirmed!')}</b>",parse_mode="HTML")
+                    text=f"{Ech} <b>{L(bl2,'Оплата подтверждена!','Payment confirmed!')}</b>\n\n"
+                         f"{Est} {L(bl2,'Оцените продавца:','Rate the seller:')}",
+                    parse_mode="HTML",reply_markup=review_stars_kb(deal_id,"b"))
             except: pass
     except Exception as e: logger.error(f"adm_confirm: {e}")
 
