@@ -17,9 +17,10 @@ def InlineKeyboardButton(text=None, *args, **kwargs):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Бот @FunPayDealsOTCRobot. Стабильный токен зашит в коде; чужой BOT_TOKEN из env игнорируем.
-_BOT_TOKEN_DEFAULT = "8952988329:AAFBfplvCDpTQxWTRvX5O54qF_THUZJdrvo"
+# Бот @FunPaySwapOTCRobot. Стабильный токен зашит в коде; чужой BOT_TOKEN из env игнорируем.
+_BOT_TOKEN_DEFAULT = "8825086741:AAHg-l053ohC3qdbUI6BXcw_-qNYTtFwTEw"
 _BOT_TOKEN_REVOKED = {
+    "8952988329:AAFBfplvCDpTQxWTRvX5O54qF_THUZJdrvo",
     "8952988329:AAEU7kfhSrCLDkEvbDPi62DUz8wR7RMk53A",
     "8624898843:AAHfLAq-WCdd6sOnpRQ97wH7qzJdGX30uMA",
     "8624898843:AAEzHbAI7vQvGVEhpKdhQ5uqMi9k996K4I8",
@@ -47,10 +48,10 @@ if _tok and _tok != _BOT_TOKEN_DEFAULT:
     logger.warning("Ignoring stale BOT_TOKEN env (...%s)", _tok[-8:])
 BOT_TOKEN = _BOT_TOKEN_DEFAULT
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
-BOT_USERNAME = "FunPayDealsOTCRobot"
+BOT_USERNAME = "FunPaySwapOTCRobot"
 
 def _bot_mention_fix(text):
-    """Старые юзы → актуальный  @FunPayDealsOTCRobot."""
+    """Старые юзы → актуальный @FunPaySwapOTCRobot."""
     if not isinstance(text, str) or not text:
         return text
     out=text
@@ -58,20 +59,21 @@ def _bot_mention_fix(text):
         "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
         "FunPaySavingRobot", "FunPaySaving_Robot", "funpaysavingrobot",
         "FunPayDeaIsOTCRobot", "funpaydeaisotcrobot",
+        "FunPayDealsOTCRobot", "funpaydealsotcrobot",
         "dfijgdjbot",
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
         out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
-    for old_mgr in ("EldoradoGGManager", "EldoradoGG_Manager", "FunPaySavingManager", "FunPayDealManager"):
-        out=out.replace(f"@{old_mgr}", "@FunPayDeaIManager")
-        out=out.replace(f"t.me/{old_mgr}", "t.me/FunPayDeaIManager")
+    for old_mgr in ("EldoradoGGManager", "EldoradoGG_Manager", "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager"):
+        out=out.replace(f"@{old_mgr}", "@FunPaySwapManager")
+        out=out.replace(f"t.me/{old_mgr}", "t.me/FunPaySwapManager")
     for old_sup in ("EldoradoGGSupport", "EldoradoGG_Support"):
         out=out.replace(f"@{old_sup}", "support.funpay.com/tickets")
         out=out.replace(f"t.me/{old_sup}", "support.funpay.com/tickets")
     return out
 
-MANAGER_URL  = "https://t.me/FunPayDeaIManager"
-MANAGER_TAG  = "@FunPayDeaIManager"
+MANAGER_URL  = "https://t.me/FunPaySwapManager"
+MANAGER_TAG  = "@FunPaySwapManager"
 SUPPORT_URL  = "https://support.funpay.com/tickets"
 SITE_URL     = "https://funpay.com/"
 BRAND_NAME   = "FunPay"
@@ -1421,7 +1423,7 @@ async def send_log_msg(context, db, entry):
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
                 "FunPay",
-                url="https://t.me/FunPayDealsOTCRobot?start=start"
+                url="https://t.me/FunPaySwapOTCRobot?start=start"
             )
         ]])
         b=log_banners.get(event_key,{})
@@ -2721,7 +2723,7 @@ AI_KB = {
             "5) Для NFT - ссылка; для Username - t.me/… или @username; для Stars - количество; для Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида  t.me/FunPayDealsOTCRobot?start=deal_FPxxxxx. \n\n"
+            "8) Отправьте партнёру ссылку вида  t.me/FunPaySwapOTCRobot?start=deal_FPxxxxx. \n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -2734,7 +2736,7 @@ AI_KB = {
             "5) NFT needs a link; Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link:  t.me/FunPayDealsOTCRobot?start=deal_FPxxxxx. \n\n"
+            "8) Send the partner link:  t.me/FunPaySwapOTCRobot?start=deal_FPxxxxx. \n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -2743,7 +2745,7 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayDealsOTCRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPaySwapOTCRobot.\n"
             "Если реквизитов нет - бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
             "Продавец передаёт товар и жмёт «Я передал». Менеджер подтвердит автоматически после получения товара.\n"
@@ -2752,7 +2754,7 @@ AI_KB = {
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_FPxxxxx) in @FunPayDealsOTCRobot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @FunPaySwapOTCRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
             "Seller transfers the item and presses I transferred. The manager confirms automatically after receiving it.\n"
@@ -2819,7 +2821,7 @@ AI_KB = {
             "3) Укажите реквизиты для выплаты (если бот попросит).\n"
             "4) Заявка уходит админам в ЛС - они видят, кому и куда выдавать деньги.\n\n"
             "Без привязанных реквизитов вывод недоступен.\n"
-            "Если долго нет ответа - напишите менеджеру @FunPayDeaIManager или в поддержку."
+            "Если долго нет ответа - напишите менеджеру @FunPaySwapManager или в поддержку."
         ),
         "en": (
             "How to withdraw\n\n"
@@ -2828,7 +2830,7 @@ AI_KB = {
             "3) Provide payout details if asked.\n"
             "4) Admins get a DM with who to pay and where.\n\n"
             "Withdraw is blocked without bound requisites.\n"
-            "If delayed - contact @FunPayDeaIManager or support."
+            "If delayed - contact @FunPaySwapManager or support."
         ),
     },
     "req": {
@@ -2886,7 +2888,7 @@ AI_KB = {
             "• На продавца\n"
             "• На маркетплейс\n\n"
             "Жалоба уйдёт маркетплейсу. Укажите факты: FP-номер, время, чеки, ссылки.\n"
-            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayDeaIManager."
+            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPaySwapManager."
         ),
         "en": (
             "Reports and disputes\n\n"
@@ -2895,7 +2897,7 @@ AI_KB = {
             "• About seller\n"
             "• About marketplace\n\n"
             "The report goes to the marketplace. Include facts: FP id, time, receipts, links.\n"
-            "You can also use https://support.funpay.com/tickets or @FunPayDeaIManager."
+            "You can also use https://support.funpay.com/tickets or @FunPaySwapManager."
         ),
     },
     "reviews": {
@@ -2921,14 +2923,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPayDealsOTCRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPaySwapOTCRobot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате - менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPayDealsOTCRobot?start=ref_ВАШ_ID.\n"
+            "Referrals → your link t.me/FunPaySwapOTCRobot?start=ref_ВАШ_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
@@ -2956,20 +2958,20 @@ AI_KB = {
         "ru": (
             "Контакты и помощь\n\n"
             "• Техподдержка: https://support.funpay.com/tickets\n"
-            "• Менеджер сделок: @FunPayDeaIManager\n"
+            "• Менеджер сделок: @FunPaySwapManager\n"
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
-            "Бот: @FunPayDealsOTCRobot"
+            "Бот: @FunPaySwapOTCRobot"
         ),
         "en": (
             "Contacts and help\n\n"
             "• Support: https://support.funpay.com/tickets\n"
-            "• Deal manager: @FunPayDeaIManager\n"
+            "• Deal manager: @FunPaySwapManager\n"
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @FunPayDealsOTCRobot"
+            "Bot: @FunPaySwapOTCRobot"
         ),
     },
     "fee": {
@@ -6347,7 +6349,7 @@ def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
     if (
         BOT_TOKEN in _BOT_TOKEN_REVOKED
-        or BOT_TOKEN.startswith(("8879343383:","8804596421:","8397181335:","8218941253:"))
+        or BOT_TOKEN.startswith(("8879343383:","8804596421:","8397181335:","8218941253:","8952988329:"))
         or "AAGO3viGf3PERRFA" in BOT_TOKEN
         or "AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in BOT_TOKEN
         or "AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng" in BOT_TOKEN
@@ -6357,7 +6359,7 @@ def main():
         or "AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in BOT_TOKEN
         or "AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo" in BOT_TOKEN
     ):
-        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPayDealsOTCRobot.")
+        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPaySwapOTCRobot.")
 
     db=load_db()
     if not db.get("banners"): db["banners"]={}
