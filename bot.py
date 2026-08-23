@@ -103,8 +103,26 @@ def _resolve_data_dir():
             continue
     return os.path.dirname(os.path.abspath(__file__))
 
+def _resolve_db_file(data_dir: str) -> str:
+    """Путь к db.json: env DB_FILE только если каталог реально доступен для записи."""
+    env_path = (os.getenv("DB_FILE") or "").strip()
+    default = os.path.join(data_dir, "db.json")
+    if not env_path or env_path == default:
+        return default
+    parent = os.path.dirname(env_path) or data_dir
+    try:
+        os.makedirs(parent, exist_ok=True)
+        probe = os.path.join(parent, ".funpay_write_test")
+        with open(probe, "w", encoding="utf-8") as f:
+            f.write("ok")
+        os.remove(probe)
+        return env_path
+    except Exception:
+        logger.warning("DB_FILE=%s unavailable — using %s", env_path, default)
+        return default
+
 DATA_DIR = _resolve_data_dir()
-DB_FILE = (os.getenv("DB_FILE") or "").strip() or os.path.join(DATA_DIR, "db.json")
+DB_FILE = _resolve_db_file(DATA_DIR)
 BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "banners_seed.json")
 # Копия сида на постоянном диске (переживает redeploy при Disk на /data)
@@ -163,7 +181,14 @@ def _normalize_public_origin(url: str) -> str:
     return v
 
 def _miniapp_base_url() -> str:
-    """Публичный HTTPS для Mini App (может быть Render, даже если бот на Bothost)."""
+    """Публичный HTTPS для Mini App."""
+    if _is_bothost_runtime():
+        # На Bothost не подставляем Render — иначе keepalive будит второй инстанс.
+        for key in ("MINIAPP_BASE_URL", "BOTHOST_PUBLIC_URL", "WEBAPP_URL"):
+            v = _normalize_public_origin(os.getenv(key) or "")
+            if v:
+                return v
+        return ""
     for key in ("MINIAPP_BASE_URL", "PUBLIC_BASE_URL", "WEBAPP_URL", "RENDER_EXTERNAL_URL"):
         v = _normalize_public_origin(os.getenv(key) or "")
         if v:
@@ -208,6 +233,41 @@ def _resolve_bot_mode() -> str:
     if _is_render_runtime() and os.getenv("PORT") and wh_base:
         return "webhook"
     return "polling"
+
+async def _warn_dual_bot_instances(bot):
+    """Bothost: предупреждение, если Render или второй polling-инстанс держит тот же токен."""
+    if not _is_bothost_runtime():
+        return
+    try:
+        info = await bot.get_webhook_info()
+        url = (info.url or "").strip()
+        if url and "onrender.com" in url.lower():
+            logger.error(
+                "Webhook всё ещё на Render (%s). Остановите сервис funpay-saving-bot на Render "
+                "или отключите Bothost — один токен = один сервер.",
+                url,
+            )
+    except Exception as e:
+        logger.warning("getWebhookInfo: %s", e)
+    render_health = _render_service_base()
+    if not render_health:
+        return
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            render_health.rstrip("/") + "/health",
+            headers={"User-Agent": "FunPayBot/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as r:
+            body = r.read().decode("utf-8", errors="replace")
+        if '"webhook": true' in body.replace(" ", "") or '"webhook":true' in body.replace(" ", ""):
+            logger.error(
+                "Render (%s) онлайн с webhook=true. /start будет нестабилен, пока оба сервиса запущены. "
+                "Suspend/Delete сервис на render.com → funpay-saving-bot.",
+                render_health,
+            )
+    except Exception:
+        pass
 
 def reviews_miniapp_url() -> str:
     """Reviews Mini App — отдаётся самим ботом с Render (/index.html)."""
@@ -6277,6 +6337,9 @@ def start_reviews_http_server():
 
 def start_render_keepalive():
     """Render Free sleep ~15 мин без HTTP - пинг публичного /health каждые ~8 мин."""
+    if _is_bothost_runtime():
+        logger.info("RENDER_KEEPALIVE skipped on Bothost (один токен — не будим Render)")
+        return
     import threading, urllib.request
     enabled=(os.getenv("RENDER_KEEPALIVE") or "1").strip().lower()
     if enabled in ("0","false","no","off"):
@@ -6413,12 +6476,23 @@ def main():
                 await application.bot.delete_webhook(drop_pending_updates=True)
             except Exception as e:
                 logger.warning("delete_webhook: %s", e)
+            await _warn_dual_bot_instances(application.bot)
     app.post_init=post_init
 
+    _conflict_warned = False
+
     async def on_error(update, context):
+        nonlocal _conflict_warned
         err = context.error
         if isinstance(err, Conflict):
-            logger.warning("getUpdates conflict — другой инстанс ещё жив. Не останавливаемся, Telegram отдаст очередь этому процессу.")
+            if not _conflict_warned:
+                _conflict_warned = True
+                logger.error(
+                    "409 Conflict: два процесса опрашивают Telegram одним токеном. "
+                    "Остановите Render (funpay-saving-bot) или второй контейнер Bothost."
+                )
+            else:
+                logger.warning("getUpdates conflict — ждём, пока второй инстанс отпустит очередь.")
             return
         # BadRequest editMessage / message is not modified — not user-facing
         name=type(err).__name__ if err else ""
