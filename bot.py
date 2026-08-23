@@ -103,8 +103,26 @@ def _resolve_data_dir():
             continue
     return os.path.dirname(os.path.abspath(__file__))
 
+def _resolve_db_file(data_dir: str) -> str:
+    """Путь к db.json: env DB_FILE только если каталог реально доступен для записи."""
+    env_path = (os.getenv("DB_FILE") or "").strip()
+    default = os.path.join(data_dir, "db.json")
+    if not env_path or env_path == default:
+        return default
+    parent = os.path.dirname(env_path) or data_dir
+    try:
+        os.makedirs(parent, exist_ok=True)
+        probe = os.path.join(parent, ".funpay_write_test")
+        with open(probe, "w", encoding="utf-8") as f:
+            f.write("ok")
+        os.remove(probe)
+        return env_path
+    except Exception:
+        logger.warning("DB_FILE=%s unavailable — using %s", env_path, default)
+        return default
+
 DATA_DIR = _resolve_data_dir()
-DB_FILE = (os.getenv("DB_FILE") or "").strip() or os.path.join(DATA_DIR, "db.json")
+DB_FILE = _resolve_db_file(DATA_DIR)
 BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "banners_seed.json")
 # Копия сида на постоянном диске (переживает redeploy при Disk на /data)

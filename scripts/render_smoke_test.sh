@@ -18,6 +18,15 @@ assert bot.reviews_miniapp_url().endswith("/index.html")
 print("webhook mode OK, reviews:", bot.reviews_miniapp_url())
 PY
 
+echo "== bothost db path check =="
+DB_FILE=/app/data/db.json DATA_DIR=/app/data python3 - <<'PY'
+import os, importlib, bot
+importlib.reload(bot)
+assert bot.DB_FILE.endswith("/db.json")
+assert os.path.dirname(bot.DB_FILE) == bot.DATA_DIR
+print("bothost DB fallback OK:", bot.DB_FILE)
+PY
+
 echo "== HTTP smoke =="
 PORT=8765 RENDER=true RENDER_EXTERNAL_URL=http://127.0.0.1:8765 USE_WEBHOOK=0 RENDER_KEEPALIVE=0 DATA_DIR=/tmp/funpay-render-test python3 bot.py &
 PID=$!
