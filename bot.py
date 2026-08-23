@@ -948,7 +948,10 @@ def schedule_notify_deal_event(bot, uid, text, lang="ru"):
 
 BANNER_SECTIONS = {
     "main":"Главное меню","deal":"Создать сделку","balance":"Пополнить/Вывод",
-    "profile":"Профиль","req":"Реквизиты","top":"Топ","my_deals":"Мои сделки",
+    "topup":"Пополнение","withdraw":"Вывод средств","withdraw_no_funds":"Вывод: нет средств",
+    "profile":"Профиль","req":"Реквизиты",
+    "req_card":"Реквизиты: карта","req_ton":"Реквизиты: TON","req_stars":"Реквизиты: звёзды",
+    "lang":"Выбор языка","top":"Топ","my_deals":"Мои сделки",
     "info":"Информация","complaint":"Жалоба","ai":"FunPay AI",
     "deal_card":"Карточка сделки","deal_join":"Присоединение к сделке",
     "deal_forward":"Пересылка сделки","ref":"Рефералы",
@@ -1721,10 +1724,14 @@ def _section_media(section, text, fallback_section=None, skip_media=False):
     full=text+(f"\n\n<b>{H(bt)}</b>" if bt and not skip_media else "")
     return bv, bg, bp, local_fb, full
 
-async def send_section(update, text, kb=None, section="main"):
-    """Show a section. Banner photo and text are always removed together on the next tap."""
+async def send_section(update, text, kb=None, section="main", fallback_section=None):
+    """Show a section. Banner photo and text are always removed together on the next tap.
+
+    fallback_section: если для section баннер не задан, берём баннер родительской
+    секции (напр. withdraw_no_funds → balance), чтобы экран не остался голым.
+    """
     try:
-        bv, bg, bp, local_fb, full = _section_media(section, text)
+        bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fallback_section)
         chat=update.effective_chat
         cid=int(chat.id)
         previous_message=None
@@ -2260,7 +2267,7 @@ def get_welcome(lang):
         ]
         intro="FunPay"
         footer="Оберіть дію нижче"
-        stats="132.584 угод · оборот $1.346.582"
+        stats="132 584 угод · оборот $1 346 582"
     else:
         pts=[
             "Сделки с NFT, подарками, звёздами и криптой",
@@ -2270,7 +2277,7 @@ def get_welcome(lang):
         ]
         intro="FunPay"
         footer="Выберите действие ниже"
-        stats="132.584 сделок · оборот $1.346.582"
+        stats="132 584 сделок · оборот $1 346 582"
     nums=[En1,En2,En3,En4]
     lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
     return (f"{Ecwn} <b>{intro}</b>\n\n{lines}\n\n"
@@ -2978,14 +2985,14 @@ AI_KB = {
             "В «Профиль» видно: @username, баланс (RUB), всего сделок, успешных сделок, оборот и отзывы.\n"
             "«Мои сделки» - все сделки, где вы создатель или участник.\n"
             "«Топ продавцов» - рейтинг продавцов платформы.\n"
-            "Язык: кнопка «Язык» (RU/EN)."
+            "Язык: кнопка «Язык» (RU/EN/UK)."
         ),
         "en": (
             "Profile\n\n"
             "Profile shows: @username, balance (RUB), total deals, successful deals, turnover and reviews.\n"
             "My Deals lists deals you created or joined.\n"
             "Top Sellers ranks platform sellers.\n"
-            "Language button switches RU/EN."
+            "Language button switches RU/EN/UK."
         ),
     },
     "support": {
@@ -3014,7 +3021,7 @@ AI_KB = {
         "ru": (
             "Комиссия FunPay - 0%.\n"
             "Сервис зарабатывает как гарант/маркетплейс без процента с суммы сделки в карточке.\n"
-            "Рефералка: 3% вам с сделок приглашённых друзей (это бонус рефереру)."
+            "Рефералка: 3% вам со сделок приглашённых друзей (это бонус рефереру)."
         ),
         "en": (
             "FunPay service fee is 0%.\n"
@@ -3996,21 +4003,21 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardMarkup([
                             [InlineKeyboardButton("Tonkeeper",web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
                             [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
-                        ]),section="req"); return
+                        ]),section="req_ton",fallback_section="req"); return
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
                 for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
                 set_req_input_state(
                     uid, field, mode="deal_create", after_buyer=True,
                     req_resume=ud.get("req_resume"), req_return=None)
                 await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}",fallback_section="req"); return
             if raw=="ton_buyer_manual":
                 field="ton"
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
                 for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
                 set_req_input_state(uid, field, mode="deal_create", after_buyer=True, req_resume=ud.get("req_resume"), req_return=None)
                 await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}",fallback_section="req"); return
             field=raw
             if field not in REQ_FIELDS:
                 await show_req(update,context); return
@@ -4020,20 +4027,20 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardMarkup([
                         [InlineKeyboardButton("Tonkeeper",web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")],
-                    ]),section="req"); return
+                    ]),section="req_ton",fallback_section="req"); return
             ud["req_step"]=field
             ud["req_return"]="menu_req"
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
             set_req_input_state(uid, field, mode="profile", req_return="menu_req", after_buyer=False)
             await send_section(update,req_prompt_text(field,lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}",fallback_section="req"); return
 
         if d=="req_ton_manual":
             ud["req_step"]="ton"; ud["req_return"]="menu_req"
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
             set_req_input_state(uid, "ton", mode="profile", req_return="menu_req", after_buyer=False)
             await send_section(update,req_prompt_text("ton",lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req_ton",fallback_section="req"); return
 
         if d.startswith("add_req_"):
             deal_id=d[8:].strip().upper(); ud["req_for_deal"]=deal_id; ud["pending_deal"]=deal_id
@@ -4081,14 +4088,14 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud.pop(key,None)
             await send_section(update,
                 f"{Emn} <b>{L(lang,'Выберите способ пополнения:','Choose a top-up method:')}</b>",
-                topup_methods_kb(lang),section="balance"); return
+                topup_methods_kb(lang),section="topup",fallback_section="balance"); return
 
         if d=="topup_methods":
             for key in ("topup_step","topup_amount","topup_method","topup_ref"):
                 ud.pop(key,None)
             await send_section(update,
                 f"{Emn} <b>{L(lang,'Выберите способ пополнения:','Choose a top-up method:')}</b>",
-                topup_methods_kb(lang),section="balance"); return
+                topup_methods_kb(lang),section="topup",fallback_section="balance"); return
 
         if d.startswith("topup_cur_"):
             method=d[10:]
@@ -4100,7 +4107,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(update,
                     f"{Emn} <b>{T(lang,f'Введите сумму пополнения {unit}:',f'Enter top-up amount {unit}:',f'Введіть суму поповнення {unit}:')}</b>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="topup_methods",icon_custom_emoji_id="5258084656674250503")]]),
-                    section="balance"); return
+                    section="topup",fallback_section="balance"); return
             minimum=TOPUP_MINIMUMS.get(method)
             if minimum is not None and float(amount)<minimum:
                 ud.pop("topup_amount",None); ud["topup_method"]=method; ud["topup_step"]="amount"
@@ -4108,11 +4115,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{L(lang,'Сумма слишком маленькая.','Amount is too small.')}</b>\n\n"
                     f"<blockquote>{L(lang,'Введите сумму ещё раз.','Enter the amount again.')}</blockquote>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="topup_methods",icon_custom_emoji_id="5258084656674250503")]]),
-                    section="balance"); return
+                    section="topup",fallback_section="balance"); return
             ud["topup_method"]=method
             payment_ref=ud.setdefault("topup_ref",f"EG-{uid}-{int(time.time())}")
             txt2=topup_details_text(method,amount,uid,lang,payment_ref)
-            await send_section(update,txt2,topup_details_kb(method,amount,payment_ref,lang),section="balance"); return
+            await send_section(update,txt2,topup_details_kb(method,amount,payment_ref,lang),section="topup",fallback_section="balance"); return
 
         if d.startswith("topup_sent_"):
             method=d[11:]; uname2=update.effective_user.username or str(uid)
@@ -4180,7 +4187,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         [InlineKeyboardButton("Tonkeeper",callback_data="req_edit_ton",icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data="req_edit_stars",icon_custom_emoji_id="5893034681636491040")],
                         [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")],
-                    ]),section="balance"); return
+                    ]),section="withdraw",fallback_section="balance"); return
             await show_withdraw(update,context); return
 
         if d.startswith("withdraw_"):
@@ -4199,7 +4206,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ebal} {L(lang,'Баланс','Balance')}: {fmt_balance(u.get('balance',0), lang)}</blockquote>\n\n"
                     f"<b>{withdraw_amount_prompt(lang)}</b>",
                     InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="withdraw",icon_custom_emoji_id="5258084656674250503")]]),
-                    section="balance"); return
+                    section="withdraw",fallback_section="balance"); return
             prompts={"stars":L(lang,"@username для звёзд:","@username for stars:"),
                      "crypto":L(lang,"Адрес Tonkeeper (UQ/EQ), без seed-фразы:","Tonkeeper address (UQ/EQ), no seed phrase:"),
                      "card":L(lang,"Номер карты или телефона:","Card or phone number:")}
@@ -4209,7 +4216,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardMarkup([
                     [InlineKeyboardButton(T(lang,"Реквизиты","Requisites","Реквізити"),callback_data="menu_req",icon_custom_emoji_id="5260730055880876557")],
                     [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="withdraw",icon_custom_emoji_id="5258084656674250503")],
-                ]),section="balance"); return
+                ]),section="withdraw",fallback_section="balance"); return
 
         if d.startswith("rev_"):
             parts=d.split("_"); deal_id=parts[1]; role=parts[2]; stars_n=int(parts[3])
@@ -4420,10 +4427,10 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(update,
                     topup_details_text(method,raw_amount,uid,lang,payment_ref),
                     topup_details_kb(method,raw_amount,payment_ref,lang),
-                    section="balance"); return
+                    section="topup",fallback_section="balance"); return
             await send_section(update,
                 f"{Emn} <b>{L(lang,'Выберите способ пополнения:','Choose a top-up method:')}</b>",
-                topup_methods_kb(lang),section="balance"); return
+                topup_methods_kb(lang),section="topup",fallback_section="balance"); return
 
         if ud.get("req_step") in REQ_FIELDS:
             field=ud["req_step"]; db=load_db(); u=get_user(db,uid)
@@ -5200,7 +5207,7 @@ async def show_lang(update, context):
         ]
         await send_section(update,
             f"<b>{ce('5447410659077661506','🌐')} {T(lang,'Выберите язык:','Select language:','Оберіть мову:')}</b>",
-            InlineKeyboardMarkup(rows),section="main")
+            InlineKeyboardMarkup(rows),section="lang",fallback_section="main")
     except Exception as e: logger.error(f"show_lang: {e}")
 
 async def set_lang(update, context, lang):
@@ -5371,7 +5378,7 @@ async def show_top(update, context):
             place=ce(PLACE_EMOJI[i], PLACE_FB[i])
             lines.append(f"{place} <b>{u2}</b> - ${a} · {dd} {dw}")
         lines.append("")
-        lines.append(f"{CF} <b>{L(lang,'132.584 сделок · оборот $1.346.582','132,584 deals · $1,346,582 turnover')}</b>")
+        lines.append(f"{CF} <b>{L(lang,'132 584 сделок · оборот $1 346 582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")
@@ -5385,7 +5392,7 @@ async def show_withdraw(update, context):
         if bal<=0:
             await send_section(update,
                 f"{Ewrn} <b>{T(lang,'Недостаточно средств.','Insufficient balance.','Недостатньо коштів.')}</b>\n\n<blockquote>{T(lang,'Баланс','Balance','Баланс')}: {fmt_balance(bal, lang)}</blockquote>",
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")]]),section="balance"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")]]),section="withdraw_no_funds",fallback_section="balance"); return
         reqs=u.get("requisites",{})
         rows=[]
         if reqs.get("ton"): rows.append([InlineKeyboardButton("TON/USDT → "+reqs["ton"][:12]+"...",callback_data="withdraw_crypto",icon_custom_emoji_id="5409321884074419506")])
@@ -5397,7 +5404,7 @@ async def show_withdraw(update, context):
         rows.append([InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_balance",icon_custom_emoji_id="5258084656674250503")])
         await send_section(update,
             f"{Ewlt} <b>{T(lang,'Вывод средств','Withdraw','Вивід коштів')}</b>\n\n<blockquote>{Ebal} {T(lang,'Баланс','Balance','Баланс')}: {fmt_balance(bal, lang)}</blockquote>",
-            InlineKeyboardMarkup(rows),section="balance")
+            InlineKeyboardMarkup(rows),section="withdraw",fallback_section="balance")
     except Exception as e: logger.error(f"show_withdraw: {e}")
 
 # ─── Admin ────────────────────────────────────────────────────────────────────
