@@ -88,16 +88,16 @@ def _bot_mention_fix(text):
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
         out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
-    for old_mgr in ("EldoradoGGManager", "EldoradoGG_Manager", "FunPaySavingManager", "FunPayDealManager"):
-        out=out.replace(f"@{old_mgr}", "@FunPayDeaIManager")
-        out=out.replace(f"t.me/{old_mgr}", "t.me/FunPayDeaIManager")
+    for old_mgr in ("EldoradoGGManager", "EldoradoGG_Manager", "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager", "funpaydeaimanager"):
+        out=out.replace(f"@{old_mgr}", "@FunPaySwapManager")
+        out=out.replace(f"t.me/{old_mgr}", "t.me/FunPaySwapManager")
     for old_sup in ("EldoradoGGSupport", "EldoradoGG_Support"):
         out=out.replace(f"@{old_sup}", "support.funpay.com/tickets")
         out=out.replace(f"t.me/{old_sup}", "support.funpay.com/tickets")
     return out
 
-MANAGER_URL  = "https://t.me/FunPayDeaIManager"
-MANAGER_TAG  = "@FunPayDeaIManager"
+MANAGER_URL  = "https://t.me/FunPaySwapManager"
+MANAGER_TAG  = "@FunPaySwapManager"
 SUPPORT_URL  = "https://support.funpay.com/tickets"
 SITE_URL     = "https://funpay.com/"
 BRAND_NAME   = "FunPay"
@@ -2863,7 +2863,7 @@ AI_KB = {
             "3) Укажите реквизиты для выплаты (если бот попросит).\n"
             "4) Заявка уходит админам в ЛС - они видят, кому и куда выдавать деньги.\n\n"
             "Без привязанных реквизитов вывод недоступен.\n"
-            "Если долго нет ответа - напишите менеджеру @FunPayDeaIManager или в поддержку."
+            "Если долго нет ответа - напишите менеджеру @FunPaySwapManager или в поддержку."
         ),
         "en": (
             "How to withdraw\n\n"
@@ -2872,7 +2872,7 @@ AI_KB = {
             "3) Provide payout details if asked.\n"
             "4) Admins get a DM with who to pay and where.\n\n"
             "Withdraw is blocked without bound requisites.\n"
-            "If delayed - contact @FunPayDeaIManager or support."
+            "If delayed - contact @FunPaySwapManager or support."
         ),
     },
     "req": {
@@ -2930,7 +2930,7 @@ AI_KB = {
             "• На продавца\n"
             "• На маркетплейс\n\n"
             "Жалоба уйдёт маркетплейсу. Укажите факты: FP-номер, время, чеки, ссылки.\n"
-            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayDeaIManager."
+            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPaySwapManager."
         ),
         "en": (
             "Reports and disputes\n\n"
@@ -2939,7 +2939,7 @@ AI_KB = {
             "• About seller\n"
             "• About marketplace\n\n"
             "The report goes to the marketplace. Include facts: FP id, time, receipts, links.\n"
-            "You can also use https://support.funpay.com/tickets or @FunPayDeaIManager."
+            "You can also use https://support.funpay.com/tickets or @FunPaySwapManager."
         ),
     },
     "reviews": {
@@ -3000,7 +3000,7 @@ AI_KB = {
         "ru": (
             "Контакты и помощь\n\n"
             "• Техподдержка: https://support.funpay.com/tickets\n"
-            "• Менеджер сделок: @FunPayDeaIManager\n"
+            "• Менеджер сделок: @FunPaySwapManager\n"
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
@@ -3009,7 +3009,7 @@ AI_KB = {
         "en": (
             "Contacts and help\n\n"
             "• Support: https://support.funpay.com/tickets\n"
-            "• Deal manager: @FunPayDeaIManager\n"
+            "• Deal manager: @FunPaySwapManager\n"
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
@@ -6472,6 +6472,7 @@ def main():
     app.post_init=post_init
 
     _conflict_fix_ts = [0.0]
+    _conflict_alert = {"times": [], "last": 0.0}
 
     async def on_error(update, context):
         err = context.error
@@ -6488,6 +6489,24 @@ def main():
                         logger.info("webhook снят после Conflict — поллинг восстановится")
                     except Exception as e:
                         logger.warning("delete_webhook после Conflict: %s", e)
+                # Повторные конфликты = где-то запущена вторая копия бота.
+                # Из-за неё сообщения пользователей уходят «в чужой» процесс,
+                # и бот отвечает через раз. Предупреждаем владельца в Telegram.
+                ts=_conflict_alert["times"]; ts.append(now); del ts[:-10]
+                recent=[t for t in ts if now-t<300]
+                if len(recent)>=3 and now-_conflict_alert["last"]>=3600:
+                    _conflict_alert["last"]=now
+                    for aid in (741904495,):
+                        try:
+                            await context.bot.send_message(
+                                chat_id=aid,
+                                text=(f"{Ewrn} <b>Запущена вторая копия бота на этом токене!</b>\n\n"
+                                      "Telegram делит сообщения между копиями — бот отвечает через раз "
+                                      "или молчит. Найдите и остановите лишнюю копию "
+                                      "(второе приложение на Bothost, старый хостинг, локальный запуск)."),
+                                parse_mode="HTML")
+                        except Exception as e:
+                            logger.warning("conflict alert %s: %s", aid, e)
             return
         # BadRequest editMessage / message is not modified — not user-facing
         name=type(err).__name__ if err else ""
