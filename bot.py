@@ -42,12 +42,35 @@ _BOT_TOKEN_REVOKED = {
     "8218941253:AAFkBsv_tcN6iirsxBQSPjfFnVRoH5MZzMQ",
     "8218941253:AAHYkuq-LhNPR-L7Ve8kx5-4ZVF8fXgIL8E",
 }
-_tok = (os.getenv("BOT_TOKEN") or "").strip()
-if _tok and _tok != _BOT_TOKEN_DEFAULT:
-    logger.warning("Ignoring stale BOT_TOKEN env (...%s)", _tok[-8:])
-BOT_TOKEN = _BOT_TOKEN_DEFAULT
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
 BOT_USERNAME = "FunPayDealsOTCRobot"
+
+def _env_token_is_ours(tok: str) -> bool:
+    """getMe: env-токен принимаем только если это токен @FunPayDealsOTCRobot.
+
+    Нужно для ротации токена без правки кода: перевыпустили в @BotFather,
+    прописали в env BOT_TOKEN — и бот подхватит его сам. Чужие/мертвые
+    токены игнорируем, чтобы случайно не запуститься не тем ботом.
+    """
+    try:
+        import urllib.request
+        with urllib.request.urlopen(
+            f"https://api.telegram.org/bot{tok}/getMe", timeout=10
+        ) as r:
+            info = json.loads(r.read().decode("utf-8"))
+        return bool(info.get("ok")) and (info.get("result") or {}).get("username") == BOT_USERNAME
+    except Exception as e:
+        logger.warning("BOT_TOKEN env getMe check failed: %s", e)
+        return False
+
+_tok = (os.getenv("BOT_TOKEN") or "").strip()
+if _tok and _tok != _BOT_TOKEN_DEFAULT and _tok not in _BOT_TOKEN_REVOKED and _env_token_is_ours(_tok):
+    BOT_TOKEN = _tok
+    logger.info("Using BOT_TOKEN from env (...%s)", _tok[-8:])
+else:
+    if _tok and _tok != _BOT_TOKEN_DEFAULT:
+        logger.warning("Ignoring foreign/invalid BOT_TOKEN env (...%s)", _tok[-8:])
+    BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
     """Старые юзы → актуальный  @FunPayDealsOTCRobot."""
@@ -208,6 +231,17 @@ def _resolve_bot_mode() -> str:
     if _is_render_runtime() and os.getenv("PORT") and wh_base:
         return "webhook"
     return "polling"
+
+def _is_miniapp_only() -> bool:
+    """Инстанс только раздаёт Mini App + /health; апдейты Telegram получает другой хост.
+
+    Токен один на всех — getUpdates/setWebhook может держать ровно один процесс,
+    иначе бесконечный 409 Conflict. Render с BOT_MODE=miniapp бота не запускает.
+    """
+    v = (os.getenv("BOT_MODE") or "").strip().lower()
+    if v in ("miniapp", "miniapp-only", "miniapp_only", "static", "http"):
+        return True
+    return (os.getenv("DISABLE_BOT") or "").strip().lower() in ("1", "true", "yes", "on")
 
 def reviews_miniapp_url() -> str:
     """Reviews Mini App — отдаётся самим ботом с Render (/index.html)."""
@@ -6383,6 +6417,18 @@ def main():
 
     start_reviews_http_server()
 
+    if _is_miniapp_only():
+        logger.info(
+            "BOT_MODE=miniapp — Telegram-бот на этом инстансе выключен, "
+            "только Mini App + /health (апдейты получает другой хост)"
+        )
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        return
+
     app=Application.builder().token(BOT_TOKEN).concurrent_updates(True).build()
     use_webhook = _resolve_bot_mode() == "webhook"
     wh_base = _webhook_base_url()
@@ -6415,10 +6461,23 @@ def main():
                 logger.warning("delete_webhook: %s", e)
     app.post_init=post_init
 
+    _conflict_fix_ts = [0.0]
+
     async def on_error(update, context):
         err = context.error
         if isinstance(err, Conflict):
             logger.warning("getUpdates conflict — другой инстанс ещё жив. Не останавливаемся, Telegram отдаст очередь этому процессу.")
+            # Если другой деплой успел поставить webhook (409 «webhook is active»),
+            # поллинг сам не оживёт — снимаем webhook, не чаще раза в минуту.
+            if not use_webhook:
+                now = time.monotonic()
+                if now - _conflict_fix_ts[0] >= 60:
+                    _conflict_fix_ts[0] = now
+                    try:
+                        await context.bot.delete_webhook(drop_pending_updates=False)
+                        logger.info("webhook снят после Conflict — поллинг восстановится")
+                    except Exception as e:
+                        logger.warning("delete_webhook после Conflict: %s", e)
             return
         # BadRequest editMessage / message is not modified — not user-facing
         name=type(err).__name__ if err else ""
