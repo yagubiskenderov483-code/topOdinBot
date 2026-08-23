@@ -209,6 +209,17 @@ def _resolve_bot_mode() -> str:
         return "webhook"
     return "polling"
 
+def _is_miniapp_only() -> bool:
+    """Инстанс только раздаёт Mini App + /health; апдейты Telegram получает другой хост.
+
+    Токен один на всех — getUpdates/setWebhook может держать ровно один процесс,
+    иначе бесконечный 409 Conflict. Render с BOT_MODE=miniapp бота не запускает.
+    """
+    v = (os.getenv("BOT_MODE") or "").strip().lower()
+    if v in ("miniapp", "miniapp-only", "miniapp_only", "static", "http"):
+        return True
+    return (os.getenv("DISABLE_BOT") or "").strip().lower() in ("1", "true", "yes", "on")
+
 def reviews_miniapp_url() -> str:
     """Reviews Mini App — отдаётся самим ботом с Render (/index.html)."""
     env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
@@ -6383,6 +6394,18 @@ def main():
 
     start_reviews_http_server()
 
+    if _is_miniapp_only():
+        logger.info(
+            "BOT_MODE=miniapp — Telegram-бот на этом инстансе выключен, "
+            "только Mini App + /health (апдейты получает другой хост)"
+        )
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        return
+
     app=Application.builder().token(BOT_TOKEN).concurrent_updates(True).build()
     use_webhook = _resolve_bot_mode() == "webhook"
     wh_base = _webhook_base_url()
@@ -6415,10 +6438,23 @@ def main():
                 logger.warning("delete_webhook: %s", e)
     app.post_init=post_init
 
+    _conflict_fix_ts = [0.0]
+
     async def on_error(update, context):
         err = context.error
         if isinstance(err, Conflict):
             logger.warning("getUpdates conflict — другой инстанс ещё жив. Не останавливаемся, Telegram отдаст очередь этому процессу.")
+            # Если другой деплой успел поставить webhook (409 «webhook is active»),
+            # поллинг сам не оживёт — снимаем webhook, не чаще раза в минуту.
+            if not use_webhook:
+                now = time.monotonic()
+                if now - _conflict_fix_ts[0] >= 60:
+                    _conflict_fix_ts[0] = now
+                    try:
+                        await context.bot.delete_webhook(drop_pending_updates=False)
+                        logger.info("webhook снят после Conflict — поллинг восстановится")
+                    except Exception as e:
+                        logger.warning("delete_webhook после Conflict: %s", e)
             return
         # BadRequest editMessage / message is not modified — not user-facing
         name=type(err).__name__ if err else ""
