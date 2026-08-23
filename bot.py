@@ -1227,7 +1227,7 @@ def load_db():
     except Exception:
         mtime=0.0
     cached=_DB_MEM.get("db")
-    if cached is not None and _DB_MEM.get("mtime")==mtime and (now - _DB_MEM["ts"]) < 3.0:
+    if cached is not None and _DB_MEM.get("mtime")==mtime and (now - _DB_MEM["ts"]) < 8.0:
         return cached
     if os.path.exists(DB_FILE):
         with open(DB_FILE,"r",encoding="utf-8") as f: db=json.load(f)
@@ -1272,6 +1272,9 @@ def save_db(db):
             _BANNER_MEM["ts"]=time.time()
     except Exception:
         pass
+
+async def _save_db_async(db):
+    save_db(db)
 
 def get_user(db, uid):
     k=str(uid)
@@ -1553,6 +1556,9 @@ def _screen_save():
     except Exception:
         pass
 
+async def _screen_save_async():
+    _screen_save()
+
 _screen_load()
 
 def _screen_get(chat_id):
@@ -1565,7 +1571,10 @@ def _screen_set(chat_id, ids):
         _SCREEN_MSGS[cid]=ids
     else:
         _SCREEN_MSGS.pop(cid, None)
-    _screen_save()
+    try:
+        asyncio.get_running_loop().create_task(_screen_save_async())
+    except RuntimeError:
+        _screen_save()
 
 def _old_screen_ids(chat_id, previous_message=None):
     """Banner photo + text of the current screen (incl. leftover after restart)."""
@@ -1652,7 +1661,10 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_
                         if ent.get(key) != new_fid or not ent.get("local"):
                             ent[key] = new_fid
                             ent["local"] = ent.get("local") or ref
-                            save_db(db)
+                            try:
+                                asyncio.get_running_loop().create_task(_save_db_async(db))
+                            except RuntimeError:
+                                save_db(db)
             except Exception as e:
                 logger.warning("banner file_id cache: %s", e)
             return msg
@@ -1751,22 +1763,27 @@ async def send_section(update, text, kb=None, section="main", fallback_section=N
                               msg.animation.file_id if msg.animation else
                               msg.photo[-1].file_id if msg.photo else None)
                 target_file=bv or bg or bp
+                target_fid=target_file if isinstance(target_file, str) and target_file and not os.path.isfile(target_file) else None
+                if current_file and target_fid and current_file==target_fid and await _safe_edit_caption(msg, full, kb):
+                    _screen_set(cid, [msg.message_id])
+                    return
                 if isinstance(target_file, str) and current_file==target_file and await _safe_edit_caption(msg, full, kb):
                     _screen_set(cid, [msg.message_id])
                     return
             previous_message=msg
+        old=_old_screen_ids(cid, previous_message) if previous_message else _screen_get(cid)
+        if old:
+            bot_pre=None
+            if previous_message:
+                try: bot_pre=previous_message.get_bot()
+                except Exception: bot_pre=None
+            await _wipe_ids(chat, old, bot=bot_pre)
         sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
         new_ids=[]
         if sent:
             try: new_ids.append(sent.message_id)
             except Exception: pass
-        old=_old_screen_ids(cid, previous_message)
         _screen_set(cid, new_ids)
-        bot=None
-        if previous_message:
-            try: bot=previous_message.get_bot()
-            except Exception: bot=None
-        await _wipe_ids(chat, old, bot=bot)
     except Exception as e:
         logger.error(f"send_section: {e}", exc_info=True)
         try:
@@ -1780,18 +1797,19 @@ async def send_new(update, text, kb=None, section="main"):
         bv, bg, bp, local_fb, full = _section_media(section, text, fallback_section=fb)
         chat=update.effective_chat
         previous_message=update.callback_query.message if update.callback_query else None
+        old=_old_screen_ids(chat.id, previous_message) if previous_message else _screen_get(chat.id)
+        if old:
+            bot_pre=None
+            if previous_message:
+                try: bot_pre=previous_message.get_bot()
+                except Exception: bot_pre=None
+            await _wipe_ids(chat, old, bot=bot_pre)
         sent=await _safe_send_chat(chat, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section)
         new_ids=[]
         if sent:
             try: new_ids.append(sent.message_id)
             except Exception: pass
-        old=_old_screen_ids(chat.id, previous_message)
         _screen_set(chat.id, new_ids)
-        bot=None
-        if previous_message:
-            try: bot=previous_message.get_bot()
-            except Exception: bot=None
-        await _wipe_ids(chat, old, bot=bot)
     except Exception as e:
         logger.error(f"send_new: {e}")
         try: await _safe_send_chat(update.effective_chat, text, kb, section=section)
@@ -4703,7 +4721,14 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         parse_mode="HTML", reply_markup=kb)
                     edited=True
                 except Exception:
-                    edited=False
+                    try:
+                        await context.bot.edit_message_caption(
+                            chat_id=chat_id, message_id=last,
+                            caption=_tg_caption(t2, has_media=True),
+                            parse_mode="HTML", reply_markup=kb)
+                        edited=True
+                    except Exception:
+                        edited=False
             # drop user's text in background (don't wait)
             async def _del_user():
                 try: await update.message.delete()
@@ -5379,26 +5404,31 @@ async def show_my_deals(update, context):
 
 async def show_top(update, context):
     try:
-        lang=get_lang(update.effective_user.id); ru=lang=="ru"
+        lang=get_lang(update.effective_user.id)
         TOP=[
-            ("@xK7***q2",13000,312),("@vR3***p9",11800,286),("@mZ8***t4",10400,251),
-            ("@qL2***k7",9200,224),("@hT5***n1",8100,197),("@bW9***x3",6900,165),
-            ("@jD4***m6",5700,139),("@yF1***c8",4500,108),("@nP6***z2",3200,76),("@cG3***v5",2100,48)
+            ("@xK7xq2",13000,312),("@vR3xp9",11800,286),("@mZ8xt4",10400,251),
+            ("@qL2xk7",9200,224),("@hT5xn1",8100,197),("@bW9xx3",6900,165),
+            ("@jD4xm6",5700,139),("@yF1xc8",4500,108),("@nP6xz2",3200,76),("@cG3xv5",2100,48),
+            ("@rT9xw1",1850,42),("@pK2xv8",1620,38),("@wN5xq4",1410,33),
+            ("@zH7xm9",1200,28),("@fL3xp6",980,22),("@gM6xk3",760,17),
         ]
         PLACE_EMOJI=[
             "5805553606635559688","5794085322400733645","5794280000383358988",
             "5794241397217304511","5793985348446984682","5794324702402976226",
             "5793942849745591465","5793926687783655907","5793979472931723221",
             "5794375786743995258",
+            "5794241397217304511","5793985348446984682","5794324702402976226",
+            "5793942849745591465","5793926687783655907",
         ]
-        PLACE_FB=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
+        PLACE_FB=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟",
+                  "11","12","13","14","15"]
         dw=L(lang,"сделок","deals")
-        lines=[f"{Ecwn} <b>{L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
+        lines=[f"<b>{Ecwn} {L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
         for i,(u2,a,dd) in enumerate(TOP):
-            place=ce(PLACE_EMOJI[i], PLACE_FB[i])
-            lines.append(f"{place} <b>{u2}</b> - ${a} · {dd} {dw}")
+            place=ce(PLACE_EMOJI[i], PLACE_FB[i]) if i < len(PLACE_EMOJI) else f"<b>{i+1}.</b>"
+            lines.append(f"<b>{place} {u2} — ${a} · {dd} {dw}</b>")
         lines.append("")
-        lines.append(f"{CF} <b>{L(lang,'132 584 сделок · оборот $1 346 582','132,584 deals · $1,346,582 turnover')}</b>")
+        lines.append(f"<b>{L(lang,'132 584 сделок · оборот $1 346 582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
             InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="top")
     except Exception as e: logger.error(f"show_top: {e}")
