@@ -1,7 +1,7 @@
 {
   "banners": {
     "main": {
-      "photo": null,
+      "photo": "AgACAgEAAxkDAAMtaospIG5H5WejSc9BKe4LJwp9uE4AAvINaxvC-llENC1GCC94npEBAAMCAAN4AAM9BA",
       "video": null,
       "gif": null,
       "text": "",
@@ -22,28 +22,28 @@
       "local": "banner_assets/balance.jpg"
     },
     "profile": {
-      "photo": null,
+      "photo": "AgACAgEAAxkDAANSaosuiiZZpTsAAROOeReUzduHea6FAAJKDWsbe81YRO36NM5hQ-GbAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/profile.jpg"
     },
     "req": {
-      "photo": null,
+      "photo": "AgACAgEAAxkDAANEaosp_V15bzicyAzhav3G3d8IigwAAkANaxt7zVhEOKQkxsIVVhcBAAMCAAN5AAM9BA",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/req.jpg"
     },
     "top": {
-      "photo": null,
+      "photo": "AgACAgEAAxkDAAMuaospJJVeTnkRYJhlrjTNGW6Ax6AAAvMNaxvC-llEW3C1q4MMFW0BAAMCAAN5AAM9BA",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/top.jpg"
     },
     "my_deals": {
-      "photo": null,
+      "photo": "AgACAgEAAxkDAANbaosxsG5gB9gJnEVLEClk5oYbplQAAkwNaxt7zVhESxjgt43XeyABAAMCAAN5AAM9BA",
       "video": null,
       "gif": null,
       "text": "",
@@ -97,9 +97,51 @@
       "gif": null,
       "text": "",
       "local": "banner_assets/ref.jpg"
+    },
+    "topup": {
+      "photo": "AgACAgUAAxkBAANVaosvl_ZpiLHQP4cajEKpRJSOqPIAAtUTaxvN7llUTgAB9t2AaH5sAQADAgADeQADPQQ",
+      "video": null,
+      "gif": null,
+      "text": ""
+    },
+    "withdraw": {
+      "photo": "AgACAgUAAxkBAANXaoswYK8hq8HvL8m5Tp6ytauHquAAAtYTaxvN7llUc-xQjQ_eFe8BAAMCAAN5AAM9BA",
+      "video": null,
+      "gif": null,
+      "text": ""
+    },
+    "withdraw_no_funds": {
+      "photo": "AgACAgUAAxkBAANeaoszGziPMpiBf97PCo5cQaISD70AAtgTaxvN7llUWAsR3_0qVqgBAAMCAAN5AAM9BA",
+      "video": null,
+      "gif": null,
+      "text": ""
+    },
+    "req_card": {
+      "photo": "AgACAgUAAxkBAANlaos2v6NWmplIKpab8g4xRuFWIWUAAuMTaxvN7llUT-H7jWhuzpwBAAMCAAN5AAM9BA",
+      "video": null,
+      "gif": null,
+      "text": ""
+    },
+    "req_ton": {
+      "photo": "AgACAgUAAxkBAANnaos3yR0YBZrpv3iFt4_ErRW4XpoAAuUTaxvN7llUhQ89-iSEQIUBAAMCAAN5AAM9BA",
+      "video": null,
+      "gif": null,
+      "text": ""
+    },
+    "req_stars": {
+      "photo": "AgACAgUAAxkBAANraos51mG9geeW9Xqum2tH5Ig2rGAAAuoTaxvN7llUeGOZdWZAeWIBAAMCAAN5AAM9BA",
+      "video": null,
+      "gif": null,
+      "text": ""
+    },
+    "lang": {
+      "photo": "AgACAgUAAxkBAANpaos5bVfqNvm4s4yCsZ1trLQsigoAAukTaxvN7llUGGJJmH-Ka_IBAAMCAAN5AAM9BA",
+      "video": null,
+      "gif": null,
+      "text": ""
     }
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-13T23:57:43Z"
+  "updated_at": "2026-08-23T18:20:12Z"
 }
