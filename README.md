@@ -23,7 +23,7 @@
 ## Бот
 
 - Бот: **@FunPaySwapOTCRobot**
-- Менеджер: **@FunPayDeaIManager**
+- Менеджер: **@FunPaySwapManager**
 - Mini App (отзывы + Tonkeeper): тот же Render-сервис
 
 Токен зашит в `bot.py`. На Render — **webhook**, на Bothost — **polling** (авто).
