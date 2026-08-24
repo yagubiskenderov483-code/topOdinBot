@@ -1383,7 +1383,7 @@ async def resume_after_requisite_saved(update, context, uid, lang, u=None, notif
     chat=update.effective_chat
     if notify and chat:
         await chat.send_message(
-            f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {L(lang,'Реквизиты привязаны!','Requisites bound!')}</b>",
+            f"<tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> <b>{L(lang,'Реквизиты привязаны!','Requisites bound!')}</b>",
             parse_mode="HTML")
 
     if ud.pop("req_after_buyer_deal",None):
@@ -1417,7 +1417,7 @@ async def resume_after_requisite_saved(update, context, uid, lang, u=None, notif
                 f"<tg-emoji emoji-id='5879841310902324730'>✏️</tg-emoji> <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
                 parse_mode="HTML",reply_markup=role_kb(lang)); return
         await chat.send_message(
-            f"<b><tg-emoji emoji-id='5258216851472654189'>💡</tg-emoji> {L(lang,'Выберите тип сделки','Choose deal type')}</b>",
+            f"<tg-emoji emoji-id='5258216851472654189'>💡</tg-emoji> <b>{L(lang,'Выберите тип сделки','Choose deal type')}</b>",
             parse_mode="HTML",reply_markup=types_kb(lang)); return
 
     pending=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
@@ -1618,8 +1618,15 @@ def _tg_caption(text, has_media=False):
     """Telegram: 1024 for media captions, 4096 for text messages."""
     lim=1024 if has_media else 4096
     t=str(text or "")
-    if len(t)<=lim: return t
-    return t[: lim-1] + "…"
+    # Telegram applies the limit to visible text, not to HTML source. Counting
+    # tags made premium <tg-emoji> screens look too long and cut them in the
+    # middle of a tag, so Telegram rejected the banner caption completely.
+    visible=html.unescape(_strip_html_tags(t))
+    if len(visible)<=lim:
+        return t
+    # If the visible text is genuinely too long, return safe plain HTML rather
+    # than an invalid fragment with unclosed formatting/custom-emoji tags.
+    return H(visible[:lim-1])+"…"
 
 # chat_id -> all message ids of the current UI (banner photo + text).
 # Long screens (Top Sellers, My Deals, …) are two messages; both must go together.
@@ -2377,9 +2384,9 @@ def get_welcome(lang):
         footer="Выберите действие ниже"
         stats="132 584 сделок · оборот $1 346 582"
     nums=[En1,En2,En3,En4]
-    lines="\n".join(f"<blockquote><b>{nums[i]} {pts[i]}.</b></blockquote>" for i in range(4))
+    lines="\n".join(f"<blockquote>{nums[i]} <b>{pts[i]}.</b></blockquote>" for i in range(4))
     return (f"{Ecwn} <b>{intro}</b>\n\n{lines}\n\n"
-            f"<blockquote><b>{CF} {stats}</b></blockquote>\n\n"
+            f"<blockquote>{CF} <b>{stats}</b></blockquote>\n\n"
             f"{CR} <b>{footer}</b>")
 
 
@@ -2501,7 +2508,10 @@ def deal_participant_roles(deal):
 def review_stars_kb(deal_id, role):
     """role: 's' — отзыв оставляет продавец (о покупателе), 'b' — покупатель (о продавце)."""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"{i}★", callback_data=f"rev_{deal_id}_{role}_{i}") for i in range(1, 6)]
+        [InlineKeyboardButton(
+            str(i), callback_data=f"rev_{deal_id}_{role}_{i}",
+            icon_custom_emoji_id="5321485469249198987",
+        ) for i in range(1, 6)]
     ])
 
 def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_creator=False):
@@ -5268,7 +5278,7 @@ async def show_lang(update, context):
             [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
         ]
         await send_section(update,
-            f"<b>{ce('5447410659077661506','🌐')} {T(lang,'Выберите язык:','Select language:','Оберіть мову:')}</b>",
+            f"{ce('5447410659077661506','🌐')} <b>{T(lang,'Выберите язык:','Select language:','Оберіть мову:')}</b>",
             InlineKeyboardMarkup(rows),section="lang",fallback_section="main")
     except Exception as e: logger.error(f"show_lang: {e}")
 
@@ -5433,20 +5443,26 @@ async def show_top(update, context):
             "5794241397217304511","5793985348446984682","5794324702402976226",
             "5793942849745591465","5793926687783655907","5793979472931723221",
             "5794375786743995258",
-            "5794241397217304511","5793985348446984682","5794324702402976226",
-            "5793942849745591465","5793926687783655907",
         ]
-        PLACE_FB=["1","2","3","4","5","6","7","8","9","10",
-                  "11","12","13","14","15"]
+        # Telegram requires a real emoji inside <tg-emoji>. These are hidden
+        # fallbacks; the visible entity is the premium custom emoji by ID.
+        PLACE_FB=["👑","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
+        EXTRA_PLACE_ID="5188344996356448758"
         dw=L(lang,"сделок","deals")
         lines=[f"{E['top_medal']} <b>{L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
-        for i,(u2,a,dd) in enumerate(TOP):
-            place=ce(PLACE_EMOJI[i], PLACE_FB[i]) if i < len(PLACE_EMOJI) else f"{i+1}."
-            lines.append(f"{place} <b>{u2} — ${a} · {dd} {dw}</b>")
+        for i,(u2,a,dd) in enumerate(TOP[:15]):
+            if i < len(PLACE_FB):
+                place=ce(PLACE_EMOJI[i], PLACE_FB[i])
+                rank_text=""
+            else:
+                place=ce(EXTRA_PLACE_ID, "🏆")
+                rank_text=f"{i+1}. "
+            lines.append(f"{place} <b>{rank_text}{u2} — ${a} · {dd} {dw}</b>")
         lines.append("")
         lines.append(f"<b>{L(lang,'132 584 сделок · оборот $1 346 582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
-            InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="top")
+            InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),
+            section="top",fallback_section="main")
     except Exception as e: logger.error(f"show_top: {e}")
 
 
