@@ -26,7 +26,8 @@
 - Менеджер: **@FunPaySwapManager**
 - Mini App (отзывы + Tonkeeper): тот же Render-сервис
 
-Токен зашит в `bot.py`. На Render — **webhook**, на Bothost — **polling** (авто).
+Токен задаётся через `BOT_TOKEN` (значение по умолчанию есть в `bot.py`).
+Render работает только как Mini App + `/health`, а Telegram-бот использует **polling** на Bothost.
 
 **Не запускайте Bothost и Render одновременно** — `/start` перестанет работать.
 
@@ -51,7 +52,7 @@ bash scripts/render_smoke_test.sh
 | URL | Назначение |
 |-----|------------|
 | `/health` | health check |
-| `/telegram` | Telegram webhook |
+| `/telegram` | Зарезервированный webhook-мост (не используется при схеме Bothost polling) |
 | `/index.html` | Mini App «Отзывы» |
 | `/tonconnect.html` | привязка Tonkeeper |
 | `/api/bind-ton` | сохранение TON-кошелька |

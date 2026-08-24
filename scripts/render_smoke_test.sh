@@ -10,12 +10,13 @@ echo "== miniapp build =="
 python3 miniapp/build.py
 
 echo "== render mode check =="
-RENDER=true PORT=10000 RENDER_EXTERNAL_URL=https://funpay-saving-bot.onrender.com USE_WEBHOOK=1 python3 - <<'PY'
+RENDER=true PORT=10000 RENDER_EXTERNAL_URL=https://funpay-saving-bot.onrender.com BOT_MODE=miniapp USE_WEBHOOK=0 python3 - <<'PY'
 import os, importlib, bot
 importlib.reload(bot)
-assert bot._resolve_bot_mode() == "webhook"
+assert bot._is_miniapp_only()
 assert bot.reviews_miniapp_url().endswith("/index.html")
-print("webhook mode OK, reviews:", bot.reviews_miniapp_url())
+assert bot._resolve_bot_mode() == "polling"
+print("miniapp-only mode OK, reviews:", bot.reviews_miniapp_url())
 PY
 
 echo "== HTTP smoke =="
