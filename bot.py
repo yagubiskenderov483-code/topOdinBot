@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Бот @FunPaySwapOTCRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
 # только если getMe подтверждает, что это токен этого же бота.
-_BOT_TOKEN_DEFAULT = "8825086741:AAEEwRymwBjht7Hk4VqPwZwvhX2UYo8rWMQ"
+_BOT_TOKEN_DEFAULT = "8825086741:AAEWGI63dGUoP7SvFTUeNOuMaJNJOx_rMss"
 _BOT_TOKEN_REVOKED = {
     "8825086741:AAGposquJRRHcGNaDAdE2mSexGsdFlkF97k",
     "8952988329:AAFBfplvCDpTQxWTRvX5O54qF_THUZJdrvo",
