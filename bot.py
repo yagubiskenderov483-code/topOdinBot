@@ -5435,8 +5435,6 @@ async def show_top(update, context):
             ("@xK7xq2",13000,312),("@vR3xp9",11800,286),("@mZ8xt4",10400,251),
             ("@qL2xk7",9200,224),("@hT5xn1",8100,197),("@bW9xx3",6900,165),
             ("@jD4xm6",5700,139),("@yF1xc8",4500,108),("@nP6xz2",3200,76),("@cG3xv5",2100,48),
-            ("@rT9xw1",1850,42),("@pK2xv8",1620,38),("@wN5xq4",1410,33),
-            ("@zH7xm9",1200,28),("@fL3xp6",980,22),("@gM6xk3",760,17),
         ]
         PLACE_EMOJI=[
             "5805553606635559688","5794085322400733645","5794280000383358988",
@@ -5447,17 +5445,11 @@ async def show_top(update, context):
         # Telegram requires a real emoji inside <tg-emoji>. These are hidden
         # fallbacks; the visible entity is the premium custom emoji by ID.
         PLACE_FB=["👑","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"]
-        EXTRA_PLACE_ID="5188344996356448758"
         dw=L(lang,"сделок","deals")
-        lines=[f"{E['top_medal']} <b>{L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
-        for i,(u2,a,dd) in enumerate(TOP[:15]):
-            if i < len(PLACE_FB):
-                place=ce(PLACE_EMOJI[i], PLACE_FB[i])
-                rank_text=""
-            else:
-                place=ce(EXTRA_PLACE_ID, "🏆")
-                rank_text=f"{i+1}. "
-            lines.append(f"{place} <b>{rank_text}{u2} — ${a} · {dd} {dw}</b>")
+        lines=[f"<b>{L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
+        for i,(u2,a,dd) in enumerate(TOP):
+            place=ce(PLACE_EMOJI[i], PLACE_FB[i])
+            lines.append(f"{place} <b>{u2} — ${a} · {dd} {dw}</b>")
         lines.append("")
         lines.append(f"<b>{L(lang,'132 584 сделок · оборот $1 346 582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
