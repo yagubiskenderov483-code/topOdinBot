@@ -3634,7 +3634,12 @@ def format_withdraw_admin_text(req):
     )
 
 def add_withdraw_request(db, uid, username, method, to, amount, balance):
-    wid=f"W{int(time.time())}{str(uid)[-4:]}"
+    wid=f"W{int(time.time()*1000)}{str(uid)[-6:]}"
+    existing={str(w.get("id")) for w in (db.get("withdrawals") or []) if isinstance(w,dict)}
+    suffix=0
+    while wid in existing:
+        suffix+=1
+        wid=f"W{int(time.time()*1000)}{str(uid)[-6:]}{suffix}"
     req={
         "id":wid,"uid":str(uid),"username":username or "","method":method,
         "to":to,"amount":int(amount),"balance":int(balance),

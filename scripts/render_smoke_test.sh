@@ -20,7 +20,7 @@ print("miniapp-only mode OK, reviews:", bot.reviews_miniapp_url())
 PY
 
 echo "== HTTP smoke =="
-PORT=8765 RENDER=true RENDER_EXTERNAL_URL=http://127.0.0.1:8765 USE_WEBHOOK=0 RENDER_KEEPALIVE=0 DATA_DIR=/tmp/funpay-render-test python3 bot.py &
+PORT=8765 RENDER=true RENDER_EXTERNAL_URL=http://127.0.0.1:8765 BOT_MODE=miniapp USE_WEBHOOK=0 RENDER_KEEPALIVE=0 DATA_DIR=/tmp/funpay-render-test python3 bot.py &
 PID=$!
 sleep 5
 curl -sf "http://127.0.0.1:8765/health" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('ok'); print('health OK', d.get('bot'))"
