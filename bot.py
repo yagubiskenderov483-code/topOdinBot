@@ -1,4 +1,4 @@
-import logging, json, os, math, html, time, re, asyncio, sys
+import logging, json, os, math, html, time, re, asyncio, sys, threading
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Бот @FunPaySwapOTCRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
 # только если getMe подтверждает, что это токен этого же бота.
-_BOT_TOKEN_DEFAULT = "8825086741:AAEWGI63dGUoP7SvFTUeNOuMaJNJOx_rMss"
+_BOT_TOKEN_DEFAULT = "8825086741:AAGlCJoyZpOSOFLu-QUckGvgfWQ5KShai7g"
 _BOT_TOKEN_REVOKED = {
     "8825086741:AAGposquJRRHcGNaDAdE2mSexGsdFlkF97k",
     "8952988329:AAFBfplvCDpTQxWTRvX5O54qF_THUZJdrvo",
@@ -726,7 +726,9 @@ def T(lang, ru, en, uk=None):
 def L(lang, ru, en, uk=None):
     return T(lang, ru, en, uk)
 
-BALANCE_UNIT = {"ru": "RUB", "en": "USD", "uk": "UAH"}
+# The ledger stores one RUB-denominated balance. A language switch must not
+# silently relabel the same number as USD or UAH.
+BALANCE_UNIT = {"ru": "RUB", "en": "RUB", "uk": "RUB"}
 
 def balance_unit(lang):
     return BALANCE_UNIT.get(lang, "RUB")
@@ -1218,6 +1220,7 @@ async def import_banners_seed_from_document(update, context):
     return True
 
 _DB_MEM = {"db": None, "mtime": None, "ts": 0.0}
+_DB_LOCK = threading.RLock()
 
 def load_db():
     """Fast path: reuse in-memory db between button taps (mtime + short TTL)."""
@@ -1230,9 +1233,10 @@ def load_db():
     if cached is not None and _DB_MEM.get("mtime")==mtime and (now - _DB_MEM["ts"]) < 8.0:
         return cached
     if os.path.exists(DB_FILE):
-        with open(DB_FILE,"r",encoding="utf-8") as f: db=json.load(f)
+        with _DB_LOCK:
+            with open(DB_FILE,"r",encoding="utf-8") as f: db=json.load(f)
     else:
-        db={"users":{},"deals":{},"banner":None,"banner_photo":None,"banner_video":None,
+        db={"users":{},"deals":{},"topups":[],"banner":None,"banner_photo":None,"banner_video":None,
             "banner_gif":None,"menu_description":None,"deal_counter":DEAL_COUNTER_START,"banners":{},
             "logs":[],"log_chat_id":None,"log_hidden":False,"log_templates":{},"log_banners":{},"extra_group_id":None}
     try:
@@ -1251,13 +1255,14 @@ def save_db(db):
     except Exception:
         pass
     tmp=DB_FILE+".tmp"
-    try:
-        with open(tmp,"w",encoding="utf-8") as f:
-            json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
-        os.replace(tmp, DB_FILE)
-    except Exception:
-        with open(DB_FILE,"w",encoding="utf-8") as f:
-            json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
+    with _DB_LOCK:
+        try:
+            with open(tmp,"w",encoding="utf-8") as f:
+                json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
+            os.replace(tmp, DB_FILE)
+        except Exception:
+            with open(DB_FILE,"w",encoding="utf-8") as f:
+                json.dump(db, f, ensure_ascii=False, separators=(",", ":"))
     try:
         _DB_MEM["db"]=db
         _DB_MEM["mtime"]=os.path.getmtime(DB_FILE)
@@ -2344,7 +2349,7 @@ def validate_nft_link(text, dtype):
     if dtype=="nft":
         if not path.startswith("nft/"): return False,"wrong_nft"
         slug=path[4:].strip("/")
-        if len(slug)<2 or not re.search(r"[a-zA-Z0-9]", slug): return False,"wrong_nft"
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{1,127}", slug): return False,"wrong_nft"
     elif dtype=="username":
         uname=path.strip("/")
         if len(uname)<4: return False,"wrong_usr"
@@ -2398,9 +2403,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         dd=d.get("data",{}); creator_role=d.get("creator_role","seller")
 
         if dtype=="nft":
-            item=f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> {dd.get('nft_link','-')}"
+            item=f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> {H(dd.get('nft_link','-'))}"
         elif dtype=="username":
-            item=f"\n<b>Username:</b> {dd.get('trade_username','-')}"
+            item=f"\n<b>Username:</b> {H(dd.get('trade_username','-'))}"
         elif dtype=="stars":
             stars_lbl = T(lang,"Кол-во звёзд для продажи","Stars for sale","Кількість зірок для продажу") if creator_role=="seller" else T(lang,"Кол-во звёзд для покупки","Stars for purchase","Кількість зірок для покупки")
             item=f"\n<b>{stars_lbl}:</b> <b>{dd.get('stars_count','-')}</b>"
@@ -3642,6 +3647,33 @@ def add_withdraw_request(db, uid, username, method, to, amount, balance):
     save_db(db)
     return req
 
+def normalize_topup_amount(value):
+    try:
+        amount=Decimal(str(value).replace(" ","").replace(",","."))
+        if not amount.is_finite() or amount<=0 or amount>Decimal("1000000000000"):
+            return None
+        if amount==amount.to_integral_value():
+            return int(amount)
+        return float(amount)
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+
+def add_topup_request(db, uid, username, method, amount, payment_ref):
+    """Persist a top-up before notifying admins so confirmation has its amount."""
+    topup_id=f"T{int(time.time()*1000)}{str(uid)[-6:]}"
+    topups=db.setdefault("topups",[])
+    while any(str(x.get("id"))==topup_id for x in topups if isinstance(x,dict)):
+        topup_id=f"T{int(time.time()*1000)}{str(uid)[-6:]}{len(topups)}"
+    req={
+        "id":topup_id,"uid":str(uid),"username":username or "",
+        "method":method,"amount":amount,"payment_ref":payment_ref or "",
+        "status":"pending","ts":datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    topups.append(req)
+    db["topups"]=topups[-500:]
+    save_db(db)
+    return req
+
 def list_bound_wallets(db, kind="all", limit=30):
     """Пользователи с привязанными реквизитами для админки."""
     rows=[]
@@ -3757,8 +3789,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{L(lang,'В эту сделку уже присоединился другой участник.','Another participant has already joined this deal.')}</b>",
                     parse_mode="HTML")
                 await show_main(update,context); return
-            # Compare usernames only when the joiner has a username set
-            if not bound_partner and partner_uname and my_uname and my_uname!=partner_uname:
+            # A deal addressed to a username must not be claimable by an
+            # account without that username.
+            if not bound_partner and partner_uname and my_uname!=partner_uname:
                 await update.effective_message.reply_text(
                     f"{Ewrn} <b>{L(lang,'Эта сделка предназначена для другого пользователя.','This deal is intended for another user.')}</b>",
                     parse_mode="HTML")
@@ -3797,6 +3830,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message: return
+        if update.effective_user.id not in ADMIN_IDS: return
         lang=get_lang(update.effective_user.id); ru=lang=="ru"
         text=(
             f"{Ecwn} <b>{L(lang,'FunPay - Команды','FunPay - Commands')}</b>\n\n"
@@ -3822,11 +3856,17 @@ async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_sendbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message: return
+        if update.effective_user.id not in ADMIN_IDS: return
         uid=update.effective_user.id; db=load_db(); u=get_user(db,uid)
         lang=get_lang(uid); args=context.args
         if not args or not args[0].replace(".","",1).isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Пример: /sendbalance 500','Example: /sendbalance 500')}</b>",parse_mode="HTML"); return
-        amt=int(float(args[0])); u["balance"]=u.get("balance",0)+amt; save_db(db)
+        amt=int(float(args[0]))
+        if amt<=0:
+            await update.message.reply_text(
+                f"{Ewrn} <b>{L(lang,'Сумма должна быть больше нуля.','Amount must be greater than zero.')}</b>",
+                parse_mode="HTML"); return
+        u["balance"]=u.get("balance",0)+amt; save_db(db)
         bal_new=u["balance"]
         await update.message.reply_text(
             f"{Ech} <b>{T(lang,f'Баланс пополнен на {fmt_balance(amt, lang)}!',f'Balance topped up by {fmt_balance(amt, lang)}!',f'Баланс поповнено на {fmt_balance(amt, lang)}!')}</b>\n"
@@ -3837,11 +3877,17 @@ async def cmd_sendbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_addrep(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message: return
+        if update.effective_user.id not in ADMIN_IDS: return
         uid=update.effective_user.id; db=load_db(); u=get_user(db,uid)
         lang=get_lang(uid); args=context.args
         if not args or not args[0].lstrip("-").isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Пример: /addrep 100','Example: /addrep 100')}</b>",parse_mode="HTML"); return
-        amt=int(args[0]); u["reputation"]=u.get("reputation",0)+amt; save_db(db)
+        amt=int(args[0])
+        if amt<=0:
+            await update.message.reply_text(
+                f"{Ewrn} <b>{L(lang,'Число должно быть больше нуля.','The number must be greater than zero.')}</b>",
+                parse_mode="HTML"); return
+        u["reputation"]=u.get("reputation",0)+amt; save_db(db)
         rep_new=u["reputation"]
         await update.message.reply_text(f"{Ech} <b>{T(lang,f'Репутация +{amt}!',f'Reputation +{amt}!',f'Репутація +{amt}!')}</b>\n{Etph} <b>{L(lang,'Репутация','Reputation')}: {rep_new}</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_addrep: {e}")
@@ -3849,6 +3895,7 @@ async def cmd_addrep(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_setdeals(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message: return
+        if update.effective_user.id not in ADMIN_IDS: return
         uid=update.effective_user.id; db=load_db(); u=get_user(db,uid)
         lang=get_lang(uid); args=context.args
         if not args or not args[0].isdigit():
@@ -3860,11 +3907,17 @@ async def cmd_setdeals(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_setturnover(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         if not update.message: return
+        if update.effective_user.id not in ADMIN_IDS: return
         uid=update.effective_user.id; db=load_db(); u=get_user(db,uid)
         lang=get_lang(uid); args=context.args
         if not args or not args[0].isdigit():
             await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Пример: /setturnover 15000','Example: /setturnover 15000')}</b>",parse_mode="HTML"); return
-        n=int(args[0]); u["turnover"]=n; save_db(db)
+        n=int(args[0])
+        if n<0:
+            await update.message.reply_text(
+                f"{Ewrn} <b>{L(lang,'Число не может быть отрицательным.','The number cannot be negative.')}</b>",
+                parse_mode="HTML"); return
+        u["turnover"]=n; save_db(db)
         await update.message.reply_text(
             f"{Ech} <b>{T(lang,f'Оборот: {fmt_balance(n, lang)}',f'Turnover: {fmt_balance(n, lang)}',f'Оборот: {fmt_balance(n, lang)}')}</b>",
             parse_mode="HTML")
@@ -3872,6 +3925,7 @@ async def cmd_setturnover(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_add_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        if update.effective_user.id not in ADMIN_IDS: return
         uid=update.effective_user.id; db=load_db(); u=get_user(db,uid)
         lang=get_lang(uid); args=context.args
         if not args:
@@ -4265,6 +4319,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("topup_sent_"):
             method=d[11:]; uname2=update.effective_user.username or str(uid)
             amount=ud.get("topup_amount","-"); payment_ref=ud.get("topup_ref",f"EG-{uid}")
+            amount_value=normalize_topup_amount(amount)
+            if amount_value is None:
+                await q.answer(L(lang,"Сначала укажите корректную сумму.","Enter a valid amount first."),show_alert=True)
+                return
+            topup=add_topup_request(load_db(),uid,uname2,method,amount_value,payment_ref)
             mmap={
                 "stars":L(lang,"Звёзды","Stars"),
                 "rub":L(lang,"Рубли","Rubles"),
@@ -4275,12 +4334,12 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "usdt_tonkeeper":"USDT - Tonkeeper",
             }
             admin_kb=InlineKeyboardMarkup([[
-                InlineKeyboardButton("Пришло",callback_data=f"adm_topup_ok_{uid}",icon_custom_emoji_id="5316827280863934685"),
-                InlineKeyboardButton("Не пришло",callback_data=f"adm_topup_no_{uid}",icon_custom_emoji_id="5904542823167824187"),
+                InlineKeyboardButton("Пришло",callback_data=f"adm_topup_ok_{topup['id']}",icon_custom_emoji_id="5316827280863934685"),
+                InlineKeyboardButton("Не пришло",callback_data=f"adm_topup_no_{topup['id']}",icon_custom_emoji_id="5904542823167824187"),
             ]])
             await notify_admins(context,
                 f"{Ebl} <b>Пополнение - {mmap.get(method,method)}</b>\n"
-                f"{Eu} @{uname2} (<code>{uid}</code>)\n{Emn} Сумма: <b>{amount}</b>\n"
+                f"{Eu} @{uname2} (<code>{uid}</code>)\n{Emn} Сумма: <b>{amount_value}</b>\n"
                 f"{Eln} Комментарий: <code>{payment_ref}</code>",
                 admin_kb)
             try: await q.edit_message_reply_markup(InlineKeyboardMarkup([
@@ -4293,22 +4352,56 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if d.startswith("adm_topup_ok_"):
             if update.effective_user.id not in ADMIN_IDS: return
-            target=d[13:]
+            topup_id=d[len("adm_topup_ok_"):]
+            db=load_db()
+            topup=next((x for x in (db.get("topups") or [])
+                        if isinstance(x,dict) and str(x.get("id"))==topup_id),None)
+            if not topup:
+                await q.answer("Заявка не найдена или устарела.",show_alert=True); return
+            if topup.get("status")!="pending":
+                await q.answer("Заявка уже обработана.",show_alert=True); return
+            target=str(topup.get("uid") or "")
+            amount=normalize_topup_amount(topup.get("amount"))
+            if not target or amount is None:
+                await q.answer("Некорректная заявка.",show_alert=True); return
+            u=get_user(db,target)
+            u["balance"]=u.get("balance",0)+amount
+            topup["status"]="confirmed"
+            topup["confirmed_at"]=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            topup["confirmed_by"]=str(update.effective_user.id)
+            add_log(db,"Баланс пополнен",uid=target,username=topup.get("username",""),
+                    extra=f"+{amount} RUB")
+            save_db(db)
             try:
-                await q.edit_message_text(f"{Ech} <b>Пополнение подтверждено!</b>\n<code>{target}</code>",parse_mode="HTML")
+                await q.edit_message_text(
+                    f"{Ech} <b>Пополнение подтверждено!</b>\n"
+                    f"<code>{target}</code> · <b>+{amount} RUB</b>",parse_mode="HTML")
             except Exception:
                 try: await q.message.reply_text(f"{Ech} <b>Пополнение подтверждено!</b>\n<code>{target}</code>",parse_mode="HTML")
                 except: pass
             try:
                 tl=get_lang(int(target))
                 await context.bot.send_message(chat_id=int(target),
-                    text=f"{Ech} <b>{L(tl,'Баланс пополнен!','Balance topped up!')}</b>",parse_mode="HTML")
+                    text=f"{Ech} <b>{L(tl,'Баланс пополнен!','Balance topped up!')}</b>\n"
+                         f"<blockquote>+{fmt_balance(amount,tl)}</blockquote>",parse_mode="HTML")
             except: pass
             return
 
         if d.startswith("adm_topup_no_"):
             if update.effective_user.id not in ADMIN_IDS: return
-            target=d[13:]
+            topup_id=d[len("adm_topup_no_"):]
+            db=load_db()
+            topup=next((x for x in (db.get("topups") or [])
+                        if isinstance(x,dict) and str(x.get("id"))==topup_id),None)
+            if not topup:
+                await q.answer("Заявка не найдена или устарела.",show_alert=True); return
+            if topup.get("status")!="pending":
+                await q.answer("Заявка уже обработана.",show_alert=True); return
+            topup["status"]="rejected"
+            topup["rejected_at"]=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            topup["rejected_by"]=str(update.effective_user.id)
+            save_db(db)
+            target=str(topup.get("uid") or "")
             try:
                 await q.edit_message_text(f"{Ewrn} <b>Не подтверждено.</b>\n<code>{target}</code>",parse_mode="HTML")
             except Exception:
@@ -5678,16 +5771,22 @@ async def handle_adm_cb(update, context):
             req=next((w for w in (db.get("withdrawals") or []) if w.get("id")==wid), None)
             if not req:
                 await q.answer("Не найдено", show_alert=True); return
+            if req.get("status")!="pending":
+                await q.answer("Заявка уже обработана.",show_alert=True); return
             req["status"]="done"
             req["done_at"]=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             req["done_by"]=str(update.effective_user.id)
-            save_db(db)
-            # опционально списать баланс
+            # Mark and debit in one atomic database write. The status guard
+            # above makes stale/repeated admin buttons harmless.
             try:
                 u2=db.get("users",{}).get(str(req.get("uid")),{})
                 if u2 and req.get("amount"):
                     u2["balance"]=max(0, int(u2.get("balance",0) or 0) - int(req.get("amount") or 0))
-                    save_db(db)
+                    add_log(db,"Вывод выполнен",uid=req.get("uid"),username=req.get("username",""),
+                            extra=f"-{req.get('amount')} RUB")
+                save_db(db)
+                # Notify only after the durable status/balance update.
+                if u2 and req.get("amount"):
                     try:
                         wl=get_lang(int(req["uid"]))
                         wamt=int(req.get("amount") or 0)
@@ -6096,6 +6195,7 @@ async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_set_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        if update.effective_user.id not in ADMIN_IDS: return
         args=context.args
         if not args or not args[0].isdigit(): await update.message.reply_text("<b>Пример: /set_my_deals 100</b>",parse_mode="HTML"); return
         db=load_db(); u=get_user(db,str(update.effective_user.id))
@@ -6105,6 +6205,7 @@ async def cmd_set_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_set_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        if update.effective_user.id not in ADMIN_IDS: return
         args=context.args
         if not args: await update.message.reply_text("<b>Пример: /set_my_amount 15000</b>",parse_mode="HTML"); return
         try: amt=int(args[0])
@@ -6121,13 +6222,16 @@ async def cmd_add_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target=args[0].lstrip("@")
         try: amount=int(args[1])
         except: await update.message.reply_text("<b>Сумма должна быть числом!</b>",parse_mode="HTML"); return
+        if amount<=0:
+            await update.message.reply_text("<b>Сумма должна быть больше нуля.</b>",parse_mode="HTML"); return
         db=load_db()
         if not target.isdigit():
             found=next((k for k,v in db["users"].items() if v.get("username","").lower()==target.lower()),None)
             if not found: await update.message.reply_text("<b>Пользователь не найден.</b>",parse_mode="HTML"); return
             target=found
-        u=get_user(db,target); u["balance"]=u.get("balance",0)+amount; save_db(db)
+        u=get_user(db,target); u["balance"]=u.get("balance",0)+amount
         add_log(db,"Баланс выдан (cmd)",uid=target,username=u.get("username",""),extra=f"+{amount} RUB")
+        save_db(db)
         await update.message.reply_text(f"{Ech} <b>+{amount} RUB → @{u.get('username','?')} (<code>{target}</code>)\nБаланс: {u['balance']} RUB</b>",parse_mode="HTML")
         try:
             tl=get_lang(int(target))
@@ -6144,13 +6248,16 @@ async def cmd_take_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target=args[0].lstrip("@")
         try: amount=int(args[1])
         except: await update.message.reply_text("<b>Сумма должна быть числом!</b>",parse_mode="HTML"); return
+        if amount<=0:
+            await update.message.reply_text("<b>Сумма должна быть больше нуля.</b>",parse_mode="HTML"); return
         db=load_db()
         if not target.isdigit():
             found=next((k for k,v in db["users"].items() if v.get("username","").lower()==target.lower()),None)
             if not found: await update.message.reply_text("<b>Пользователь не найден.</b>",parse_mode="HTML"); return
             target=found
-        u=get_user(db,target); u["balance"]=max(0,u.get("balance",0)-amount); save_db(db)
+        u=get_user(db,target); u["balance"]=max(0,u.get("balance",0)-amount)
         add_log(db,"Баланс списан (cmd)",uid=target,username=u.get("username",""),extra=f"-{amount} RUB")
+        save_db(db)
         await update.message.reply_text(f"{Ech} <b>-{amount} RUB ← @{u.get('username','?')} (<code>{target}</code>)\nБаланс: {u['balance']} RUB</b>",parse_mode="HTML")
     except Exception as e: logger.error(f"cmd_take_balance: {e}")
 
@@ -6165,6 +6272,12 @@ def _parse_telegram_user_id(init_data: str):
         pairs=dict(parse_qsl(init_data, keep_blank_values=True))
         recv_hash=pairs.pop("hash",None)
         if not recv_hash: return None
+        try:
+            auth_date=int(pairs.get("auth_date","0"))
+        except (TypeError,ValueError):
+            return None
+        if auth_date<=0 or abs(time.time()-auth_date)>86400:
+            return None
         data_check="\n".join(f"{k}={v}" for k,v in sorted(pairs.items()))
         secret=hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
         calc=hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
@@ -6513,7 +6626,9 @@ def main():
             pass
         return
 
-    app=Application.builder().token(BOT_TOKEN).concurrent_updates(True).build()
+    # db.json is a single-file ledger; serialize Telegram updates so two
+    # callbacks cannot load, mutate, and overwrite the same snapshot.
+    app=Application.builder().token(BOT_TOKEN).concurrent_updates(False).build()
     use_webhook = _resolve_bot_mode() == "webhook"
     wh_base = _webhook_base_url()
     mini_base = _miniapp_base_url()
