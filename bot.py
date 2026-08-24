@@ -392,22 +392,7 @@ GEMINI_API_KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
 GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or "").strip()
 OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
 
-def _ce_fallback(label):
-    """Use text fallbacks for tg-emoji; never show plain Unicode emoji when custom fails."""
-    zwsp="\u200b"
-    if not label:
-        return zwsp
-    stripped=str(label).strip()
-    if not stripped:
-        return zwsp
-    import re
-    if re.fullmatch(r"[\w@.+#\-]+", stripped):
-        return stripped
-    return zwsp
-
-def ce(eid, fb=""):
-    safe=_ce_fallback(fb)
-    return f"<tg-emoji emoji-id='{eid}'>​</tg-emoji>"
+def ce(eid, fb): return f"<tg-emoji emoji-id='{eid}'>{fb}</tg-emoji>"
 
 E = {
     "user":       ce("5199552030615558774", "👤"),
@@ -693,7 +678,7 @@ def req_prompt_text(field, lang="ru"):
         return (f"{Ecrd} <b>{title}</b>\n\n"
                 f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n{examples}</blockquote>")
     if field=="ton":
-        return (f"<tg-emoji emoji-id='5409321884074419506'>​</tg-emoji> <b>Tonkeeper</b>\n\n"
+        return (f"<tg-emoji emoji-id='5409321884074419506'>💎</tg-emoji> <b>Tonkeeper</b>\n\n"
                 f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>UQDxxx...xxx</code></blockquote>")
     if field=="stars":
         return (f"{Est} <b>{T(lang,'Звёзды','Stars','Зірки')}</b>\n\n"
@@ -1398,7 +1383,7 @@ async def resume_after_requisite_saved(update, context, uid, lang, u=None, notif
     chat=update.effective_chat
     if notify and chat:
         await chat.send_message(
-            f"<tg-emoji emoji-id='5260341314095947411'>​</tg-emoji> <b>{L(lang,'Реквизиты привязаны!','Requisites bound!')}</b>",
+            f"<b><tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> {L(lang,'Реквизиты привязаны!','Requisites bound!')}</b>",
             parse_mode="HTML")
 
     if ud.pop("req_after_buyer_deal",None):
@@ -1429,10 +1414,10 @@ async def resume_after_requisite_saved(update, context, uid, lang, u=None, notif
             ud["last_msg"]=msg.message_id; return
         if not ud.get("creator_role"):
             await chat.send_message(
-                f"<tg-emoji emoji-id='5879841310902324730'>​</tg-emoji> <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
+                f"<tg-emoji emoji-id='5879841310902324730'>✏️</tg-emoji> <b>{L(lang,'Создать сделку','Create Deal')}\n\n{L(lang,'Кто вы в этой сделке?','What is your role?')}</b>",
                 parse_mode="HTML",reply_markup=role_kb(lang)); return
         await chat.send_message(
-            f"<tg-emoji emoji-id='5258216851472654189'>​</tg-emoji> <b>{L(lang,'Выберите тип сделки','Choose deal type')}</b>",
+            f"<b><tg-emoji emoji-id='5258216851472654189'>💡</tg-emoji> {L(lang,'Выберите тип сделки','Choose deal type')}</b>",
             parse_mode="HTML",reply_markup=types_kb(lang)); return
 
     pending=ud.pop("req_for_deal",None) or ud.pop("pending_deal",None)
@@ -1535,15 +1520,15 @@ async def send_log_msg(context, db, entry):
         log_templates=db.get("log_templates",{})
         log_banners=db.get("log_banners",{})
         ev_icons={
-            "Новая сделка":            f"<tg-emoji emoji-id='5931409969613116639'>​</tg-emoji> <b>Новая сделочка</b>",
-            "Покупатель открыл сделку":f"<tg-emoji emoji-id='5879770735999717115'>​</tg-emoji> <b>Покупатель зашёл</b>",
-            "Оплачено":                f"<tg-emoji emoji-id='5906715307820456633'>​</tg-emoji> <b>Покупатель оплатил</b>",
-            "Подтверждено":            f"<tg-emoji emoji-id='5274055917766202507'>​</tg-emoji> <b>Сделка подтверждена</b>",
-            "Новый реферал":           f"<tg-emoji emoji-id='5902335789798265487'>​</tg-emoji> <b>Новый реферал</b>",
-            "Баланс выдан":            f"<tg-emoji emoji-id='5258043150110301407'>​</tg-emoji> <b>Баланс выдан</b>",
+            "Новая сделка":            f"<tg-emoji emoji-id='5931409969613116639'>🛡</tg-emoji> <b>Новая сделочка</b>",
+            "Покупатель открыл сделку":f"<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji> <b>Покупатель зашёл</b>",
+            "Оплачено":                f"<tg-emoji emoji-id='5906715307820456633'>🚀</tg-emoji> <b>Покупатель оплатил</b>",
+            "Подтверждено":            f"<tg-emoji emoji-id='5274055917766202507'>✅</tg-emoji> <b>Сделка подтверждена</b>",
+            "Новый реферал":           f"<tg-emoji emoji-id='5902335789798265487'>🤝</tg-emoji> <b>Новый реферал</b>",
+            "Баланс выдан":            f"<tg-emoji emoji-id='5258043150110301407'>💰</tg-emoji> <b>Баланс выдан</b>",
         }
-        time_ico=f"<tg-emoji emoji-id='5776213190387961618'>​</tg-emoji>"
-        pin_ico=f"<tg-emoji emoji-id='5931409969613116639'>​</tg-emoji>"
+        time_ico=f"<tg-emoji emoji-id='5776213190387961618'>🕓</tg-emoji>"
+        pin_ico=f"<tg-emoji emoji-id='5931409969613116639'>🛡</tg-emoji>"
         ev_ico=ev_icons.get(event_key,f"<b>{event_key}</b>")
         deal_str=f"\n{pin_ico} <b>{R_log(entry)}</b>" if entry.get("deal_id") else ""
         header=f"{time_ico} <b>{entry['time']}</b>\n{ev_ico}"
@@ -1563,7 +1548,7 @@ async def send_log_msg(context, db, entry):
             text=f"{header} {body}{deal_str}"
         else:
             deal_line=f"\n{pin_ico} <b>{label_deal}:</b> <b>{R_log(entry)}</b>" if entry.get("deal_id") else ""
-            user_line=f"\n<tg-emoji emoji-id='5879770735999717115'>​</tg-emoji> <b>{label_user}:</b> <b>{ud}</b> {uid_d}" if (ud or uid_d) else ""
+            user_line=f"\n<tg-emoji emoji-id='5879770735999717115'>👤</tg-emoji> <b>{label_user}:</b> <b>{ud}</b> {uid_d}" if (ud or uid_d) else ""
             extra_line=f"\n<b>{label_extra}: {entry['extra']}</b>" if entry.get("extra") and label_extra else (f"\n{ex}" if ex else "")
             text=(f"{header}{deal_line}{user_line}{extra_line}")
         promo_kb=InlineKeyboardMarkup([[
@@ -2768,7 +2753,7 @@ def complaint_prompt(step, ctype, lang="ru"):
     if ctype=="market":
         prompts={
             "topic":(
-                f"<tg-emoji emoji-id='5920332557466997677'>​</tg-emoji> <b>{L(lang,'Жалоба на маркетплейс','Marketplace report')}</b>\n\n"
+                f"<tg-emoji emoji-id='5920332557466997677'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на маркетплейс','Marketplace report')}</b>\n\n"
                 f"<b>1. {L(lang,'Тема / что случилось','Topic / what happened')}</b>\n"
                 f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>{L(lang,'Долго не подтверждают пополнение','Top-up not confirmed for too long')}</code></blockquote>"
             ),
@@ -2792,7 +2777,7 @@ def complaint_prompt(step, ctype, lang="ru"):
     emoji="5927118708873892465" if ctype=="buyer" else "6032914237389541410"
     prompts={
         "username":(
-            f"<tg-emoji emoji-id='{emoji}'>​</tg-emoji> <b>{L(lang,'Жалоба на','Report about')} {role_word}</b>\n\n"
+            f"<tg-emoji emoji-id='{emoji}'>⚠️</tg-emoji> <b>{L(lang,'Жалоба на','Report about')} {role_word}</b>\n\n"
             f"<b>1. {L(lang,'Юзернейм','Username')} {role_word}</b>\n"
             f"<blockquote>{T(lang,'Пример:','Example:','Приклад:')}\n<code>@username</code></blockquote>"
         ),
@@ -2819,7 +2804,7 @@ async def show_complaint(update, context):
         uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
         clear_complaint_state(context.user_data)
         text=(
-            f"<tg-emoji emoji-id='6032742198179532882'>​</tg-emoji> <b>{L(lang,'Пожаловаться','Report')}</b>\n\n"
+            f"<tg-emoji emoji-id='6032742198179532882'>⚠️</tg-emoji> <b>{L(lang,'Пожаловаться','Report')}</b>\n\n"
             f"<blockquote>{T(lang,'Выберите, на кого жалоба, и заполните форму.','Choose who to report and fill the form.','Оберіть, на кого скарга, і заповніть форму.')}</blockquote>\n\n"
             f"<i>{T(lang,'Жалоба уйдёт маркетплейсу.','The report goes to the marketplace.','Скарга піде маркетплейсу.')}</i>"
         )
@@ -2844,7 +2829,7 @@ async def finish_complaint(update, context):
     title=titles.get(ctype,ctype)
     if ctype=="market":
         body=(
-            f"<tg-emoji emoji-id='5920332557466997677'>​</tg-emoji> <b>Жалоба {title}</b>\n\n"
+            f"<tg-emoji emoji-id='5920332557466997677'>⚠️</tg-emoji> <b>Жалоба {title}</b>\n\n"
             f"{Eu} От: {H(uname)} (<code>{uid}</code>)\n"
             f"1. Тема: <b>{H(ud.get('cmp_topic',''))}</b>\n"
             f"2. Сделка: <code>{H(ud.get('cmp_deal',''))}</code>\n"
@@ -2855,7 +2840,7 @@ async def finish_complaint(update, context):
         emoji="5927118708873892465" if ctype=="buyer" else "6032914237389541410"
         role=L(lang,"покупатель","buyer") if ctype=="buyer" else L(lang,"продавец","seller")
         body=(
-            f"<tg-emoji emoji-id='{emoji}'>​</tg-emoji> <b>Жалоба {title}</b>\n\n"
+            f"<tg-emoji emoji-id='{emoji}'>⚠️</tg-emoji> <b>Жалоба {title}</b>\n\n"
             f"{Eu} От: {H(uname)} (<code>{uid}</code>)\n"
             f"1. Юзернейм {role}: <b>{H(ud.get('cmp_username',''))}</b>\n"
             f"2. Номер сделки: <code>{H(ud.get('cmp_deal',''))}</code>\n"
@@ -3546,13 +3531,13 @@ def ai_intro_text(lang="ru"):
 
 def ai_thinking_html(lang):
     return (
-        f"<tg-emoji emoji-id='5258093637450866522'>​</tg-emoji> "
+        f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> "
         f"<i>{T(lang,'Думаю…','Thinking…','Думаю…')}</i>"
     )
 
 def ai_answer_html(ans, lang="ru"):
     return (
-        f"<tg-emoji emoji-id='5258093637450866522'>​</tg-emoji> <b>FunPay AI</b>\n\n"
+        f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
         f"<blockquote>{H(ans)}</blockquote>"
     )
 
@@ -3563,7 +3548,7 @@ async def show_ai(update, context):
         ud["ai_ask"]=True
         ud.setdefault("ai_history",[])
         text=(
-            f"<tg-emoji emoji-id='5258093637450866522'>​</tg-emoji> <b>FunPay AI</b>\n\n"
+            f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
             f"<blockquote>{ai_intro_text(lang)}</blockquote>"
         )
         await send_section(update,text,ai_kb(lang),section="ai")
@@ -3970,7 +3955,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["ai_history"]=[]
             await send_section(
                 update,
-                f"<tg-emoji emoji-id='5258093637450866522'>​</tg-emoji> <b>FunPay AI</b>\n\n"
+                f"<tg-emoji emoji-id='5258093637450866522'>🤖</tg-emoji> <b>FunPay AI</b>\n\n"
                 f"<blockquote>{ai_intro_text(lang)}</blockquote>",
                 ai_kb(lang),section="ai"); return
         if d=="menu_req":
@@ -5443,7 +5428,7 @@ async def show_top(update, context):
             ("@rT9xw1",1850,42),("@pK2xv8",1620,38),("@wN5xq4",1410,33),
             ("@zH7xm9",1200,28),("@fL3xp6",980,22),("@gM6xk3",760,17),
         ]
-        PLACE_IDS=[
+        PLACE_EMOJI=[
             "5805553606635559688","5794085322400733645","5794280000383358988",
             "5794241397217304511","5793985348446984682","5794324702402976226",
             "5793942849745591465","5793926687783655907","5793979472931723221",
@@ -5451,12 +5436,13 @@ async def show_top(update, context):
             "5794241397217304511","5793985348446984682","5794324702402976226",
             "5793942849745591465","5793926687783655907",
         ]
+        PLACE_FB=["1","2","3","4","5","6","7","8","9","10",
+                  "11","12","13","14","15"]
         dw=L(lang,"сделок","deals")
         lines=[f"{E['top_medal']} <b>{L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
         for i,(u2,a,dd) in enumerate(TOP):
-            n=str(i+1)
-            rank=ce(PLACE_IDS[i], n) if i < len(PLACE_IDS) else f"{n}."
-            lines.append(f"{rank} <b>{u2} — ${a} · {dd} {dw}</b>")
+            place=ce(PLACE_EMOJI[i], PLACE_FB[i]) if i < len(PLACE_EMOJI) else f"{i+1}."
+            lines.append(f"{place} <b>{u2} — ${a} · {dd} {dw}</b>")
         lines.append("")
         lines.append(f"<b>{L(lang,'132 584 сделок · оборот $1 346 582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
