@@ -5031,8 +5031,6 @@ async def finalize_deal(update, context):
             f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
             f"{share_text}\n<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
         )
-        if creator_role=="seller":
-            text_out += f"\n\n<blockquote>{deal_seller_transfer_text(lang)}</blockquote>"
         kb=InlineKeyboardMarkup([
             [InlineKeyboardButton(L(lang,"Переслать партнёру","Forward to partner"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
             [InlineKeyboardButton(L(lang,"Мои сделки","My Deals"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
