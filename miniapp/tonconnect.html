@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Tonkeeper — FunPay</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"
+      onerror="window.__tonConnectCdnError = true"></script>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -113,6 +114,10 @@
         setStatus("Откройте бот по ссылке:\n" + link, "ok");
       }
       var manifestUrl = new URL("tonconnect-manifest.json", window.location.href).toString();
+      if (window.__tonConnectCdnError || !window.TON_CONNECT_UI || !TON_CONNECT_UI.TonConnectUI) {
+        setStatus("Не удалось загрузить TonConnect. Обновите окно и попробуйте ещё раз.", "err");
+        return;
+      }
       var ui = new TON_CONNECT_UI.TonConnectUI({
         manifestUrl: manifestUrl,
         buttonRootId: "ton-connect"
