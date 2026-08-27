@@ -6649,8 +6649,11 @@ def main():
     )
 
     async def post_init(application):
-        await application.bot.set_my_commands([BotCommand("start","Главное меню")])
-        await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
+        try:
+            await application.bot.set_my_commands([BotCommand("start","Главное меню")])
+            await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
+        except Exception as e:
+            logger.warning("set_my_commands: %s", e)
         # Кнопка меню слева внизу = команды (/start), не Mini App
         try:
             await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
