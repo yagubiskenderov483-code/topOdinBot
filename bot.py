@@ -2148,6 +2148,23 @@ def deal_currency_prompt(lang="ru"):
 def deal_amount_prompt(currency, lang="ru"):
     return f"{Eamt_in} <b>{T(lang,'Введите сумму сделки:','Enter deal amount:','Введіть суму угоди:')}</b>"
 
+def deal_type_input_prompt(dtype, lang="ru", creator_role="seller"):
+    if dtype=="nft":
+        title=L(lang,"Вставьте ссылку NFT","Paste NFT link","Вставте посилання NFT")
+        example="t.me/nft/..."
+        icon=Enft_link
+    elif dtype=="username":
+        title=L(lang,"Вставьте ссылку username","Paste username link","Вставте посилання username")
+        example="t.me/username"
+        icon=Eu
+    elif dtype=="stars":
+        title=L(lang,"Введите звёзды","Enter stars","Введіть зірки")
+        example="100"
+        icon=Eamt_in
+    else:
+        return ""
+    return f"{icon} <b>{title}</b>\n\n<code>{example}</code>"
+
 def currency_requisites_kb(currency, lang="ru"):
     """Ask for the requisite type needed by the chosen deal currency."""
     field=requisite_field_for_currency(currency)
@@ -2991,7 +3008,7 @@ AI_KB = {
             "2) Выберите роль: Покупатель или Продавец.\n"
             "3) Выберите тип: NFT подарок / NFT Username / Звёзды / Крипта / Telegram Premium.\n"
             "4) Введите @username партнёра.\n"
-            "5) Для NFT - одна или несколько ссылок (в ряд, через пробел/запятую или с новой строки); для Username - t.me/… или @username; для Stars - количество; для Premium - срок.\n"
+            "5) NFT — ссылка; Username — ссылка; Stars — количество; Premium — срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
             "8) Отправьте партнёру ссылку вида  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
@@ -3004,7 +3021,7 @@ AI_KB = {
             "2) Choose role: Buyer or Seller.\n"
             "3) Choose type: NFT Gift / NFT Username / Stars / Crypto / Telegram Premium.\n"
             "4) Enter partner @username.\n"
-            "5) NFT needs one or more links (in one line, space/comma-separated, or one per line); Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
+            "5) NFT — link; Username — link; Stars — count; Premium — period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
             "8) Send the partner link:  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
@@ -3037,8 +3054,8 @@ AI_KB = {
         "keys": ("тип сделк","nft","username","premium","звезд","звёзд","крипт","gift","какой тип"),
         "ru": (
             "Типы сделок\n\n"
-            "• NFT подарок - сделка по NFT-подарку (можно указать несколько ссылок — в ряд, через пробел или с новой строки).\n"
-            "• NFT Username - сделка по юзернейму (t.me/username или @username).\n"
+            "• NFT подарок — ссылка на NFT.\n"
+            "• NFT Username — ссылка на username.\n"
             "• Звёзды - покупка/продажа Telegram Stars (укажите количество).\n"
             "• Крипта - криптообмен через гаранта.\n"
             "• Telegram Premium - оформление Premium на срок.\n\n"
@@ -3047,8 +3064,8 @@ AI_KB = {
         ),
         "en": (
             "Deal types\n\n"
-            "• NFT Gift - NFT gift deal (one or more gift links, in one line or one per line).\n"
-            "• NFT Username - username deal (t.me/username or @username).\n"
+            "• NFT Gift — NFT link.\n"
+            "• NFT Username — username link.\n"
             "• Stars - buy/sell Telegram Stars (enter count).\n"
             "• Crypto - crypto exchange via escrow.\n"
             "• Telegram Premium - Premium for a period.\n\n"
@@ -5011,18 +5028,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ud["partner"]=cl_p
             if dtype=="nft":
                 ud["step"]="nft_link"
-                await send_step(
-                    f"{Enft_link} <b>{L(lang,'Вставьте ссылку(и) на NFT:','Paste NFT link(s):')}</b>\n\n"
-                    f"<code>t.me/nft/...</code>\n\n"
-                    f"<i>{L(lang,'Можно несколько — в одну строку, через пробел, запятую или с новой строки','Multiple links allowed — in one line, separated by space/comma, or one per line','Можна кілька — в один рядок, через пробіл, кому або з нового рядка')}</i>")
+                await send_step(deal_type_input_prompt("nft", lang))
             elif dtype=="username":
                 ud["step"]="trade_usr"
-                await send_step(f"{Eu} <b>{L(lang,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
+                await send_step(deal_type_input_prompt("username", lang))
             elif dtype=="stars":
                 ud["step"]="stars_cnt"
-                cr3=ud.get("creator_role","seller")
-                stars_q=L(lang,"Введите сумму звёзд для продажи","Enter stars amount for sale") if cr3=="seller" else L(lang,"Введите сумму звёзд для покупки","Enter stars amount for purchase")
-                await send_step(f"{Eamt_in} <b>{stars_q}</b>")
+                await send_step(deal_type_input_prompt("stars", lang))
             elif dtype=="crypto":
                 ud["step"]="currency"
                 await send_step(deal_currency_prompt(lang),cur_kb(lang))
@@ -5039,7 +5051,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ok,em,links=parse_and_validate_nft_links(text,dtype,update.message)
             if not ok:
                 await update.message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Формат: t.me/nft/НазваниеНФТ (можно несколько — в ряд, через пробел или с новой строки)','Invalid link. Format: t.me/nft/NFTName (multiple links — in one line, space-separated, or one per line)')}</b>",
+                    f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Пример: t.me/nft/...','Invalid link. Example: t.me/nft/...','Некоректне посилання. Приклад: t.me/nft/...')}</b>",
                     parse_mode="HTML"); return
             ud["nft_links"]=links
             if len(links)==1: ud["nft_link"]=links[0]
@@ -5054,7 +5066,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ok_at   = text.strip().startswith("@") and len(text.strip()[1:])>=5 and _re.fullmatch(r"[a-zA-Z0-9_]+", text.strip()[1:])
             if not ok_link and not ok_at:
                 await update.message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Введите корректную ссылку t.me/username или @username (мин. 5 символов).','Enter valid t.me/username or @username (min 5 chars).')}</b>",
+                    f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Пример: t.me/username','Invalid link. Example: t.me/username','Некоректне посилання. Приклад: t.me/username')}</b>",
                     parse_mode="HTML"); return
             ud["trade_username"]=text.strip(); ud["step"]="currency"
             await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
