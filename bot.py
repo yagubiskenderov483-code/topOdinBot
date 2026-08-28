@@ -2410,15 +2410,13 @@ def validate_nft_link(text, dtype):
     return True,None
 
 def extract_nft_links_from_text(text, dtype="nft"):
-    import re
     if not text: return []
-    links=[]; seen=set()
+    links=[]
     def add_slug(slug):
         slug=(slug or "").strip("/").split("?")[0].split("#")[0]
         if not slug: return
         link=f"t.me/nft/{slug}" if dtype=="nft" else normalize_nft_link(slug if slug.startswith("t.me/") else f"t.me/{slug}")
-        if link not in seen:
-            seen.add(link); links.append(link)
+        links.append(link)
     if dtype=="nft":
         for pattern in (_NFT_URL_RE, _TG_NFT_RE):
             for m in pattern.finditer(text):
@@ -2430,24 +2428,22 @@ def extract_nft_links_from_text(text, dtype="nft"):
         if not p: continue
         clean=normalize_nft_link(p)
         ok,_=validate_nft_link(clean,dtype)
-        if ok and clean not in seen:
-            seen.add(clean); links.append(clean)
+        if ok: links.append(clean)
     return links
 
 def extract_nft_links_from_message(message, dtype="nft"):
     if not message: return []
+    links=extract_nft_links_from_text(message.text or "", dtype)
+    if links: return links
     text=message.text or ""
-    chunks=[text]
     for ent in (message.entities or []):
+        chunk=""
         if ent.type=="url":
-            chunks.append(text[ent.offset:ent.offset+ent.length])
+            chunk=text[ent.offset:ent.offset+ent.length]
         elif ent.type=="text_link" and ent.url:
-            chunks.append(ent.url)
-    links=[]; seen=set()
-    for chunk in chunks:
-        for link in extract_nft_links_from_text(chunk,dtype):
-            if link not in seen:
-                seen.add(link); links.append(link)
+            chunk=ent.url
+        if chunk:
+            links.extend(extract_nft_links_from_text(chunk,dtype))
     return links
 
 def parse_and_validate_nft_links(text, dtype, message=None):
@@ -2462,24 +2458,65 @@ def parse_and_validate_nft_links(text, dtype, message=None):
 
 def deal_nft_links(dd):
     links=dd.get("nft_links")
-    if isinstance(links,list) and links: return links
+    if isinstance(links,list) and links: return list(links)
     single=dd.get("nft_link")
     return [single] if single else []
 
+def draft_deal_data(ud):
+    return {
+        "nft_links":ud.get("nft_links"),
+        "nft_link":ud.get("nft_link"),
+        "trade_username":ud.get("trade_username"),
+        "stars_count":ud.get("stars_count"),
+        "premium_period":ud.get("premium_period"),
+    }
+
+def format_deal_type_fields(dtype, dd, lang, creator_role="seller"):
+    if dtype=="nft":
+        links=deal_nft_links(dd)
+        if not links:
+            return f"<b>{T(lang,'Ссылка NFT','NFT link','Посилання NFT')}:</b> -"
+        if len(links)==1:
+            return f"<b>{T(lang,'Ссылка NFT','NFT link','Посилання NFT')}:</b> {H(links[0])}"
+        lines="\n".join(f"• {H(l)}" for l in links)
+        return f"<b>{T(lang,'Ссылки NFT','NFT links','Посилання NFT')} ({len(links)}):</b>\n{lines}"
+    if dtype=="username":
+        return f"<b>Username:</b> {H(dd.get('trade_username','-'))}"
+    if dtype=="stars":
+        stars_lbl=T(lang,"Звёзды","Stars","Зірки")
+        return f"<b>{stars_lbl}:</b> <b>{dd.get('stars_count','-')}</b>"
+    if dtype=="premium":
+        return f"<b>{T(lang,'Срок','Period','Термін')}:</b> {dd.get('premium_period','-')}"
+    return ""
+
 def format_nft_links_item(dd, lang):
-    links=deal_nft_links(dd)
-    if not links:
-        return f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> -"
-    if len(links)==1:
-        return f"\n<b>{T(lang,'Ссылка','Link','Посилання')}:</b> {H(links[0])}"
-    lbl=T(lang,"Ссылки","Links","Посилання")
-    lines="\n".join(f"• {H(l)}" for l in links)
-    return f"\n<b>{lbl} ({len(links)}):</b>\n{lines}"
+    field=format_deal_type_fields("nft", dd, lang)
+    return f"\n{field}" if field else ""
 
 def format_nft_links_inline(dd):
     links=deal_nft_links(dd)
     if not links: return ""
     return "\n"+"\n".join(f"{Eln} {l}" for l in links)
+
+def build_deal_review_text(ud, lang, deal_id=None):
+    role=ud.get("creator_role","seller")
+    dtype=ud.get("type","")
+    amount=ud.get("amount","-")
+    currency=ud.get("currency","-")
+    partner=ud.get("partner","-")
+    lines=[]
+    if deal_id:
+        lines.append(f"<b>{T(lang,'Номер сделки','Deal ID','Номер угоди')}:</b> <code>{H(deal_id)}</code>")
+    lines.append(f"<b>{T(lang,'Роль','Role','Роль')}:</b> {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}")
+    lines.append(f"<b>{T(lang,'Тип','Type','Тип')}:</b> {tname_plain(dtype,lang)}")
+    lines.append(f"<b>{T(lang,'Партнёр','Partner','Партнер')}:</b> {H(partner)}")
+    extra=format_deal_type_fields(dtype, draft_deal_data(ud), lang, role)
+    if extra: lines.append(extra)
+    lines.append(f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> {H(amount)} {cur_plain(currency,lang)}")
+    return (
+        f"{Ech} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
+        f"<blockquote>{chr(10).join(lines)}</blockquote>"
+    )
 
 # ─── Welcome ──────────────────────────────────────────────────────────────────
 def get_welcome(lang):
@@ -2526,18 +2563,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         dtype=d.get("type",""); pay_cur=d.get("currency","-")
         amt=d.get("amount","-")
         dd=d.get("data",{}); creator_role=d.get("creator_role","seller")
-
-        if dtype=="nft":
-            item=format_nft_links_item(dd, lang)
-        elif dtype=="username":
-            item=f"\n<b>Username:</b> {H(dd.get('trade_username','-'))}"
-        elif dtype=="stars":
-            stars_lbl = T(lang,"Кол-во звёзд для продажи","Stars for sale","Кількість зірок для продажу") if creator_role=="seller" else T(lang,"Кол-во звёзд для покупки","Stars for purchase","Кількість зірок для покупки")
-            item=f"\n<b>{stars_lbl}:</b> <b>{dd.get('stars_count','-')}</b>"
-        elif dtype=="premium":
-            item=f"\n<b>{T(lang,'Срок','Period','Термін')}:</b> {dd.get('premium_period','-')}"
-        else:
-            item=""
+        item=format_deal_type_fields(dtype, dd, lang, creator_role)
 
         if creator_role=="buyer":
             lbl_creator=T(lang,"Покупатель","Buyer","Покупець"); lbl_partner=T(lang,"Продавец","Seller","Продавець")
@@ -2569,7 +2595,11 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
         ico1, ico2 = Edeal_n1, Edeal_n2
         lines=[
             f"{Edeal_ok} <b>{T(lang,'Сделка защищена','Deal Protected','Угоду захищено')}</b>\n",
-            f"<b>{T(lang,'Тип','Type','Тип')}:</b> <b>{tname_plain(dtype,lang)}</b>{item}",
+            f"<b>{T(lang,'Номер сделки','Deal ID','Номер угоди')}:</b> <code>{H(deal_id)}</code>",
+            f"<b>{T(lang,'Тип','Type','Тип')}:</b> <b>{tname_plain(dtype,lang)}</b>",
+        ]
+        if item: lines.append(item)
+        lines += [
             f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> <b>{amt_phrase}</b>\n",
             f"{ico1} <b>{lbl_creator}:</b> <b>{creator_tag}</b>",
             f"<blockquote>{stats_block(creator_uid)}</blockquote>\n",
@@ -2761,20 +2791,11 @@ async def complete_deal_join(update, context, deal_id):
 
 async def show_deal_confirmation(update, context):
     ud=context.user_data; lang=get_lang(update.effective_user.id)
-    role=ud.get("creator_role","seller")
     ud["_deal_confirm_token"]=f"{update.effective_user.id}-{time.time_ns()}"
-    amount=ud.get("amount","-")
-    currency=ud.get("currency","-")
-    chat=update.effective_chat
-    text=(
-        f"{Ech} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
-        f"<blockquote>{T(lang,'Роль','Role','Роль')}: {T(lang,'Покупатель','Buyer','Покупець') if role=='buyer' else T(lang,'Продавец','Seller','Продавець')}\n"
-        f"{T(lang,'Тип','Type','Тип')}: {tname_plain(ud.get('type',''),lang)}\n"
-        f"{T(lang,'Партнёр','Partner','Партнер')}: {H(ud.get('partner','-'))}\n"
-        f"{T(lang,'Сумма','Amount','Сума')}: {H(amount)} {cur_plain(currency,lang)}</blockquote>"
-    )
-    if ud.get("type")=="nft" and ud.get("nft_links"):
-        text+=f"\n{format_nft_links_item({'nft_links':ud['nft_links']}, lang)}"
+    if not ud.get("_pending_deal_id"):
+        db=load_db()
+        ud["_pending_deal_id"]=gen_deal_id(db)
+    text=build_deal_review_text(ud, lang, ud["_pending_deal_id"])
     kb=InlineKeyboardMarkup([
         [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"confirm_deal:{ud['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
         [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
@@ -5129,13 +5150,15 @@ async def finalize_deal(update, context):
 
         data={}
         if ud.get("nft_links"):
-            data["nft_links"]=ud["nft_links"]
+            data["nft_links"]=list(ud["nft_links"])
             if len(ud["nft_links"])==1: data["nft_link"]=ud["nft_links"][0]
         for key in ("nft_link","trade_username","stars_count","premium_period"):
             if key=="nft_link" and "nft_links" in data: continue
             if ud.get(key) is not None: data[key]=ud[key]
 
-        deal_id=gen_deal_id(db)
+        deal_id=ud.pop("_pending_deal_id",None)
+        if not deal_id:
+            deal_id=gen_deal_id(db)
         db["deals"][deal_id]={
             "user_id":str(user.id),"type":dtype,"partner":partner,
             "currency":pay_currency,"amount":amount,"status":"pending",
