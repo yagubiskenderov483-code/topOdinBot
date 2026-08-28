@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render: только Mini App + /health. Telegram-бот здесь НЕ запускается —
+# Render: только Mini App + /health. Telegram-бот здесь НЕ запускается -
 # апдейты (polling) получает Bothost, иначе оба инстанса ловят 409 Conflict.
 set -euo pipefail
 cd "$(dirname "$0")"

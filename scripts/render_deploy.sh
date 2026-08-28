@@ -83,7 +83,7 @@ PY
 )
 
 if [[ -n "$sid" ]]; then
-  echo "Service exists: $sid — triggering deploy"
+  echo "Service exists: $sid - triggering deploy"
   curl -sf "${auth[@]}" -X POST "https://api.render.com/v1/services/$sid/deploys" \
     -d '{"clearCache":"do_not_clear"}' | python3 -m json.tool
 else

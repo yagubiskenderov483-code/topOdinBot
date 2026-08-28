@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Tonkeeper — FunPay</title>
+  <title>Tonkeeper - FunPay</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://unpkg.com/@tonconnect/ui@2.0.9/dist/tonconnect-ui.min.js"
       onerror="window.__tonConnectCdnError = true"></script>
@@ -37,7 +37,7 @@
 <body>
   <div class="card">
     <h1>Привязка Tonkeeper</h1>
-    <p>Откройте Tonkeeper, подтвердите подключение — адрес сохранится в боте автоматически.</p>
+    <p>Откройте Tonkeeper, подтвердите подключение - адрес сохранится в боте автоматически.</p>
     <div id="ton-connect"></div>
     <div id="status" class="status"></div>
     <div id="addr" class="addr"></div>
@@ -103,7 +103,7 @@
         try {
           if (tg && tg.openTelegramLink) {
             tg.openTelegramLink(link);
-            setStatus("Готово! Вернитесь в бот — кошелёк сохранён.", "ok");
+            setStatus("Готово! Вернитесь в бот - кошелёк сохранён.", "ok");
             try { tg.HapticFeedback.notificationOccurred("success"); } catch (e) {}
             setTimeout(function () { try { tg.close(); } catch (e) {} }, 900);
             return;

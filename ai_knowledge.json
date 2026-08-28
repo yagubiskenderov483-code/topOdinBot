@@ -351,7 +351,7 @@
       "mini app",
       "отзывы не откры"
     ],
-    "ru": "Отзывы — Mini App (Информация → Отзывы). URL берётся из REVIEWS_MINIAPP_URL / REVIEWS_HTML_REMOTE или с хоста бота. Если 404: /admin → Mini App URL и обновить ENV. TonConnect работает только с живым Render URL бота.",
+    "ru": "Отзывы - Mini App (Информация → Отзывы). URL берётся из REVIEWS_MINIAPP_URL / REVIEWS_HTML_REMOTE или с хоста бота. Если 404: /admin → Mini App URL и обновить ENV. TonConnect работает только с живым Render URL бота.",
     "en": "Reviews open as a Mini App. If 404, admin: /admin → Mini App URL and refresh REVIEWS_MINIAPP_URL. TonConnect needs the live bot Render URL."
   },
   {

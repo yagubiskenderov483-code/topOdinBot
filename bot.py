@@ -69,7 +69,7 @@ def _env_token_is_ours(tok: str) -> bool:
     """getMe: env-токен принимаем если это один из наших FunPay-ботов.
 
     Нужно для ротации токена без правки кода: перевыпустили в @BotFather,
-    прописали в env BOT_TOKEN — и бот подхватит его сам. Чужие/мертвые
+    прописали в env BOT_TOKEN - и бот подхватит его сам. Чужие/мертвые
     токены игнорируем, чтобы случайно не запуститься не тем ботом.
     """
     me = _token_getme(tok)
@@ -159,9 +159,9 @@ BANNERS_SEED_DATA = os.path.join(DATA_DIR, "banners_seed.json")
 BANNER_ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "banner_assets")
 DEAL_COUNTER_START = 29548
 # Mini Apps живут на том же Render-сервисе, что и бот (single web service):
-#   GET /index.html      — отзывы (self-contained HTML из miniapp/)
-#   GET /tonconnect.html — привязка Tonkeeper (нужен POST /api/bind-ton того же origin)
-# Внешние хостинги (litter/files.catbox и т.п.) протухают — считаем их мёртвыми.
+#   GET /index.html      - отзывы (self-contained HTML из miniapp/)
+#   GET /tonconnect.html - привязка Tonkeeper (нужен POST /api/bind-ton того же origin)
+# Внешние хостинги (litter/files.catbox и т.п.) протухают - считаем их мёртвыми.
 _RENDER_URL = (os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")
 _REVIEWS_HTML_HOSTED = (os.getenv("REVIEWS_HTML_REMOTE") or "").strip()
 _DEAD_MINIAPP_MARKERS = (
@@ -243,7 +243,7 @@ def _public_base_url() -> str:
     return _miniapp_base_url() or _webhook_base_url()
 
 def _resolve_bot_mode() -> str:
-    """polling | webhook — один активный способ получать апдейты."""
+    """polling | webhook - один активный способ получать апдейты."""
     flag = (os.getenv("USE_WEBHOOK") or "auto").strip().lower()
     if flag in ("0", "false", "no", "off", "polling"):
         return "polling"
@@ -259,7 +259,7 @@ def _resolve_bot_mode() -> str:
 def _is_miniapp_only() -> bool:
     """Инстанс только раздаёт Mini App + /health; апдейты Telegram получает другой хост.
 
-    Токен один на всех — getUpdates/setWebhook может держать ровно один процесс,
+    Токен один на всех - getUpdates/setWebhook может держать ровно один процесс,
     иначе бесконечный 409 Conflict. Render с BOT_MODE=miniapp бота не запускает.
     """
     v = (os.getenv("BOT_MODE") or "").strip().lower()
@@ -268,7 +268,7 @@ def _is_miniapp_only() -> bool:
     return (os.getenv("DISABLE_BOT") or "").strip().lower() in ("1", "true", "yes", "on")
 
 def reviews_miniapp_url() -> str:
-    """Reviews Mini App — отдаётся самим ботом с Render (/index.html)."""
+    """Reviews Mini App - отдаётся самим ботом с Render (/index.html)."""
     env = (os.getenv("REVIEWS_MINIAPP_URL") or "").strip()
     if env and not _miniapp_url_dead(env):
         return env
@@ -281,7 +281,7 @@ def reviews_miniapp_url() -> str:
     return ""
 
 def tonconnect_miniapp_url() -> str:
-    """TonConnect Mini App — same origin as bot (needs POST /api/bind-ton)."""
+    """TonConnect Mini App - same origin as bot (needs POST /api/bind-ton)."""
     env = (os.getenv("TONCONNECT_MINIAPP_URL") or "").strip()
     if env and not _miniapp_url_dead(env):
         low = env.lower()
@@ -560,7 +560,7 @@ CUR_PLAIN_UK = {
     "RUB":"Рублі","KZT":"Tenge","AZN":"Manat","KGS":"Сом",
     "UZS":"So'm","TJS":"Сомоні","BYN":"BYN","UAH":"Гривні","GEL":"Lari",
 }
-CUR_EMOJI = {}  # no plain emoji — use CUR_FLAG (custom) / button icons
+CUR_EMOJI = {}  # no plain emoji - use CUR_FLAG (custom) / button icons
 CURMAP = {
     "cur_ton":"TON","cur_usdt":"USDT","cur_rub":"RUB","cur_stars":"Stars","cur_uah":"UAH",
 }
@@ -1042,7 +1042,7 @@ def banner_counts(db):
     return filled, log_filled
 
 def load_banners_seed():
-    """Читает баннеры: сначала banners_seed.json в репо, потом /data (репо — источник правды)."""
+    """Читает баннеры: сначала banners_seed.json в репо, потом /data (репо - источник правды)."""
     for path in (BANNERS_SEED_FILE, BANNERS_SEED_DATA):
         try:
             if not os.path.exists(path): continue
@@ -1200,7 +1200,7 @@ def force_apply_banners_seed_payload(db, seed):
     return db, n
 
 async def import_banners_seed_from_document(update, context):
-    """Админ прислал banners_seed.json — сохранить в репо/data и применить."""
+    """Админ прислал banners_seed.json - сохранить в репо/data и применить."""
     msg = update.message
     if not msg or not msg.document:
         return False
@@ -1289,7 +1289,7 @@ def save_db(db):
         _DB_MEM["ts"]=time.time()
     except Exception:
         _DB_MEM["db"]=db; _DB_MEM["ts"]=time.time()
-    # Don't wipe banner map on every deal save — only when banners object identity changes rarely
+    # Don't wipe banner map on every deal save - only when banners object identity changes rarely
     # (still safe: get_banner prefers live db when passed; cached map used without db)
     try:
         if isinstance(db.get("banners"), dict):
@@ -1598,7 +1598,7 @@ async def send_log_msg(context, db, entry):
 _BANNER_MEM = {"ts": 0.0, "map": {}}
 
 def _banners_map():
-    """In-memory banner cache — avoids reloading db.json on every button."""
+    """In-memory banner cache - avoids reloading db.json on every button."""
     now=time.time()
     if now - _BANNER_MEM["ts"] > 8.0 or not _BANNER_MEM["map"]:
         try:
@@ -2636,7 +2636,7 @@ def deal_participant_roles(deal):
     return partner_uid,creator_uid
 
 def review_stars_kb(deal_id, role):
-    """role: 's' — отзыв оставляет продавец (о покупателе), 'b' — покупатель (о продавце)."""
+    """role: 's' - отзыв оставляет продавец (о покупателе), 'b' - покупатель (о продавце)."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(
             str(i), callback_data=f"rev_{deal_id}_{role}_{i}",
@@ -3008,7 +3008,7 @@ AI_KB = {
             "2) Выберите роль: Покупатель или Продавец.\n"
             "3) Выберите тип: NFT подарок / NFT Username / Звёзды / Крипта / Telegram Premium.\n"
             "4) Введите @username партнёра.\n"
-            "5) NFT — ссылка; Username — ссылка; Stars — количество; Premium — срок.\n"
+            "5) NFT - ссылка; Username - ссылка; Stars - количество; Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
             "8) Отправьте партнёру ссылку вида  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
@@ -3021,7 +3021,7 @@ AI_KB = {
             "2) Choose role: Buyer or Seller.\n"
             "3) Choose type: NFT Gift / NFT Username / Stars / Crypto / Telegram Premium.\n"
             "4) Enter partner @username.\n"
-            "5) NFT — link; Username — link; Stars — count; Premium — period.\n"
+            "5) NFT - link; Username - link; Stars - count; Premium - period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
             "8) Send the partner link:  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
@@ -3054,8 +3054,8 @@ AI_KB = {
         "keys": ("тип сделк","nft","username","premium","звезд","звёзд","крипт","gift","какой тип"),
         "ru": (
             "Типы сделок\n\n"
-            "• NFT подарок — ссылка на NFT.\n"
-            "• NFT Username — ссылка на username.\n"
+            "• NFT подарок - ссылка на NFT.\n"
+            "• NFT Username - ссылка на username.\n"
             "• Звёзды - покупка/продажа Telegram Stars (укажите количество).\n"
             "• Крипта - криптообмен через гаранта.\n"
             "• Telegram Premium - оформление Premium на срок.\n\n"
@@ -3064,8 +3064,8 @@ AI_KB = {
         ),
         "en": (
             "Deal types\n\n"
-            "• NFT Gift — NFT link.\n"
-            "• NFT Username — username link.\n"
+            "• NFT Gift - NFT link.\n"
+            "• NFT Username - username link.\n"
             "• Stars - buy/sell Telegram Stars (enter count).\n"
             "• Crypto - crypto exchange via escrow.\n"
             "• Telegram Premium - Premium for a period.\n\n"
@@ -3332,20 +3332,20 @@ def _ai_short_system_prompt(lang="ru"):
         return (
             "Ти FunPay AI. Завжди відповідай українською. "
             "Відповідай природно, як звичайний асистент. "
-            "Не повторюй бренд FunPay у кожній відповіді — згадуй лише якщо питання саме про бот/угоди. "
+            "Не повторюй бренд FunPay у кожній відповіді - згадуй лише якщо питання саме про бот/угоди. "
             "Без HTML."
         )
     if lang=="en":
         return (
             "You are FunPay AI. Always reply in English. "
             "Reply naturally like a normal assistant. "
-            "Do not mention FunPay in every answer — only when the question is about the bot/deals. "
+            "Do not mention FunPay in every answer - only when the question is about the bot/deals. "
             "No HTML."
         )
     return (
         "Ты FunPay AI. Всегда отвечай на русском. "
         "Отвечай естественно, как обычный ассистент. "
-        "Не повторяй бренд FunPay в каждом ответе — упоминай только если вопрос про бот/сделки. "
+        "Не повторяй бренд FunPay в каждом ответе - упоминай только если вопрос про бот/сделки. "
         "Без HTML."
     )
 
@@ -3355,7 +3355,7 @@ def ai_unconditional_reply(question, lang="ru"):
     q=q[:280]
     if lang=="uk":
         return (
-            f"По «{q}»: коротко — можу пояснити суть, дати кроки або відповісти коротко. "
+            f"По «{q}»: коротко - можу пояснити суть, дати кроки або відповісти коротко. "
             f"Уточни, що саме потрібно глибше."
         )
     if lang=="en":
@@ -3369,7 +3369,7 @@ def ai_unconditional_reply(question, lang="ru"):
     )
 
 async def _ai_call_g4f(system, messages):
-    """Живой LLM без ключа. Любая ошибка модели — пробуем следующую."""
+    """Живой LLM без ключа. Любая ошибка модели - пробуем следующую."""
     import asyncio
     from g4f.client import Client
     try:
@@ -3468,7 +3468,7 @@ def build_ai_system_prompt(lang="ru"):
     kb="\n\n".join(_ai_kb_entry_text(entry, lang) for entry in AI_KB.values())
     if lang=="uk":
         return _bot_mention_fix(
-            "Ти — FunPay AI. ЗАВЖДИ відповідай українською мовою користувача бота. "
+            "Ти - FunPay AI. ЗАВЖДИ відповідай українською мовою користувача бота. "
             "Відповідай як звичайний розумний асистент: живо, коротко, по суті. "
             "Не нав’язуй FunPay у кожній відповіді. Згадуй бот/угоди лише якщо користувач питає про це. "
             "Для питань про бот спирайся на базу знань нижче. Не відшивай шаблоном. "
@@ -3476,7 +3476,7 @@ def build_ai_system_prompt(lang="ru"):
             f"База знань бота (використовуй лише за потреби):\n{kb}")
     if lang=="ru":
         return _bot_mention_fix(
-            "Ты — FunPay AI. ВСЕГДА отвечай на русском языке пользователя бота. "
+            "Ты - FunPay AI. ВСЕГДА отвечай на русском языке пользователя бота. "
             "Отвечай как обычный умный ассистент: живо, коротко, по делу. "
             "Не вставляй FunPay в каждый ответ. Упоминай бот/сделки только если пользователь спрашивает про это. "
             "Для вопросов про бот опирайся на базу знаний ниже. Не отшивай шаблоном. "
@@ -3588,7 +3588,7 @@ def ai_local_answer(question, lang="ru", history=None):
     ):
         return T(lang,"Привет!","Hi!","Привіт!")
     if any(x in ql for x in ("как дела","как ты","как сам","how are you","what's up","whats up","что умеешь","кто ты","how r u")):
-        return T(lang,"На связи — пиши.","Online — ask anything.","На зв’язку — пиши.")
+        return T(lang,"На связи - пиши.","Online - ask anything.","На зв’язку - пиши.")
     if any(x in ql for x in ("спасибо","thanks","thank you","пасиб")):
         return T(lang,"Пожалуйста!","You’re welcome!","Будь ласка!")
 
@@ -4652,7 +4652,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ─── Messages ─────────────────────────────────────────────────────────────────
 async def on_admin_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Админ присылает banners_seed.json — импорт без adm_step."""
+    """Админ присылает banners_seed.json - импорт без adm_step."""
     try:
         uid = update.effective_user.id if update.effective_user else 0
         if uid not in ADMIN_IDS:
@@ -4664,7 +4664,7 @@ async def on_admin_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         ud=context.user_data; uid=update.effective_user.id; lang=get_lang(uid); ru=lang=="ru"
-        # Document import (banners_seed.json) — even without adm_step
+        # Document import (banners_seed.json) - even without adm_step
         if uid in ADMIN_IDS and update.message and update.message.document:
             if await import_banners_seed_from_document(update, context):
                 return
@@ -4910,7 +4910,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db=load_db(); u=get_user(db,uid); bal=int(u.get("balance",0) or 0)
             if amount<=0:
                 await update.message.reply_text(f"{Ewrn} <b>{L(lang,'Сумма должна быть > 0','Amount must be > 0')}</b>",parse_mode="HTML"); return
-            # Баланс списывается только при выплате — вычитаем уже поданные заявки,
+            # Баланс списывается только при выплате - вычитаем уже поданные заявки,
             # иначе можно создать несколько заявок на всю сумму сразу.
             pending_sum=sum(int(w.get("amount") or 0) for w in (db.get("withdrawals") or [])
                             if w.get("status")=="pending" and str(w.get("uid"))==str(uid))
@@ -4949,7 +4949,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db=load_db(); deal=db.get("deals",{}).get(deal_id,{})
             rev_text=f"{stars_r}/5 - {text}"
             saved=False
-            # 's' — отзыв продавца о покупателе, 'b' — покупателя о продавце.
+            # 's' - отзыв продавца о покупателе, 'b' - покупателя о продавце.
             # Роли берём из сделки (создатель может быть и покупателем, и продавцом).
             buyer_uid_r,seller_uid_r=deal_participant_roles(deal)
             target=buyer_uid_r if role=="s" else seller_uid_r
@@ -4965,7 +4965,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not dtype or not step: return
 
         async def send_step(t2, kb=None):
-            """Edit previous bot prompt when possible — much faster than delete+send."""
+            """Edit previous bot prompt when possible - much faster than delete+send."""
             chat_id=update.effective_chat.id
             last=ud.get("last_msg")
             edited=False
@@ -5629,17 +5629,17 @@ async def show_my_deals(update, context):
                 f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')}</b>\n\n"
                 f"{T(lang,'Пока нет сделок.','No deals yet.','Поки немає угод.')}",
                 back_kb,section="my_deals"); return
-        # Plain status labels — custom emoji inside <b> breaks Telegram HTML (editMessage)
+        # Plain status labels - custom emoji inside <b> breaks Telegram HTML (editMessage)
         SNAMES={
             "pending":   T(lang,"ожидает","pending","очікує"),
             "confirmed": T(lang,"завершена","completed","завершена"),
         }
         lines=[f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({len(deals)})</b>\n"]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
-            tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "—")
+            tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "-")
             cur_d=cur_plain(dv.get("currency",""),lang) or str(dv.get("currency") or "")
-            amt=dv.get("payment_amount") or dv.get("amount") or "—"
-            s=SNAMES.get(dv.get("status",""), str(dv.get("status") or "—"))
+            amt=dv.get("payment_amount") or dv.get("amount") or "-"
+            s=SNAMES.get(dv.get("status",""), str(dv.get("status") or "-"))
             lines.append(
                 f"<b>{i}.</b> {H(tn)} · <code>{H(did)}</code>\n"
                 f"{H(amt)} {H(cur_d)} · {H(s)}"
@@ -5679,7 +5679,7 @@ async def show_top(update, context):
         lines=[f"<b>{L(lang,'Топ продавцов FunPay','FunPay Top Sellers')}</b>", ""]
         for i,(u2,a,dd) in enumerate(TOP):
             place=ce(PLACE_EMOJI[i], PLACE_FB[i])
-            lines.append(f"{place} <b>{u2} — ${a} · {dd} {dw}</b>")
+            lines.append(f"{place} <b>{u2} - ${a} · {dd} {dw}</b>")
         lines.append("")
         lines.append(f"<b>{L(lang,'132 584 сделок · оборот $1 346 582','132,584 deals · $1,346,582 turnover')}</b>")
         await send_section(update,"\n".join(lines),
@@ -5825,7 +5825,7 @@ async def pin_banners_seed(update, context, reply=True):
     text=(
         f"{Ech} <b>Баннеры закреплены</b>\n\n"
         f"<blockquote>Секций: <b>{len(filled)}</b>\n"
-        f"{', '.join(filled) if filled else 'пусто — сначала загрузите баннеры в админке'}\n\n"
+        f"{', '.join(filled) if filled else 'пусто - сначала загрузите баннеры в админке'}\n\n"
         f"Seed: <code>{H(BANNERS_SEED_DATA)}</code>\n"
         f"<code>{H(BANNERS_SEED_FILE)}</code></blockquote>\n"
         f"После деплоя они подтянутся сами, если диск /data на месте."
@@ -5944,8 +5944,8 @@ async def handle_adm_cb(update, context):
                 f"{Egft} <b>Баннеры</b>\n\n"
                 f"<blockquote>+ есть / - нет / X удалить\n"
                 f"Заполнено: <b>{len(filled)}</b> / {len(BANNER_SECTIONS)}\n"
-                f"Закрепить — сохранить на диск, чтобы не слетели после деплоя\n"
-                f"Выгрузить — получить banners_seed.json</blockquote>",
+                f"Закрепить - сохранить на диск, чтобы не слетели после деплоя\n"
+                f"Выгрузить - получить banners_seed.json</blockquote>",
                 parse_mode="HTML",reply_markup=adm_banners_kb()); return
 
         if d=="adm_banners_pin":
@@ -6556,7 +6556,7 @@ def start_reviews_http_server():
                         return self._send_html(body)
                     if has_miniapp:
                         return SimpleHTTPRequestHandler.do_GET(self)
-                    self._send_text(200, "FunPay bot OK — miniapp/index.html missing")
+                    self._send_text(200, "FunPay bot OK - miniapp/index.html missing")
                     return
                 if path in ("/tonconnect.html", "/tonconnect"):
                     ton_path=os.path.join(root, "tonconnect.html")
@@ -6634,7 +6634,7 @@ def start_reviews_http_server():
             server.server_activate()
         except OSError as e:
             if getattr(e, "errno", None) in (98, 48):  # EADDRINUSE
-                logger.warning("HTTP port %s busy — skip (another instance?)", port)
+                logger.warning("HTTP port %s busy - skip (another instance?)", port)
                 return
             raise
         threading.Thread(target=server.serve_forever, daemon=True, name="http-health").start()
@@ -6656,7 +6656,7 @@ def start_render_keepalive():
         or ""
     ).rstrip("/")
     if not base:
-        logger.warning("No public URL for keepalive — set PUBLIC_BASE_URL or RENDER_EXTERNAL_URL")
+        logger.warning("No public URL for keepalive - set PUBLIC_BASE_URL or RENDER_EXTERNAL_URL")
         return
     url=base + "/health"
     try: interval=int(os.getenv("KEEPALIVE_INTERVAL_SEC") or "480")
@@ -6735,7 +6735,7 @@ def main():
         db["banner_photo"]=db["banner_video"]=db["banner_gif"]=db["banner"]=None
         save_db(db)
 
-    # banners_seed.json — единственный источник баннеров; всегда перезаписываем db из файла
+    # banners_seed.json - единственный источник баннеров; всегда перезаписываем db из файла
     db, restored = apply_banners_seed(db)
     seed = load_banners_seed()
     if seed:
@@ -6753,7 +6753,7 @@ def main():
 
     if _is_miniapp_only():
         logger.info(
-            "BOT_MODE=miniapp — Telegram-бот на этом инстансе выключен, "
+            "BOT_MODE=miniapp - Telegram-бот на этом инстансе выключен, "
             "только Mini App + /health (апдейты получает другой хост)"
         )
         try:
@@ -6770,7 +6770,7 @@ def main():
     wh_base = _webhook_base_url()
     mini_base = _miniapp_base_url()
     if use_webhook and not (wh_base and os.getenv("PORT")):
-        logger.warning("Webhook requested but URL/PORT missing — switching to polling")
+        logger.warning("Webhook requested but URL/PORT missing - switching to polling")
         use_webhook = False
     logger.info(
         "bot mode=%s bothost=%s render=%s webhook_base=%s miniapp_base=%s port=%s",
@@ -6806,16 +6806,16 @@ def main():
     async def on_error(update, context):
         err = context.error
         if isinstance(err, Conflict):
-            logger.warning("getUpdates conflict — другой инстанс ещё жив. Не останавливаемся, Telegram отдаст очередь этому процессу.")
+            logger.warning("getUpdates conflict - другой инстанс ещё жив. Не останавливаемся, Telegram отдаст очередь этому процессу.")
             # Если другой деплой успел поставить webhook (409 «webhook is active»),
-            # поллинг сам не оживёт — снимаем webhook, не чаще раза в минуту.
+            # поллинг сам не оживёт - снимаем webhook, не чаще раза в минуту.
             if not use_webhook:
                 now = time.monotonic()
                 if now - _conflict_fix_ts[0] >= 60:
                     _conflict_fix_ts[0] = now
                     try:
                         await context.bot.delete_webhook(drop_pending_updates=False)
-                        logger.info("webhook снят после Conflict — поллинг восстановится")
+                        logger.info("webhook снят после Conflict - поллинг восстановится")
                     except Exception as e:
                         logger.warning("delete_webhook после Conflict: %s", e)
                 # Повторные конфликты = где-то запущена вторая копия бота.
@@ -6830,14 +6830,14 @@ def main():
                             await context.bot.send_message(
                                 chat_id=aid,
                                 text=(f"{Ewrn} <b>Запущена вторая копия бота на этом токене!</b>\n\n"
-                                      "Telegram делит сообщения между копиями — бот отвечает через раз "
+                                      "Telegram делит сообщения между копиями - бот отвечает через раз "
                                       "или молчит. Найдите и остановите лишнюю копию "
                                       "(второе приложение на Bothost, старый хостинг, локальный запуск)."),
                                 parse_mode="HTML")
                         except Exception as e:
                             logger.warning("conflict alert %s: %s", aid, e)
             return
-        # BadRequest editMessage / message is not modified — not user-facing
+        # BadRequest editMessage / message is not modified - not user-facing
         name=type(err).__name__ if err else ""
         msg=str(err or "")
         if "Message is not modified" in msg or "message is not modified" in msg:
@@ -6888,7 +6888,7 @@ def main():
             await app.start()
             _PTB_APP = app
             _PTB_LOOP = asyncio.get_running_loop()
-            # post_init is not auto-called without run_polling — run menu setup here
+            # post_init is not auto-called without run_polling - run menu setup here
             await post_init(app)
             await app.bot.set_webhook(
                 url=wh_url,
