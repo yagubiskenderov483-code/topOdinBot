@@ -1,11 +1,11 @@
-import logging, json, os, math, html, time, re, asyncio, sys, threading
+import logging, json, os, math, html, time, re, asyncio, sys, threading, secrets
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
-from telegram import Update, InlineKeyboardButton as _IKB, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands
+from telegram import Update, InlineKeyboardButton as _IKB, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands, InlineQueryResultArticle, InputTextMessageContent
 from telegram.constants import ChatAction
 from telegram.error import Conflict, BadRequest
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes, InlineQueryHandler, ChosenInlineResultHandler
 
 def InlineKeyboardButton(text=None, *args, **kwargs):
     """Все кнопки синие, только «Назад» красная. Логика бота не меняется."""
@@ -2257,6 +2257,428 @@ def cur_kb(lang):
         [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
     ])
 
+INL_TYPE_MAP={"inl_dt_nft":"nft","inl_dt_usr":"username","inl_dt_str":"stars","inl_dt_cry":"crypto","inl_dt_prm":"premium"}
+INL_CUR_MAP={"inl_cur_ton":"TON","inl_cur_usdt":"USDT","inl_cur_rub":"RUB","inl_cur_stars":"Stars","inl_cur_uah":"UAH"}
+
+def inl_draft(ud):
+    return ud.setdefault("inl_deal",{})
+
+def clear_inl_draft(ud):
+    ud.pop("inl_deal",None)
+
+def inl_role_kb(lang):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(T(lang,'Я покупатель','I am the Buyer','Я покупець'),callback_data="inl_role_buyer",icon_custom_emoji_id="5893431652578758294"),
+         InlineKeyboardButton(T(lang,'Я продавец','I am the Seller','Я продавець'),callback_data="inl_role_seller",icon_custom_emoji_id="5893168654551355607")],
+        [InlineKeyboardButton(T(lang,'Отмена','Cancel','Скасувати'),callback_data="inl_cancel",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+def inl_types_kb(lang):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(T(lang,'NFT подарок','NFT Gift','NFT-подарунок'),callback_data="inl_dt_nft",icon_custom_emoji_id="5906716471756593520"),
+         InlineKeyboardButton("NFT Username",callback_data="inl_dt_usr",icon_custom_emoji_id="5906976471896824396")],
+        [InlineKeyboardButton(T(lang,'Звёзды','Stars','Зірки'),callback_data="inl_dt_str",icon_custom_emoji_id="5906478942885255780"),
+         InlineKeyboardButton(T(lang,'Крипта','Crypto','Крипта'),callback_data="inl_dt_cry",icon_custom_emoji_id="5904576890848419790")],
+        [InlineKeyboardButton("Telegram Premium",callback_data="inl_dt_prm",icon_custom_emoji_id="5906715307820456633")],
+        [InlineKeyboardButton(T(lang,'Назад','Back','Назад'),callback_data="inl_back_role",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+def inl_cur_kb(lang):
+    def btn(code, cb):
+        return InlineKeyboardButton(cur_button_text(code,lang),callback_data=cb,icon_custom_emoji_id=CUR_BTN_ICON[code])
+    return InlineKeyboardMarkup([
+        [btn("TON","inl_cur_ton"), btn("USDT","inl_cur_usdt")],
+        [btn("RUB","inl_cur_rub"), btn("Stars","inl_cur_stars")],
+        [btn("UAH","inl_cur_uah")],
+        [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="inl_back_item",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+def inl_prem_kb(lang):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("3 "+L(lang,"мес.","mo"),callback_data="inl_prm_3",icon_custom_emoji_id="5906715307820456633"),
+         InlineKeyboardButton("6 "+L(lang,"мес.","mo"),callback_data="inl_prm_6",icon_custom_emoji_id="5906715307820456633"),
+         InlineKeyboardButton("12 "+L(lang,"мес.","mo"),callback_data="inl_prm_12",icon_custom_emoji_id="5906715307820456633")],
+        [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="inl_back_type",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+def inl_switch_btn(lang, label_ru, label_en, label_uk=None):
+    return InlineKeyboardButton(
+        T(lang, label_ru, label_en, label_uk or label_ru),
+        switch_inline_query_current_chat="")
+
+def inl_back_cancel_kb(lang, back_cb):
+    return InlineKeyboardMarkup([
+        [inl_switch_btn(lang, "Ввести в inline", "Enter via inline", "Ввести в inline")],
+        [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data=back_cb,icon_custom_emoji_id="5258084656674250503"),
+         InlineKeyboardButton(T(lang,"Отмена","Cancel","Скасувати"),callback_data="inl_cancel",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+async def inl_edit_wizard(context, draft, text, reply_markup=None):
+    chat_id=draft.get("chat_id"); msg_id=draft.get("message_id")
+    if not chat_id or not msg_id: return
+    try:
+        await context.bot.edit_message_text(
+            chat_id=chat_id, message_id=msg_id, text=text,
+            parse_mode="HTML", reply_markup=reply_markup)
+    except BadRequest as e:
+        if "message is not modified" not in str(e).lower():
+            logger.warning("inl_edit_wizard: %s", e)
+
+def inl_draft_to_ud(draft):
+    ud={}
+    for k in ("creator_role","type","partner","currency","amount","pay_currency","payment_amount",
+              "nft_links","nft_link","trade_usernames","trade_username","stars_count","premium_period","_pending_deal_id"):
+        if draft.get(k) not in (None,""): ud[k]=draft[k]
+    return ud
+
+def persist_deal_from_draft(db, user, draft):
+    dtype=draft.get("type","?"); partner=draft.get("partner","-")
+    amount=draft.get("amount","-")
+    currency=draft.get("currency","-")
+    pay_currency=draft.get("pay_currency") or currency
+    payment_amount=draft.get("payment_amount") or amount
+    creator_role=draft.get("creator_role","seller")
+    data={}
+    if draft.get("nft_links"):
+        data["nft_links"]=list(draft["nft_links"])
+        if len(draft["nft_links"])==1: data["nft_link"]=draft["nft_links"][0]
+    if draft.get("trade_usernames"):
+        data["trade_usernames"]=list(draft["trade_usernames"])
+        if len(draft["trade_usernames"])==1: data["trade_username"]=draft["trade_usernames"][0]
+    for key in ("nft_link","trade_username","stars_count","premium_period"):
+        if key=="nft_link" and "nft_links" in data: continue
+        if key=="trade_username" and "trade_usernames" in data: continue
+        if draft.get(key) is not None: data[key]=draft[key]
+    deal_id=draft.get("_pending_deal_id")
+    if not deal_id:
+        deal_id=gen_deal_id(db)
+    db["deals"][deal_id]={
+        "user_id":str(user.id),"type":dtype,"partner":partner,
+        "currency":pay_currency,"amount":amount,"status":"pending",
+        "created":datetime.now().isoformat(),"data":data,"creator_role":creator_role,
+        "deal_currency":currency,"payment_amount":payment_amount,
+        "source_chat_id":str(draft.get("chat_id") or ""),
+    }
+    add_log(db,"Новая сделка",deal_id=deal_id,uid=user.id,username=user.username or "",
+        extra=f"inline | {dtype} | {amount} {currency} | {creator_role}")
+    save_db(db)
+    return deal_id
+
+async def inl_show_role(context, draft, lang):
+    draft["step"]="role"
+    await inl_edit_wizard(context, draft,
+        f"{Epen} <b>{T(lang,'Создание сделки','Creating deal','Створення угоди')}</b>\n\n{T(lang,'Кто вы в сделке?','What is your role?','Хто ви в угоді?')}",
+        inl_role_kb(lang))
+
+async def inl_show_types(context, draft, lang):
+    draft["step"]="type"
+    await inl_edit_wizard(context, draft,
+        f"{Esrk} <b>{T(lang,'Выберите тип сделки','Choose deal type','Оберіть тип угоди')}</b>",
+        inl_types_kb(lang))
+
+async def inl_show_partner(context, draft, lang):
+    draft["step"]="partner"
+    cr=draft.get("creator_role","seller")
+    pp=T(lang,"Введите @username продавца:","Enter seller @username:","Введіть @username продавця:") if cr=="buyer" else T(lang,"Введите @username покупателя:","Enter buyer @username:","Введіть @username покупця:")
+    await inl_edit_wizard(context, draft,
+        f"{Eu} <b>{pp}</b>\n\n<i>{T(lang,'Нажмите «Ввести в inline» и укажите @username','Tap Enter via inline and type @username','Натисніть «Ввести в inline» і вкажіть @username')}</i>\n\n<code>@username</code>",
+        inl_back_cancel_kb(lang,"inl_back_type"))
+
+async def inl_show_item_input(context, draft, lang):
+    dtype=draft.get("type","")
+    if dtype=="nft":
+        draft["step"]="nft_link"
+        await inl_edit_wizard(context, draft,
+            f"{Enft_link} <b>{L(lang,'Вставьте ссылку NFT','Paste NFT link','Вставте посилання NFT')}</b>\n\n<i>{T(lang,'Нажмите «Ввести в inline» и вставьте ссылку(и)','Tap Enter via inline and paste link(s)','Натисніть «Ввести в inline» і вставте посилання')}</i>\n\n<code>t.me/nft/...</code>",
+            inl_back_cancel_kb(lang,"inl_back_partner"))
+    elif dtype=="username":
+        draft["step"]="trade_usr"
+        await inl_edit_wizard(context, draft,
+            f"{Eu} <b>{L(lang,'Вставьте ссылку username','Paste username link','Вставте посилання username')}</b>\n\n<i>{T(lang,'Нажмите «Ввести в inline»','Tap Enter via inline','Натисніть «Ввести в inline»')}</i>\n\n<code>t.me/username</code>",
+            inl_back_cancel_kb(lang,"inl_back_partner"))
+    elif dtype=="stars":
+        draft["step"]="stars_cnt"
+        await inl_edit_wizard(context, draft,
+            f"{Eamt_in} <b>{L(lang,'Введите звёзды','Enter stars','Введіть зірки')}</b>\n\n<i>{T(lang,'Нажмите «Ввести в inline» и введите число','Tap Enter via inline and enter a number','Натисніть «Ввести в inline» і введіть число')}</i>\n\n<code>100</code>",
+            inl_back_cancel_kb(lang,"inl_back_partner"))
+    elif dtype=="crypto":
+        draft["step"]="currency"
+        await inl_edit_wizard(context, draft, deal_currency_prompt(lang), inl_cur_kb(lang))
+    elif dtype=="premium":
+        draft["step"]="prem_period"
+        await inl_edit_wizard(context, draft,
+            f"{Eprem} <b>Telegram Premium\n\n{L(lang,'Выберите срок:','Choose period:')}</b>",
+            inl_prem_kb(lang))
+
+async def inl_show_currency(context, draft, lang):
+    draft["step"]="currency"
+    await inl_edit_wizard(context, draft, deal_currency_prompt(lang), inl_cur_kb(lang))
+
+async def inl_show_amount(context, draft, lang):
+    draft["step"]="amount"
+    await inl_edit_wizard(context, draft,
+        f"{Eamt_in} <b>{T(lang,'Введите сумму сделки','Enter deal amount','Введіть суму угоди:')}</b>\n\n<i>{T(lang,'Нажмите «Ввести в inline» и введите сумму','Tap Enter via inline and enter amount','Натисніть «Ввести в inline» і введіть суму')}</i>",
+        inl_back_cancel_kb(lang,"inl_back_currency"))
+
+async def inl_show_confirm(context, draft, lang, uid):
+    if not draft.get("_pending_deal_id"):
+        db=load_db(); draft["_pending_deal_id"]=gen_deal_id(db)
+    draft["step"]="confirm"
+    draft["_deal_confirm_token"]=f"{uid}-{time.time_ns()}"
+    text=build_deal_review_text(inl_draft_to_ud(draft), lang, draft["_pending_deal_id"])
+    kb=InlineKeyboardMarkup([
+        [InlineKeyboardButton(T(lang,"Создать сделку","Create deal","Створити угоду"),callback_data=f"inl_confirm:{draft['_deal_confirm_token']}",icon_custom_emoji_id="5906840875484321836")],
+        [InlineKeyboardButton(T(lang,"Отмена","Cancel","Скасувати"),callback_data="inl_cancel",icon_custom_emoji_id="5258084656674250503")],
+    ])
+    await inl_edit_wizard(context, draft, text, kb)
+
+def inl_make_ok_article(lang, title, desc, token):
+    return InlineQueryResultArticle(
+        id=f"inl_ok_{token}",
+        title=title,
+        description=desc,
+        input_message_content=InputTextMessageContent(
+            message_text=f"✓ <b>{H(title)}</b>",
+            parse_mode="HTML"))
+
+async def on_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        query=update.inline_query; user=query.from_user
+        if not user: return
+        lang=get_lang(user.id); q=(query.query or "").strip()
+        ud=context.user_data; draft=ud.get("inl_deal") or {}
+        step=draft.get("step")
+        results=[]
+
+        if not step:
+            low=q.lower()
+            if not q or low in ("создать","create","deal","сделка","c","start"):
+                results.append(InlineQueryResultArticle(
+                    id="inl_start",
+                    title=T(lang,"Создать сделку","Create deal","Створити угоду"),
+                    description=T(lang,"Сделка с гарантом в этом чате","Escrow deal in this chat","Угода з гарантом у цьому чаті"),
+                    input_message_content=InputTextMessageContent(
+                        message_text=f"{Epen} <b>{T(lang,'Создание сделки','Creating deal','Створення угоди')}</b>\n\n{T(lang,'Кто вы в сделке?','What is your role?','Хто ви в угоді?')}",
+                        parse_mode="HTML"),
+                    reply_markup=inl_role_kb(lang)))
+            await query.answer(results, cache_time=0, is_personal=True); return
+
+        if step=="partner":
+            t=q if q.startswith("@") else ("@"+q.lstrip("@") if q else "")
+            if not t:
+                results.append(InlineQueryResultArticle(
+                    id="inl_hint_partner",
+                    title=T(lang,"Введите @username партнёра","Enter partner @username","Введіть @username партнера"),
+                    description="@username",
+                    input_message_content=InputTextMessageContent(message_text=" ",parse_mode="HTML")))
+            else:
+                cl_p,ec_p=validate_username(t)
+                if ec_p:
+                    results.append(InlineQueryResultArticle(
+                        id="inl_hint_partner_bad",
+                        title=T(lang,"Некорректный @username","Invalid @username","Некоректний @username"),
+                        description=T(lang,"Пример: @username","Example: @username","Приклад: @username"),
+                        input_message_content=InputTextMessageContent(message_text=" ",parse_mode="HTML")))
+                else:
+                    tok=secrets.token_hex(4)
+                    draft["_pending"]={"token":tok,"partner":cl_p}
+                    results.append(inl_make_ok_article(lang, f"{T(lang,'Партнёр','Partner','Партнер')}: {cl_p}", T(lang,"Нажмите чтобы продолжить","Tap to continue","Натисніть щоб продовжити"), tok))
+        elif step=="nft_link":
+            ok,_,links=parse_and_validate_nft_links(q,"nft")
+            if not ok or not links:
+                results.append(InlineQueryResultArticle(
+                    id="inl_hint_nft",
+                    title=T(lang,"Вставьте ссылку NFT","Paste NFT link","Вставте посилання NFT"),
+                    description="t.me/nft/...",
+                    input_message_content=InputTextMessageContent(message_text=" ",parse_mode="HTML")))
+            else:
+                tok=secrets.token_hex(4)
+                draft["_pending"]={"token":tok,"nft_links":links}
+                lbl=T(lang,"Ссылки NFT","NFT links","Посилання NFT") if len(links)>1 else T(lang,"Ссылка NFT","NFT link","Посилання NFT")
+                results.append(inl_make_ok_article(lang, f"{lbl} ({len(links)})", links[0][:60], tok))
+        elif step=="trade_usr":
+            ok,_,links=parse_and_validate_username_links(q)
+            if not ok or not links:
+                results.append(InlineQueryResultArticle(
+                    id="inl_hint_usr",
+                    title=T(lang,"Вставьте ссылку username","Paste username link","Вставте посилання username"),
+                    description="t.me/username",
+                    input_message_content=InputTextMessageContent(message_text=" ",parse_mode="HTML")))
+            else:
+                tok=secrets.token_hex(4)
+                draft["_pending"]={"token":tok,"trade_usernames":links}
+                lbl=T(lang,"Ссылки username","Username links","Посилання username") if len(links)>1 else T(lang,"Ссылка username","Username link","Посилання username")
+                results.append(inl_make_ok_article(lang, f"{lbl} ({len(links)})", links[0][:60], tok))
+        elif step=="stars_cnt":
+            if not q.isdigit() or int(q)<=0:
+                results.append(InlineQueryResultArticle(
+                    id="inl_hint_stars",
+                    title=T(lang,"Введите звёзды","Enter stars","Введіть зірки"),
+                    description="100",
+                    input_message_content=InputTextMessageContent(message_text=" ",parse_mode="HTML")))
+            else:
+                tok=secrets.token_hex(4)
+                draft["_pending"]={"token":tok,"stars_count":q}
+                results.append(inl_make_ok_article(lang, f"{T(lang,'Звёзды','Stars','Зірки')}: {q}", T(lang,"Нажмите чтобы продолжить","Tap to continue","Натисніть щоб продовжити"), tok))
+        elif step=="amount":
+            ca=normalize_currency_amount(q,draft.get("currency"))
+            if ca is None:
+                results.append(InlineQueryResultArticle(
+                    id="inl_hint_amount",
+                    title=T(lang,"Введите сумму сделки","Enter deal amount","Введіть суму угоди"),
+                    description=T(lang,"Только число","Number only","Лише число"),
+                    input_message_content=InputTextMessageContent(message_text=" ",parse_mode="HTML")))
+            else:
+                tok=secrets.token_hex(4)
+                draft["_pending"]={"token":tok,"amount":ca,"payment_amount":ca,"pay_currency":draft.get("currency")}
+                results.append(inl_make_ok_article(lang, f"{T(lang,'Сумма','Amount','Сума')}: {ca} {cur_plain(draft.get('currency',''),lang)}", T(lang,"Нажмите чтобы продолжить","Tap to continue","Натисніть щоб продовжити"), tok))
+        else:
+            results.append(InlineQueryResultArticle(
+                id="inl_hint_step",
+                title=T(lang,"Создать сделку","Create deal","Створити угоду"),
+                description=T(lang,"Продолжите в сообщении выше","Continue in the message above","Продовжіть у повідомленні вище"),
+                input_message_content=InputTextMessageContent(message_text=" ",parse_mode="HTML")))
+
+        await query.answer(results, cache_time=0, is_personal=True)
+    except Exception as e:
+        logger.error("on_inline_query: %s", e, exc_info=True)
+
+async def on_chosen_inline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        result=update.chosen_inline_result
+        if not result or not result.result_id.startswith("inl_ok_"): return
+        tok=result.result_id[7:]
+        ud=context.user_data; draft=inl_draft(ud)
+        pending=draft.get("_pending") or {}
+        if pending.get("token")!=tok: return
+        if pending.get("partner"): draft["partner"]=pending["partner"]
+        if pending.get("nft_links"): draft["nft_links"]=pending["nft_links"]
+        if pending.get("trade_usernames"): draft["trade_usernames"]=pending["trade_usernames"]
+        if pending.get("stars_count"): draft["stars_count"]=pending["stars_count"]
+        if pending.get("amount") is not None:
+            draft["amount"]=pending["amount"]
+            draft["payment_amount"]=pending.get("payment_amount") or pending["amount"]
+            draft["pay_currency"]=pending.get("pay_currency") or draft.get("currency")
+        draft.pop("_pending",None)
+        lang=get_lang(result.from_user.id)
+        step=draft.get("step")
+        if step=="partner":
+            await inl_show_item_input(context, draft, lang)
+        elif step in ("nft_link","trade_usr","stars_cnt"):
+            await inl_show_currency(context, draft, lang)
+        elif step=="amount":
+            await inl_show_confirm(context, draft, result.from_user.id)
+    except Exception as e:
+        logger.error("on_chosen_inline: %s", e, exc_info=True)
+
+async def handle_inline_deal_cb(update, context, d):
+    q=update.callback_query; uid=update.effective_user.id
+    lang=get_lang(uid); ud=context.user_data; draft=inl_draft(ud)
+
+    if q.message:
+        draft["chat_id"]=q.message.chat.id
+        draft["message_id"]=q.message.message_id
+
+    if d=="inl_cancel":
+        clear_inl_draft(ud)
+        try:
+            await q.edit_message_text(f"{Ewrn} <b>{T(lang,'Создание сделки отменено','Deal creation cancelled','Створення угоди скасовано')}</b>", parse_mode="HTML")
+        except Exception: pass
+        return
+
+    if d=="inl_back_role":
+        await inl_show_role(context, draft, lang); return
+    if d=="inl_back_type":
+        await inl_show_types(context, draft, lang); return
+    if d=="inl_back_partner":
+        await inl_show_partner(context, draft, lang); return
+    if d=="inl_back_item":
+        await inl_show_item_input(context, draft, lang); return
+    if d=="inl_back_currency":
+        await inl_show_currency(context, draft, lang); return
+
+    if d in ("inl_role_buyer","inl_role_seller"):
+        draft["creator_role"]="buyer" if d=="inl_role_buyer" else "seller"
+        await inl_show_types(context, draft, lang); return
+
+    if d in INL_TYPE_MAP:
+        draft["type"]=INL_TYPE_MAP[d]
+        await inl_show_partner(context, draft, lang)
+        return
+
+    if d in ("inl_prm_3","inl_prm_6","inl_prm_12"):
+        prmap={"inl_prm_3":T(lang,"3 месяца","3 months","3 місяці"),
+               "inl_prm_6":T(lang,"6 месяцев","6 months","6 місяців"),
+               "inl_prm_12":T(lang,"12 месяцев","12 months","12 місяців")}
+        draft["premium_period"]=prmap[d]
+        await inl_show_currency(context, draft, lang); return
+
+    if d in INL_CUR_MAP:
+        draft["currency"]=INL_CUR_MAP[d]
+        draft["pay_currency"]=INL_CUR_MAP[d]
+        await inl_show_amount(context, draft, lang); return
+
+    if d.startswith("inl_confirm:"):
+        token=d.split(":",1)[1]
+        required=("creator_role","type","partner","currency","amount")
+        if token!=draft.get("_deal_confirm_token") or any(draft.get(k) in (None,"","-") for k in required):
+            await q.answer(T(lang,"Черновик неполный","Draft incomplete","Чернетка неповна"), show_alert=True); return
+        await finalize_inline_deal(update, context, draft); return
+
+async def finalize_inline_deal(update, context, draft):
+    try:
+        user=update.effective_user; db=load_db()
+        if draft.get("_finalizing"): return
+        u_check=get_user(db,user.id)
+        currency=draft.get("currency","-")
+        lang=get_lang(user.id)
+        if not user_has_requisites_for(u_check, currency):
+            await context.bot.send_message(
+                chat_id=user.id,
+                text=f"{Ewrn} <b>{req_add_for_amount_text(currency, lang)}</b>",
+                parse_mode="HTML", reply_markup=currency_requisites_kb(currency,lang))
+            await update.callback_query.answer(
+                T(lang,"Сначала привяжите реквизиты в личке бота","Bind requisites in bot DM first","Спочатку прив'яжіть реквізити в особистих боті"),
+                show_alert=True)
+            return
+        draft["_finalizing"]=True
+        deal_id=persist_deal_from_draft(db, user, draft)
+        join_link_f=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
+        share_url="https://t.me/share/url?"+urlencode({
+            "url":join_link_f,
+            "text":L(lang,"Сделка создана! Присоединяйтесь.","Deal created! Join now."),
+        }, quote_via=quote)
+        text_out=(
+            f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
+            f"<blockquote><b>{T(lang,'Номер сделки','Deal ID','Номер угоди')}:</b> <code>{H(deal_id)}</code>\n"
+            f"{format_deal_type_fields(draft.get('type',''), inl_draft_to_ud(draft), lang)}\n"
+            f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> {cur_amount_phrase(draft.get('amount'), currency, lang)}</blockquote>\n\n"
+            f"<a href=\"{H(join_link_f)}\">{H(join_link_f)}</a>"
+        )
+        kb=InlineKeyboardMarkup([
+            [InlineKeyboardButton(L(lang,"Присоединиться","Join"),url=join_link_f,icon_custom_emoji_id="5893431652578758294")],
+            [InlineKeyboardButton(L(lang,"Переслать","Forward"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
+        ])
+        chat_id=draft.get("chat_id")
+        if chat_id:
+            await context.bot.send_message(chat_id=chat_id, text=text_out, parse_mode="HTML", reply_markup=kb)
+        try:
+            await update.callback_query.edit_message_text(
+                f"{Ech} <b>{L(lang,'Сделка создана!','Deal created!')}</b> <code>{deal_id}</code>",
+                parse_mode="HTML")
+        except Exception: pass
+        clear_inl_draft(context.user_data)
+        uname=f"@{user.username}" if user.username else f"#{user.id}"
+        schedule_log_msg(context, db)
+        schedule_notify_admins(context,
+            f"{Edl} <b>Новая сделка (inline)</b>\n\n"
+            f"{Eu} {H(uname)} (<code>{user.id}</code>)\n"
+            f"{Edln} <code>{deal_id}</code>\n"
+            f"Чат: <code>{chat_id}</code>")
+    except Exception as e:
+        draft.pop("_finalizing",None)
+        logger.error("finalize_inline_deal: %s", e, exc_info=True)
+
 # ─── Validation ───────────────────────────────────────────────────────────────
 def validate_username(text):
     import re
@@ -4212,6 +4634,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         d=q.data or ""
         ud=context.user_data; uid=update.effective_user.id
         lang=get_lang(uid); ru=lang=="ru"
+        if d.startswith("inl_"):
+            await handle_inline_deal_cb(update, context, d); return
         if d.startswith("adm_") and uid not in ADMIN_IDS: return
 
         # ── Навигация главного меню ──
@@ -6970,6 +7394,8 @@ def main():
     app.add_handler(CommandHandler("addreview",cmd_add_review))
     app.add_handler(CommandHandler("delreview",cmd_del_review))
     app.add_handler(CommandHandler("my_reviews",cmd_my_reviews))
+    app.add_handler(InlineQueryHandler(on_inline_query))
+    app.add_handler(ChosenInlineResultHandler(on_chosen_inline))
     app.add_handler(CallbackQueryHandler(on_cb))
     app.add_handler(MessageHandler(filters.Document.ALL, on_admin_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND,on_msg))
