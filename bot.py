@@ -2359,12 +2359,24 @@ def validate_bank_name(text):
     if not re.search(r"[a-zA-Zа-яёА-ЯЁіІїЇєЄґҐ]{2,}", t): return None
     return t
 
+_NFT_URL_RE=re.compile(r"(?:https?://)?(?:t\.me|telegram\.me)/nft/([^\s?#,;<>\[\]()]+)", re.I)
+_TG_NFT_RE=re.compile(r"tg://nft\?slug=([^\s&#]+)", re.I)
+
 def normalize_nft_link(text):
-    clean=text.strip()
+    import re
+    clean=(text or "").strip()
     for prefix in ("https://","http://"):
         if clean.startswith(prefix): clean=clean[len(prefix):]; break
+    if clean.startswith("telegram.me/"): clean="t.me/"+clean[12:]
+    clean=re.sub(r"^\d+[\.)]\s*","",clean)
+    clean=clean.lstrip("-•*").strip()
     if not clean.startswith("t.me/"): clean="t.me/"+clean.lstrip("/")
     return clean
+
+def nft_slug_from_path(path):
+    if not path.startswith("nft/"): return None
+    slug=path[4:].strip("/").split("?")[0].split("#")[0]
+    return slug or None
 
 def validate_nft_link(text, dtype):
     import re
@@ -2372,31 +2384,45 @@ def validate_nft_link(text, dtype):
     if not clean.startswith("t.me/"): return False,"no_tme"
     path=clean[5:]
     if dtype=="nft":
-        if not path.startswith("nft/"): return False,"wrong_nft"
-        slug=path[4:].strip("/")
-        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{1,127}", slug): return False,"wrong_nft"
+        slug=nft_slug_from_path(path)
+        if not slug or any(c.isspace() for c in slug) or len(slug)>256: return False,"wrong_nft"
     elif dtype=="username":
-        uname=path.strip("/")
+        uname=path.strip("/").split("?")[0].split("#")[0]
         if len(uname)<4: return False,"wrong_usr"
         if not re.fullmatch(r"[a-zA-Z0-9_]+", uname): return False,"wrong_usr"
     return True,None
 
-def parse_nft_links_input(text):
+def extract_nft_links_from_text(text, dtype="nft"):
     import re
-    parts=re.split(r"[\n,;]+", (text or "").strip())
-    return [p.strip() for p in parts if p.strip()]
+    if not text: return []
+    links=[]; seen=set()
+    def add_slug(slug):
+        slug=(slug or "").strip("/").split("?")[0].split("#")[0]
+        if not slug: return
+        link=f"t.me/nft/{slug}" if dtype=="nft" else normalize_nft_link(slug if slug.startswith("t.me/") else f"t.me/{slug}")
+        if link not in seen:
+            seen.add(link); links.append(link)
+    if dtype=="nft":
+        for pattern in (_NFT_URL_RE, _TG_NFT_RE):
+            for m in pattern.finditer(text):
+                add_slug(m.group(1))
+    if links: return links
+    parts=re.split(r"[\n,;]+", text.strip())
+    for part in parts:
+        p=part.strip()
+        if not p: continue
+        clean=normalize_nft_link(p)
+        ok,_=validate_nft_link(clean,dtype)
+        if ok and clean not in seen:
+            seen.add(clean); links.append(clean)
+    return links
 
 def parse_and_validate_nft_links(text, dtype):
-    parts=parse_nft_links_input(text)
-    if not parts: return False,"empty",[]
-    links=[]
-    seen=set()
-    for part in parts:
-        clean=normalize_nft_link(part)
-        ok,err=validate_nft_link(clean,dtype)
+    links=extract_nft_links_from_text(text,dtype)
+    if not links: return False,"empty",[]
+    for link in links:
+        ok,err=validate_nft_link(link,dtype)
         if not ok: return False,err,[]
-        if clean not in seen:
-            seen.add(clean); links.append(clean)
     return True,None,links
 
 def deal_nft_links(dd):
@@ -2947,7 +2973,7 @@ AI_KB = {
             "2) Выберите роль: Покупатель или Продавец.\n"
             "3) Выберите тип: NFT подарок / NFT Username / Звёзды / Крипта / Telegram Premium.\n"
             "4) Введите @username партнёра.\n"
-            "5) Для NFT - одна или несколько ссылок (каждая с новой строки); для Username - t.me/… или @username; для Stars - количество; для Premium - срок.\n"
+            "5) Для NFT - одна или несколько ссылок (в ряд, через пробел/запятую или с новой строки); для Username - t.me/… или @username; для Stars - количество; для Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
             "8) Отправьте партнёру ссылку вида  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
@@ -2960,7 +2986,7 @@ AI_KB = {
             "2) Choose role: Buyer or Seller.\n"
             "3) Choose type: NFT Gift / NFT Username / Stars / Crypto / Telegram Premium.\n"
             "4) Enter partner @username.\n"
-            "5) NFT needs one or more links (one per line); Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
+            "5) NFT needs one or more links (in one line, space/comma-separated, or one per line); Username needs t.me/… or @username; Stars need count; Premium needs period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
             "8) Send the partner link:  t.me/FunPaySwopRobot?start=deal_FPxxxxx. \n\n"
@@ -2993,7 +3019,7 @@ AI_KB = {
         "keys": ("тип сделк","nft","username","premium","звезд","звёзд","крипт","gift","какой тип"),
         "ru": (
             "Типы сделок\n\n"
-            "• NFT подарок - сделка по NFT-подарку (можно указать несколько ссылок, каждая с новой строки).\n"
+            "• NFT подарок - сделка по NFT-подарку (можно указать несколько ссылок — в ряд, через пробел или с новой строки).\n"
             "• NFT Username - сделка по юзернейму (t.me/username или @username).\n"
             "• Звёзды - покупка/продажа Telegram Stars (укажите количество).\n"
             "• Крипта - криптообмен через гаранта.\n"
@@ -3003,7 +3029,7 @@ AI_KB = {
         ),
         "en": (
             "Deal types\n\n"
-            "• NFT Gift - NFT gift deal (one or more gift links, one per line).\n"
+            "• NFT Gift - NFT gift deal (one or more gift links, in one line or one per line).\n"
             "• NFT Username - username deal (t.me/username or @username).\n"
             "• Stars - buy/sell Telegram Stars (enter count).\n"
             "• Crypto - crypto exchange via escrow.\n"
@@ -4970,7 +4996,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_step(
                     f"{Enft_link} <b>{L(lang,'Вставьте ссылку(и) на NFT:','Paste NFT link(s):')}</b>\n\n"
                     f"<code>t.me/nft/...</code>\n\n"
-                    f"<i>{L(lang,'Можно несколько — каждая с новой строки','Multiple links allowed — one per line','Можна кілька — кожна з нового рядка')}</i>")
+                    f"<i>{L(lang,'Можно несколько — в одну строку, через пробел, запятую или с новой строки','Multiple links allowed — in one line, separated by space/comma, or one per line','Можна кілька — в один рядок, через пробіл, кому або з нового рядка')}</i>")
             elif dtype=="username":
                 ud["step"]="trade_usr"
                 await send_step(f"{Eu} <b>{L(lang,'Введите ссылку (t.me/...):','Enter link (t.me/...):')}</b>")
@@ -4995,7 +5021,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ok,em,links=parse_and_validate_nft_links(text,dtype)
             if not ok:
                 await update.message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Формат: t.me/nft/НазваниеНФТ (можно несколько — каждая с новой строки)','Invalid link. Format: t.me/nft/NFTName (multiple links — one per line)')}</b>",
+                    f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Формат: t.me/nft/НазваниеНФТ (можно несколько — в ряд, через пробел или с новой строки)','Invalid link. Format: t.me/nft/NFTName (multiple links — in one line, space-separated, or one per line)')}</b>",
                     parse_mode="HTML"); return
             ud["nft_links"]=links
             if len(links)==1: ud["nft_link"]=links[0]
