@@ -1,14 +1,14 @@
-# FunPay Bot — @FunPaySwopRobot
+# FunPay Bot - @FunPaySwopRobot
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/yagubiskenderov483-code/topOdinBot)
 
 ## Деплой на Render (один клик)
 
-1. **Остановите бота на Bothost** (если там запущен) — один токен = один сервер.
+1. **Остановите бота на Bothost** (если там запущен) - один токен = один сервер.
 2. Нажмите кнопку **Deploy to Render** выше (или откройте ссылку):
    https://render.com/deploy?repo=https://github.com/yagubiskenderov483-code/topOdinBot
 3. Войдите в Render через GitHub → **Apply** (Blueprint подхватит `render.yaml` автоматически).
-4. Дождитесь статуса **Live** (~5–10 мин).
+4. Дождитесь статуса **Live** (~5-10 мин).
 5. Проверьте:
    - https://funpay-saving-bot.onrender.com/health
    - https://funpay-saving-bot.onrender.com/index.html
@@ -29,7 +29,7 @@
 Токен задаётся через `BOT_TOKEN` (значение по умолчанию есть в `bot.py`).
 Render работает только как Mini App + `/health`, а Telegram-бот использует **polling** на Bothost.
 
-**Не запускайте Bothost и Render одновременно** — `/start` перестанет работать.
+**Не запускайте Bothost и Render одновременно** - `/start` перестанет работать.
 
 ---
 

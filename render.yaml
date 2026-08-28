@@ -1,4 +1,4 @@
-# Render Blueprint — один web-сервис: Mini App + /health (бот работает на Bothost, polling)
+# Render Blueprint - один web-сервис: Mini App + /health (бот работает на Bothost, polling)
 # Деплой: https://render.com/deploy?repo=https://github.com/yagubiskenderov483-code/topOdinBot
 services:
   - type: web
