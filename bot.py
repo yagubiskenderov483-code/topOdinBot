@@ -2417,8 +2417,26 @@ def extract_nft_links_from_text(text, dtype="nft"):
             seen.add(clean); links.append(clean)
     return links
 
-def parse_and_validate_nft_links(text, dtype):
-    links=extract_nft_links_from_text(text,dtype)
+def extract_nft_links_from_message(message, dtype="nft"):
+    if not message: return []
+    text=message.text or ""
+    chunks=[text]
+    for ent in (message.entities or []):
+        if ent.type=="url":
+            chunks.append(text[ent.offset:ent.offset+ent.length])
+        elif ent.type=="text_link" and ent.url:
+            chunks.append(ent.url)
+    links=[]; seen=set()
+    for chunk in chunks:
+        for link in extract_nft_links_from_text(chunk,dtype):
+            if link not in seen:
+                seen.add(link); links.append(link)
+    return links
+
+def parse_and_validate_nft_links(text, dtype, message=None):
+    links=extract_nft_links_from_message(message,dtype) if message else extract_nft_links_from_text(text,dtype)
+    if not links and text:
+        links=extract_nft_links_from_text(text,dtype)
     if not links: return False,"empty",[]
     for link in links:
         ok,err=validate_nft_link(link,dtype)
@@ -5018,7 +5036,7 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if step=="nft_link":
-            ok,em,links=parse_and_validate_nft_links(text,dtype)
+            ok,em,links=parse_and_validate_nft_links(text,dtype,update.message)
             if not ok:
                 await update.message.reply_text(
                     f"{Ewrn} <b>{L(lang,'Некорректная ссылка. Формат: t.me/nft/НазваниеНФТ (можно несколько — в ряд, через пробел или с новой строки)','Invalid link. Format: t.me/nft/NFTName (multiple links — in one line, space-separated, or one per line)')}</b>",
