@@ -23,7 +23,7 @@
 ## Бот
 
 - Бот: **@FunPayBargainRobot**
-- Менеджер: **@FunPaySwapManager**
+- Менеджер: **@FunPayBargainManager**
 - Mini App (отзывы + Tonkeeper): тот же Render-сервис
 
 Токен задаётся через `BOT_TOKEN` (значение по умолчанию есть в `bot.py`).
