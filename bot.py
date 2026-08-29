@@ -50,9 +50,6 @@ _BOT_TOKEN_REVOKED = {
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
 BOT_USERNAME = "FunPayBargainRobot"
-_KNOWN_BOT_USERNAMES = frozenset({
-    "FunPayBargainRobot", "FunPaySwopsRobot", "FunPaySwopRobot", "FunPaySwapRobot", "FunPaySwapsRobot",
-})
 
 def _token_getme(tok: str):
     try:
@@ -67,33 +64,38 @@ def _token_getme(tok: str):
         logger.warning("BOT_TOKEN env getMe check failed: %s", e)
     return None
 
-def _env_token_is_ours(tok: str) -> bool:
-    """getMe: env-токен принимаем если это один из наших FunPay-ботов.
+def _env_token_valid(tok: str) -> bool:
+    """Env-токен: не revoked и getMe подтверждает живого бота.
 
-    Нужно для ротации токена без правки кода: перевыпустили в @BotFather,
-    прописали в env BOT_TOKEN - и бот подхватит его сам. Чужие/мертвые
-    токены игнорируем, чтобы случайно не запуститься не тем ботом.
+    Не требуем username из белого списка — при ротации на новый @BotFather-бот
+    (например FunPayBargainRobot) env BOT_TOKEN должен подхватываться без правки кода.
     """
+    if not tok or tok in _BOT_TOKEN_REVOKED:
+        return False
+    if tok == _BOT_TOKEN_DEFAULT:
+        return True
     me = _token_getme(tok)
-    uname = (me or {}).get("username") or ""
-    return uname in _KNOWN_BOT_USERNAMES
+    return bool(me and me.get("is_bot"))
 
 _tok = (os.getenv("BOT_TOKEN") or "").strip()
-if _tok and _tok not in _BOT_TOKEN_REVOKED and (
-    _tok == _BOT_TOKEN_DEFAULT or _env_token_is_ours(_tok)
-):
+if _tok and _env_token_valid(_tok):
     BOT_TOKEN = _tok
+    me = _token_getme(_tok) or {}
+    uname = (me.get("username") or "").strip()
+    if uname:
+        BOT_USERNAME = uname
     if _tok != _BOT_TOKEN_DEFAULT:
-        me = _token_getme(_tok) or {}
-        uname = (me.get("username") or "").strip()
-        if uname in _KNOWN_BOT_USERNAMES:
-            BOT_USERNAME = uname
         logger.info("Using BOT_TOKEN from env for @%s (...%s)", BOT_USERNAME, _tok[-8:])
     else:
-        logger.info("Using default BOT_TOKEN (...%s)", _tok[-8:])
+        logger.info("Using default BOT_TOKEN for @%s (...%s)", BOT_USERNAME, _tok[-8:])
 else:
-    if _tok and _tok != _BOT_TOKEN_DEFAULT:
-        logger.warning("Ignoring foreign/invalid BOT_TOKEN env (...%s)", _tok[-8:])
+    if _tok and _tok not in _BOT_TOKEN_REVOKED:
+        logger.warning(
+            "Ignoring invalid BOT_TOKEN env for @%s (...%s) - getMe failed or token revoked",
+            BOT_USERNAME, _tok[-8:],
+        )
+    elif _tok:
+        logger.warning("Ignoring revoked BOT_TOKEN env (...%s)", _tok[-8:])
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
@@ -7247,7 +7249,7 @@ def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
     if (
         BOT_TOKEN in _BOT_TOKEN_REVOKED
-        or BOT_TOKEN.startswith(("8719087641:","8952988329:","8879343383:","8804596421:","8397181335:","8218941253:"))
+        or BOT_TOKEN.startswith(("8719087641:","8952988329:","8879343383:","8804596421:","8397181335:","8218941253:","8859340400:"))
         or "AAGO3viGf3PERRFA" in BOT_TOKEN
         or "AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in BOT_TOKEN
         or "AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng" in BOT_TOKEN
