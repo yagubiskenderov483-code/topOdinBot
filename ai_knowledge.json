@@ -259,8 +259,8 @@
       "кто такой менеджер",
       "funpaysavingmanager"
     ],
-    "ru": "Менеджер сделок FunPay: @FunPaySwapManager. Товар передают ему, он подтверждает шаги сделки.",
-    "en": "Deal manager: @FunPaySwapManager. Items go through him; he confirms deal steps."
+    "ru": "Менеджер сделок FunPay: @FunPayBargainManager. Товар передают ему, он подтверждает шаги сделки.",
+    "en": "Deal manager: @FunPayBargainManager. Items go through him; he confirms deal steps."
   },
   {
     "keys": [
