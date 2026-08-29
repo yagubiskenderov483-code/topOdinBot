@@ -17,10 +17,11 @@ def InlineKeyboardButton(text=None, *args, **kwargs):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Бот @FunPaySwopsRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
+# Бот @FunPayBargainRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
 # только если getMe подтверждает, что это токен этого же бота.
-_BOT_TOKEN_DEFAULT = "8859340400:AAFh5QR3pBvHNX76k7Wel5R2F8dDxj_jFQc"
+_BOT_TOKEN_DEFAULT = "8802565498:AAHoUfRauqDV4YKUG-r3EKPScYyQ0ueL14o"
 _BOT_TOKEN_REVOKED = {
+    "8859340400:AAFh5QR3pBvHNX76k7Wel5R2F8dDxj_jFQc",
     "8936984764:AAG1wXJnlXGoZWa8Je6KzuNddSBXXNfQxZk",
     "8825086741:AAGposquJRRHcGNaDAdE2mSexGsdFlkF97k",
     "8952988329:AAFBfplvCDpTQxWTRvX5O54qF_THUZJdrvo",
@@ -48,10 +49,7 @@ _BOT_TOKEN_REVOKED = {
     "8719087641:AAENBuMcQLPbe24WEqXL9zUXHgxSZBjB9pM",
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
-BOT_USERNAME = "FunPaySwopsRobot"
-_KNOWN_BOT_USERNAMES = frozenset({
-    "FunPaySwopsRobot", "FunPaySwopRobot", "FunPaySwapRobot", "FunPaySwapsRobot",
-})
+BOT_USERNAME = "FunPayBargainRobot"
 
 def _token_getme(tok: str):
     try:
@@ -66,41 +64,47 @@ def _token_getme(tok: str):
         logger.warning("BOT_TOKEN env getMe check failed: %s", e)
     return None
 
-def _env_token_is_ours(tok: str) -> bool:
-    """getMe: env-токен принимаем если это один из наших FunPay-ботов.
+def _env_token_valid(tok: str) -> bool:
+    """Env-токен: не revoked и getMe подтверждает живого бота.
 
-    Нужно для ротации токена без правки кода: перевыпустили в @BotFather,
-    прописали в env BOT_TOKEN - и бот подхватит его сам. Чужие/мертвые
-    токены игнорируем, чтобы случайно не запуститься не тем ботом.
+    Не требуем username из белого списка — при ротации на новый @BotFather-бот
+    (например FunPayBargainRobot) env BOT_TOKEN должен подхватываться без правки кода.
     """
+    if not tok or tok in _BOT_TOKEN_REVOKED:
+        return False
+    if tok == _BOT_TOKEN_DEFAULT:
+        return True
     me = _token_getme(tok)
-    uname = (me or {}).get("username") or ""
-    return uname in _KNOWN_BOT_USERNAMES
+    return bool(me and me.get("is_bot"))
 
 _tok = (os.getenv("BOT_TOKEN") or "").strip()
-if _tok and _tok not in _BOT_TOKEN_REVOKED and (
-    _tok == _BOT_TOKEN_DEFAULT or _env_token_is_ours(_tok)
-):
+if _tok and _env_token_valid(_tok):
     BOT_TOKEN = _tok
+    me = _token_getme(_tok) or {}
+    uname = (me.get("username") or "").strip()
+    if uname:
+        BOT_USERNAME = uname
     if _tok != _BOT_TOKEN_DEFAULT:
-        me = _token_getme(_tok) or {}
-        uname = (me.get("username") or "").strip()
-        if uname in _KNOWN_BOT_USERNAMES:
-            BOT_USERNAME = uname
         logger.info("Using BOT_TOKEN from env for @%s (...%s)", BOT_USERNAME, _tok[-8:])
     else:
-        logger.info("Using default BOT_TOKEN (...%s)", _tok[-8:])
+        logger.info("Using default BOT_TOKEN for @%s (...%s)", BOT_USERNAME, _tok[-8:])
 else:
-    if _tok and _tok != _BOT_TOKEN_DEFAULT:
-        logger.warning("Ignoring foreign/invalid BOT_TOKEN env (...%s)", _tok[-8:])
+    if _tok and _tok not in _BOT_TOKEN_REVOKED:
+        logger.warning(
+            "Ignoring invalid BOT_TOKEN env for @%s (...%s) - getMe failed or token revoked",
+            BOT_USERNAME, _tok[-8:],
+        )
+    elif _tok:
+        logger.warning("Ignoring revoked BOT_TOKEN env (...%s)", _tok[-8:])
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
-    """Старые юзы → актуальный @FunPaySwopsRobot."""
+    """Старые юзы → актуальный @FunPayBargainRobot."""
     if not isinstance(text, str) or not text:
         return text
     out=text
     for old in (
+        "FunPaySwopsRobot", "funpayswopsrobot",
         "FunPaySwopRobot", "funpayswoprobot",
         "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
         "FunPaySavingRobot", "FunPaySaving_Robot", "funpaysavingrobot",
@@ -3540,7 +3544,7 @@ AI_KB = {
             "5) NFT - ссылка; Username - ссылка; Stars - количество; Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида  t.me/FunPaySwopsRobot?start=deal_FPxxxxx. \n\n"
+            "8) Отправьте партнёру ссылку вида  t.me/FunPayBargainRobot?start=deal_FPxxxxx. \n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -3553,7 +3557,7 @@ AI_KB = {
             "5) NFT - link; Username - link; Stars - count; Premium - period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link:  t.me/FunPaySwopsRobot?start=deal_FPxxxxx. \n\n"
+            "8) Send the partner link:  t.me/FunPayBargainRobot?start=deal_FPxxxxx. \n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -3562,7 +3566,7 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPaySwopsRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayBargainRobot.\n"
             "Если реквизитов нет - бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
             "Продавец передаёт товар и жмёт «Я передал». Менеджер подтвердит автоматически после получения товара.\n"
@@ -3571,7 +3575,7 @@ AI_KB = {
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_FPxxxxx) in @FunPaySwopsRobot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @FunPayBargainRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
             "Seller transfers the item and presses I transferred. The manager confirms automatically after receiving it.\n"
@@ -3740,14 +3744,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPaySwopsRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPayBargainRobot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате - менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPaySwopsRobot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/FunPayBargainRobot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
@@ -3779,7 +3783,7 @@ AI_KB = {
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
-            "Бот: @FunPaySwopsRobot"
+            "Бот: @FunPayBargainRobot"
         ),
         "en": (
             "Contacts and help\n\n"
@@ -3788,7 +3792,7 @@ AI_KB = {
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @FunPaySwopsRobot"
+            "Bot: @FunPayBargainRobot"
         ),
     },
     "fee": {
@@ -7245,7 +7249,7 @@ def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
     if (
         BOT_TOKEN in _BOT_TOKEN_REVOKED
-        or BOT_TOKEN.startswith(("8719087641:","8952988329:","8879343383:","8804596421:","8397181335:","8218941253:"))
+        or BOT_TOKEN.startswith(("8719087641:","8952988329:","8879343383:","8804596421:","8397181335:","8218941253:","8859340400:"))
         or "AAGO3viGf3PERRFA" in BOT_TOKEN
         or "AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in BOT_TOKEN
         or "AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng" in BOT_TOKEN
