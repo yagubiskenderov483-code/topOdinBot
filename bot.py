@@ -1006,6 +1006,7 @@ def _is_telegram_file_id(value):
         return False
     return "/" not in value and "\\" not in value
 
+def _banner_local_path(section=None, entry=None):
     """Resolve on-disk banner image (survives bot token switch)."""
     cands=[]
     if isinstance(entry, dict):
