@@ -1720,14 +1720,14 @@ def get_banner(db, section="main"):
         b=dict(b)
     b=_apply_seed_banner_fields(b, section)
     local=_banner_local_path(section, b)
-    if local and not b.get("local"):
+    if local:
+        # Disk file wins over stale Telegram file_ids from db/seed.
         b["local"]=local
-    if local and not (b.get("photo") or b.get("video") or b.get("gif")):
-        b["photo"]=local
+        if not (b.get("video") or b.get("gif")):
+            b["photo"]=local
+        return b
     if b and any(b.get(k) for k in ("photo","video","gif","text","local")):
         return b
-    if local:
-        return {"photo":local,"local":local,"video":None,"gif":None,"text":""}
     if section=="main" and db is not None:
         lg={"photo":db.get("banner_photo"),"video":db.get("banner_video"),
             "gif":db.get("banner_gif"),"text":db.get("banner") or ""}

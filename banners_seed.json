@@ -110,14 +110,14 @@
       "video": null,
       "gif": null,
       "text": "",
-      "local": "banner_assets/withdraw.jpg"
+      "local": "banner_assets/withdraw.png"
     },
     "withdraw_no_funds": {
       "photo": null,
       "video": null,
       "gif": null,
       "text": "",
-      "local": "banner_assets/withdraw_no_funds.jpg"
+      "local": "banner_assets/withdraw_no_funds.png"
     },
     "req_card": {
       "photo": null,
@@ -131,24 +131,24 @@
       "video": null,
       "gif": null,
       "text": "",
-      "local": "banner_assets/req_ton.jpg"
+      "local": "banner_assets/req_ton.png"
     },
     "req_stars": {
       "photo": null,
       "video": null,
       "gif": null,
       "text": "",
-      "local": "banner_assets/req_stars.jpg"
+      "local": "banner_assets/req_stars.png"
     },
     "lang": {
       "photo": null,
       "video": null,
       "gif": null,
       "text": "",
-      "local": "banner_assets/lang.jpg"
+      "local": "banner_assets/lang.png"
     }
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-30T23:22:40Z"
+  "updated_at": "2026-08-30T23:39:10Z"
 }
