@@ -164,6 +164,39 @@ BANNERS_SEED_FILE = (os.getenv("BANNERS_SEED_FILE") or "").strip() or os.path.jo
 # Копия сида на постоянном диске (переживает redeploy при Disk на /data)
 BANNERS_SEED_DATA = os.path.join(DATA_DIR, "banners_seed.json")
 BANNER_ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "banner_assets")
+_BANNERS_SEED_CACHE = None
+
+def _refresh_banners_seed_cache():
+    global _BANNERS_SEED_CACHE
+    _BANNERS_SEED_CACHE = load_banners_seed() or {}
+
+def _seed_banner_entry(section):
+    seed = _BANNERS_SEED_CACHE if _BANNERS_SEED_CACHE is not None else load_banners_seed() or {}
+    banners = seed.get("banners") if isinstance(seed, dict) else None
+    if not isinstance(banners, dict):
+        return None
+    ent = banners.get(section)
+    return ent if isinstance(ent, dict) else None
+
+def _seed_has_media(section):
+    ent = _seed_banner_entry(section) or {}
+    return bool(ent.get("photo") or ent.get("video") or ent.get("gif"))
+
+def _apply_seed_banner_fields(b, section):
+    """banners_seed.json is canonical for Telegram file_ids (db may hold stale uploads)."""
+    ent = _seed_banner_entry(section)
+    if not ent:
+        return b
+    for k in ("photo", "video", "gif"):
+        v = ent.get(k)
+        if v:
+            b[k] = v
+    if (ent.get("text") or "").strip():
+        b["text"] = ent.get("text") or ""
+    loc = (ent.get("local") or ent.get("local_photo") or "").strip()
+    if loc:
+        b["local"] = loc
+    return b
 DEAL_COUNTER_START = 29548
 # Mini Apps живут на том же Render-сервисе, что и бот (single web service):
 #   GET /index.html      - отзывы (self-contained HTML из miniapp/)
@@ -1117,10 +1150,12 @@ def build_banners_seed_payload(db):
         if k not in db_banners:
             continue
         val=db_banners.get(k)
+        seed_val=(prev.get("banners") or {}).get(k) if prev else None
+        if isinstance(seed_val, dict) and _banner_entry_filled(seed_val):
+            continue  # keep canonical seed, do not overwrite with db
         if _banner_entry_filled(val):
             banners[k]=val
         else:
-            # админ явно очистил секцию
             banners.pop(k, None)
     log_banners={}
     if prev and isinstance(prev.get("log_banners"), dict):
@@ -1179,15 +1214,15 @@ def save_banners_seed(db):
 
 def apply_banners_seed(db):
     """Всегда подтягивает баннеры из seed-файла (banners_seed.json), перезаписывая db."""
-    seed = load_banners_seed()
+    _refresh_banners_seed_cache()
+    seed = _BANNERS_SEED_CACHE or load_banners_seed()
     if not seed:
         return db, False
     before = json.dumps(db.get("banners") or {}, sort_keys=True, ensure_ascii=False)
     db, changed = force_apply_banners_seed_payload(db, seed)
     after = json.dumps(db.get("banners") or {}, sort_keys=True, ensure_ascii=False)
-    if changed:
-        invalidate_banner_cache()
-    return db, before != after
+    invalidate_banner_cache()
+    return db, before != after or changed
 
 def force_apply_banners_seed_payload(db, seed):
     """Полная замена баннеров из загруженного seed (админ прислал файл)."""
@@ -1638,6 +1673,22 @@ def _banners_map():
 def invalidate_banner_cache():
     _BANNER_MEM["ts"] = 0.0
     _BANNER_MEM["map"] = {}
+    _refresh_banners_seed_cache()
+
+def _maybe_cache_banner_file_id(section, key, new_fid, local_ref=None):
+    """Do not overwrite seed file_ids with file_ids from disk fallbacks."""
+    if not section or not new_fid or _seed_has_media(section):
+        return
+    db = load_db()
+    ent = db.setdefault("banners", {}).setdefault(section, {})
+    if ent.get(key) != new_fid or not ent.get("local"):
+        ent[key] = new_fid
+        if local_ref:
+            ent["local"] = ent.get("local") or local_ref
+        try:
+            asyncio.get_running_loop().create_task(_save_db_async(db))
+        except RuntimeError:
+            save_db(db)
 
 def get_banner(db, section="main"):
     # Prefer live db if provided, else cached map
@@ -1649,6 +1700,7 @@ def get_banner(db, section="main"):
         b={}
     else:
         b=dict(b)
+    b=_apply_seed_banner_fields(b, section)
     local=_banner_local_path(section, b)
     if local and not b.get("local"):
         b["local"]=local
@@ -1809,16 +1861,7 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_
                     elif msg.animation:
                         new_fid = msg.animation.file_id
                     if new_fid:
-                        db = load_db()
-                        ent = db.setdefault("banners", {}).setdefault(section, {})
-                        key = "photo" if kind == "photo" else ("video" if kind == "video" else "gif")
-                        if ent.get(key) != new_fid or not ent.get("local"):
-                            ent[key] = new_fid
-                            ent["local"] = ent.get("local") or ref
-                            try:
-                                asyncio.get_running_loop().create_task(_save_db_async(db))
-                            except RuntimeError:
-                                save_db(db)
+                        _maybe_cache_banner_file_id(section, key, new_fid, ref if isinstance(ref, str) and os.path.isfile(ref) else None)
             except Exception as e:
                 logger.warning("banner file_id cache: %s", e)
             return msg
@@ -1872,16 +1915,8 @@ async def _safe_edit_media(msg, text, kb=None, bv=None, bg=None, bp=None, local_
                     elif out_msg.animation:
                         new_fid=out_msg.animation.file_id
                     if new_fid:
-                        db=load_db()
-                        ent=db.setdefault("banners", {}).setdefault(section, {})
                         key="video" if media_cls is InputMediaVideo else ("gif" if media_cls is InputMediaAnimation else "photo")
-                        if ent.get(key)!=new_fid or not ent.get("local"):
-                            ent[key]=new_fid
-                            ent["local"]=ent.get("local") or ref
-                            try:
-                                asyncio.get_running_loop().create_task(_save_db_async(db))
-                            except RuntimeError:
-                                save_db(db)
+                        _maybe_cache_banner_file_id(section, key, new_fid, ref)
             except Exception as e:
                 logger.warning("edit_media file_id cache: %s", e)
             return True
@@ -1935,6 +1970,8 @@ def _section_media(section, text, fallback_section=None, skip_media=False):
         local_fb=_banner_local_path(fallback_section, b)
     else:
         local_fb=_banner_local_path(section, b_primary or b)
+    if _seed_has_media(section if not fb_used else (fallback_section or section)):
+        local_fb=None
     if skip_media:
         bv=bg=bp=None; local_fb=None
     else:
@@ -7359,17 +7396,16 @@ def main():
 
     # banners_seed.json - единственный источник баннеров; всегда перезаписываем db из файла
     db, restored = apply_banners_seed(db)
-    seed = load_banners_seed()
+    seed = _BANNERS_SEED_CACHE or load_banners_seed()
     if seed:
         persist_banners_seed_files(seed)
-    if restored:
-        save_db(db)
-        logger.info(
-            "Banners synced from seed (%s sections)",
-            sum(1 for v in (db.get("banners") or {}).values() if _banner_entry_filled(v)),
-        )
-    elif seed:
-        logger.info("Banners already match banners_seed.json")
+    save_db(db)
+    invalidate_banner_cache()
+    logger.info(
+        "Banners synced from seed (%s sections, restored=%s)",
+        sum(1 for v in (db.get("banners") or {}).values() if _banner_entry_filled(v)),
+        restored,
+    )
 
     start_reviews_http_server()
 
