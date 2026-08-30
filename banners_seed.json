@@ -99,10 +99,11 @@
       "local": "banner_assets/ref.jpg"
     },
     "topup": {
-      "photo": "AgACAgUAAxkBAANVaosvl_ZpiLHQP4cajEKpRJSOqPIAAtUTaxvN7llUTgAB9t2AaH5sAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/topup.jpg"
     },
     "withdraw": {
       "photo": "AgACAgUAAxkBAANXaoswYK8hq8HvL8m5Tp6ytauHquAAAtYTaxvN7llUc-xQjQ_eFe8BAAMCAAN5AAM9BA",
@@ -111,28 +112,32 @@
       "text": ""
     },
     "withdraw_no_funds": {
-      "photo": "AgACAgUAAxkBAANeaoszGziPMpiBf97PCo5cQaISD70AAtgTaxvN7llUWAsR3_0qVqgBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/withdraw_no_funds.png"
     },
     "req_card": {
-      "photo": "AgACAgUAAxkBAANlaos2v6NWmplIKpab8g4xRuFWIWUAAuMTaxvN7llUT-H7jWhuzpwBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req_card.jpg"
     },
     "req_ton": {
-      "photo": "AgACAgUAAxkBAANnaos3yR0YBZrpv3iFt4_ErRW4XpoAAuUTaxvN7llUhQ89-iSEQIUBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req_ton.png"
     },
     "req_stars": {
-      "photo": "AgACAgUAAxkBAANraos51mG9geeW9Xqum2tH5Ig2rGAAAuoTaxvN7llUeGOZdWZAeWIBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req_stars.png"
     },
     "lang": {
       "photo": "AgACAgUAAxkBAANpaos5bVfqNvm4s4yCsZ1trLQsigoAAukTaxvN7llUGGJJmH-Ka_IBAAMCAAN5AAM9BA",
@@ -143,5 +148,5 @@
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-23T18:20:12Z"
+  "updated_at": "2026-08-30T22:56:00Z"
 }
