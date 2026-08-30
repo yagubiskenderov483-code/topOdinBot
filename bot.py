@@ -996,7 +996,16 @@ BANNER_SECTIONS = {
 }
 
 # ─── DB ───────────────────────────────────────────────────────────────────────
-def _banner_local_path(section=None, entry=None):
+def _is_telegram_file_id(value):
+    """True for Telegram file_id strings (not URL / local path)."""
+    if not isinstance(value, str) or not value:
+        return False
+    if value.startswith(("http://", "https://")):
+        return False
+    if os.path.isfile(value):
+        return False
+    return "/" not in value and "\\" not in value
+
     """Resolve on-disk banner image (survives bot token switch)."""
     cands=[]
     if isinstance(entry, dict):
@@ -1173,8 +1182,10 @@ def apply_banners_seed(db):
     if not seed:
         return db, False
     before = json.dumps(db.get("banners") or {}, sort_keys=True, ensure_ascii=False)
-    db, _ = force_apply_banners_seed_payload(db, seed)
+    db, changed = force_apply_banners_seed_payload(db, seed)
     after = json.dumps(db.get("banners") or {}, sort_keys=True, ensure_ascii=False)
+    if changed:
+        invalidate_banner_cache()
     return db, before != after
 
 def force_apply_banners_seed_payload(db, seed):
@@ -1638,13 +1649,17 @@ def get_banner(db, section="main"):
     else:
         b=dict(b)
     local=_banner_local_path(section, b)
-    if local and not b.get("local"):
-        b["local"]=local
-    if local and not (b.get("photo") or b.get("video") or b.get("gif")):
-        # Serve from disk until a new file_id is cached for this bot
-        b["photo"]=local
+    if local:
+        if not b.get("local"):
+            b["local"]=local
+        if not b.get("video") and not b.get("gif"):
+            photo=b.get("photo")
+            if not photo or _is_telegram_file_id(photo):
+                b["photo"]=local
     if b and any(b.get(k) for k in ("photo","video","gif","text","local")):
         return b
+    if local:
+        return {"photo":local,"local":local,"video":None,"gif":None,"text":""}
     if section=="main" and db is not None:
         lg={"photo":db.get("banner_photo"),"video":db.get("banner_video"),
             "gif":db.get("banner_gif"),"text":db.get("banner") or ""}
@@ -1671,6 +1686,7 @@ def _tg_caption(text, has_media=False):
 # chat_id -> all message ids of the current UI (banner photo + text).
 # Long screens (Top Sellers, My Deals, …) are two messages; both must go together.
 _SCREEN_MSGS = {}
+_SCREEN_SECTION = {}  # chat_id -> banner section key (req_card, req_ton, …)
 _SCREEN_FILE = os.path.join(DATA_DIR, "ui_screens.json")
 
 def _screen_load():
@@ -1700,17 +1716,25 @@ _screen_load()
 def _screen_get(chat_id):
     return list(_SCREEN_MSGS.get(int(chat_id), []) or [])
 
-def _screen_set(chat_id, ids):
+def _screen_set(chat_id, ids, section=None):
     ids=[int(i) for i in (ids or []) if i]
     cid=int(chat_id)
     if ids:
         _SCREEN_MSGS[cid]=ids
     else:
         _SCREEN_MSGS.pop(cid, None)
+    if section is not None:
+        if ids:
+            _SCREEN_SECTION[cid]=section
+        else:
+            _SCREEN_SECTION.pop(cid, None)
     try:
         asyncio.get_running_loop().create_task(_screen_save_async())
     except RuntimeError:
         _screen_save()
+
+def _screen_banner_section(chat_id):
+    return _SCREEN_SECTION.get(int(chat_id))
 
 def _old_screen_ids(chat_id, previous_message=None):
     """Banner photo + text of the current screen (incl. leftover after restart)."""
@@ -1895,21 +1919,22 @@ async def send_section(update, text, kb=None, section="main", fallback_section=N
             has_media=bool(msg.photo or msg.video or msg.animation)
             new_has_media=bool(bv or bg or bp or local_fb)
             extras_old=[i for i in leftover if i!=getattr(msg,"message_id",None)]
-            if not extras_old and not has_media and not new_has_media and len(full) <= 4096:
+            section_changed=_screen_banner_section(cid) is not None and _screen_banner_section(cid)!=section
+            if not section_changed and not extras_old and not has_media and not new_has_media and len(full) <= 4096:
                 if await _safe_edit_text(msg, full, kb):
-                    _screen_set(cid, [msg.message_id])
+                    _screen_set(cid, [msg.message_id], section=section)
                     return
-            elif not extras_old and has_media and new_has_media:
+            elif not section_changed and not extras_old and has_media and new_has_media:
                 current_file=(msg.video.file_id if msg.video else
                               msg.animation.file_id if msg.animation else
                               msg.photo[-1].file_id if msg.photo else None)
                 target_file=bv or bg or bp
                 target_fid=target_file if isinstance(target_file, str) and target_file and not os.path.isfile(target_file) else None
                 if current_file and target_fid and current_file==target_fid and await _safe_edit_caption(msg, full, kb):
-                    _screen_set(cid, [msg.message_id])
+                    _screen_set(cid, [msg.message_id], section=section)
                     return
                 if isinstance(target_file, str) and current_file==target_file and await _safe_edit_caption(msg, full, kb):
-                    _screen_set(cid, [msg.message_id])
+                    _screen_set(cid, [msg.message_id], section=section)
                     return
             previous_message=msg
         old=_old_screen_ids(cid, previous_message) if previous_message else _screen_get(cid)
@@ -1924,7 +1949,7 @@ async def send_section(update, text, kb=None, section="main", fallback_section=N
         if sent:
             try: new_ids.append(sent.message_id)
             except Exception: pass
-        _screen_set(cid, new_ids)
+        _screen_set(cid, new_ids, section=section)
     except Exception as e:
         logger.error(f"send_section: {e}", exc_info=True)
         try:
@@ -1950,7 +1975,7 @@ async def send_new(update, text, kb=None, section="main"):
         if sent:
             try: new_ids.append(sent.message_id)
             except Exception: pass
-        _screen_set(chat.id, new_ids)
+        _screen_set(chat.id, new_ids, section=section)
     except Exception as e:
         logger.error(f"send_new: {e}")
         try: await _safe_send_chat(update.effective_chat, text, kb, section=section)
@@ -4484,7 +4509,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_new(
                     update,
                     f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section=req_banner_section(currency=deal_cur),fallback_section="req"); return
+                    deal_join_req_kb(deal_id, deal_cur, lang),section=req_banner_section(currency=deal_cur)); return
 
             clear_join_req_state(uid)
             ok=await complete_deal_join(update,context,deal_id)
@@ -4804,7 +4829,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(
                     update,
                     f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
-                    currency_requisites_kb(cur,lang),section=req_banner_section(currency=cur),fallback_section="req"); return
+                    currency_requisites_kb(cur,lang),section=req_banner_section(currency=cur)); return
             ud["currency"]=cur; ud["pay_currency"]=cur; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur,lang),section="deal")
             if update.callback_query and update.callback_query.message:
@@ -4822,7 +4847,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(
                     update,
                     f"{Ewrn} <b>{req_add_for_amount_text(cur_code, lang)}</b>",
-                    currency_requisites_kb(cur_code,lang),section=req_banner_section(currency=cur_code),fallback_section="req"); return
+                    currency_requisites_kb(cur_code,lang),section=req_banner_section(currency=cur_code)); return
             ud["currency"]=cur_code; ud["pay_currency"]=cur_code; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur_code,lang),section="deal")
             if update.callback_query and update.callback_query.message:
@@ -4865,21 +4890,21 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         InlineKeyboardMarkup([
                             [InlineKeyboardButton("Tonkeeper",web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
                             [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
-                        ]),section="req_ton",fallback_section="req"); return
+                        ]),section="req_ton"); return
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
                 for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
                 set_req_input_state(
                     uid, field, mode="deal_create", after_buyer=True,
                     req_resume=ud.get("req_resume"), req_return=None)
                 await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}",fallback_section="req"); return
+                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}"); return
             if raw=="ton_buyer_manual":
                 field="ton"
                 ud["req_step"]=field; ud["req_after_buyer_deal"]=True
                 for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
                 set_req_input_state(uid, field, mode="deal_create", after_buyer=True, req_resume=ud.get("req_resume"), req_return=None)
                 await send_section(update,req_prompt_text(field,lang),
-                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}",fallback_section="req"); return
+                    InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}"); return
             field=raw
             if field not in REQ_FIELDS:
                 await show_req(update,context); return
@@ -4893,20 +4918,20 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardMarkup([
                         [InlineKeyboardButton("Tonkeeper",web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")],
-                    ]),section="req_ton",fallback_section="req"); return
+                    ]),section="req_ton"); return
             ud["req_step"]=field
             ud["req_return"]="menu_req"
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
             set_req_input_state(uid, field, mode="profile", req_return="menu_req", after_buyer=False)
             await send_section(update,req_prompt_text(field,lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}",fallback_section="req"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section=f"req_{field}"); return
 
         if d=="req_ton_manual":
             ud["req_step"]="ton"; ud["req_return"]="menu_req"
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal","req_for_deal"): ud.pop(k,None)
             set_req_input_state(uid, "ton", mode="profile", req_return="menu_req", after_buyer=False)
             await send_section(update,req_prompt_text("ton",lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req_ton",fallback_section="req"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="menu_req",icon_custom_emoji_id="5258084656674250503")]]),section="req_ton"); return
 
         if d.startswith("add_req_"):
             deal_id=d[8:].strip().upper(); ud["req_for_deal"]=deal_id; ud["pending_deal"]=deal_id
@@ -4916,7 +4941,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if deal_cur:
                 await send_section(
                     update,f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section=req_banner_section(currency=deal_cur),fallback_section="req"); return
+                    deal_join_req_kb(deal_id, deal_cur, lang),section=req_banner_section(currency=deal_cur)); return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}",f"Картка / Телефон {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
@@ -4945,12 +4970,12 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardMarkup([
                         [InlineKeyboardButton("Tonkeeper",web_app=WebAppInfo(url=ton_url),icon_custom_emoji_id="5397829221605191505")],
                         [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")],
-                    ]),section="req_ton",fallback_section="req"); return
+                    ]),section="req_ton"); return
             ud["req_step"]=field; ud["req_for_deal"]=deal_id; ud["pending_deal"]=deal_id
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal"): ud.pop(k,None)
             set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
             await send_section(update,req_prompt_text(field,lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")]]),section=req_banner_section(field=field),fallback_section="req"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")]]),section=req_banner_section(field=field)); return
 
         if d.startswith("lang_"):
             await set_lang(update,context,d[5:]); return
