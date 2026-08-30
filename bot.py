@@ -196,6 +196,11 @@ def _apply_seed_banner_fields(b, section):
     loc = (ent.get("local") or ent.get("local_photo") or "").strip()
     if loc:
         b["local"] = loc
+        # Seed with local file and empty Telegram ids: use the file, not a stale db file_id.
+        if not (ent.get("photo") or ent.get("video") or ent.get("gif")):
+            b["photo"] = None
+            b["video"] = None
+            b["gif"] = None
     return b
 DEAL_COUNTER_START = 29548
 # Mini Apps живут на том же Render-сервисе, что и бот (single web service):
@@ -1153,7 +1158,9 @@ def build_banners_seed_payload(db):
         seed_val=(prev.get("banners") or {}).get(k) if prev else None
         if isinstance(seed_val, dict) and _banner_entry_filled(seed_val):
             merged=dict(seed_val)
-            if isinstance(val, dict) and _banner_entry_filled(val):
+            seed_local=bool((seed_val.get("local") or seed_val.get("local_photo") or "").strip())
+            seed_has_media=bool(seed_val.get("photo") or seed_val.get("video") or seed_val.get("gif"))
+            if isinstance(val, dict) and _banner_entry_filled(val) and not (seed_local and not seed_has_media):
                 for media_k in ("photo","video","gif"):
                     if not merged.get(media_k) and val.get(media_k):
                         merged[media_k]=val.get(media_k)
@@ -1244,17 +1251,19 @@ def force_apply_banners_seed_payload(db, seed):
             continue
         if _banner_entry_filled(val):
             existing=db["banners"].get(key) or {}
+            loc=(val.get("local") or val.get("local_photo") or "").strip()
+            if not loc:
+                loc=_banner_local_path(key, val) or ""
+            # Local-only seed entry: do not resurrect a stale Telegram file_id from db.
+            use_local_only=bool(loc) and not (val.get("photo") or val.get("video") or val.get("gif"))
             db["banners"][key]={
-                "photo":val.get("photo") or existing.get("photo"),
-                "video":val.get("video") or existing.get("video"),
-                "gif":val.get("gif") or existing.get("gif"),
+                "photo": None if use_local_only else (val.get("photo") or existing.get("photo")),
+                "video": None if use_local_only else (val.get("video") or existing.get("video")),
+                "gif": None if use_local_only else (val.get("gif") or existing.get("gif")),
                 "text":(val.get("text") or existing.get("text") or ""),
             }
-            loc=(val.get("local") or val.get("local_photo") or "").strip()
             if loc:
                 db["banners"][key]["local"]=loc
-            elif _banner_local_path(key, val):
-                db["banners"][key]["local"]=_banner_local_path(key, val)
             n += 1
         else:
             # Keep local asset path even if Telegram file_ids are empty
@@ -1870,7 +1879,8 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_
                     elif msg.animation:
                         new_fid = msg.animation.file_id
                     if new_fid:
-                        _maybe_cache_banner_file_id(section, key, new_fid, ref if isinstance(ref, str) and os.path.isfile(ref) else None)
+                        cache_key = "gif" if kind == "animation" else kind
+                        _maybe_cache_banner_file_id(section, cache_key, new_fid, ref if isinstance(ref, str) and os.path.isfile(ref) else None)
             except Exception as e:
                 logger.warning("banner file_id cache: %s", e)
             return msg
@@ -1979,8 +1989,6 @@ def _section_media(section, text, fallback_section=None, skip_media=False):
         local_fb=_banner_local_path(fallback_section, b)
     else:
         local_fb=_banner_local_path(section, b_primary or b)
-    if _seed_has_media(section if not fb_used else (fallback_section or section)):
-        local_fb=None
     if skip_media:
         bv=bg=bp=None; local_fb=None
     else:
