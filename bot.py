@@ -1862,16 +1862,17 @@ async def _safe_edit_media(msg, text, kb=None, bv=None, bg=None, bp=None, local_
             continue
         try:
             media=media_cls(media=_media_ref(ref), caption=caption, parse_mode="HTML")
-            await msg.edit_media(media=media, reply_markup=kb)
+            edited=await msg.edit_media(media=media, reply_markup=kb)
+            out_msg=edited or msg
             try:
                 if section and isinstance(ref, str) and os.path.isfile(ref):
                     new_fid=None
                     if msg.photo:
-                        new_fid=msg.photo[-1].file_id
-                    elif msg.video:
-                        new_fid=msg.video.file_id
-                    elif msg.animation:
-                        new_fid=msg.animation.file_id
+                        new_fid=out_msg.photo[-1].file_id
+                    elif out_msg.video:
+                        new_fid=out_msg.video.file_id
+                    elif out_msg.animation:
+                        new_fid=out_msg.animation.file_id
                     if new_fid:
                         db=load_db()
                         ent=db.setdefault("banners", {}).setdefault(section, {})
