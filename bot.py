@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 # Бот @FunPayBargainRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
 # только если getMe подтверждает, что это токен этого же бота.
-_BOT_TOKEN_DEFAULT = "8802565498:AAG6Umi6nWWE07WkIs8bk6KJbqSJ6PxUFjI"
+_BOT_TOKEN_DEFAULT = "8802565498:AAE8RYmojoBemRbE8XEc1ApJKdU3ug6XddY"
 _BOT_TOKEN_REVOKED = {
+    "8802565498:AAG6Umi6nWWE07WkIs8bk6KJbqSJ6PxUFjI",
     "8802565498:AAHoUfRauqDV4YKUG-r3EKPScYyQ0ueL14o",
     "8859340400:AAFh5QR3pBvHNX76k7Wel5R2F8dDxj_jFQc",
     "8936984764:AAG1wXJnlXGoZWa8Je6KzuNddSBXXNfQxZk",
@@ -7384,6 +7385,7 @@ def main():
     if (
         BOT_TOKEN in _BOT_TOKEN_REVOKED
         or BOT_TOKEN.startswith(("8719087641:","8952988329:","8879343383:","8804596421:","8397181335:","8218941253:","8859340400:"))
+        or "AAG6Umi6nWWE07WkIs8bk6KJbqSJ6PxUFjI" in BOT_TOKEN
         or "AAGO3viGf3PERRFA" in BOT_TOKEN
         or "AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in BOT_TOKEN
         or "AAGhaXW7D1eyyrkzYh4iq9NWqP7ygDYWGng" in BOT_TOKEN
