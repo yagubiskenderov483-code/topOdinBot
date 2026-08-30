@@ -22,7 +22,7 @@
       "local": "banner_assets/balance.jpg"
     },
     "profile": {
-      "photo": "AgACAgEAAxkDAANSaosuiiZZpTsAAROOeReUzduHea6FAAJKDWsbe81YRO36NM5hQ-GbAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
       "text": "",
@@ -36,14 +36,14 @@
       "local": "banner_assets/req.jpg"
     },
     "top": {
-      "photo": "AgACAgEAAxkDAAMuaospJJVeTnkRYJhlrjTNGW6Ax6AAAvMNaxvC-llEW3C1q4MMFW0BAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/top.jpg"
     },
     "my_deals": {
-      "photo": "AgACAgEAAxkDAANbaosxsG5gB9gJnEVLEClk5oYbplQAAkwNaxt7zVhESxjgt43XeyABAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
       "text": "",
@@ -99,22 +99,25 @@
       "local": "banner_assets/ref.jpg"
     },
     "topup": {
-      "photo": "AgACAgUAAxkBAANVaosvl_ZpiLHQP4cajEKpRJSOqPIAAtUTaxvN7llUTgAB9t2AaH5sAQADAgADeQADPQQ",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/topup.jpg"
     },
     "withdraw": {
-      "photo": "AgACAgUAAxkBAANXaoswYK8hq8HvL8m5Tp6ytauHquAAAtYTaxvN7llUc-xQjQ_eFe8BAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/withdraw.jpg"
     },
     "withdraw_no_funds": {
-      "photo": "AgACAgUAAxkBAANeaoszGziPMpiBf97PCo5cQaISD70AAtgTaxvN7llUWAsR3_0qVqgBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/withdraw_no_funds.jpg"
     },
     "req_card": {
       "photo": "AgACAgQAAxkDAAICUmqUovjcCbAMVK-DzoWeMhCrH3rsAAIID2sbYAapUEzMlesXhMaRAQADAgADeQADPQQ",
@@ -138,13 +141,14 @@
       "local": "banner_assets/req_stars.jpg"
     },
     "lang": {
-      "photo": "AgACAgUAAxkBAANpaos5bVfqNvm4s4yCsZ1trLQsigoAAukTaxvN7llUGGJJmH-Ka_IBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/lang.jpg"
     }
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-30T21:39:51Z"
+  "updated_at": "2026-08-30T22:26:58Z"
 }
