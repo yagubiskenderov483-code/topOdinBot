@@ -2,7 +2,7 @@ import logging, json, os, math, html, time, re, asyncio, sys, threading, secrets
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_DOWN
 from urllib.parse import urlencode, quote
-from telegram import Update, InlineKeyboardButton as _IKB, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands, InlineQueryResultArticle, InputTextMessageContent
+from telegram import Update, InlineKeyboardButton as _IKB, InlineKeyboardMarkup, BotCommand, WebAppInfo, MenuButtonCommands, InlineQueryResultArticle, InputTextMessageContent, InputMediaPhoto, InputMediaVideo, InputMediaAnimation
 from telegram.constants import ChatAction
 from telegram.error import Conflict, BadRequest
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes, InlineQueryHandler, ChosenInlineResultHandler
@@ -1761,21 +1761,17 @@ async def _wipe_ids(chat, ids, bot=None):
     if bot is None:
         try: bot=chat.get_bot()
         except Exception: bot=None
-    async def _bg():
-        seen=set()
-        for mid in ids:
-            if not mid or mid in seen: continue
-            seen.add(mid)
-            try:
-                if bot:
-                    await bot.delete_message(chat_id=cid, message_id=mid)
-                else:
-                    await chat.delete_message(mid)
-            except Exception:
-                pass
-    try: asyncio.create_task(_bg())
-    except Exception:
-        await _bg()
+    seen=set()
+    for mid in ids:
+        if not mid or mid in seen: continue
+        seen.add(mid)
+        try:
+            if bot:
+                await bot.delete_message(chat_id=cid, message_id=mid)
+            else:
+                await chat.delete_message(mid)
+        except Exception:
+            pass
 
 async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None, pair_out=None):
     """Send banner+text in one message (caption under photo/video)."""
@@ -1843,6 +1839,56 @@ async def _safe_send_chat(chat, text, kb=None, bv=None, bg=None, bp=None, local_
         except Exception as e3:
             logger.error("safe_send plain: %s", e3)
             return None
+
+async def _safe_edit_media(msg, text, kb=None, bv=None, bg=None, bp=None, local_fallback=None, section=None):
+    """Replace banner media in-place (req → req_card / req_ton / req_stars)."""
+    if not msg:
+        return False
+    media_ref=None
+    media_cls=None
+    if bv:
+        media_ref=bv; media_cls=InputMediaVideo
+    elif bg:
+        media_ref=bg; media_cls=InputMediaAnimation
+    elif bp:
+        media_ref=bp; media_cls=InputMediaPhoto
+    elif local_fallback:
+        media_ref=local_fallback; media_cls=InputMediaPhoto
+    if not media_ref or not media_cls:
+        return False
+    caption=_tg_caption(str(text or ""), has_media=True)
+    for ref in (media_ref, local_fallback):
+        if not ref:
+            continue
+        try:
+            media=media_cls(media=_media_ref(ref), caption=caption, parse_mode="HTML")
+            await msg.edit_media(media=media, reply_markup=kb)
+            try:
+                if section and isinstance(ref, str) and os.path.isfile(ref):
+                    new_fid=None
+                    if msg.photo:
+                        new_fid=msg.photo[-1].file_id
+                    elif msg.video:
+                        new_fid=msg.video.file_id
+                    elif msg.animation:
+                        new_fid=msg.animation.file_id
+                    if new_fid:
+                        db=load_db()
+                        ent=db.setdefault("banners", {}).setdefault(section, {})
+                        key="video" if media_cls is InputMediaVideo else ("gif" if media_cls is InputMediaAnimation else "photo")
+                        if ent.get(key)!=new_fid or not ent.get("local"):
+                            ent[key]=new_fid
+                            ent["local"]=ent.get("local") or ref
+                            try:
+                                asyncio.get_running_loop().create_task(_save_db_async(db))
+                            except RuntimeError:
+                                save_db(db)
+            except Exception as e:
+                logger.warning("edit_media file_id cache: %s", e)
+            return True
+        except Exception as e:
+            logger.warning("safe_edit_media: %s", e)
+    return False
 
 async def _safe_edit_text(msg, text, kb=None):
     """editMessageText without crashing the callback (media→text must not use this)."""
@@ -1919,7 +1965,11 @@ async def send_section(update, text, kb=None, section="main", fallback_section=N
             has_media=bool(msg.photo or msg.video or msg.animation)
             new_has_media=bool(bv or bg or bp or local_fb)
             extras_old=[i for i in leftover if i!=getattr(msg,"message_id",None)]
-            section_changed=_screen_banner_section(cid) is not None and _screen_banner_section(cid)!=section
+            section_changed=_screen_banner_section(cid)!=section
+            if section_changed and has_media and new_has_media:
+                if await _safe_edit_media(msg, full, kb, bv=bv, bg=bg, bp=bp, local_fallback=local_fb, section=section):
+                    _screen_set(cid, [msg.message_id], section=section)
+                    return
             if not section_changed and not extras_old and not has_media and not new_has_media and len(full) <= 4096:
                 if await _safe_edit_text(msg, full, kb):
                     _screen_set(cid, [msg.message_id], section=section)
