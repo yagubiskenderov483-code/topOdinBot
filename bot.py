@@ -1650,13 +1650,10 @@ def get_banner(db, section="main"):
     else:
         b=dict(b)
     local=_banner_local_path(section, b)
-    if local:
-        if not b.get("local"):
-            b["local"]=local
-        if not b.get("video") and not b.get("gif"):
-            photo=b.get("photo")
-            if not photo or _is_telegram_file_id(photo):
-                b["photo"]=local
+    if local and not b.get("local"):
+        b["local"]=local
+    if local and not (b.get("photo") or b.get("video") or b.get("gif")):
+        b["photo"]=local
     if b and any(b.get(k) for k in ("photo","video","gif","text","local")):
         return b
     if local:

@@ -1,7 +1,7 @@
 {
   "banners": {
     "main": {
-      "photo": "AgACAgEAAxkDAAMtaospIG5H5WejSc9BKe4LJwp9uE4AAvINaxvC-llENC1GCC94npEBAAMCAAN4AAM9BA",
+      "photo": "AgACAgQAAxkDAAIB8GqUeM0I4stF4x8aou8OtYY5u7_nAAKwDmsb5KGpUOJ4LdpokEGAAQADAgADeAADPQQ",
       "video": null,
       "gif": null,
       "text": "",
@@ -29,7 +29,7 @@
       "local": "banner_assets/profile.jpg"
     },
     "req": {
-      "photo": "AgACAgEAAxkDAANEaosp_V15bzicyAzhav3G3d8IigwAAkANaxt7zVhEOKQkxsIVVhcBAAMCAAN5AAM9BA",
+      "photo": "AgACAgQAAxkDAAICA2qUeQb_kKJrYq_29KsI1028mFP9AALYD2sbYAahUISpl1HWrkY4AQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": "",
@@ -117,7 +117,7 @@
       "text": ""
     },
     "req_card": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICUmqUovjcCbAMVK-DzoWeMhCrH3rsAAIID2sbYAapUEzMlesXhMaRAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": "",
@@ -131,7 +131,7 @@
       "local": "banner_assets/req_ton.jpg"
     },
     "req_stars": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICVGqUov2sutogP6DTPFGw6sDzRRK8AAIJD2sbYAapUL_z-KAOraSIAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": "",
@@ -146,5 +146,5 @@
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-23T18:20:12Z"
+  "updated_at": "2026-08-30T21:39:51Z"
 }
