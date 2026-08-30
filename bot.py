@@ -641,6 +641,14 @@ def requisite_field_for_currency(currency):
     if currency=="Stars": return "stars"
     return "card"  # RUB / UAH
 
+def req_banner_section(field=None, currency=None):
+    """Banner key for requisite screens: req_card / req_ton / req_stars (or req)."""
+    if field in REQ_FIELDS:
+        return f"req_{field}"
+    if currency:
+        return f"req_{requisite_field_for_currency(currency)}"
+    return "req"
+
 REQ_FIELDS = ("card","ton","stars")
 
 def is_card_req_field(field):
@@ -1849,10 +1857,15 @@ async def _safe_edit_caption(msg, text, kb=None):
         return False
 
 def _section_media(section, text, fallback_section=None, skip_media=False):
-    b=get_banner(None, section)
-    if not b and fallback_section:
+    b_primary=get_banner(None, section)
+    b=b_primary
+    fb_used=not b_primary and fallback_section
+    if fb_used:
         b=get_banner(None, fallback_section)
-    local_fb=_banner_local_path(section, b) or (_banner_local_path(fallback_section, b) if fallback_section else None)
+    if fb_used:
+        local_fb=_banner_local_path(fallback_section, b)
+    else:
+        local_fb=_banner_local_path(section, b_primary or b)
     if skip_media:
         bv=bg=bp=None; local_fb=None
     else:
@@ -4471,7 +4484,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_new(
                     update,
                     f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
+                    deal_join_req_kb(deal_id, deal_cur, lang),section=req_banner_section(currency=deal_cur),fallback_section="req"); return
 
             clear_join_req_state(uid)
             ok=await complete_deal_join(update,context,deal_id)
@@ -4791,7 +4804,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(
                     update,
                     f"{Ewrn} <b>{req_add_for_amount_text(cur, lang)}</b>",
-                    currency_requisites_kb(cur,lang),section="req"); return
+                    currency_requisites_kb(cur,lang),section=req_banner_section(currency=cur),fallback_section="req"); return
             ud["currency"]=cur; ud["pay_currency"]=cur; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur,lang),section="deal")
             if update.callback_query and update.callback_query.message:
@@ -4809,7 +4822,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(
                     update,
                     f"{Ewrn} <b>{req_add_for_amount_text(cur_code, lang)}</b>",
-                    currency_requisites_kb(cur_code,lang),section="req"); return
+                    currency_requisites_kb(cur_code,lang),section=req_banner_section(currency=cur_code),fallback_section="req"); return
             ud["currency"]=cur_code; ud["pay_currency"]=cur_code; ud["step"]="amount"
             await send_section(update,deal_amount_prompt(cur_code,lang),section="deal")
             if update.callback_query and update.callback_query.message:
@@ -4903,7 +4916,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if deal_cur:
                 await send_section(
                     update,f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
-                    deal_join_req_kb(deal_id, deal_cur, lang),section="req"); return
+                    deal_join_req_kb(deal_id, deal_cur, lang),section=req_banner_section(currency=deal_cur),fallback_section="req"); return
             bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
                 [InlineKeyboardButton(T(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}",f"Картка / Телефон {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
@@ -4937,7 +4950,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for k in ("card_step","card_pending","card_bank_name","req_after_buyer_deal"): ud.pop(k,None)
             set_req_input_state(uid, field, mode="join", deal_id=deal_id, after_buyer=False)
             await send_section(update,req_prompt_text(field,lang),
-                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")]]),section="req"); return
+                InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data=f"add_req_{deal_id}",icon_custom_emoji_id="5258084656674250503")]]),section=req_banner_section(field=field),fallback_section="req"); return
 
         if d.startswith("lang_"):
             await set_lang(update,context,d[5:]); return

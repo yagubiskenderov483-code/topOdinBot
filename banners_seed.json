@@ -117,22 +117,25 @@
       "text": ""
     },
     "req_card": {
-      "photo": "AgACAgUAAxkBAANlaos2v6NWmplIKpab8g4xRuFWIWUAAuMTaxvN7llUT-H7jWhuzpwBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req_card.jpg"
     },
     "req_ton": {
-      "photo": "AgACAgUAAxkBAANnaos3yR0YBZrpv3iFt4_ErRW4XpoAAuUTaxvN7llUhQ89-iSEQIUBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req_ton.jpg"
     },
     "req_stars": {
-      "photo": "AgACAgUAAxkBAANraos51mG9geeW9Xqum2tH5Ig2rGAAAuoTaxvN7llUeGOZdWZAeWIBAAMCAAN5AAM9BA",
+      "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req_stars.jpg"
     },
     "lang": {
       "photo": "AgACAgUAAxkBAANpaos5bVfqNvm4s4yCsZ1trLQsigoAAukTaxvN7llUGGJJmH-Ka_IBAAMCAAN5AAM9BA",
