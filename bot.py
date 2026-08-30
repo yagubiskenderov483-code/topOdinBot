@@ -187,18 +187,13 @@ def _apply_seed_banner_fields(b, section):
     ent = _seed_banner_entry(section)
     if not ent:
         return b
-    loc = (ent.get("local") or ent.get("local_photo") or "").strip()
-    has_local = bool(_banner_local_path(section, ent) or loc)
     for k in ("photo", "video", "gif"):
         v = ent.get(k)
         if v:
             b[k] = v
-        elif has_local:
-            # Seed has an on-disk banner and no live file_id — drop stale ids
-            # so send_photo uses the local file instead of hanging on a dead id.
-            b[k] = None
     if (ent.get("text") or "").strip():
         b["text"] = ent.get("text") or ""
+    loc = (ent.get("local") or ent.get("local_photo") or "").strip()
     if loc:
         b["local"] = loc
     return b
@@ -1249,21 +1244,13 @@ def force_apply_banners_seed_payload(db, seed):
             continue
         if _banner_entry_filled(val):
             existing=db["banners"].get(key) or {}
-            loc=(val.get("local") or val.get("local_photo") or "").strip()
-            has_local=bool(loc or _banner_local_path(key, val))
-            def _media(name):
-                sv=val.get(name)
-                if sv:
-                    return sv
-                if has_local:
-                    return None
-                return existing.get(name)
             db["banners"][key]={
-                "photo":_media("photo"),
-                "video":_media("video"),
-                "gif":_media("gif"),
+                "photo":val.get("photo") or existing.get("photo"),
+                "video":val.get("video") or existing.get("video"),
+                "gif":val.get("gif") or existing.get("gif"),
                 "text":(val.get("text") or existing.get("text") or ""),
             }
+            loc=(val.get("local") or val.get("local_photo") or "").strip()
             if loc:
                 db["banners"][key]["local"]=loc
             elif _banner_local_path(key, val):
