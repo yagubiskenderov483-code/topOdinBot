@@ -36,7 +36,7 @@
       "local": "banner_assets/req.jpg"
     },
     "top": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICz2qUwGwYlXcHrQmuJ7QR6yMr1e7MAAIeD2sb5KGpUFQOg7xEJvsdAQADAgADeQADPQQ",
       "video": null,
       "gif": null,
       "text": "",
@@ -99,49 +99,49 @@
       "local": "banner_assets/ref.jpg"
     },
     "topup": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICyGqUwGW9KklWBvzBC7DYb3HsJr74AAIXD2sb5KGpUA0KW0pU-gX1AQADAgADdwADPQQ",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/topup.jpg"
     },
     "withdraw": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICyWqUwGZgtyMTW69CYjtqlgVQrpl4AAIYD2sb5KGpUDwRxz_hkP-mAQADAgADdwADPQQ",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/withdraw.png"
     },
     "withdraw_no_funds": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICymqUwGdNOKO9QztSHCDfZMVPOooLAAIZD2sb5KGpULuhEtMPtkfCAQADAgADdwADPQQ",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/withdraw_no_funds.png"
     },
     "req_card": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICy2qUwGiHxFFlvcemvsoRdQ7TuEw2AAIaD2sb5KGpUMHRYEm54didAQADAgADdwADPQQ",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/req_card.jpg"
     },
     "req_ton": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICzGqUwGlNDOH47g6-PCHwIG2VDDbcAAIbD2sb5KGpUEngpVTLL49lAQADAgADdwADPQQ",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/req_ton.png"
     },
     "req_stars": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICzWqUwGpmgD3eE3ptesjbTA7r8wewAAIcD2sb5KGpUPr0cOZUS9dJAQADAgADdwADPQQ",
       "video": null,
       "gif": null,
       "text": "",
       "local": "banner_assets/req_stars.png"
     },
     "lang": {
-      "photo": null,
+      "photo": "AgACAgQAAxkDAAICzmqUwGsit7khzHMZojFeNzJaO1bEAAIdD2sb5KGpUOkihJ4bi8dEAQADAgADdwADPQQ",
       "video": null,
       "gif": null,
       "text": "",
@@ -150,5 +150,5 @@
   },
   "log_banners": {},
   "menu_description": null,
-  "updated_at": "2026-08-30T23:39:10Z"
+  "updated_at": "2026-08-30T23:44:44Z"
 }
