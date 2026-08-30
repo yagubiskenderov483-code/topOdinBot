@@ -1152,7 +1152,15 @@ def build_banners_seed_payload(db):
         val=db_banners.get(k)
         seed_val=(prev.get("banners") or {}).get(k) if prev else None
         if isinstance(seed_val, dict) and _banner_entry_filled(seed_val):
-            continue  # keep canonical seed, do not overwrite with db
+            merged=dict(seed_val)
+            if isinstance(val, dict) and _banner_entry_filled(val):
+                for media_k in ("photo","video","gif"):
+                    if not merged.get(media_k) and val.get(media_k):
+                        merged[media_k]=val.get(media_k)
+                if not (merged.get("local") or "").strip() and (val.get("local") or "").strip():
+                    merged["local"]=val.get("local")
+            banners[k]=merged
+            continue
         if _banner_entry_filled(val):
             banners[k]=val
         else:
@@ -1235,11 +1243,12 @@ def force_apply_banners_seed_payload(db, seed):
         if key not in BANNER_SECTIONS:
             continue
         if _banner_entry_filled(val):
-            db["banners"][key] = {
-                "photo": val.get("photo"),
-                "video": val.get("video"),
-                "gif": val.get("gif"),
-                "text": val.get("text") or "",
+            existing=db["banners"].get(key) or {}
+            db["banners"][key]={
+                "photo":val.get("photo") or existing.get("photo"),
+                "video":val.get("video") or existing.get("video"),
+                "gif":val.get("gif") or existing.get("gif"),
+                "text":(val.get("text") or existing.get("text") or ""),
             }
             loc=(val.get("local") or val.get("local_photo") or "").strip()
             if loc:

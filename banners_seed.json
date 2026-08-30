@@ -127,7 +127,8 @@
       "photo": null,
       "video": null,
       "gif": null,
-      "text": ""
+      "text": "",
+      "local": "banner_assets/req_ton.jpg"
     },
     "req_stars": {
       "photo": "AgACAgQAAxkDAAICVGqUov2sutogP6DTPFGw6sDzRRK8AAIJD2sbYAapUL_z-KAOraSIAQADAgADeQADPQQ",
