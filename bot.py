@@ -17,10 +17,11 @@ def InlineKeyboardButton(text=None, *args, **kwargs):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Бот @FunPayBargainRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
+# Бот @FunPayTruckRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
 # только если getMe подтверждает, что это токен этого же бота.
-_BOT_TOKEN_DEFAULT = "8802565498:AAE8RYmojoBemRbE8XEc1ApJKdU3ug6XddY"
+_BOT_TOKEN_DEFAULT = "8854162278:AAFL-7vflb4HAekBQ_xJt3JIGohPUujZzPw"
 _BOT_TOKEN_REVOKED = {
+    "8802565498:AAE8RYmojoBemRbE8XEc1ApJKdU3ug6XddY",
     "8802565498:AAG6Umi6nWWE07WkIs8bk6KJbqSJ6PxUFjI",
     "8802565498:AAHoUfRauqDV4YKUG-r3EKPScYyQ0ueL14o",
     "8859340400:AAFh5QR3pBvHNX76k7Wel5R2F8dDxj_jFQc",
@@ -51,7 +52,10 @@ _BOT_TOKEN_REVOKED = {
     "8719087641:AAENBuMcQLPbe24WEqXL9zUXHgxSZBjB9pM",
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
-BOT_USERNAME = "FunPayBargainRobot"
+BOT_USERNAME = "FunPayTruckRobot"
+MANAGER_USERNAME = "FunPayTruckManager"
+MANAGER_URL  = f"https://t.me/{MANAGER_USERNAME}"
+MANAGER_TAG  = f"@{MANAGER_USERNAME}"
 
 def _token_getme(tok: str):
     try:
@@ -70,7 +74,7 @@ def _env_token_valid(tok: str) -> bool:
     """Env-токен: не revoked и getMe подтверждает живого бота.
 
     Не требуем username из белого списка — при ротации на новый @BotFather-бот
-    (например FunPayBargainRobot) env BOT_TOKEN должен подхватываться без правки кода.
+    (например FunPayTruckRobot) env BOT_TOKEN должен подхватываться без правки кода.
     """
     if not tok or tok in _BOT_TOKEN_REVOKED:
         return False
@@ -101,11 +105,12 @@ else:
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
-    """Старые юзы → актуальный @FunPayBargainRobot."""
+    """Старые юзы бота/менеджера → актуальные @FunPayTruckRobot / @FunPayTruckManager."""
     if not isinstance(text, str) or not text:
         return text
     out=text
     for old in (
+        "FunPayBargainRobot", "funpaybargainrobot",
         "FunPaySwopsRobot", "funpayswopsrobot",
         "FunPaySwopRobot", "funpayswoprobot",
         "EldoradoGG_Robot", "EldoradoGGRobot", "EldoradoGG_robot", "eldoradoggrobot",
@@ -117,16 +122,19 @@ def _bot_mention_fix(text):
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
         out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
-    for old_mgr in ("EldoradoGGManager", "EldoradoGG_Manager", "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager", "funpaydeaimanager", "FunPaySwapManager", "funpayswapmanager"):
-        out=out.replace(f"@{old_mgr}", "@FunPayBargainManager")
-        out=out.replace(f"t.me/{old_mgr}", "t.me/FunPayBargainManager")
+    for old_mgr in (
+        "FunPayBargainManager", "funpaybargainmanager",
+        "EldoradoGGManager", "EldoradoGG_Manager",
+        "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager", "funpaydeaimanager",
+        "FunPaySwapManager", "funpayswapmanager",
+    ):
+        out=out.replace(f"@{old_mgr}", MANAGER_TAG)
+        out=out.replace(f"t.me/{old_mgr}", f"t.me/{MANAGER_USERNAME}")
     for old_sup in ("EldoradoGGSupport", "EldoradoGG_Support"):
         out=out.replace(f"@{old_sup}", "support.funpay.com/tickets")
         out=out.replace(f"t.me/{old_sup}", "support.funpay.com/tickets")
     return out
 
-MANAGER_URL  = "https://t.me/FunPayBargainManager"
-MANAGER_TAG  = "@FunPayBargainManager"
 SUPPORT_URL  = "https://support.funpay.com/tickets"
 SITE_URL     = "https://funpay.com/"
 BRAND_NAME   = "FunPay"
@@ -788,14 +796,15 @@ def _load_uk_strings():
 def T(lang, ru, en, uk=None):
     if lang == "uk":
         if uk is not None:
-            return uk
-        hit = _load_uk_strings().get(ru)
-        if hit is not None:
-            return hit
-        return ru
-    if lang == "en":
-        return en
-    return ru
+            out = uk
+        else:
+            hit = _load_uk_strings().get(ru)
+            out = hit if hit is not None else ru
+    elif lang == "en":
+        out = en
+    else:
+        out = ru
+    return _bot_mention_fix(out) if isinstance(out, str) else out
 
 def L(lang, ru, en, uk=None):
     return T(lang, ru, en, uk)
@@ -1346,6 +1355,15 @@ def load_db():
     except Exception:
         db["deal_counter"]=DEAL_COUNTER_START
     if "banners" not in db or db["banners"] is None: db["banners"]={}
+    menu=db.get("menu_description")
+    if isinstance(menu, str) and menu:
+        fixed=_bot_mention_fix(menu)
+        if fixed != menu:
+            db["menu_description"]=fixed
+            try:
+                save_db(db)
+            except Exception:
+                pass
     _DB_MEM["db"]=db; _DB_MEM["mtime"]=mtime; _DB_MEM["ts"]=now
     return db
 
@@ -1741,7 +1759,7 @@ def _strip_html_tags(s):
 def _tg_caption(text, has_media=False):
     """Telegram: 1024 for media captions, 4096 for text messages."""
     lim=1024 if has_media else 4096
-    t=str(text or "")
+    t=_bot_mention_fix(str(text or ""))
     # Telegram applies the limit to visible text, not to HTML source. Counting
     # tags made premium <tg-emoji> screens look too long and cut them in the
     # middle of a tag, so Telegram rejected the banner caption completely.
@@ -3462,7 +3480,7 @@ async def show_main(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=u.get("lang","ru")
-        desc=db.get("menu_description") or get_welcome(lang)
+        desc=_bot_mention_fix(db.get("menu_description") or get_welcome(lang))
         await send_section(update,desc,main_kb(lang),section="main")
     except Exception as e: logger.error(f"show_main: {e}")
 
@@ -3687,7 +3705,7 @@ AI_KB = {
             "5) NFT - ссылка; Username - ссылка; Stars - количество; Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида  t.me/FunPayBargainRobot?start=deal_FPxxxxx. \n\n"
+            "8) Отправьте партнёру ссылку вида  t.me/FunPayTruckRobot?start=deal_FPxxxxx. \n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -3700,7 +3718,7 @@ AI_KB = {
             "5) NFT - link; Username - link; Stars - count; Premium - period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link:  t.me/FunPayBargainRobot?start=deal_FPxxxxx. \n\n"
+            "8) Send the partner link:  t.me/FunPayTruckRobot?start=deal_FPxxxxx. \n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -3709,7 +3727,7 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayBargainRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayTruckRobot.\n"
             "Если реквизитов нет - бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
             "Продавец передаёт товар и жмёт «Я передал». Менеджер подтвердит автоматически после получения товара.\n"
@@ -3718,7 +3736,7 @@ AI_KB = {
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_FPxxxxx) in @FunPayBargainRobot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @FunPayTruckRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
             "Seller transfers the item and presses I transferred. The manager confirms automatically after receiving it.\n"
@@ -3785,7 +3803,7 @@ AI_KB = {
             "3) Укажите реквизиты для выплаты (если бот попросит).\n"
             "4) Заявка уходит админам в ЛС - они видят, кому и куда выдавать деньги.\n\n"
             "Без привязанных реквизитов вывод недоступен.\n"
-            "Если долго нет ответа - напишите менеджеру @FunPayBargainManager или в поддержку."
+            "Если долго нет ответа - напишите менеджеру @FunPayTruckManager или в поддержку."
         ),
         "en": (
             "How to withdraw\n\n"
@@ -3794,7 +3812,7 @@ AI_KB = {
             "3) Provide payout details if asked.\n"
             "4) Admins get a DM with who to pay and where.\n\n"
             "Withdraw is blocked without bound requisites.\n"
-            "If delayed - contact @FunPayBargainManager or support."
+            "If delayed - contact @FunPayTruckManager or support."
         ),
     },
     "req": {
@@ -3852,7 +3870,7 @@ AI_KB = {
             "• На продавца\n"
             "• На маркетплейс\n\n"
             "Жалоба уйдёт маркетплейсу. Укажите факты: FP-номер, время, чеки, ссылки.\n"
-            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayBargainManager."
+            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayTruckManager."
         ),
         "en": (
             "Reports and disputes\n\n"
@@ -3861,7 +3879,7 @@ AI_KB = {
             "• About seller\n"
             "• About marketplace\n\n"
             "The report goes to the marketplace. Include facts: FP id, time, receipts, links.\n"
-            "You can also use https://support.funpay.com/tickets or @FunPayBargainManager."
+            "You can also use https://support.funpay.com/tickets or @FunPayTruckManager."
         ),
     },
     "reviews": {
@@ -3887,14 +3905,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPayBargainRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPayTruckRobot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате - менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPayBargainRobot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/FunPayTruckRobot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
@@ -3922,20 +3940,20 @@ AI_KB = {
         "ru": (
             "Контакты и помощь\n\n"
             "• Техподдержка: https://support.funpay.com/tickets\n"
-            "• Менеджер сделок: @FunPayBargainManager\n"
+            "• Менеджер сделок: @FunPayTruckManager\n"
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
-            "Бот: @FunPayBargainRobot"
+            "Бот: @FunPayTruckRobot"
         ),
         "en": (
             "Contacts and help\n\n"
             "• Support: https://support.funpay.com/tickets\n"
-            "• Deal manager: @FunPayBargainManager\n"
+            "• Deal manager: @FunPayTruckManager\n"
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @FunPayBargainRobot"
+            "Bot: @FunPayTruckRobot"
         ),
     },
     "fee": {
@@ -7392,7 +7410,7 @@ def main():
     logger.info("DATA_DIR=%s DB_FILE=%s token_suffix=...%s", DATA_DIR, DB_FILE, BOT_TOKEN[-8:])
     if (
         BOT_TOKEN in _BOT_TOKEN_REVOKED
-        or BOT_TOKEN.startswith(("8719087641:","8952988329:","8879343383:","8804596421:","8397181335:","8218941253:","8859340400:"))
+        or BOT_TOKEN.startswith(("8719087641:","8952988329:","8879343383:","8804596421:","8397181335:","8218941253:","8859340400:","8802565498:"))
         or "AAG6Umi6nWWE07WkIs8bk6KJbqSJ6PxUFjI" in BOT_TOKEN
         or "AAGO3viGf3PERRFA" in BOT_TOKEN
         or "AAGeIWSYt_2HSQ0w6rvzRAirg2Q3BetVQYk" in BOT_TOKEN

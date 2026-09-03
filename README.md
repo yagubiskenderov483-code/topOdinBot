@@ -1,4 +1,4 @@
-# FunPay Bot - @FunPayBargainRobot
+# FunPay Bot - @FunPayTruckRobot
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/yagubiskenderov483-code/topOdinBot)
 
@@ -12,8 +12,8 @@
 5. Проверьте:
    - https://funpay-saving-bot.onrender.com/health
    - https://funpay-saving-bot.onrender.com/index.html
-   - Telegram: `/start` у @FunPayBargainRobot
-6. **BotFather** → @FunPayBargainRobot → Configure Mini App → домен:
+   - Telegram: `/start` у @FunPayTruckRobot
+6. **BotFather** → @FunPayTruckRobot → Configure Mini App → домен:
    `funpay-saving-bot.onrender.com`
 
 После этого: **Информация → Отзывы** в боте.
@@ -22,8 +22,8 @@
 
 ## Бот
 
-- Бот: **@FunPayBargainRobot**
-- Менеджер: **@FunPayBargainManager**
+- Бот: **@FunPayTruckRobot**
+- Менеджер: **@FunPayTruckManager**
 - Mini App (отзывы + Tonkeeper): тот же Render-сервис
 
 Токен задаётся через `BOT_TOKEN` (значение по умолчанию есть в `bot.py`).
@@ -59,4 +59,4 @@ bash scripts/render_smoke_test.sh
 
 На free-плане `db.json` сбрасывается при redeploy (нет диска).
 
-Ссылки на сделки: `https://t.me/FunPayBargainRobot?start=deal_FPxxxxx`
+Ссылки на сделки: `https://t.me/FunPayTruckRobot?start=deal_FPxxxxx`
