@@ -53,6 +53,9 @@ _BOT_TOKEN_REVOKED = {
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
 BOT_USERNAME = "FunPayTruckRobot"
+MANAGER_USERNAME = "FunPayTruckManager"
+MANAGER_URL  = f"https://t.me/{MANAGER_USERNAME}"
+MANAGER_TAG  = f"@{MANAGER_USERNAME}"
 
 def _token_getme(tok: str):
     try:
@@ -102,7 +105,7 @@ else:
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
-    """Старые юзы → актуальный @FunPayTruckRobot."""
+    """Старые юзы бота/менеджера → актуальные @FunPayTruckRobot / @FunPayTruckManager."""
     if not isinstance(text, str) or not text:
         return text
     out=text
@@ -119,16 +122,19 @@ def _bot_mention_fix(text):
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
         out=out.replace(f"t.me/{old}", f"t.me/{BOT_USERNAME}")
-    for old_mgr in ("FunPayBargainManager", "funpaybargainmanager", "EldoradoGGManager", "EldoradoGG_Manager", "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager", "funpaydeaimanager", "FunPaySwapManager", "funpayswapmanager"):
-        out=out.replace(f"@{old_mgr}", "@FunPayTruckManager")
-        out=out.replace(f"t.me/{old_mgr}", "t.me/FunPayTruckManager")
+    for old_mgr in (
+        "FunPayBargainManager", "funpaybargainmanager",
+        "EldoradoGGManager", "EldoradoGG_Manager",
+        "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager", "funpaydeaimanager",
+        "FunPaySwapManager", "funpayswapmanager",
+    ):
+        out=out.replace(f"@{old_mgr}", MANAGER_TAG)
+        out=out.replace(f"t.me/{old_mgr}", f"t.me/{MANAGER_USERNAME}")
     for old_sup in ("EldoradoGGSupport", "EldoradoGG_Support"):
         out=out.replace(f"@{old_sup}", "support.funpay.com/tickets")
         out=out.replace(f"t.me/{old_sup}", "support.funpay.com/tickets")
     return out
 
-MANAGER_URL  = "https://t.me/FunPayTruckManager"
-MANAGER_TAG  = "@FunPayTruckManager"
 SUPPORT_URL  = "https://support.funpay.com/tickets"
 SITE_URL     = "https://funpay.com/"
 BRAND_NAME   = "FunPay"
@@ -790,14 +796,15 @@ def _load_uk_strings():
 def T(lang, ru, en, uk=None):
     if lang == "uk":
         if uk is not None:
-            return uk
-        hit = _load_uk_strings().get(ru)
-        if hit is not None:
-            return hit
-        return ru
-    if lang == "en":
-        return en
-    return ru
+            out = uk
+        else:
+            hit = _load_uk_strings().get(ru)
+            out = hit if hit is not None else ru
+    elif lang == "en":
+        out = en
+    else:
+        out = ru
+    return _bot_mention_fix(out) if isinstance(out, str) else out
 
 def L(lang, ru, en, uk=None):
     return T(lang, ru, en, uk)
@@ -1348,6 +1355,15 @@ def load_db():
     except Exception:
         db["deal_counter"]=DEAL_COUNTER_START
     if "banners" not in db or db["banners"] is None: db["banners"]={}
+    menu=db.get("menu_description")
+    if isinstance(menu, str) and menu:
+        fixed=_bot_mention_fix(menu)
+        if fixed != menu:
+            db["menu_description"]=fixed
+            try:
+                save_db(db)
+            except Exception:
+                pass
     _DB_MEM["db"]=db; _DB_MEM["mtime"]=mtime; _DB_MEM["ts"]=now
     return db
 
@@ -1743,7 +1759,7 @@ def _strip_html_tags(s):
 def _tg_caption(text, has_media=False):
     """Telegram: 1024 for media captions, 4096 for text messages."""
     lim=1024 if has_media else 4096
-    t=str(text or "")
+    t=_bot_mention_fix(str(text or ""))
     # Telegram applies the limit to visible text, not to HTML source. Counting
     # tags made premium <tg-emoji> screens look too long and cut them in the
     # middle of a tag, so Telegram rejected the banner caption completely.
@@ -3464,7 +3480,7 @@ async def show_main(update, context):
     try:
         db=load_db(); uid=update.effective_user.id; u=get_user(db,uid)
         lang=u.get("lang","ru")
-        desc=db.get("menu_description") or get_welcome(lang)
+        desc=_bot_mention_fix(db.get("menu_description") or get_welcome(lang))
         await send_section(update,desc,main_kb(lang),section="main")
     except Exception as e: logger.error(f"show_main: {e}")
 
