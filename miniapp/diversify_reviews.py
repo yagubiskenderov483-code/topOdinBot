@@ -77,7 +77,7 @@ NOUN_EN = {
     "Escrow": {"obj": "the escrow deal", "land": ["closed cleanly", "released on time"]},
     "Гарант": {"obj": "the escrow deal", "land": ["closed cleanly", "released on time"]},
     "Username": {"obj": "the username", "land": ["was transferred", "moved over"]},
-    "Gift": {"obj": "the gift", "land": ["arrived", "was delivered"]},
+    "Gift": {"obj": "the gift", "land": ["arrived", "came through"]},
     "Карта": {"obj": "the card payout", "land": ["hit the card", "landed"]},
     "Card": {"obj": "the card payout", "land": ["hit the card", "landed"]},
 }
@@ -391,6 +391,12 @@ MIX_RU_M = [
     "можно быстрее",
     "сработало, но нервы потратил",
     "не провал, но и не вау",
+    "закрылось, впечатление серое",
+    "ожидал проще",
+    "по факту ок, по ощущениям тягомотина",
+    "не отменил, но и не кайфанул",
+    "сделка живая, сервис вялый",
+    "норм результат, кривой путь",
 ]
 MIX_RU_F = [
     "в итоге закрыли",
@@ -399,6 +405,12 @@ MIX_RU_F = [
     "можно быстрее",
     "сработало, но нервы потратила",
     "не провал, но и не вау",
+    "закрылось, впечатление серое",
+    "ожидала проще",
+    "по факту ок, по ощущениям тягомотина",
+    "не отменила, но и не кайфанула",
+    "сделка живая, сервис вялый",
+    "норм результат, кривой путь",
 ]
 BAD_RU_M = [
     "очень долго и непонятно",
@@ -502,6 +514,10 @@ def gen_ru(rng: random.Random, stars: int, tag: str, gender: str, casual: bool) 
             lambda: join_sents("не вау и не провал", f"{nom} — {tslow}"),
             lambda: join_sents("сначала реквизиты криво кинули, потом разобрались", mix),
             lambda: join_sents(f"{got} что надо, процесс не зашёл", f"{nom}, {situ}"),
+            lambda: join_sents(f"{nom} {land}, но {nit}", mix),
+            lambda: join_sents(f"три звезды и ни больше", f"{got} {acc}, {tslow}"),
+            lambda: join_sents(f"{situ} всё вышло кривовато", f"{nom} всё же на месте"),
+            lambda: join_sents(mix, f"по {prep} {tslow}"),
         ]
     elif stars == 2:
         shapes = [
@@ -510,6 +526,9 @@ def gen_ru(rng: random.Random, stars: int, tag: str, gender: str, casual: bool) 
             lambda: join_sents(neg, f"{nom} — {tslow}"),
             lambda: join_sents(f"почти сорвалось по {prep}", tslow, nit),
             lambda: join_sents("товар ок по итогу, организация нет", nit),
+            lambda: join_sents(f"два балла за результат, не за сервис", f"{nom}, {tslow}"),
+            lambda: join_sents(f"{neg}, хотя {got} {acc}"),
+            lambda: join_sents("долго спорили из-за мелочей", f"{nom} — {tslow}"),
         ]
     else:
         shapes = [
@@ -518,6 +537,8 @@ def gen_ru(rng: random.Random, stars: int, tag: str, gender: str, casual: bool) 
             lambda: join_sents(neg, f"{nom} — {tslow}"),
             lambda: join_sents("очень муторно", f"{nom}: {tslow}", bad),
             lambda: join_sents("разбирать пришлось", tslow, "второй раз так не пойду"),
+            lambda: join_sents("один балл, чтобы отметить что вообще закрыли", f"{nom} — {tslow}"),
+            lambda: join_sents(bad, nit, f"{acc} больше не возьму так"),
         ]
 
     text = pick(rng, shapes)()
@@ -585,6 +606,9 @@ def gen_en(rng: random.Random, stars: int, tag: str, casual: bool) -> str:
             lambda: join_sents(f"{obj}: {mix}", nit),
             lambda: join_sents("not a fail, not a wow", f"{obj} — {tslow}"),
             lambda: join_sents(f"details were messy at first, then we closed {obj}"),
+            lambda: join_sents(f"three stars feels right", f"{obj} {land}, {nit}"),
+            lambda: join_sents(mix, f"{obj} still went through"),
+            lambda: join_sents(f"got {obj}, didn't enjoy the process", tslow),
         ]
     elif stars == 2:
         shapes = [
@@ -592,6 +616,8 @@ def gen_en(rng: random.Random, stars: int, tag: str, casual: bool) -> str:
             lambda: join_sents(f"waited way too long on {obj}", tslow),
             lambda: join_sents(neg, f"{obj} — {tslow}"),
             lambda: join_sents(f"almost fell through on {obj}", nit),
+            lambda: join_sents("two stars for delivery, not for support", f"{obj} — {tslow}"),
+            lambda: join_sents(f"too much friction for {obj}", neg),
         ]
     else:
         shapes = [
@@ -599,6 +625,8 @@ def gen_en(rng: random.Random, stars: int, tag: str, casual: bool) -> str:
             lambda: join_sents(f"didn't like how they handled {obj}", tslow),
             lambda: join_sents(neg, f"{obj} — {tslow}", "wouldn't repeat that"),
             lambda: join_sents(bad, f"{obj}: {tslow}"),
+            lambda: join_sents(f"one star so it stays on the record", f"{obj} {tslow}"),
+            lambda: join_sents(f"messy from the start on {obj}", bad),
         ]
 
     text = pick(rng, shapes)()
@@ -651,13 +679,13 @@ def rewrite(data: dict) -> dict:
         lang = name_lang(row.get("name", ""))
         stars = int(row.get("stars") or 5)
         tag = row.get("tag") or "Escrow"
-        rng = random.Random(f"main:{idx}:{row.get('name')}:{tag}:{stars}:v11")
+        rng = random.Random(f"main:{idx}:{row.get('name')}:{tag}:{stars}:v15")
         row["text"] = make_text(rng, lang, stars, tag, row.get("name", ""), False, used, used_fp)
     for idx, row in enumerate(data.get("future") or []):
         lang = name_lang(row.get("name", ""))
         stars = int(row.get("stars") or 5)
         tag = row.get("tag") or "Escrow"
-        rng = random.Random(f"future:{idx}:{row.get('name')}:{tag}:{stars}:v11")
+        rng = random.Random(f"future:{idx}:{row.get('name')}:{tag}:{stars}:v15")
         row["text"] = make_text(rng, lang, stars, tag, row.get("name", ""), True, used, used_fp)
     return data
 
