@@ -6,6 +6,9 @@ cd "$(dirname "$0")/.."
 echo "== compile =="
 python3 -m py_compile bot.py miniapp/build.py
 
+echo "== deals/faq helpers =="
+python3 scripts/test_deals_faq.py
+
 echo "== miniapp build =="
 python3 miniapp/build.py
 

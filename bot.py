@@ -975,6 +975,111 @@ def my_deals_kb(lang="ru"):
         [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
     ])
 
+MY_DEALS_PAGE = 5
+
+def user_in_deal(deal, uid):
+    uid=str(uid)
+    if not isinstance(deal, dict):
+        return False
+    return uid in {
+        str(deal.get("user_id") or ""),
+        str(deal.get("partner_uid") or ""),
+        str(deal.get("buyer_uid") or ""),
+        str(deal.get("seller_uid") or ""),
+    }
+
+def iter_user_deals(db, uid):
+    items=[]
+    for k,v in (db.get("deals") or {}).items():
+        if isinstance(v, dict) and user_in_deal(v, uid):
+            items.append((str(k), v))
+    items.sort(key=lambda it: str((it[1] or {}).get("created") or ""), reverse=True)
+    return items
+
+def deal_is_active(d):
+    return (d or {}).get("status") != "confirmed"
+
+def filter_user_deals(items, filt):
+    if filt=="act":
+        return [(k,v) for k,v in items if deal_is_active(v)]
+    if filt=="done":
+        return [(k,v) for k,v in items if not deal_is_active(v)]
+    return list(items)
+
+def parse_my_deals_page_cb(data):
+    """md_p_{filt}_{page} → (filt, page) or None."""
+    if not data or not data.startswith("md_p_"):
+        return None
+    rest=data[5:]
+    if "_" not in rest:
+        return None
+    filt, page_s = rest.rsplit("_", 1)
+    if filt not in ("all","act","done"):
+        return None
+    try:
+        page=int(page_s)
+    except (TypeError, ValueError):
+        return None
+    return filt, max(0, page)
+
+def deal_status_label(d, lang="ru"):
+    d=d or {}
+    if d.get("status")=="confirmed":
+        return T(lang,"завершена","completed","завершена")
+    if d.get("payment_reported"):
+        return T(lang,"ожидает подтверждения","awaiting confirmation","очікує підтвердження")
+    if d.get("item_transferred"):
+        return T(lang,"ожидает оплату","awaiting payment","очікує оплату")
+    if d.get("partner_uid"):
+        return T(lang,"в работе","in progress","в роботі")
+    return T(lang,"ожидает партнёра","waiting for partner","очікує партнера")
+
+def deal_button_label(did, d, lang="ru"):
+    tn=(tname_plain((d or {}).get("type",""), lang) or "-")[:14]
+    cur=(cur_plain((d or {}).get("currency",""), lang) or "")[:8]
+    amt=str((d or {}).get("payment_amount") or (d or {}).get("amount") or "-")[:10]
+    st=deal_status_label(d, lang)
+    label=f"{did} · {tn} · {amt} {cur} · {st}".strip()
+    return label[:64]
+
+def deal_party_tags(db, deal):
+    creator_uid=str((deal or {}).get("user_id") or "")
+    c_uname=((db.get("users") or {}).get(creator_uid) or {}).get("username") or ""
+    creator_tag=f"@{c_uname}" if c_uname else (f"#{creator_uid}" if creator_uid else "-")
+    partner_uid=str((deal or {}).get("partner_uid") or "")
+    p_uname=""
+    if partner_uid:
+        p_uname=((db.get("users") or {}).get(partner_uid) or {}).get("username") or ""
+    if not p_uname:
+        p_uname=((deal or {}).get("partner") or "").lstrip("@")
+    if p_uname:
+        partner_tag=f"@{p_uname}" if not str(p_uname).startswith("@") else str(p_uname)
+    elif partner_uid:
+        partner_tag=f"#{partner_uid}"
+    else:
+        partner_tag="—"
+    return creator_tag, partner_tag, p_uname
+
+def deal_viewer_context(deal, uid):
+    uid=str(uid)
+    creator_uid=str((deal or {}).get("user_id") or "")
+    is_creator=uid==creator_uid
+    creator_role=(deal or {}).get("creator_role","seller")
+    if is_creator:
+        return creator_role, True
+    buyer_uid, seller_uid = deal_participant_roles(deal)
+    if uid==str(buyer_uid or ""):
+        return "buyer", False
+    if uid==str(seller_uid or ""):
+        return "seller", False
+    return ("buyer" if creator_role=="seller" else "seller"), False
+
+def deal_share_links(deal_id, lang="ru"):
+    join_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
+    share_msg=T(lang,"Сделка создана! Присоединяйтесь.","Deal created! Join now.","Угоду створено! Приєднуйтесь.")
+    share_url="https://t.me/share/url?"+urlencode({"url":join_link,"text":share_msg}, quote_via=quote)
+    return join_link, share_url
+
 async def notify_deal_event(bot, uid, text, lang="ru"):
     if not uid: return
     try:
@@ -2203,11 +2308,86 @@ def info_kb(lang, web_app=None):
     if btn:
         rows.append([btn])
     rows.append([InlineKeyboardButton(
+        T(lang, "Как это работает", "How it works", "Як це працює"),
+        callback_data="info_how",
+        icon_custom_emoji_id="6028435952299413210",
+    )])
+    rows.append([InlineKeyboardButton(
         T(lang, "Назад", "Back", "Назад"),
         callback_data="main_menu",
         icon_custom_emoji_id="5258084656674250503",
     )])
     return InlineKeyboardMarkup(rows)
+
+def info_how_kb(lang):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(T(lang,"Создать сделку","Create a deal","Створити угоду"),callback_data="info_how_deal",icon_custom_emoji_id="5260687681733533075")],
+        [InlineKeyboardButton(T(lang,"Присоединиться","Join a deal","Приєднатися"),callback_data="info_how_join",icon_custom_emoji_id="5893431652578758294")],
+        [InlineKeyboardButton(T(lang,"Пополнить / вывод","Top up / withdraw","Поповнити / вивід"),callback_data="info_how_pay",icon_custom_emoji_id="5258043150110301407")],
+        [InlineKeyboardButton(T(lang,"Реквизиты","Requisites","Реквізити"),callback_data="info_how_req",icon_custom_emoji_id="5260730055880876557")],
+        [InlineKeyboardButton(T(lang,"Рефералы","Referrals","Реферали"),callback_data="info_how_ref",icon_custom_emoji_id="5258362837411045098")],
+        [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_info",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+def info_how_back_kb(lang):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="info_how",icon_custom_emoji_id="5258084656674250503")],
+    ])
+
+def info_how_hub_text(lang):
+    return (
+        f"{Eln} <b>{T(lang,'Как это работает','How it works','Як це працює')}</b>\n\n"
+        f"<blockquote>{T(lang,'Коротко по шагам: сделка с гарантом, оплата и вывод. Выберите тему.','A short guide: escrow deals, payments and withdrawals. Pick a topic.','Коротко по кроках: угода з гарантом, оплата і вивід. Оберіть тему.')}</blockquote>"
+    )
+
+def info_how_topic_text(topic, lang="ru"):
+    if topic=="deal":
+        return (
+            f"{Edl} <b>{T(lang,'Как создать сделку','How to create a deal','Як створити угоду')}</b>\n\n"
+            f"<blockquote>"
+            f"1. {T(lang,'Главное меню → «Создать сделку».','Main menu → Create Deal.','Головне меню → «Створити угоду».')}\n"
+            f"2. {T(lang,'Роль: покупатель или продавец.','Role: buyer or seller.','Роль: покупець або продавець.')}\n"
+            f"3. {T(lang,'Тип: NFT, username, звёзды, крипта, Premium.','Type: NFT, username, Stars, crypto, Premium.','Тип: NFT, username, зірки, крипта, Premium.')}\n"
+            f"4. {T(lang,'@username партнёра → валюта → сумма.','Partner @username → currency → amount.','@username партнера → валюта → сума.')}\n"
+            f"5. {T(lang,'Отправьте партнёру ссылку на сделку.','Send the partner the deal link.','Надішліть партнеру посилання на угоду.')}\n"
+            f"</blockquote>\n"
+            f"<blockquote>{T(lang,'Комиссия 0%. Без реквизитов под валюту сделку не создать.','Fee 0%. Matching requisites are required.','Комісія 0%. Без реквізитів під валюту угоду не створити.')}</blockquote>"
+        )
+    if topic=="join":
+        return (
+            f"{Ejn} <b>{T(lang,'Как присоединиться','How to join','Як приєднатися')}</b>\n\n"
+            f"<blockquote>"
+            f"{T(lang,'Откройте ссылку партнёра в этом боте.','Open the partner link in this bot.','Відкрийте посилання партнера в цьому боті.')}\n"
+            f"{T(lang,'Продавец жмёт «Я передал» после передачи менеджеру.','Seller taps I transferred after sending the item to the manager.','Продавець тиснуть «Я передав» після передачі менеджеру.')}\n"
+            f"{T(lang,'Покупатель платит по реквизитам и жмёт «Я оплатил».','Buyer pays using the details and taps I paid.','Покупець платить за реквізитами і тиснуть «Я оплатив».')}\n"
+            f"</blockquote>\n"
+            f"<blockquote>{T(lang,'Статус и карточка — в «Мои сделки».','Status and the deal card are in My Deals.','Статус і картка — в «Мої угоди».')}</blockquote>"
+        )
+    if topic=="pay":
+        return (
+            f"{Ewlt} <b>{T(lang,'Пополнить и вывод','Top up and withdraw','Поповнити і вивід')}</b>\n\n"
+            f"<blockquote>"
+            f"{T(lang,'Пополнить: звёзды от 700, карта от 400 RUB, TON от 3, USDT от 9.','Top up: Stars from 700, card from 400 RUB, TON from 3, USDT from 9.','Поповнити: зірки від 700, картка від 400 RUB, TON від 3, USDT від 9.')}\n"
+            f"{T(lang,'Платите строго с комментарием EG-… из бота.','Pay with the exact EG-… comment from the bot.','Платіть строго з коментарем EG-… з бота.')}\n"
+            f"{T(lang,'Вывод: сначала реквизиты, затем заявка админам.','Withdraw: bind requisites, then send a request.','Вивід: спочатку реквізити, потім заявка адмінам.')}\n"
+            f"</blockquote>"
+        )
+    if topic=="req":
+        return (
+            f"{Ereq} <b>{T(lang,'Реквизиты','Requisites','Реквізити')}</b>\n\n"
+            f"<blockquote>"
+            f"{T(lang,'RUB/UAH — карта или телефон. TON/USDT — кошелёк Tonkeeper. Звёзды — @username.','RUB/UAH — card or phone. TON/USDT — Tonkeeper wallet. Stars — @username.','RUB/UAH — картка або телефон. TON/USDT — гаманець Tonkeeper. Зірки — @username.')}\n"
+            f"{T(lang,'Seed-фразу бот никогда не просит.','The bot never asks for a seed phrase.','Seed-фразу бот ніколи не просить.')}\n"
+            f"</blockquote>"
+        )
+    if topic=="ref":
+        return (
+            f"{Eref} <b>{T(lang,'Рефералы','Referrals','Реферали')}</b>\n\n"
+            f"<blockquote>"
+            f"{T(lang,'Ваша ссылка в разделе «Рефералы». 3% с успешных сделок приглашённых в RUB.','Your link is in Referrals. 3% from invited users’ successful RUB deals.','Ваше посилання в розділі «Реферали». 3% з успішних угод запрошених у RUB.')}\n"
+            f"</blockquote>"
+        )
+    return info_how_hub_text(lang)
 
 def topup_methods_kb(lang):
     return InlineKeyboardMarkup([
@@ -3385,6 +3565,34 @@ def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_cre
     ])
     return InlineKeyboardMarkup(rows)
 
+def user_deal_kb(deal_id, deal, viewer_role, lang, partner_username="", is_creator=False):
+    """Keyboard for opening a deal from My Deals / deep-link."""
+    if deal.get("status")=="confirmed":
+        return InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                T(lang,"Сделка завершена","Deal completed","Угоду завершено"),
+                callback_data="noop",icon_custom_emoji_id="5316827280863934685")],
+            [InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+            [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
+        ])
+    if deal.get("partner_uid"):
+        return deal_action_kb(deal_id, deal, viewer_role, lang, partner_username, is_creator=is_creator)
+    rows=[]
+    if is_creator:
+        _join, share_url=deal_share_links(deal_id, lang)
+        rows.append([InlineKeyboardButton(
+            T(lang,"Переслать партнёру","Forward to partner","Переслати партнеру"),
+            url=share_url,icon_custom_emoji_id="5316600120043649556")])
+    else:
+        rows.append([InlineKeyboardButton(
+            T(lang,"Ожидайте партнёра","Waiting for partner","Очікуйте партнера"),
+            callback_data="noop",icon_custom_emoji_id=WAIT_ICON)])
+    rows.extend([
+        [InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
+        [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
+    ])
+    return InlineKeyboardMarkup(rows)
+
 
 async def complete_deal_join(update, context, deal_id):
     db=load_db(); deal=db.get("deals",{}).get(deal_id)
@@ -3490,7 +3698,7 @@ async def show_info(update, context):
         lang = get_lang(uid)
         text = (
             f"{Eln} <b>{L(lang, 'Информация', 'Information')}</b>\n\n"
-            f"<blockquote>{L(lang, 'Здесь можно узнать, как проходят сделки на платформе, и посмотреть отзывы пользователей.', 'Here you can learn how deals work on the platform and browse user reviews.')}</blockquote>"
+            f"<blockquote>{L(lang, 'Как проходят сделки на платформе и отзывы пользователей.', 'How deals work on the platform, plus user reviews.')}</blockquote>"
         )
         try:
             await send_section(update, text, info_kb(lang), section="info")
@@ -3503,6 +3711,18 @@ async def show_info(update, context):
                 raise
     except Exception as e:
         logger.error(f"show_info: {e}")
+
+async def show_info_how(update, context, topic=None):
+    try:
+        lang=get_lang(update.effective_user.id)
+        if topic in ("deal","join","pay","req","ref"):
+            await send_section(update, info_how_topic_text(topic, lang), info_how_back_kb(lang),
+                               section="info", fallback_section="info")
+            return
+        await send_section(update, info_how_hub_text(lang), info_how_kb(lang),
+                           section="info", fallback_section="info")
+    except Exception as e:
+        logger.error(f"show_info_how: {e}")
 
 def clear_complaint_state(ud):
     for k in ("complaint_type","complaint_step","cmp_username","cmp_deal","cmp_time","cmp_topic","cmp_evidence"):
@@ -4598,14 +4818,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{Ewrn} <b>{L(get_lang(uid),'Сделка не найдена.','Deal not found.')}</b>",
                     parse_mode="HTML")
                 await show_main(update,context); return
-            creator_uid=d.get("user_id"); lang=get_lang(uid); ru=lang=="ru"
+            lang=get_lang(uid); ru=lang=="ru"
             deal_cur=d.get("currency") or d.get("deal_currency")
 
-            if creator_uid and creator_uid==str(uid):
-                await update.effective_message.reply_text(
-                    f"{Ewrn} <b>{L(lang,'Нельзя присоединиться к своей сделке.','Cannot join your own deal.')}</b>",
-                    parse_mode="HTML")
-                await show_main(update,context); return
+            if user_in_deal(d, uid):
+                await show_user_deal(update, context, deal_id); return
 
             partner_uname=d.get("partner","").lstrip("@").lower()
             my_uname=(update.effective_user.username or "").lower()
@@ -4651,6 +4868,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
         except Exception:
             pass
+
+async def cmd_deals(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await show_my_deals(update, context)
+    except Exception as e:
+        logger.error(f"cmd_deals: {e}")
+
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await show_info_how(update, context)
+    except Exception as e:
+        logger.error(f"cmd_help: {e}")
 
 # ─── /neptunteam ─────────────────────────────────────────────────────────────
 async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4824,7 +5053,20 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ud.pop(key,None)
             await show_balance(update,context); return
         if d=="menu_my_deals":
+            ud.pop("find_deal",None)
             await show_my_deals(update,context); return
+        if d in ("md_f_all","md_f_act","md_f_done"):
+            ud.pop("find_deal",None)
+            await show_my_deals(update,context,filt=d[5:]); return
+        parsed_md=parse_my_deals_page_cb(d)
+        if parsed_md:
+            ud.pop("find_deal",None)
+            await show_my_deals(update,context,filt=parsed_md[0],page=parsed_md[1]); return
+        if d.startswith("md_open_"):
+            ud.pop("find_deal",None)
+            await show_user_deal(update,context,d[8:]); return
+        if d=="md_find":
+            await prompt_find_deal(update,context); return
         if d=="menu_lang":
             await show_lang(update,context); return
         if d=="menu_top":
@@ -4833,6 +5075,11 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_ref(update,context); return
         if d=="menu_info":
             await show_info(update,context); return
+        if d=="info_how" or d.startswith("info_how_"):
+            topic=d[9:] if d.startswith("info_how_") else None
+            if topic=="":
+                topic=None
+            await show_info_how(update,context,topic=topic); return
         if d=="menu_complaint":
             clear_complaint_state(ud); ud.pop("ai_ask",None)
             await show_complaint(update,context); return
@@ -5368,6 +5615,20 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if uid in ADMIN_IDS and ud.get("adm_step"): await handle_adm_msg(update,context); return
         # Restore requisite wizard if user_data was lost (profile / deal / join)
         restore_req_input_state(ud, uid)
+
+        if ud.get("find_deal"):
+            ok=validate_complaint_deal_id(text)
+            if not ok:
+                await update.message.reply_text(
+                    f"{Ewrn} <b>{T(lang,'Неверный номер сделки. Пример: FP29548','Invalid deal ID. Example: FP29548','Невірний номер угоди. Приклад: FP29548')}</b>",
+                    parse_mode="HTML",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(
+                        T(lang,"Назад","Back","Назад"),callback_data="menu_my_deals",
+                        icon_custom_emoji_id="5258084656674250503")]]))
+                return
+            ud.pop("find_deal",None)
+            await show_user_deal(update, context, ok)
+            return
 
         if ud.get("ai_ask"):
             chat=update.effective_chat
@@ -6256,7 +6517,14 @@ async def show_ref(update, context):
               f"{Eref} {L(lang,'Приглашено','Invited')}: <b>{rc}</b>\n"
               f"{Ebal} {T(lang,'Заработано','Earned','Зароблено')}: <b>{fmt_balance(re, lang)}</b>{refs_str}</blockquote>\n\n"
               f"{Esrk} {L(lang,'Ваша ссылка:','Your link:')}\n<code>{ref_link}</code>")
-        await send_section(update,text,InlineKeyboardMarkup([[InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]),section="ref")
+        share_url="https://t.me/share/url?"+urlencode({
+            "url":ref_link,
+            "text":T(lang,"Сделки с гарантом в FunPay. Заходи:","Escrow deals on FunPay. Join:","Угоди з гарантом у FunPay. Заходь:"),
+        }, quote_via=quote)
+        await send_section(update,text,InlineKeyboardMarkup([
+            [InlineKeyboardButton(T(lang,"Поделиться ссылкой","Share link","Поділитися посиланням"),url=share_url,icon_custom_emoji_id="5316600120043649556")],
+            [InlineKeyboardButton(L(lang,"Назад","Back"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
+        ]),section="ref")
     except Exception as e: logger.error(f"show_ref: {e}")
 
 async def show_req(update, context):
@@ -6308,38 +6576,70 @@ async def show_req(update, context):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]]))
         except: pass
 
-async def show_my_deals(update, context):
+def my_deals_list_kb(lang, filt, page, pages, chunk):
+    def mark(code, label):
+        return f"· {label} ·" if filt==code else label
+    rows=[
+        [
+            InlineKeyboardButton(mark("all", T(lang,"Все","All","Усі")),
+                                 callback_data="md_f_all",icon_custom_emoji_id="5258476306152038031"),
+            InlineKeyboardButton(mark("act", T(lang,"В работе","Active","В роботі")),
+                                 callback_data="md_f_act",icon_custom_emoji_id=WAIT_ICON),
+            InlineKeyboardButton(mark("done", T(lang,"Готово","Done","Готово")),
+                                 callback_data="md_f_done",icon_custom_emoji_id="5316827280863934685"),
+        ]
+    ]
+    for did, dv in chunk:
+        rows.append([InlineKeyboardButton(
+            deal_button_label(did, dv, lang),
+            callback_data=f"md_open_{did}",
+            icon_custom_emoji_id="5260687681733533075")])
+    if pages>1:
+        nav=[]
+        if page>0:
+            nav.append(InlineKeyboardButton("‹",callback_data=f"md_p_{filt}_{page-1}",icon_custom_emoji_id="5258084656674250503"))
+        nav.append(InlineKeyboardButton(f"{page+1}/{pages}",callback_data="noop",icon_custom_emoji_id="6028435952299413210"))
+        if page<pages-1:
+            nav.append(InlineKeyboardButton("›",callback_data=f"md_p_{filt}_{page+1}",icon_custom_emoji_id="5316887736823591263"))
+        rows.append(nav)
+    rows.append([InlineKeyboardButton(
+        T(lang,"Найти по номеру","Find by ID","Знайти за номером"),
+        callback_data="md_find",icon_custom_emoji_id="5258115571848846212")])
+    rows.append([InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")])
+    return InlineKeyboardMarkup(rows)
+
+async def show_my_deals(update, context, filt="all", page=0):
     try:
+        if context is not None:
+            context.user_data.pop("find_deal", None)
         db=load_db(); uid=str(update.effective_user.id); lang=get_lang(int(uid))
-        deals={}
-        for k,v in db.get("deals",{}).items():
-            if (str(v.get("user_id",""))==uid
-                or str(v.get("partner_uid",""))==uid
-                or str(v.get("buyer_uid",""))==uid
-                or str(v.get("seller_uid",""))==uid):
-                deals[k]=v
+        if filt not in ("all","act","done"):
+            filt="all"
+        all_items=iter_user_deals(db, uid)
+        n_all=len(all_items)
+        n_act=sum(1 for _,v in all_items if deal_is_active(v))
+        n_done=n_all-n_act
+        items=filter_user_deals(all_items, filt)
         back_kb=InlineKeyboardMarkup([[InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")]])
-        if not deals:
+        if not all_items:
             await send_section(update,
                 f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')}</b>\n\n"
                 f"{T(lang,'Пока нет сделок.','No deals yet.','Поки немає угод.')}",
                 back_kb,section="my_deals"); return
-        # Plain status labels - custom emoji inside <b> breaks Telegram HTML (editMessage)
-        SNAMES={
-            "pending":   T(lang,"ожидает","pending","очікує"),
-            "confirmed": T(lang,"завершена","completed","завершена"),
-        }
-        lines=[f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({len(deals)})</b>\n"]
-        for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
-            tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "-")
-            cur_d=cur_plain(dv.get("currency",""),lang) or str(dv.get("currency") or "")
-            amt=dv.get("payment_amount") or dv.get("amount") or "-"
-            s=SNAMES.get(dv.get("status",""), str(dv.get("status") or "-"))
-            lines.append(
-                f"<b>{i}.</b> {H(tn)} · <code>{H(did)}</code>\n"
-                f"{H(amt)} {H(cur_d)} · {H(s)}"
-            )
-        await send_section(update,"\n".join(lines), back_kb, section="my_deals")
+        pages=max(1, math.ceil(len(items)/MY_DEALS_PAGE) if items else 1)
+        page=max(0, min(int(page or 0), pages-1))
+        chunk=items[page*MY_DEALS_PAGE:(page+1)*MY_DEALS_PAGE]
+        if not items:
+            empty=T(lang,"В этом фильтре сделок нет.","No deals in this filter.","У цьому фільтрі угод немає.")
+            text=(f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({n_all})</b>\n\n"
+                  f"<blockquote>{empty}</blockquote>")
+        else:
+            text=(f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({n_all})</b>\n\n"
+                  f"<blockquote>{T(lang,'В работе','Active','В роботі')}: <b>{n_act}</b> · "
+                  f"{T(lang,'Готово','Done','Готово')}: <b>{n_done}</b>\n"
+                  f"{T(lang,'Нажмите сделку, чтобы открыть карточку.','Tap a deal to open its card.','Натисніть угоду, щоб відкрити картку.')}</blockquote>")
+        await send_section(update, text, my_deals_list_kb(lang, filt, page, pages, chunk),
+                           section="my_deals")
     except Exception as e:
         logger.error(f"show_my_deals: {e}", exc_info=True)
         try:
@@ -6352,6 +6652,55 @@ async def show_my_deals(update, context):
                 section="my_deals")
         except Exception as e2:
             logger.error(f"show_my_deals fallback: {e2}")
+
+async def show_user_deal(update, context, deal_id):
+    try:
+        uid=update.effective_user.id
+        lang=get_lang(uid)
+        deal_id=(deal_id or "").strip().upper()
+        db=load_db()
+        deal=(db.get("deals") or {}).get(deal_id)
+        miss=(
+            f"{Ewrn} <b>{T(lang,'Сделка не найдена.','Deal not found.','Угоду не знайдено.')}</b>\n\n"
+            f"<blockquote>{T(lang,'Проверьте номер или откройте список своих сделок.','Check the ID or open your deal list.','Перевірте номер або відкрийте список своїх угод.')}</blockquote>"
+        )
+        back=InlineKeyboardMarkup([[InlineKeyboardButton(
+            T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",
+            icon_custom_emoji_id="5258476306152038031")]])
+        if not deal or not user_in_deal(deal, uid):
+            await send_section(update, miss, back, section="my_deals"); return
+        creator_tag, partner_tag, p_uname = deal_party_tags(db, deal)
+        viewer_role, is_creator = deal_viewer_context(deal, uid)
+        joined=bool(deal.get("partner_uid"))
+        text=build_deal_text(deal_id, deal, creator_tag, partner_tag, lang,
+                             joined=joined, is_creator=is_creator)
+        kb=user_deal_kb(deal_id, deal, viewer_role, lang, p_uname, is_creator=is_creator)
+        await send_section(update, text, kb, section="deal_card")
+    except Exception as e:
+        logger.error(f"show_user_deal: {e}", exc_info=True)
+        try:
+            lang=get_lang(update.effective_user.id)
+            await send_section(
+                update,
+                f"{Ewrn} <b>{T(lang,'Не удалось открыть сделку.','Could not open the deal.','Не вдалося відкрити угоду.')}</b>",
+                InlineKeyboardMarkup([[InlineKeyboardButton(
+                    T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",
+                    icon_custom_emoji_id="5258476306152038031")]]),
+                section="my_deals")
+        except Exception:
+            pass
+
+async def prompt_find_deal(update, context):
+    lang=get_lang(update.effective_user.id)
+    context.user_data["find_deal"]=True
+    await send_section(
+        update,
+        f"{Edl} <b>{T(lang,'Найти сделку','Find a deal','Знайти угоду')}</b>\n\n"
+        f"<blockquote>{T(lang,'Введите номер, например','Enter the ID, for example','Введіть номер, наприклад')} <code>FP29548</code></blockquote>",
+        InlineKeyboardMarkup([[InlineKeyboardButton(
+            T(lang,"Назад","Back","Назад"),callback_data="menu_my_deals",
+            icon_custom_emoji_id="5258084656674250503")]]),
+        section="my_deals")
 
 async def show_top(update, context):
     try:
@@ -7479,8 +7828,21 @@ def main():
 
     async def post_init(application):
         try:
-            await application.bot.set_my_commands([BotCommand("start","Главное меню")])
-            await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
+            await application.bot.set_my_commands([
+                BotCommand("start","Главное меню"),
+                BotCommand("deals","Мои сделки"),
+                BotCommand("help","Как это работает"),
+            ])
+            await application.bot.set_my_commands([
+                BotCommand("start","Main menu"),
+                BotCommand("deals","My deals"),
+                BotCommand("help","How it works"),
+            ], language_code="en")
+            await application.bot.set_my_commands([
+                BotCommand("start","Головне меню"),
+                BotCommand("deals","Мої угоди"),
+                BotCommand("help","Як це працює"),
+            ], language_code="uk")
         except Exception as e:
             logger.warning("set_my_commands: %s", e)
         # Кнопка меню слева внизу = команды (/start), не Mini App
@@ -7544,6 +7906,8 @@ def main():
     app.add_error_handler(on_error)
 
     app.add_handler(CommandHandler("start",cmd_start))
+    app.add_handler(CommandHandler("deals",cmd_deals))
+    app.add_handler(CommandHandler("help",cmd_help))
     app.add_handler(CommandHandler("admin",cmd_admin))
     app.add_handler(CommandHandler("savebanners",cmd_savebanners))
     app.add_handler(CommandHandler("neptunteam",cmd_neptune))
