@@ -2345,9 +2345,8 @@ def currency_requisites_kb(currency, lang="ru"):
             T(lang,"Звёзды","Stars","Зірки"),
             callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")])
     else:
-        bank=card_bank(lang)
         rows.append([InlineKeyboardButton(
-            T(lang,f"Карта / телефон {bank}",f"Card / phone {bank}",f"Карта / телефон {bank}"),
+            T(lang,"Карта / телефон","Card / phone","Карта / телефон"),
             callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")])
     rows.append([InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")])
     return InlineKeyboardMarkup(rows)
@@ -2696,7 +2695,7 @@ async def on_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 tok=secrets.token_hex(4)
                 draft["_pending"]={"token":tok,"amount":ca,"payment_amount":ca,"pay_currency":draft.get("currency")}
-                results.append(inl_make_ok_article(lang, f"{T(lang,'Сумма','Amount','Сума')}: {ca} {cur_plain(draft.get('currency',''),lang)}", T(lang,"Нажмите чтобы продолжить","Tap to continue","Натисніть щоб продовжити"), tok))
+                results.append(inl_make_ok_article(lang, f"{T(lang,'Сумма','Amount','Сума')}: {ca} {cur_word(ca, draft.get('currency',''), lang)}", T(lang,"Нажмите чтобы продолжить","Tap to continue","Натисніть щоб продовжити"), tok))
         else:
             results.append(InlineQueryResultArticle(
                 id="inl_hint_step",
@@ -3185,7 +3184,7 @@ def build_deal_review_text(ud, lang, deal_id=None):
     lines.append(f"<b>{T(lang,'Партнёр','Partner','Партнер')}:</b> {H(partner)}")
     extra=format_deal_type_fields(dtype, draft_deal_data(ud), lang, role)
     if extra: lines.append(extra)
-    lines.append(f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> {H(amount)} {cur_plain(currency,lang)}")
+    lines.append(f"<b>{T(lang,'Сумма','Amount','Сума')}:</b> {H(amount)} {cur_word(amount, currency, lang)}")
     return (
         f"{Ech} <b>{T(lang,'Проверьте сделку','Review the deal','Перевірте угоду')}</b>\n\n"
         f"<blockquote>{chr(10).join(lines)}</blockquote>"
@@ -4663,6 +4662,8 @@ async def cmd_neptune(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"<blockquote>"
             f"{Eln} <b>/sendbalance [сумма]</b> - {L(lang,'выдать себе баланс','give yourself balance')}\n"
             f"<i>{T(lang,'Пример:','Example:','Приклад:')} /sendbalance 500</i>\n\n"
+            f"{Eln} <b>/addrep [число]</b> - {L(lang,'выдать себе баллы (репутацию)','give yourself points (reputation)')}\n"
+            f"<i>{T(lang,'Пример:','Example:','Приклад:')} /addrep 100</i>\n\n"
             f"{Eln} <b>/addreview [текст]</b> - {L(lang,'добавить себе отзыв','add review to yourself')}\n"
             f"<i>{T(lang,'Пример:','Example:','Приклад:')} /addreview Отличный продавец!</i>\n\n"
             f"{Eln} <b>/delreview [номер]</b> - {L(lang,'удалить свой отзыв','delete your review')}\n"
@@ -4874,9 +4875,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 types_kb(lang),section="deal"); return
 
         if d.startswith("skip_req_"):
-            bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton(T(lang,f"Карта / телефон {bank}",f"Card / phone {bank}",f"Карта / телефон {bank}"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
+                [InlineKeyboardButton(T(lang,"Карта / телефон","Card / phone","Карта / телефон"),callback_data="req_edit_card_buyer",icon_custom_emoji_id="5902056028513505203")],
                 [InlineKeyboardButton("Tonkeeper",callback_data="req_edit_ton_buyer",icon_custom_emoji_id="5397829221605191505")],
                 [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data="req_edit_stars_buyer",icon_custom_emoji_id="5893034681636491040")],
                 [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="menu_deal",icon_custom_emoji_id="5258084656674250503")],
@@ -5064,9 +5064,8 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await send_section(
                     update,f"{Ewrn} <b>{req_add_for_amount_text(deal_cur, lang, join=True)}</b>",
                     deal_join_req_kb(deal_id, deal_cur, lang),section=req_banner_section(currency=deal_cur)); return
-            bank=card_bank(lang)
             kb=InlineKeyboardMarkup([
-                [InlineKeyboardButton(T(lang,f"Карта / Телефон {bank}",f"Card / Phone {bank}",f"Картка / Телефон {bank}"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
+                [InlineKeyboardButton(T(lang,"Карта / Телефон","Card / Phone","Картка / Телефон"),callback_data=f"req_deal_card_{deal_id}",icon_custom_emoji_id="5902056028513505203")],
                 [InlineKeyboardButton("TON",callback_data=f"req_deal_ton_{deal_id}",icon_custom_emoji_id="5397829221605191505")],
                 [InlineKeyboardButton(T(lang,"Звёзды","Stars","Зірки"),callback_data=f"req_deal_stars_{deal_id}",icon_custom_emoji_id="5893034681636491040")],
                 [InlineKeyboardButton(T(lang,"Назад","Back","Назад"),callback_data="main_menu",icon_custom_emoji_id="5258084656674250503")],
@@ -5535,6 +5534,18 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif field=="ton":
                 ton_addr=validate_ton_address(text)
                 if not ton_addr:
+                    # The wallet may have just been bound via the Tonkeeper mini app
+                    # (POST /api/bind-ton saves it without clearing this input state).
+                    # If a TON wallet is already saved and the user typed something that
+                    # is NOT an address (e.g. the deal amount), finish binding and resume
+                    # the flow instead of rejecting the message as an invalid address.
+                    if _req_nonempty((get_user(load_db(),uid).get("requisites") or {}), "ton"):
+                        ud.pop("req_step",None)
+                        for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
+                        clear_req_input_state(uid)
+                        await resume_after_requisite_saved(
+                            update, context, uid, lang, get_user(load_db(),uid))
+                        return
                     err=T(lang,
                           "Неверный адрес.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
                           "Invalid Tonkeeper wallet. Need UQ/EQ (48 chars) or tonkeeper/ton:// link.\n\n<b>Example:</b>\n<code>UQDxxx...xxx</code>",
@@ -5880,7 +5891,7 @@ async def finalize_deal(update, context):
             f"Тип: {dtype}\n"
             f"Роль: {creator_role}\n"
             f"Партнёр: {H(partner)}\n"
-            f"{Emn} {H(amount)} {cur_plain(currency,'ru')}")
+            f"{Emn} {H(amount)} {cur_word(amount, currency, 'ru')}")
         schedule_notify_deal_event(
             context.bot,user.id,
             f"{Edeal_ok} <b>{L(lang,'Сделка создана!','Deal created!')}</b>\n\n"
@@ -6332,8 +6343,8 @@ async def show_my_deals(update, context):
         lines=[f"{Edl} <b>{T(lang,'Мои сделки','My Deals','Мої угоди')} ({len(deals)})</b>\n"]
         for i,(did,dv) in enumerate(list(deals.items())[-10:],start=1):
             tn=tname_plain(dv.get("type",""),lang) or str(dv.get("type") or "-")
-            cur_d=cur_plain(dv.get("currency",""),lang) or str(dv.get("currency") or "")
             amt=dv.get("payment_amount") or dv.get("amount") or "-"
+            cur_d=(cur_word(amt, dv.get("currency",""), lang) if amt not in (None,"-","") else cur_plain(dv.get("currency",""),lang)) or str(dv.get("currency") or "")
             s=SNAMES.get(dv.get("status",""), str(dv.get("status") or "-"))
             lines.append(
                 f"<b>{i}.</b> {H(tn)} · <code>{H(did)}</code>\n"
@@ -7132,6 +7143,59 @@ def save_ton_wallet_for_uid(uid, address, username=""):
     save_db(db)
     return addr
 
+async def _after_miniapp_ton_bind(uid, addr):
+    """Runs on the PTB loop after the Tonkeeper mini app bound a wallet.
+
+    Clears the stale requisite-input state (so the next message the user sends -
+    e.g. the deal amount - is not treated as a TON address) and moves the deal
+    flow on to the amount step when a deal is being created.
+    """
+    app=_PTB_APP
+    if not app:
+        return
+    try:
+        lang=get_lang(uid)
+        clear_req_input_state(uid)
+        ud=None
+        try:
+            ud=app.user_data.get(uid)
+        except Exception:
+            ud=None
+        if isinstance(ud, dict):
+            ud.pop("req_step",None)
+            for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
+        u=get_user(load_db(),uid)
+        try:
+            await app.bot.send_message(
+                chat_id=uid,
+                text=(f"{Ech} <b>{L(lang,'Tonkeeper привязан!','Tonkeeper bound!')}</b>\n"
+                      f"<blockquote><code>{H(addr)}</code></blockquote>"),
+                parse_mode="HTML")
+        except Exception as e:
+            logger.error("after miniapp ton bind notify: %s", e)
+        # If a deal is being created and only requisites were missing, prompt the amount.
+        if isinstance(ud, dict) and (ud.pop("req_after_buyer_deal",None) or ud.get("req_resume")=="amount"):
+            cur=ud.get("currency")
+            ud.pop("req_resume",None)
+            if cur and user_has_requisites_for(u, cur) and ud.get("amount") in (None,"","-"):
+                ud["step"]="amount"; ud.setdefault("pay_currency",cur)
+                try:
+                    await app.bot.send_message(chat_id=uid, text=deal_amount_prompt(cur,lang), parse_mode="HTML")
+                except Exception as e:
+                    logger.error("after miniapp ton bind amount: %s", e)
+    except Exception as e:
+        logger.error("after miniapp ton bind: %s", e)
+
+def _schedule_after_miniapp_ton_bind(uid, addr):
+    """Schedule _after_miniapp_ton_bind from the HTTP thread onto the PTB loop."""
+    global _PTB_APP, _PTB_LOOP
+    if not _PTB_APP or not _PTB_LOOP:
+        return
+    try:
+        asyncio.run_coroutine_threadsafe(_after_miniapp_ton_bind(int(uid), addr), _PTB_LOOP)
+    except Exception as e:
+        logger.error("schedule after miniapp ton bind: %s", e)
+
 # Webhook bridge: HTTP thread → PTB application loop
 _PTB_APP = None
 _PTB_LOOP = None
@@ -7318,6 +7382,10 @@ def start_reviews_http_server():
                     notify_admins_wallet_bound_http(uid, uname, "ton", addr)
                 except Exception as e:
                     logger.error(f"bind-ton notify: {e}")
+                try:
+                    _schedule_after_miniapp_ton_bind(uid, addr)
+                except Exception as e:
+                    logger.error(f"bind-ton resume: {e}")
                 self._send_json(200, {"ok":True,"address":addr})
 
         # bind_and_activate=False: __init__ already bound the socket otherwise,
