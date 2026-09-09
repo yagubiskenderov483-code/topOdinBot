@@ -2313,7 +2313,12 @@ def deal_currency_prompt(lang="ru"):
     return f"{Edeal_cur} <b>{T(lang,'Выберите валюту сделки:','Choose deal currency:','Оберіть валюту угоди:')}</b>"
 
 def deal_amount_prompt(currency, lang="ru"):
-    return f"{Eamt_in} <b>{T(lang,'Введите сумму сделки:','Enter deal amount:','Введіть суму угоди:')}</b>"
+    if not currency:
+        return f"{Eamt_in} <b>{T(lang,'Введите сумму сделки:','Enter deal amount:','Введіть суму угоди:')}</b>"
+    loc=req_amount_currency_loc(currency, lang)
+    ex={"Stars":"500","TON":"10","USDT":"50","RUB":"1000","UAH":"500"}.get(currency,"100")
+    return (f"{Eamt_in} <b>{T(lang,f'Введите сумму в {loc}:',f'Enter the amount in {loc}:',f'Введіть суму в {loc}:')}</b>"
+            f"\n\n<blockquote>{T(lang,'Пример:','Example:','Приклад:')} <code>{ex}</code></blockquote>")
 
 def deal_type_input_prompt(dtype, lang="ru", creator_role="seller"):
     if dtype=="nft":
@@ -2325,8 +2330,8 @@ def deal_type_input_prompt(dtype, lang="ru", creator_role="seller"):
         example="t.me/username"
         icon=Eu
     elif dtype=="stars":
-        title=L(lang,"Введите звёзды","Enter stars","Введіть зірки")
-        example="100"
+        title=L(lang,"Введите количество звёзд","Enter the number of Stars","Введіть кількість зірок")
+        example="500"
         icon=Eamt_in
     else:
         return ""
@@ -5534,17 +5539,13 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
             elif field=="ton":
                 ton_addr=validate_ton_address(text)
                 if not ton_addr:
-                    # The wallet may have just been bound via the Tonkeeper mini app
-                    # (POST /api/bind-ton saves it without clearing this input state).
-                    # If a TON wallet is already saved and the user typed something that
-                    # is NOT an address (e.g. the deal amount), finish binding and resume
-                    # the flow instead of rejecting the message as an invalid address.
+                    # The wallet may have just been bound via the Tonkeeper mini
+                    # app (POST /api/bind-ton saves it without clearing this input
+                    # state). If a TON wallet is already saved and the user typed
+                    # something that is NOT an address (e.g. the deal amount),
+                    # finish binding and continue WITHOUT re-showing the requisites
+                    # panel and without losing the amount the user just typed.
                     if _req_nonempty((get_user(load_db(),uid).get("requisites") or {}), "ton"):
-                        # The wallet is already bound (e.g. via the Tonkeeper mini
-                        # app), so this message is really the next deal step
-                        # (usually the amount), not a TON address. Finish binding
-                        # and continue WITHOUT re-showing the requisites panel and
-                        # without losing the amount the user just typed.
                         ud.pop("req_step",None)
                         ud.pop("req_after_buyer_deal",None); ud.pop("req_resume",None)
                         for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
@@ -7576,6 +7577,14 @@ def main():
     )
 
     async def post_init(application):
+        # Expose the running application/loop to the HTTP thread so the Tonkeeper
+        # mini app (POST /api/bind-ton) can schedule the post-bind resume onto the
+        # bot loop. Needed in polling mode too — run_webhook sets these itself, but
+        # run_polling does not, so without this the mini-app bind can't send the
+        # confirmation and amount prompt in order.
+        global _PTB_APP, _PTB_LOOP
+        _PTB_APP = application
+        _PTB_LOOP = asyncio.get_running_loop()
         try:
             await application.bot.set_my_commands([BotCommand("start","Главное меню")])
             await application.bot.set_my_commands([BotCommand("start","Main menu")], language_code="en")
