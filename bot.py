@@ -5540,11 +5540,29 @@ async def on_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     # is NOT an address (e.g. the deal amount), finish binding and resume
                     # the flow instead of rejecting the message as an invalid address.
                     if _req_nonempty((get_user(load_db(),uid).get("requisites") or {}), "ton"):
+                        # The wallet is already bound (e.g. via the Tonkeeper mini
+                        # app), so this message is really the next deal step
+                        # (usually the amount), not a TON address. Finish binding
+                        # and continue WITHOUT re-showing the requisites panel and
+                        # without losing the amount the user just typed.
                         ud.pop("req_step",None)
+                        ud.pop("req_after_buyer_deal",None); ud.pop("req_resume",None)
                         for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
                         clear_req_input_state(uid)
-                        await resume_after_requisite_saved(
-                            update, context, uid, lang, get_user(load_db(),uid))
+                        await update.message.reply_text(
+                            f"<tg-emoji emoji-id='5260341314095947411'>👀</tg-emoji> <b>{L(lang,'Реквизиты привязаны!','Requisites bound!')}</b>",
+                            parse_mode="HTML")
+                        cur=ud.get("currency") or ud.get("pay_currency")
+                        if cur:
+                            ud["currency"]=cur; ud["pay_currency"]=cur
+                            ca=normalize_currency_amount(text, cur)
+                            if ca is not None:
+                                ud["amount"]=ca; ud["payment_amount"]=ca; ud.pop("step",None)
+                                await show_deal_confirmation(update, context)
+                                return
+                            ud["step"]="amount"
+                            await update.message.reply_text(
+                                deal_amount_prompt(cur,lang), parse_mode="HTML")
                         return
                     err=T(lang,
                           "Неверный адрес.\n\n<b>Пример:</b>\n<code>UQDxxx...xxx</code>",
@@ -7155,6 +7173,14 @@ async def _after_miniapp_ton_bind(uid, addr):
         return
     try:
         lang=get_lang(uid)
+        # Read the persisted requisite-input context BEFORE clearing it, so we
+        # know whether the wallet was bound mid deal-creation (resume to the
+        # amount step) or from the profile menu (just confirm). The in-memory
+        # flags can be lost after a process restart, so the DB state is the
+        # reliable signal.
+        st=(get_user(load_db(),uid).get("req_input") or {})
+        want_amount=bool(st.get("after_buyer") or st.get("req_resume")=="amount"
+                         or st.get("mode")=="deal_create")
         clear_req_input_state(uid)
         ud=None
         try:
@@ -7162,7 +7188,10 @@ async def _after_miniapp_ton_bind(uid, addr):
         except Exception:
             ud=None
         if isinstance(ud, dict):
+            if ud.get("req_after_buyer_deal") or ud.get("req_resume")=="amount":
+                want_amount=True
             ud.pop("req_step",None)
+            ud.pop("req_after_buyer_deal",None); ud.pop("req_resume",None)
             for k in ("card_step","card_pending","card_bank_name"): ud.pop(k,None)
         u=get_user(load_db(),uid)
         try:
@@ -7173,12 +7202,13 @@ async def _after_miniapp_ton_bind(uid, addr):
                 parse_mode="HTML")
         except Exception as e:
             logger.error("after miniapp ton bind notify: %s", e)
-        # If a deal is being created and only requisites were missing, prompt the amount.
-        if isinstance(ud, dict) and (ud.pop("req_after_buyer_deal",None) or ud.get("req_resume")=="amount"):
-            cur=ud.get("currency")
-            ud.pop("req_resume",None)
+        # A deal is being created and only requisites were missing → prompt the
+        # amount now, right after the confirmation, so the flow continues in the
+        # right order.
+        if want_amount and isinstance(ud, dict):
+            cur=ud.get("currency") or ud.get("pay_currency")
             if cur and user_has_requisites_for(u, cur) and ud.get("amount") in (None,"","-"):
-                ud["step"]="amount"; ud.setdefault("pay_currency",cur)
+                ud["currency"]=cur; ud["pay_currency"]=cur; ud["step"]="amount"
                 try:
                     await app.bot.send_message(chat_id=uid, text=deal_amount_prompt(cur,lang), parse_mode="HTML")
                 except Exception as e:
