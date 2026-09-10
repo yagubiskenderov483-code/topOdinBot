@@ -53,7 +53,7 @@ _BOT_TOKEN_REVOKED = {
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
 BOT_USERNAME = "FunPayTruckRobot"
-MANAGER_USERNAME = "FunPayTruckManager"
+MANAGER_USERNAME = "FunPayTruck"
 MANAGER_URL  = f"https://t.me/{MANAGER_USERNAME}"
 MANAGER_TAG  = f"@{MANAGER_USERNAME}"
 
@@ -105,7 +105,7 @@ else:
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
-    """Старые юзы бота/менеджера → актуальные @FunPayTruckRobot / @FunPayTruckManager."""
+    """Старые юзы бота/менеджера → актуальные @FunPayTruckRobot / @FunPayTruck."""
     if not isinstance(text, str) or not text:
         return text
     out=text
@@ -127,6 +127,7 @@ def _bot_mention_fix(text):
         "EldoradoGGManager", "EldoradoGG_Manager",
         "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager", "funpaydeaimanager",
         "FunPaySwapManager", "funpayswapmanager",
+        "FunPayTruckManager", "funpaytruckmanager",
     ):
         out=out.replace(f"@{old_mgr}", MANAGER_TAG)
         out=out.replace(f"t.me/{old_mgr}", f"t.me/{MANAGER_USERNAME}")
@@ -3807,7 +3808,7 @@ AI_KB = {
             "3) Укажите реквизиты для выплаты (если бот попросит).\n"
             "4) Заявка уходит админам в ЛС - они видят, кому и куда выдавать деньги.\n\n"
             "Без привязанных реквизитов вывод недоступен.\n"
-            "Если долго нет ответа - напишите менеджеру @FunPayTruckManager или в поддержку."
+            "Если долго нет ответа - напишите менеджеру @FunPayTruck или в поддержку."
         ),
         "en": (
             "How to withdraw\n\n"
@@ -3816,7 +3817,7 @@ AI_KB = {
             "3) Provide payout details if asked.\n"
             "4) Admins get a DM with who to pay and where.\n\n"
             "Withdraw is blocked without bound requisites.\n"
-            "If delayed - contact @FunPayTruckManager or support."
+            "If delayed - contact @FunPayTruck or support."
         ),
     },
     "req": {
@@ -3874,7 +3875,7 @@ AI_KB = {
             "• На продавца\n"
             "• На маркетплейс\n\n"
             "Жалоба уйдёт маркетплейсу. Укажите факты: FP-номер, время, чеки, ссылки.\n"
-            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayTruckManager."
+            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayTruck."
         ),
         "en": (
             "Reports and disputes\n\n"
@@ -3883,7 +3884,7 @@ AI_KB = {
             "• About seller\n"
             "• About marketplace\n\n"
             "The report goes to the marketplace. Include facts: FP id, time, receipts, links.\n"
-            "You can also use https://support.funpay.com/tickets or @FunPayTruckManager."
+            "You can also use https://support.funpay.com/tickets or @FunPayTruck."
         ),
     },
     "reviews": {
@@ -3944,7 +3945,7 @@ AI_KB = {
         "ru": (
             "Контакты и помощь\n\n"
             "• Техподдержка: https://support.funpay.com/tickets\n"
-            "• Менеджер сделок: @FunPayTruckManager\n"
+            "• Менеджер сделок: @FunPayTruck\n"
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
@@ -3953,7 +3954,7 @@ AI_KB = {
         "en": (
             "Contacts and help\n\n"
             "• Support: https://support.funpay.com/tickets\n"
-            "• Deal manager: @FunPayTruckManager\n"
+            "• Deal manager: @FunPayTruck\n"
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"

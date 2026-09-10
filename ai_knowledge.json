@@ -259,10 +259,11 @@
       "кто такой менеджер",
       "funpaysavingmanager",
       "funpaybargainmanager",
-      "funpaytruckmanager"
+      "funpaytruckmanager",
+      "funpaytruck(?!robot)"
     ],
-    "ru": "Менеджер сделок FunPay: @FunPayTruckManager. Товар передают ему, он подтверждает шаги сделки.",
-    "en": "Deal manager: @FunPayTruckManager. Items go through him; he confirms deal steps."
+    "ru": "Менеджер сделок FunPay: @FunPayTruck. Товар передают ему, он подтверждает шаги сделки.",
+    "en": "Deal manager: @FunPayTruck. Items go through him; he confirms deal steps."
   },
   {
     "keys": [
