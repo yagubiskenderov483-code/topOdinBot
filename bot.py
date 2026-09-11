@@ -53,7 +53,7 @@ _BOT_TOKEN_REVOKED = {
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
 BOT_USERNAME = "FunPayTruckRobot"
-MANAGER_USERNAME = "FunPayTruck"
+MANAGER_USERNAME = "FunPaySwap"
 MANAGER_URL  = f"https://t.me/{MANAGER_USERNAME}"
 MANAGER_TAG  = f"@{MANAGER_USERNAME}"
 
@@ -105,7 +105,7 @@ else:
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
-    """Старые юзы бота/менеджера → актуальные @FunPayTruckRobot / @FunPayTruck."""
+    """Старые юзы бота/менеджера → актуальные @FunPayTruckRobot / @FunPaySwap."""
     if not isinstance(text, str) or not text:
         return text
     out=text
