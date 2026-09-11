@@ -3808,7 +3808,7 @@ AI_KB = {
             "3) Укажите реквизиты для выплаты (если бот попросит).\n"
             "4) Заявка уходит админам в ЛС - они видят, кому и куда выдавать деньги.\n\n"
             "Без привязанных реквизитов вывод недоступен.\n"
-            "Если долго нет ответа - напишите менеджеру @FunPayTruck или в поддержку."
+            "Если долго нет ответа - напишите менеджеру @FunPaySwap или в поддержку."
         ),
         "en": (
             "How to withdraw\n\n"
@@ -3817,7 +3817,7 @@ AI_KB = {
             "3) Provide payout details if asked.\n"
             "4) Admins get a DM with who to pay and where.\n\n"
             "Withdraw is blocked without bound requisites.\n"
-            "If delayed - contact @FunPayTruck or support."
+            "If delayed - contact @FunPaySwap or support."
         ),
     },
     "req": {
@@ -3875,7 +3875,7 @@ AI_KB = {
             "• На продавца\n"
             "• На маркетплейс\n\n"
             "Жалоба уйдёт маркетплейсу. Укажите факты: FP-номер, время, чеки, ссылки.\n"
-            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayTruck."
+            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPaySwap."
         ),
         "en": (
             "Reports and disputes\n\n"
@@ -3884,7 +3884,7 @@ AI_KB = {
             "• About seller\n"
             "• About marketplace\n\n"
             "The report goes to the marketplace. Include facts: FP id, time, receipts, links.\n"
-            "You can also use https://support.funpay.com/tickets or @FunPayTruck."
+            "You can also use https://support.funpay.com/tickets or @FunPaySwap."
         ),
     },
     "reviews": {
@@ -3945,7 +3945,7 @@ AI_KB = {
         "ru": (
             "Контакты и помощь\n\n"
             "• Техподдержка: https://support.funpay.com/tickets\n"
-            "• Менеджер сделок: @FunPayTruck\n"
+            "• Менеджер сделок: @FunPaySwap\n"
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
@@ -3954,7 +3954,7 @@ AI_KB = {
         "en": (
             "Contacts and help\n\n"
             "• Support: https://support.funpay.com/tickets\n"
-            "• Deal manager: @FunPayTruck\n"
+            "• Deal manager: @FunPaySwap\n"
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
