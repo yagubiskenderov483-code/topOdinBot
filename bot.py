@@ -5344,6 +5344,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d=="noop": return
         if d.startswith("adm_confirm_"): await adm_confirm(update,context); return
         if d.startswith("adm_finalize_"): await adm_finalize(update,context); return
+        if d.startswith("adm_reject_item_"): await adm_reject_item(update,context); return
         if d.startswith("adm_decline_"): await adm_decline(update,context); return
         if d=="adm_back":
             for key in list(ud):
@@ -5994,9 +5995,14 @@ async def on_transferred(update, context):
             pass
         schedule_log_msg(context, db)
         fin_attempt=int(deal.get("payment_attempt",0))
-        fin_kb=InlineKeyboardMarkup([[InlineKeyboardButton(
-            "Завершить и выплатить",callback_data=f"adm_finalize_{deal_id}_{fin_attempt}",
-            icon_custom_emoji_id="5316827280863934685")]])
+        fin_kb=InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                "Завершить и выплатить",callback_data=f"adm_finalize_{deal_id}_{fin_attempt}",
+                icon_custom_emoji_id="5316827280863934685")],
+            [InlineKeyboardButton(
+                "Товар не получен",callback_data=f"adm_reject_item_{deal_id}_{fin_attempt}",
+                icon_custom_emoji_id="5904542823167824187")],
+        ])
         schedule_notify_admins(
             context,
             f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>\n\n"
@@ -6262,6 +6268,44 @@ async def adm_finalize(update, context):
             except: pass
     except Exception as e: logger.error(f"adm_confirm: {e}")
 
+async def adm_reject_item(update, context):
+    # Финал-шаг: менеджер отклоняет («Товар не получен») — продавцу вернуть кнопку «Я передал».
+    try:
+        q=update.callback_query; await q.answer()
+        if update.effective_user.id not in ADMIN_IDS: return
+        deal_id,_=parse_admin_deal_attempt(q.data,"adm_reject_item_")
+        db=load_db(); d=db.get("deals",{}).get(deal_id,{})
+        if not d or d.get("status")=="confirmed": return
+        if not d.get("item_transferred"): return
+        d["item_transferred"]=False; db["deals"][deal_id]=d
+        add_log(db,"Товар не получен",deal_id=deal_id,uid=update.effective_user.id,username="admin")
+        save_db(db); schedule_log_msg(context, db)
+        try:
+            await q.edit_message_text(
+                f"{Ewrn} <b>Товар не получен.</b>\n<code>{deal_id}</code>\n\n"
+                f"<i>Продавцу отправлено: передать товар ещё раз.</i>",
+                parse_mode="HTML")
+        except: pass
+        buyer_uid,seller_uid=deal_participant_roles(d)
+        deal_link=f"https://t.me/{BOT_USERNAME}?start=deal_{deal_id}"
+        if seller_uid:
+            try:
+                sl=get_lang(int(seller_uid))
+                await context.bot.send_message(chat_id=int(seller_uid),
+                    text=f"{Ewrn} <b>{T(sl,'Товар не получен. Передайте товар покупателю ещё раз и нажмите «Я передал».','Item not received. Transfer the item to the buyer again and press «I transferred».','Товар не отримано. Передайте товар покупцю ще раз і натисніть «Я передав».')}</b>",
+                    parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(
+                        T(sl,"Вернуться к сделке","Return to deal","Повернутися до угоди"),
+                        url=deal_link,icon_custom_emoji_id="5893161718179173515")]]))
+            except: pass
+        if buyer_uid:
+            try:
+                bl=get_lang(int(buyer_uid))
+                await notify_deal_event(context.bot,buyer_uid,
+                    f"{Ewrn} <b>{T(bl,'Товар не получен. Ожидайте повторную передачу продавцом.','Item not received. Wait for the seller to transfer it again.','Товар не отримано. Очікуйте повторну передачу продавцем.')}</b>",
+                    bl)
+            except: pass
+    except Exception as e: logger.error(f"adm_reject_item: {e}")
+
 async def adm_decline(update, context):
     try:
         q=update.callback_query; await q.answer()
@@ -6290,7 +6334,7 @@ async def adm_decline(update, context):
             try:
                 sl_d=get_lang(int(seller_uid_d))
                 await context.bot.send_message(chat_id=int(seller_uid_d),
-                    text=f"{Ewrn} <b>{T(sl_d,'Оплата не прошла.','Payment failed.','Оплата не пройшла.')}</b>\n\n{Emn} {failed_amount} {failed_currency}",
+                    text=f"{Ewrn} <b>{T(sl_d,'Оплата не получена. Попробуйте оплатить ещё раз.','Payment not received. Please try to pay again.','Оплату не отримано. Спробуйте сплатити ще раз.')}</b>\n\n{Emn} {failed_amount} {failed_currency}",
                     parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(
                         T(sl_d,"Вернуться к сделке","Return to deal","Повернутися до угоди"),
                         url=deal_link_d,icon_custom_emoji_id="5893161718179173515")]]))
@@ -6299,7 +6343,7 @@ async def adm_decline(update, context):
             try:
                 bl_d=get_lang(int(buyer_uid_d))
                 await context.bot.send_message(chat_id=int(buyer_uid_d),
-                    text=f"{Ewrn} <b>{T(bl_d,'Оплата не прошла.','Payment failed.','Оплата не пройшла.')}</b>\n\n{Emn} {failed_amount} {failed_currency}",
+                    text=f"{Ewrn} <b>{T(bl_d,'Оплата не получена. Попробуйте оплатить ещё раз.','Payment not received. Please try to pay again.','Оплату не отримано. Спробуйте сплатити ще раз.')}</b>\n\n{Emn} {failed_amount} {failed_currency}",
                     parse_mode="HTML",reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(
                         T(bl_d,"Вернуться к сделке","Return to deal","Повернутися до угоди"),
                         url=deal_link_d,icon_custom_emoji_id="5893161718179173515")]]))
