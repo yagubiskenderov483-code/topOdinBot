@@ -959,9 +959,11 @@ def deal_payment_details_lines(deal_id, d, lang="ru"):
             f"<blockquote><code>{CRYPTO_ADDR}</code></blockquote>",
         ]
     elif pay_cur=="Stars":
+        st_amt=d.get("payment_amount") or d.get("amount","-")
         lines += [
             f"{Est} <b>{L(lang,'Звёзды','Stars')}:</b>",
-            f"<blockquote>{T(lang,'Оплата Stars по реквизитам сделки.','Pay Stars using the deal details.','Оплата Stars за реквізитами угоди.')}</blockquote>",
+            f"<blockquote>{T(lang,f'Отправьте {st_amt} звёзд менеджеру {MANAGER_TAG}.',f'Send {st_amt} Stars to the manager {MANAGER_TAG}.',f'Надішліть {st_amt} зірок менеджеру {MANAGER_TAG}.')}\n"
+            f"{L(lang,'Комментарий','Comment')}: <code>DEAL-{deal_id}</code></blockquote>",
         ]
     else:
         bank=card_bank(lang)
@@ -3291,9 +3293,9 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
             if viewer_role=="seller":
                 if not d.get("payment_reported"):
                     joined_instr=T(lang,
-                        "Ожидайте оплату от покупателя.",
-                        "Wait for the buyer to pay.",
-                        "Очікуйте оплату від покупця.")
+                        f"Покупатель должен оплатить <b>{amt_phrase}</b>. Ожидайте оплату от покупателя.",
+                        f"The buyer needs to pay <b>{amt_phrase}</b>. Wait for the buyer to pay.",
+                        f"Покупець має сплатити <b>{amt_phrase}</b>. Очікуйте оплату від покупця.")
                 elif not d.get("payment_confirmed"):
                     joined_instr=T(lang,
                         "Покупатель оплатил. Ожидайте подтверждения оплаты менеджером.",
