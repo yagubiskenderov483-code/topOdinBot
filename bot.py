@@ -17,7 +17,7 @@ def InlineKeyboardButton(text=None, *args, **kwargs):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Бот @FunPayTruckRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
+# Бот @FunPayTrucksRobot. Стабильный токен зашит в коде; env BOT_TOKEN принимается
 # только если getMe подтверждает, что это токен этого же бота.
 _BOT_TOKEN_DEFAULT = "8854162278:AAFL-7vflb4HAekBQ_xJt3JIGohPUujZzPw"
 _BOT_TOKEN_REVOKED = {
@@ -52,8 +52,8 @@ _BOT_TOKEN_REVOKED = {
     "8719087641:AAENBuMcQLPbe24WEqXL9zUXHgxSZBjB9pM",
 }
 ADMIN_IDS    = {8726084830, 90283607, 7186944876, 828617672, 8489947571, 8237221184, 6701089763, 741904495,373873841}  
-BOT_USERNAME = "FunPayTruckRobot"
-MANAGER_USERNAME = "FunPayTrust"
+BOT_USERNAME = "FunPayTrucksRobot"
+MANAGER_USERNAME = "FunPayTrucks"
 MANAGER_URL  = f"https://t.me/{MANAGER_USERNAME}"
 MANAGER_TAG  = f"@{MANAGER_USERNAME}"
 
@@ -74,7 +74,7 @@ def _env_token_valid(tok: str) -> bool:
     """Env-токен: не revoked и getMe подтверждает живого бота.
 
     Не требуем username из белого списка — при ротации на новый @BotFather-бот
-    (например FunPayTruckRobot) env BOT_TOKEN должен подхватываться без правки кода.
+    (например FunPayTrucksRobot) env BOT_TOKEN должен подхватываться без правки кода.
     """
     if not tok or tok in _BOT_TOKEN_REVOKED:
         return False
@@ -105,7 +105,7 @@ else:
     BOT_TOKEN = _BOT_TOKEN_DEFAULT
 
 def _bot_mention_fix(text):
-    """Старые юзы бота/менеджера → актуальные @FunPayTruckRobot / @FunPayTrust."""
+    """Старые юзы бота/менеджера → актуальные @FunPayTrucksRobot / @FunPayTrucks."""
     if not isinstance(text, str) or not text:
         return text
     out=text
@@ -118,6 +118,7 @@ def _bot_mention_fix(text):
         "FunPayDeaIsOTCRobot", "funpaydeaisotcrobot",
         "FunPayDealsOTCRobot", "funpaydealsotcrobot",
         "FunPaySwapRobot", "funpayswaprobot",
+        "FunPayTruckRobot", "funpaytruckrobot",
         "dfijgdjbot",
     ):
         out=out.replace(f"@{old}", f"@{BOT_USERNAME}")
@@ -128,6 +129,7 @@ def _bot_mention_fix(text):
         "FunPaySavingManager", "FunPayDealManager", "FunPayDeaIManager", "funpaydeaimanager",
         "FunPaySwapManager", "funpayswapmanager",
         "FunPayTruckManager", "funpaytruckmanager",
+        "FunPayTrust", "funpaytrust", "FunPaySwap", "funpayswap",
     ):
         out=out.replace(f"@{old_mgr}", MANAGER_TAG)
         out=out.replace(f"t.me/{old_mgr}", f"t.me/{MANAGER_USERNAME}")
@@ -897,20 +899,20 @@ def dedupe_ai_text(text):
 def deal_guarantee_lines(lang):
     return T(lang,
         f"{En1} Средства защищены до завершения сделки.\n"
-        f"{En2} Менеджер подтвердит автоматически после получения товара.\n"
+        f"{En2} Менеджер подтверждает оплату, затем продавец передаёт товар.\n"
         f"{En3} Все сделки зашифрованы.",
         f"{En1} Funds are protected until the deal completes.\n"
-        f"{En2} The manager confirms automatically after receiving the item.\n"
+        f"{En2} The manager confirms the payment, then the seller transfers the item.\n"
         f"{En3} All deals are encrypted.",
         f"{En1} Кошти захищені до завершення угоди.\n"
-        f"{En2} Менеджер підтвердить автоматично після отримання товару.\n"
+        f"{En2} Менеджер підтверджує оплату, потім продавець передає товар.\n"
         f"{En3} Усі угоди зашифровані.")
 
 def deal_seller_transfer_text(lang):
     return T(lang,
-        f"Передайте товар менеджеру {MANAGER_TAG} и нажмите «Я передал». После этого покупатель сможет оплатить.",
-        f"Transfer the item to manager {MANAGER_TAG} and press «I transferred». The buyer can pay after that.",
-        f"Передайте товар менеджеру {MANAGER_TAG} і натисніть «Я передав». Після цього покупець зможе оплатити.")
+        "Оплата подтверждена. Передайте товар покупателю и нажмите «Я передал».",
+        "Payment confirmed. Transfer the item to the buyer and press «I transferred».",
+        "Оплату підтверджено. Передайте товар покупцю і натисніть «Я передав».")
 def H(value): return html.escape(str(value))
 
 def deal_payment_details_lines(deal_id, d, lang="ru"):
@@ -3287,34 +3289,49 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
 
         if joined:
             if viewer_role=="seller":
-                if not d.get("item_transferred"):
+                if not d.get("payment_reported"):
+                    joined_instr=T(lang,
+                        "Ожидайте оплату от покупателя.",
+                        "Wait for the buyer to pay.",
+                        "Очікуйте оплату від покупця.")
+                elif not d.get("payment_confirmed"):
+                    joined_instr=T(lang,
+                        "Покупатель оплатил. Ожидайте подтверждения оплаты менеджером.",
+                        "The buyer paid. Wait for the manager to confirm the payment.",
+                        "Покупець оплатив. Очікуйте підтвердження оплати менеджером.")
+                elif not d.get("item_transferred"):
                     joined_instr=deal_seller_transfer_text(lang)
-                elif d.get("payment_reported"):
-                    joined_instr=T(lang,
-                        "Товар передан, оплата получена. Ожидайте завершения сделки.",
-                        "Item transferred and payment received. Wait for the deal to complete.",
-                        "Товар передано, оплату отримано. Очікуйте завершення угоди.")
                 else:
                     joined_instr=T(lang,
-                        "Товар передан. Ожидайте оплату от покупателя.",
-                        "Item transferred. Wait for the buyer to pay.",
-                        "Товар передано. Очікуйте оплату від покупця.")
+                        "Товар передан. Ожидайте выплату.",
+                        "Item transferred. Wait for the payout.",
+                        "Товар передано. Очікуйте виплату.")
             elif viewer_role=="buyer":
-                if not d.get("item_transferred"):
+                if not d.get("payment_reported"):
                     joined_instr=T(lang,
-                        f"Ожидайте передачи товара менеджеру {MANAGER_TAG}.",
-                        f"Wait for the item to be transferred to manager {MANAGER_TAG}.",
-                        f"Очікуйте передачі товару менеджеру {MANAGER_TAG}.")
+                        f"Переведите <b>{amt_phrase}</b> по реквизитам ниже и нажмите «Я оплатил».",
+                        f"Transfer <b>{amt_phrase}</b> using the details below and press «I paid».",
+                        f"Перекажіть <b>{amt_phrase}</b> за реквізитами нижче і натисніть «Я оплатив».")
+                elif not d.get("payment_confirmed"):
+                    joined_instr=T(lang,
+                        "Оплата отправлена. Ожидайте подтверждения менеджером.",
+                        "Payment sent. Wait for the manager to confirm.",
+                        "Оплату надіслано. Очікуйте підтвердження менеджером.")
+                elif not d.get("item_transferred"):
+                    joined_instr=T(lang,
+                        "Оплата подтверждена. Ожидайте передачу товара продавцом.",
+                        "Payment confirmed. Wait for the seller to transfer the item.",
+                        "Оплату підтверджено. Очікуйте передачу товару продавцем.")
                 else:
                     joined_instr=T(lang,
-                        f"Продавец передал товар. Переведите <b>{amt_phrase}</b> по реквизитам ниже и нажмите «Я оплатил».",
-                        f"The seller transferred the item. Transfer <b>{amt_phrase}</b> using the details below and press «I paid».",
-                        f"Продавець передав товар. Перекажіть <b>{amt_phrase}</b> за реквізитами нижче і натисніть «Я оплатив».")
+                        "Товар передан. Сделка завершается.",
+                        "Item transferred. The deal is completing.",
+                        "Товар передано. Угода завершується.")
             else:
                 joined_instr=""
             if joined_instr:
                 lines.append(f"\n<blockquote>{joined_instr}</blockquote>")
-            if viewer_role=="buyer" and d.get("item_transferred"):
+            if viewer_role=="buyer" and not d.get("payment_reported"):
                 lines += deal_payment_details_lines(deal_id, d, lang)
         else:
             instr=T(lang,
@@ -3323,7 +3340,7 @@ def build_deal_text(deal_id, d, creator_tag, partner_tag, lang, joined=False, is
                 "Надішліть посилання партнеру, щоб він приєднався до угоди.")
             lines.append(f"\n<blockquote>{instr}</blockquote>")
             if viewer_role=="seller":
-                lines.append(f"<blockquote>{deal_seller_transfer_text(lang)}</blockquote>")
+                lines.append(f"<blockquote>{T(lang,'После оплаты покупателем и подтверждения менеджером — передайте товар покупателю и нажмите «Я передал».','After the buyer pays and the manager confirms it — transfer the item to the buyer and press «I transferred».','Після оплати покупцем і підтвердження менеджером — передайте товар покупцю і натисніть «Я передав».')}</blockquote>")
 
         lines.append(f"\n<b>{T(lang,'Гарантия безопасности','Security guarantee','Гарантія безпеки')}</b>")
         lines.append(f"<blockquote>{deal_guarantee_lines(lang)}</blockquote>")
@@ -3353,37 +3370,37 @@ def review_stars_kb(deal_id, role):
     ])
 
 def deal_action_kb(deal_id, deal, viewer_role, lang, partner_username="", is_creator=False):
+    # Новый порядок: покупатель платит -> админ подтверждает оплату ->
+    # продавец передаёт товар -> админ завершает и выплачивает продавцу.
     rows=[]
-    def add_pay_buttons():
-        if deal.get("payment_reported"):
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте подтверждения","Waiting for confirmation","Очікуйте підтвердження"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
-        else:
+    paid=deal.get("payment_reported")
+    pconf=deal.get("payment_confirmed")
+    sent=deal.get("item_transferred")
+    def wait(ru,en,uk):
+        rows.append([InlineKeyboardButton(
+            T(lang,ru,en,uk),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)])
+    if viewer_role=="buyer":
+        if not paid:
             rows.append([InlineKeyboardButton(
                 T(lang,"Я оплатил","I paid","Я оплатив"),callback_data=f"paid_{deal_id}",
                 icon_custom_emoji_id="5316827280863934685")])
-
-    if viewer_role=="buyer":
-        if not deal.get("item_transferred"):
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте передачу товара","Waiting for item transfer","Очікуйте передачу товару"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
+        elif not pconf:
+            wait("Ожидайте подтверждения оплаты","Waiting for payment confirmation","Очікуйте підтвердження оплати")
+        elif not sent:
+            wait("Ожидайте передачу товара","Waiting for item transfer","Очікуйте передачу товару")
         else:
-            add_pay_buttons()
+            wait("Ожидайте завершения сделки","Waiting for deal completion","Очікуйте завершення угоди")
     else:
-        if not deal.get("item_transferred"):
+        if not paid:
+            wait("Ожидайте оплату покупателя","Waiting for buyer payment","Очікуйте оплату покупця")
+        elif not pconf:
+            wait("Ожидайте подтверждения оплаты","Waiting for payment confirmation","Очікуйте підтвердження оплати")
+        elif not sent:
             rows.append([InlineKeyboardButton(
                 T(lang,"Я передал","I transferred","Я передав"),callback_data=f"transferred_{deal_id}",
                 icon_custom_emoji_id="5316827280863934685")])
-        elif deal.get("payment_reported"):
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте подтверждения","Waiting for confirmation","Очікуйте підтвердження"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
         else:
-            rows.append([InlineKeyboardButton(
-                T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",
-                icon_custom_emoji_id=WAIT_ICON)])
+            wait("Ожидайте выплату","Waiting for payout","Очікуйте виплату")
     rows.extend([
         [InlineKeyboardButton(T(lang,"Мои сделки","My Deals","Мої угоди"),callback_data="menu_my_deals",icon_custom_emoji_id="5258476306152038031")],
         [InlineKeyboardButton(T(lang,"Главное меню","Main menu","Головне меню"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
@@ -3710,7 +3727,7 @@ AI_KB = {
             "5) NFT - ссылка; Username - ссылка; Stars - количество; Premium - срок.\n"
             "6) Выберите валюту оплаты: TON / USDT / RUB / Stars / UAH.\n"
             "7) Введите сумму → проверьте карточку → «Создать сделку».\n"
-            "8) Отправьте партнёру ссылку вида  t.me/FunPayTruckRobot?start=deal_FPxxxxx. \n\n"
+            "8) Отправьте партнёру ссылку вида  t.me/FunPayTrucksRobot?start=deal_FPxxxxx. \n\n"
             "Важно: без привязанных реквизитов под валюту сделки создать/войти нельзя.\n"
             "Комиссия сервиса: 0%. Статус смотрите в «Мои сделки»."
         ),
@@ -3723,7 +3740,7 @@ AI_KB = {
             "5) NFT - link; Username - link; Stars - count; Premium - period.\n"
             "6) Choose payment currency: TON / USDT / RUB / Stars / UAH.\n"
             "7) Enter amount → review → Create deal.\n"
-            "8) Send the partner link:  t.me/FunPayTruckRobot?start=deal_FPxxxxx. \n\n"
+            "8) Send the partner link:  t.me/FunPayTrucksRobot?start=deal_FPxxxxx. \n\n"
             "Important: matching requisites are required for the deal currency.\n"
             "Service fee: 0%. Track status in My Deals."
         ),
@@ -3732,20 +3749,20 @@ AI_KB = {
         "keys": ("присоедин","join deal","войти в сделк","открыть ссылк","start=deal","партнёр не","не могу войти"),
         "ru": (
             "Как присоединиться к сделке\n\n"
-            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayTruckRobot.\n"
+            "Откройте ссылку от партнёра (start=deal_FPxxxxx) в боте @FunPayTrucksRobot.\n"
             "Если реквизитов нет - бот попросит привязать нужные (карта/телефон, TON или @username под валюту).\n"
             "После входа обе стороны видят карточку сделки и инструкции.\n"
-            "Продавец передаёт товар и жмёт «Я передал». Менеджер подтвердит автоматически после получения товара.\n"
-            "Покупатель платит по реквизитам и жмёт «Я оплатил».\n"
+            "Покупатель платит по реквизитам и жмёт «Я оплатил». Менеджер подтверждает оплату.\n"
+            "Затем продавец передаёт товар покупателю и жмёт «Я передал». Менеджер завершает сделку и выплачивает продавцу.\n"
             "Если ссылка не открывается - напишите менеджеру."
         ),
         "en": (
             "How to join a deal\n\n"
-            "Open the partner link (start=deal_FPxxxxx) in @FunPayTruckRobot.\n"
+            "Open the partner link (start=deal_FPxxxxx) in @FunPayTrucksRobot.\n"
             "If requisites are missing, bind the ones required for the deal currency.\n"
             "After joining both sides see the deal card and instructions.\n"
-            "Seller transfers the item and presses I transferred. The manager confirms automatically after receiving it.\n"
-            "Buyer pays using the details and presses I paid.\n"
+            "Buyer pays using the details and presses I paid. The manager confirms the payment.\n"
+            "Then the seller transfers the item to the buyer and presses I transferred. The manager completes the deal and pays out the seller.\n"
             "If the link fails - message the manager."
         ),
     },
@@ -3808,7 +3825,7 @@ AI_KB = {
             "3) Укажите реквизиты для выплаты (если бот попросит).\n"
             "4) Заявка уходит админам в ЛС - они видят, кому и куда выдавать деньги.\n\n"
             "Без привязанных реквизитов вывод недоступен.\n"
-            "Если долго нет ответа - напишите менеджеру @FunPayTrust или в поддержку."
+            "Если долго нет ответа - напишите менеджеру @FunPayTrucks или в поддержку."
         ),
         "en": (
             "How to withdraw\n\n"
@@ -3817,7 +3834,7 @@ AI_KB = {
             "3) Provide payout details if asked.\n"
             "4) Admins get a DM with who to pay and where.\n\n"
             "Withdraw is blocked without bound requisites.\n"
-            "If delayed - contact @FunPayTrust or support."
+            "If delayed - contact @FunPayTrucks or support."
         ),
     },
     "req": {
@@ -3875,7 +3892,7 @@ AI_KB = {
             "• На продавца\n"
             "• На маркетплейс\n\n"
             "Жалоба уйдёт маркетплейсу. Укажите факты: FP-номер, время, чеки, ссылки.\n"
-            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayTrust."
+            "Параллельно: https://support.funpay.com/tickets или менеджер @FunPayTrucks."
         ),
         "en": (
             "Reports and disputes\n\n"
@@ -3884,7 +3901,7 @@ AI_KB = {
             "• About seller\n"
             "• About marketplace\n\n"
             "The report goes to the marketplace. Include facts: FP id, time, receipts, links.\n"
-            "You can also use https://support.funpay.com/tickets or @FunPayTrust."
+            "You can also use https://support.funpay.com/tickets or @FunPayTrucks."
         ),
     },
     "reviews": {
@@ -3910,14 +3927,14 @@ AI_KB = {
         "keys": ("реферал","рефк","приглас","3%","referral","invite","партнёрк"),
         "ru": (
             "Реферальная программа\n\n"
-            "Раздел «Рефералы» → ваша ссылка t.me/FunPayTruckRobot?start=ref_ВАШ_ID.\n"
+            "Раздел «Рефералы» → ваша ссылка t.me/FunPayTrucksRobot?start=ref_ВАШ_ID.\n"
             "За друзей, которые заходят по ссылке, вы получаете 3% с каждой их сделки.\n"
             "В разделе видно: сколько приглашено, сколько заработано, список рефералов.\n"
             "Награда копится в статистике рефералов; вопросы по выплате - менеджеру."
         ),
         "en": (
             "Referral program\n\n"
-            "Referrals → your link t.me/FunPayTruckRobot?start=ref_YOUR_ID.\n"
+            "Referrals → your link t.me/FunPayTrucksRobot?start=ref_YOUR_ID.\n"
             "You earn 3% from each deal of users who joined via your link.\n"
             "See invited count, earned amount and referral list.\n"
             "Payout questions - ask the manager."
@@ -3945,20 +3962,20 @@ AI_KB = {
         "ru": (
             "Контакты и помощь\n\n"
             "• Техподдержка: https://support.funpay.com/tickets\n"
-            "• Менеджер сделок: @FunPayTrust\n"
+            "• Менеджер сделок: @FunPayTrucks\n"
             "• Сайт: funpay.com · отзывы перенесены в этого бота\n"
             "• Информация → отзывы Mini App\n"
             "• FunPay AI: быстрые ответы по боту и любым темам; сложные кейсы - людям в поддержку.\n"
-            "Бот: @FunPayTruckRobot"
+            "Бот: @FunPayTrucksRobot"
         ),
         "en": (
             "Contacts and help\n\n"
             "• Support: https://support.funpay.com/tickets\n"
-            "• Deal manager: @FunPayTrust\n"
+            "• Deal manager: @FunPayTrucks\n"
             "• Website: funpay.com · reviews moved into this bot\n"
             "• Information → Reviews Mini App\n"
             "• FunPay AI: quick bot answers on any topic; hard cases go to human support.\n"
-            "Bot: @FunPayTruckRobot"
+            "Bot: @FunPayTrucksRobot"
         ),
     },
     "fee": {
@@ -3979,16 +3996,16 @@ AI_KB = {
         "ru": (
             "Статусы сделки\n\n"
             "1) Ожидание партнёра по ссылке.\n"
-            "2) Продавец передаёт товар → «Я передал». Менеджер подтвердит автоматически после получения.\n"
-            "3) Покупатель → платит по реквизитам → «Я оплатил».\n"
+            "2) Покупатель платит по реквизитам → «Я оплатил». Менеджер подтверждает оплату.\n"
+            "3) Продавец передаёт товар покупателю → «Я передал». Менеджер завершает сделку и выплачивает продавцу.\n"
             "4) Сделка завершена → можно оставить отзыв.\n\n"
             "Если шаг завис - проверьте «Мои сделки», напишите менеджеру и при необходимости подайте жалобу."
         ),
         "en": (
             "Deal statuses\n\n"
             "1) Waiting for partner via link.\n"
-            "2) Seller transfers the item → I transferred. Manager confirms automatically after receiving it.\n"
-            "3) Buyer pays requisites → I paid.\n"
+            "2) Buyer pays requisites → I paid. Manager confirms the payment.\n"
+            "3) Seller transfers the item to the buyer → I transferred. Manager completes the deal and pays out the seller.\n"
             "4) Deal completed → leave a review.\n\n"
             "If stuck - check My Deals, message the manager, or file a report."
         ),
@@ -5324,6 +5341,7 @@ async def on_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if d.startswith("transferred_"): await on_transferred(update,context); return
         if d=="noop": return
         if d.startswith("adm_confirm_"): await adm_confirm(update,context); return
+        if d.startswith("adm_finalize_"): await adm_finalize(update,context); return
         if d.startswith("adm_decline_"): await adm_decline(update,context); return
         if d=="adm_back":
             for key in list(ud):
@@ -5954,25 +5972,34 @@ async def on_transferred(update, context):
             await update.effective_chat.send_message(
                 f"{Ewrn} <b>{L(get_lang(seller.id),'Эта кнопка доступна продавцу.','This button is for the seller.')}</b>",
                 parse_mode="HTML"); return
+        lang=get_lang(seller.id)
+        # Передать товар можно только после подтверждения оплаты менеджером.
+        if not deal.get("payment_confirmed"):
+            await update.effective_chat.send_message(
+                f"{Ewrn} <b>{T(lang,'Сначала дождитесь оплаты и подтверждения менеджером.','Wait for the payment to be confirmed by the manager first.','Спочатку дочекайтеся оплати та підтвердження менеджером.')}</b>",
+                parse_mode="HTML"); return
         if deal.get("item_transferred"): return
         deal["item_transferred"]=True; db["deals"][deal_id]=deal
         add_log(db,"Товар передан",deal_id=deal_id,uid=seller.id,username=seller.username or "")
         save_db(db)
         seller_tag=f"@{seller.username}" if seller.username else f"#{seller.id}"
-        lang=get_lang(seller.id)
         try:
             await q.edit_message_reply_markup(InlineKeyboardMarkup([
-                [InlineKeyboardButton(T(lang,"Ожидайте оплату","Waiting for payment","Очікуйте оплату"),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
+                [InlineKeyboardButton(T(lang,"Ожидайте выплату","Waiting for payout","Очікуйте виплату"),callback_data="noop",icon_custom_emoji_id=WAIT_ICON)],
                 [InlineKeyboardButton(L(lang,"Главное меню","Main menu"),callback_data="main_menu",icon_custom_emoji_id="5316887736823591263")],
             ]))
         except Exception:
             pass
         schedule_log_msg(context, db)
+        fin_attempt=int(deal.get("payment_attempt",0))
+        fin_kb=InlineKeyboardMarkup([[InlineKeyboardButton(
+            "Завершить и выплатить",callback_data=f"adm_finalize_{deal_id}_{fin_attempt}",
+            icon_custom_emoji_id="5316827280863934685")]])
         schedule_notify_admins(
             context,
             f"{Ech} <b>Продавец передал товар</b>\n\n{Eu} {seller_tag}\n{Edl} <code>{deal_id}</code>\n\n"
-            f"<i>Кнопка подтверждения появится после «Я оплатил».</i>",
-            None)
+            f"<i>Оплата подтверждена, товар передан. Завершите сделку и выплатите продавцу.</i>",
+            fin_kb)
         if buyer_uid:
             async def _bg_buyer():
                 try:
@@ -5990,7 +6017,7 @@ async def on_transferred(update, context):
                     partner_uname=s_uname if is_buyer_creator else c_uname
                     await send_banner_chat(
                         context.bot,int(buyer_uid),
-                        f"{Ech} <b>{L(buyer_lang,'Продавец передал товар. Можно оплачивать.','Seller transferred the item. You can pay now.')}</b>\n\n{deal_txt}",
+                        f"{Ech} <b>{L(buyer_lang,'Продавец передал товар. Сделка завершается.','Seller transferred the item. The deal is completing.')}</b>\n\n{deal_txt}",
                         deal_action_kb(deal_id,deal2,"buyer",buyer_lang,partner_uname,is_creator=is_buyer_creator),
                         section="deal_join" if is_buyer_creator else "deal_card")
                 except Exception as e:
@@ -6063,26 +6090,93 @@ async def on_paid(update, context):
 
 # ─── adm_confirm / decline ────────────────────────────────────────────────────
 async def adm_confirm(update, context):
+    # Шаг 1: менеджер подтверждает, что оплата покупателя пришла.
+    # Разблокирует продавцу кнопку «Я передал». Выплата — на шаге adm_finalize.
     try:
         q=update.callback_query; await q.answer()
         if update.effective_user.id not in ADMIN_IDS: return
         deal_id,payment_attempt=parse_admin_deal_attempt(q.data,"adm_confirm_"); db=load_db()
+        if deal_id not in db.get("deals",{}): return
+        d=db["deals"][deal_id]
+        if d.get("status")=="confirmed": return
+        current_attempt=int(d.get("payment_attempt",0))
+        if payment_attempt is None and current_attempt>0: return
+        if payment_attempt is not None and payment_attempt!=current_attempt: return
+        if not d.get("payment_reported"):
+            await q.edit_message_text(
+                f"{Ewrn} <b>Покупатель ещё не нажал «Я оплатил».</b>",
+                parse_mode="HTML"); return
+        if d.get("payment_confirmed"): return
+        d["payment_confirmed"]=True; db["deals"][deal_id]=d
+        add_log(db,"Оплата подтверждена",deal_id=deal_id,uid=update.effective_user.id,username="admin")
+        save_db(db)
+        schedule_log_msg(context, db)
+        buyer_uid,seller_uid=deal_participant_roles(d)
+        amt=d.get("payment_amount") or d.get("amount","-"); cur=d.get("currency","-")
+        try:
+            await q.edit_message_text(
+                f"{Ech} <b>Оплата подтверждена.</b>\n<code>{deal_id}</code>\n"
+                f"{Emn} {amt} {cur}\n\n<i>Ждём, пока продавец передаст товар и нажмёт «Я передал».</i>",
+                parse_mode="HTML")
+        except: pass
+        if seller_uid:
+            async def _bg_seller_conf():
+                try:
+                    db2=load_db(); deal2=db2.get("deals",{}).get(deal_id,d)
+                    creator_uid=str(deal2.get("user_id",""))
+                    is_seller_creator=creator_uid==str(seller_uid)
+                    c_uname=db2.get("users",{}).get(creator_uid,{}).get("username","")
+                    b_uname=db2.get("users",{}).get(str(buyer_uid),{}).get("username","")
+                    creator_tag=f"@{c_uname}" if c_uname else f"#{creator_uid}"
+                    buyer_tag=f"@{b_uname}" if b_uname else f"#{buyer_uid}"
+                    sl=get_lang(int(seller_uid))
+                    deal_txt=build_deal_text(deal_id,deal2,
+                        creator_tag if is_seller_creator else buyer_tag,
+                        buyer_tag if is_seller_creator else creator_tag,
+                        sl,joined=True,is_creator=is_seller_creator)
+                    partner_uname=b_uname if is_seller_creator else c_uname
+                    await send_banner_chat(context.bot,int(seller_uid),
+                        f"{Ech} <b>{T(sl,'Оплата подтверждена! Передайте товар покупателю и нажмите «Я передал».','Payment confirmed! Transfer the item to the buyer and press «I transferred».','Оплату підтверджено! Передайте товар покупцю і натисніть «Я передав».')}</b>\n\n{deal_txt}",
+                        deal_action_kb(deal_id,deal2,"seller",sl,partner_uname,is_creator=is_seller_creator),
+                        section="deal_join" if is_seller_creator else "deal_card")
+                except Exception as e:
+                    logger.error(f"notify seller pay confirmed: {e}")
+            _spawn(_bg_seller_conf())
+        if buyer_uid:
+            async def _bg_buyer_conf():
+                try:
+                    bl=get_lang(int(buyer_uid))
+                    await notify_deal_event(context.bot,buyer_uid,
+                        f"{Ech} <b>{T(bl,'Оплата подтверждена!','Payment confirmed!','Оплату підтверджено!')}</b>\n\n"
+                        f"<blockquote>{T(bl,'Ожидайте передачу товара продавцом.','Wait for the seller to transfer the item.','Очікуйте передачу товару продавцем.')}</blockquote>",
+                        bl)
+                except Exception as e:
+                    logger.error(f"notify buyer pay confirmed: {e}")
+            _spawn(_bg_buyer_conf())
+    except Exception as e: logger.error(f"adm_confirm: {e}")
+
+async def adm_finalize(update, context):
+    # Шаг 2 (финал): менеджер завершает сделку и выплачивает продавцу.
+    try:
+        q=update.callback_query; await q.answer()
+        if update.effective_user.id not in ADMIN_IDS: return
+        deal_id,payment_attempt=parse_admin_deal_attempt(q.data,"adm_finalize_"); db=load_db()
         if deal_id not in db.get("deals",{}): return
         if db["deals"][deal_id].get("status")=="confirmed": return
         d=db["deals"][deal_id]
         current_attempt=int(d.get("payment_attempt",0))
         if payment_attempt is None and current_attempt>0: return
         if payment_attempt is not None and payment_attempt!=current_attempt: return
-        if not d.get("payment_reported") or not d.get("item_transferred"):
+        if not d.get("payment_confirmed") or not d.get("item_transferred"):
             missing=[]
-            if not d.get("payment_reported"): missing.append("оплата покупателя")
+            if not d.get("payment_confirmed"): missing.append("подтверждение оплаты")
             if not d.get("item_transferred"): missing.append("передача товара продавцом")
             await q.edit_message_text(
                 f"{Ewrn} <b>Сделка ещё не готова к завершению.</b>\n\n"
                 f"<blockquote>Ожидается: {', '.join(missing)}</blockquote>",
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[
-                    InlineKeyboardButton("Проверить ещё раз",callback_data=f"adm_confirm_{deal_id}_{int(d.get('payment_attempt',0))}",icon_custom_emoji_id="5316827280863934685")
+                    InlineKeyboardButton("Проверить ещё раз",callback_data=f"adm_finalize_{deal_id}_{int(d.get('payment_attempt',0))}",icon_custom_emoji_id="5316827280863934685")
                 ]]))
             return
         db["deals"][deal_id]["status"]="confirmed"; d=db["deals"][deal_id]
@@ -6177,6 +6271,7 @@ async def adm_decline(update, context):
         if payment_attempt is None and current_attempt>0: return
         if payment_attempt is not None and payment_attempt!=current_attempt: return
         d["payment_reported"]=False
+        d["payment_confirmed"]=False
         d["payment_declined_at"]=datetime.now().isoformat()
         db["deals"][deal_id]=d; save_db(db)
         try:
